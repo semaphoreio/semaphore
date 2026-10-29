@@ -73,7 +73,7 @@ module InternalApi
           branch.update(:pull_request_mergeable => true)
           workflow.update(
             :commit_author => payload["commit_author"],
-            :commit_sha => payload["merge_commit_sha"],
+            :commit_sha => payload["commit_sha"],
             :git_ref => payload["semaphore_ref"]
           )
         end
@@ -148,7 +148,7 @@ module InternalApi
           branch.update(:pull_request_mergeable => true)
           workflow.update(
             :commit_author => payload["commit_author"],
-            :commit_sha => payload["merge_commit_sha"],
+            :commit_sha => payload["commit_sha"],
             :git_ref => payload["semaphore_ref"]
           )
         end
@@ -300,6 +300,7 @@ module InternalApi
           :pr_number => hook.pull_request_number.to_s,
           :pr_sha => hook.payload.pr_head_sha.to_s,
           :pr_branch_name => hook.payload.pr_head_branch_name.to_s,
+          :pr_base_sha => hook.payload.pr_base_sha.to_s,
           :pr_mergeable => pr_mergeable(hook),
           :tag_name => hook.payload.tag_name.to_s,
           :branch_name => branch_name(hook)

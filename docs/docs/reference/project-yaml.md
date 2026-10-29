@@ -165,10 +165,14 @@ This property describes the GitHub or BitBucket repository.
 It must contain the following properties:
 
 - [`url`](#url-in-repository)
-- [`run_on](#run-on-in-repository)
+- [`run_on`](#run-on-in-repository)
 - [`forked_pull_requests`](#forked-pull-requests-in-repository)
 - [`pipeline_file`](#pipeline-file-in-repository)
 - [`status`](#status-in-repository)
+
+It can also optionally include:
+
+- [`pull_request_commit`](#pull-request-commit-in-repository)
 
 ### url {#url-in-repository}
 
@@ -208,6 +212,28 @@ The possible values are:
 - `tags`
 - `pull_requests`
 - `forked_pull_requests`
+
+### pull_request_commit {#pull-request-commit-in-repository}
+
+This property sets which commit pull request workflows build. It's available only for projects connected to GitHub.
+
+The possible values are:
+
+- `merge_commit`: the pull request merged into its base branch, as prepared by GitHub. This is the default
+- `head_commit`: the latest commit on the pull request branch
+
+If the property is omitted when updating a project, the current value is kept. Setting `head_commit` on a project that isn't connected to GitHub is rejected.
+
+```yaml
+spec:
+  repository:
+    run_on:
+      - branches
+      - pull_requests
+    pull_request_commit: head_commit
+```
+
+See [commit to build for pull requests](../using-semaphore/workflows#pr-commit) to learn how each option behaves.
 
 ## pipeline_file {#pipeline-file-in-repository}
 

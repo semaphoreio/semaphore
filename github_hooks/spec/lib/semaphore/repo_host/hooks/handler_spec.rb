@@ -1438,6 +1438,83 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             described_class.run(@workflow, @logger)
           end
         end
+
+        context "and the project builds pull request head commits" do
+          let(:head_sha) { "97114836a47ff614e70e863df819f908877ee1c9" }
+          let(:skip_ci_commit) { OpenStruct.new(:author => nil, :commit => OpenStruct.new(:message => "Update docs [skip ci]")) }
+
+          before do
+            @workflow.project.update!(:pull_request_commit => "head_commit")
+            allow(repo_host).to receive(:validate_token_presence!)
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", head_sha).and_return(RepoHost::Github::Responses::Commit.commit)
+          end
+
+          it "pins and builds the head commit without reading mergeability" do
+            expect(repo_host).not_to receive(:pull_request)
+            expect(repo_host).to receive(:create_ref).with("renderedtext/plakatt", "refs/semaphoreci/#{head_sha}", head_sha).once
+            expect(described_class).to receive(:launch_pipeline)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.commit_sha).to eq(head_sha)
+            expect(@workflow.git_ref).to eq("refs/semaphoreci/#{head_sha}")
+            expect(described_class.find_branch(@workflow).pull_request_mergeable).to be(true)
+          end
+
+          it "falls back to the pull request head ref when the head can't be pinned" do
+            allow(repo_host).to receive(:create_ref).and_raise(::RepoHost::RemoteException::Unauthorized, "no token")
+            expect(described_class).to receive(:launch_pipeline)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.commit_sha).to eq(head_sha)
+            expect(@workflow.git_ref).to eq("refs/pull/#{@workflow.payload.pull_request_number}/head")
+          end
+
+          it "skips the build when the head commit asks for it" do
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", head_sha).and_return(skip_ci_commit)
+            expect(repo_host).not_to receive(:create_ref)
+            expect(described_class).not_to receive(:launch_pipeline)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.state).to eq(Workflow::STATE_SKIP_CI)
+          end
+        end
+      end
+    end
+  end
+
+  describe ".update_pr_data" do
+    context "when the project builds pull request head commits" do
+      let(:repo_host) { double(::RepoHost::Github::Client.new("token")) }
+      let(:project) { @workflow.project }
+      let(:head_sha) { "3a9bf9d09f1f639e6deff46f95cff1296a87ea1a" }
+
+      before do
+        project.update!(:pull_request_commit => "head_commit")
+        allow(::RepoHost::Factory).to receive(:create_from_project).and_return(repo_host)
+        allow(repo_host).to receive(:validate_token_presence!)
+        allow(repo_host).to receive(:commit).and_return(RepoHost::Github::Responses::Commit.commit)
+        allow(repo_host).to receive(:create_ref)
+      end
+
+      it "reads the pull request once and never waits for mergeability" do
+        expect(repo_host).to receive(:pull_request).once.and_return(:head => { :sha => head_sha }, :mergeable => nil)
+        expect(described_class).not_to receive(:sleep)
+
+        state, meta, = described_class.update_pr_data(project, 1, nil, false)
+
+        expect(state).to eq(:ok)
+        expect(meta).to include(:commit_sha => head_sha, :ref => "refs/semaphoreci/#{head_sha}", :mergeable => true)
+      end
+
+      it "reports a pull request that doesn't exist" do
+        allow(repo_host).to receive(:pull_request).and_raise(::RepoHost::RemoteException::NotFound, "Not Found")
+
+        state, = described_class.update_pr_data(project, 1, nil, false)
+
+        expect(state).to eq(:not_found)
       end
     end
   end

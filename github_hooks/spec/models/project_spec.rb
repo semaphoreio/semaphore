@@ -83,6 +83,16 @@ RSpec.describe Project, :type => :model do
     end
   end
 
+  describe "pull_request_head_commit?" do
+    it "is false by default" do
+      expect(FactoryBot.create(:project).pull_request_head_commit?).to be(false)
+    end
+
+    it "is true when the project builds pull request head commits" do
+      expect(FactoryBot.create(:project, :pull_request_commit => "head_commit").pull_request_head_commit?).to be(true)
+    end
+  end
+
   describe "bitbucket_repository?" do
     before do
       @project = FactoryBot.create(:project)

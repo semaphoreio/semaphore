@@ -214,6 +214,7 @@ sem-ai project create --name my-project --github-integration github_app
 | `--remote` | `origin` | git remote to detect when `--repo-url` is not set |
 | `--skip-yaml` | `false` | don't generate `.semaphore/semaphore.yml` in cwd |
 | `--fail-on-exists` | `false` | exit non-zero if a project with the same name already exists |
+| `--pull-request-commit` | `merge_commit` | commit that pull request workflows build: `merge_commit`, or `head_commit` on GitHub projects |
 
 ### sem-ai project update {#project-update}
 
@@ -222,7 +223,10 @@ Update project settings:
 ```shell
 sem-ai project update <project-name> --visibility public
 sem-ai project update <project-name> --description "My app"
+sem-ai project update <project-name> --pull-request-commit head_commit
 ```
+
+`--pull-request-commit` sets the [commit that pull request workflows build](../using-semaphore/workflows#pr-commit): `merge_commit` or `head_commit`. The `head_commit` value is available only for GitHub projects.
 
 ### sem-ai project delete {#project-delete}
 

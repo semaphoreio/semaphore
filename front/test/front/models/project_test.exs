@@ -38,6 +38,7 @@ defmodule Front.Models.ProjectTest do
                :build_branches => false,
                :build_forked_prs => true,
                :build_draft_prs => true,
+               :pull_request_commit => "merge_commit",
                :build_prs => false,
                :build_tags => true,
                :expose_secrets => true,
@@ -74,6 +75,52 @@ defmodule Front.Models.ProjectTest do
                :cache_id => "65a16553-69d9-480f-b52b-c56e6b12063e",
                :artifact_store_id => "118dcd98-97cc-4b31-8690-9c897b0adf46"
              }
+    end
+
+    test "when the project builds the pull request head commit => maps the head commit" do
+      alias InternalApi.Projecthub.{DescribeResponse, ResponseMeta}
+
+      org_id = Ecto.UUID.generate()
+
+      project =
+        Support.Stubs.Project.build(%{id: org_id}, %{id: Ecto.UUID.generate()},
+          pull_request_commit: "head_commit"
+        )
+
+      GrpcMock.stub(
+        ProjecthubMock,
+        :describe,
+        DescribeResponse.new(
+          metadata:
+            ResponseMeta.new(status: ResponseMeta.Status.new(code: ResponseMeta.Code.value(:OK))),
+          project: project
+        )
+      )
+
+      assert Project.find(project.metadata.name, org_id).pull_request_commit == "head_commit"
+    end
+
+    test "when the pull request commit is unspecified => maps the merge commit" do
+      alias InternalApi.Projecthub.{DescribeResponse, ResponseMeta}
+
+      org_id = Ecto.UUID.generate()
+
+      project =
+        Support.Stubs.Project.build(%{id: org_id}, %{id: Ecto.UUID.generate()},
+          pull_request_commit: "pull_request_commit_unspecified"
+        )
+
+      GrpcMock.stub(
+        ProjecthubMock,
+        :describe,
+        DescribeResponse.new(
+          metadata:
+            ResponseMeta.new(status: ResponseMeta.Status.new(code: ResponseMeta.Code.value(:OK))),
+          project: project
+        )
+      )
+
+      assert Project.find(project.metadata.name, org_id).pull_request_commit == "merge_commit"
     end
 
     test "when the project can't be found => it returns nil" do
@@ -230,6 +277,7 @@ defmodule Front.Models.ProjectTest do
                   :build_branches => false,
                   :build_forked_prs => true,
                   :build_draft_prs => true,
+                  :pull_request_commit => "merge_commit",
                   :build_prs => false,
                   :build_tags => true,
                   :expose_secrets => true,
@@ -266,6 +314,160 @@ defmodule Front.Models.ProjectTest do
                   :allow_attach_forked_pr => false,
                   :allow_attach_tag => false
                 }}
+    end
+
+    test "when project is created => leaves the pull request commit unspecified" do
+      alias InternalApi.Projecthub.CreateResponse, as: Response
+      alias InternalApi.Projecthub.Project.Spec.Repository.PullRequestCommit
+      alias InternalApi.Projecthub.ResponseMeta
+
+      project =
+        Support.Stubs.Project.build(%{id: Ecto.UUID.generate()}, %{id: Ecto.UUID.generate()})
+
+      test_pid = self()
+
+      GrpcMock.stub(ProjecthubMock, :create, fn req, _ ->
+        send(test_pid, {:create_request, req})
+
+        Response.new(
+          project: project,
+          metadata:
+            ResponseMeta.new(status: ResponseMeta.Status.new(code: ResponseMeta.Code.value(:OK)))
+        )
+      end)
+
+      assert {:ok, _} =
+               Project.create(
+                 Ecto.UUID.generate(),
+                 Ecto.UUID.generate(),
+                 project.metadata.name,
+                 project.spec.repository.url,
+                 "github_app"
+               )
+
+      assert_receive {:create_request, req}
+
+      assert req.project.spec.repository.pull_request_commit ==
+               PullRequestCommit.value(:PULL_REQUEST_COMMIT_UNSPECIFIED)
+    end
+  end
+
+  describe ".changeset" do
+    test "when the pull request commit is not set => defaults to the merge commit" do
+      changeset = Project.changeset(settings_project(), %{})
+
+      assert changeset.valid?
+      assert Ecto.Changeset.get_field(changeset, :pull_request_commit) == "merge_commit"
+    end
+
+    test "when the pull request commit is the head commit => it is valid" do
+      changeset = Project.changeset(settings_project(), %{"pull_request_commit" => "head_commit"})
+
+      assert changeset.valid?
+      assert Ecto.Changeset.get_field(changeset, :pull_request_commit) == "head_commit"
+    end
+
+    test "when the pull request commit is unknown => returns an error" do
+      changeset = Project.changeset(settings_project(), %{"pull_request_commit" => "base_commit"})
+
+      refute changeset.valid?
+      assert Keyword.has_key?(changeset.errors, :pull_request_commit)
+    end
+  end
+
+  describe ".update" do
+    alias InternalApi.Projecthub.Project.Spec.Repository.PullRequestCommit
+    alias InternalApi.Projecthub.{ResponseMeta, UpdateResponse}
+
+    setup do
+      org_id = Ecto.UUID.generate()
+      user_id = Ecto.UUID.generate()
+      test_pid = self()
+
+      Support.Stubs.PermissionPatrol.allow_everything(org_id, user_id)
+
+      GrpcMock.stub(ProjecthubMock, :update, fn req, _ ->
+        send(test_pid, {:update_request, req})
+
+        UpdateResponse.new(
+          metadata:
+            ResponseMeta.new(status: ResponseMeta.Status.new(code: ResponseMeta.Code.value(:OK))),
+          project: req.project
+        )
+      end)
+
+      [org_id: org_id, user_id: user_id]
+    end
+
+    test "when a GitHub project builds the head commit => sends the head commit", ctx do
+      project =
+        settings_project(integration_type: :GITHUB_APP, pull_request_commit: "head_commit")
+
+      assert {:ok, _} = Project.update(project, ctx.user_id, ctx.org_id)
+      assert_receive {:update_request, req}
+
+      assert req.project.spec.repository.pull_request_commit ==
+               PullRequestCommit.value(:HEAD_COMMIT)
+    end
+
+    test "when a GitHub project builds the merge commit => sends the merge commit", ctx do
+      project =
+        settings_project(
+          integration_type: :GITHUB_OAUTH_TOKEN,
+          pull_request_commit: "merge_commit"
+        )
+
+      assert {:ok, _} = Project.update(project, ctx.user_id, ctx.org_id)
+      assert_receive {:update_request, req}
+
+      assert req.project.spec.repository.pull_request_commit ==
+               PullRequestCommit.value(:MERGE_COMMIT)
+    end
+
+    test "when the pull request commit is not set => leaves it unspecified", ctx do
+      project = settings_project(integration_type: :GITHUB_APP, pull_request_commit: nil)
+
+      assert {:ok, _} = Project.update(project, ctx.user_id, ctx.org_id)
+      assert_receive {:update_request, req}
+
+      assert req.project.spec.repository.pull_request_commit ==
+               PullRequestCommit.value(:PULL_REQUEST_COMMIT_UNSPECIFIED)
+    end
+
+    test "when the project is not on GitHub => leaves the pull request commit unspecified",
+         ctx do
+      project = settings_project(integration_type: :BITBUCKET, pull_request_commit: "head_commit")
+
+      assert {:ok, _} = Project.update(project, ctx.user_id, ctx.org_id)
+      assert_receive {:update_request, req}
+
+      assert req.project.spec.repository.pull_request_commit ==
+               PullRequestCommit.value(:PULL_REQUEST_COMMIT_UNSPECIFIED)
+    end
+
+    test "when projecthub rejects the pull request commit => returns its message", ctx do
+      message =
+        "Building pull requests on their head commit is supported only for GitHub projects"
+
+      GrpcMock.stub(
+        ProjecthubMock,
+        :update,
+        UpdateResponse.new(
+          metadata:
+            ResponseMeta.new(
+              status:
+                ResponseMeta.Status.new(
+                  code: ResponseMeta.Code.value(:FAILED_PRECONDITION),
+                  message: message
+                )
+            )
+        )
+      )
+
+      project =
+        settings_project(integration_type: :GITHUB_APP, pull_request_commit: "head_commit")
+
+      assert Project.update(project, ctx.user_id, ctx.org_id) == {:error, :message, message}
     end
   end
 
@@ -588,5 +790,19 @@ defmodule Front.Models.ProjectTest do
 
       assert Project.file_exists?(project, ".semaphore/semaphore.yml") == true
     end
+  end
+
+  defp settings_project(fields \\ []) do
+    struct(
+      %Project{
+        id: Ecto.UUID.generate(),
+        name: "octocat",
+        repo_url: "git@github.com:octocat/octocat.git",
+        initial_pipeline_file: ".semaphore/semaphore.yml",
+        run: false,
+        custom_permissions: false
+      },
+      fields
+    )
   end
 end

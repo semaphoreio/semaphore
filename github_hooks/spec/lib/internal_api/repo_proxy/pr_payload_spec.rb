@@ -49,7 +49,7 @@ RSpec.describe InternalApi::RepoProxy::PrPayload do
       html_url: "https://github.com/owner/repo/pull/1"
     }
   end
-  let(:meta) { { pr: pr, ref: ref, merge_commit_sha: "abc123", commit_author: "Alice" } }
+  let(:meta) { { pr: pr, ref: ref, commit_sha: "abc123", commit_author: "Alice" } }
 
   before do
     allow(::RepoHost::Factory).to receive(:create_from_project).and_return(repo_host)

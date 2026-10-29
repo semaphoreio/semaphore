@@ -214,17 +214,18 @@ type projectSummary struct {
 }
 
 type repositorySummary struct {
-	URL            string `json:"url,omitempty"`
-	Name           string `json:"name,omitempty"`
-	DefaultBranch  string `json:"defaultBranch,omitempty"`
-	PipelineFile   string `json:"pipelineFile,omitempty"`
-	Integration    string `json:"integrationType,omitempty"`
-	Public         bool   `json:"public"`
-	Connected      bool   `json:"connected"`
-	RepositoryID   string `json:"repositoryId,omitempty"`
-	Owner          string `json:"owner,omitempty"`
-	RunOnPresent   bool   `json:"runOnConfigured,omitempty"`
-	IntegrationURL string `json:"integrationUrl,omitempty"`
+	URL               string `json:"url,omitempty"`
+	Name              string `json:"name,omitempty"`
+	DefaultBranch     string `json:"defaultBranch,omitempty"`
+	PipelineFile      string `json:"pipelineFile,omitempty"`
+	PullRequestCommit string `json:"pullRequestCommit,omitempty"`
+	Integration       string `json:"integrationType,omitempty"`
+	Public            bool   `json:"public"`
+	Connected         bool   `json:"connected"`
+	RepositoryID      string `json:"repositoryId,omitempty"`
+	Owner             string `json:"owner,omitempty"`
+	RunOnPresent      bool   `json:"runOnConfigured,omitempty"`
+	IntegrationURL    string `json:"integrationUrl,omitempty"`
 }
 
 type projectDetails struct {
@@ -292,6 +293,9 @@ func formatProjectListMarkdown(result listResult, mode string, orgID string) str
 			}
 			if project.Repository.PipelineFile != "" {
 				mb.KeyValue("Pipeline File", project.Repository.PipelineFile)
+			}
+			if project.Repository.PullRequestCommit != "" {
+				mb.KeyValue("Pull Request Commit", project.Repository.PullRequestCommit)
 			}
 
 			detailFlags := []string{}
@@ -951,16 +955,17 @@ func summarizeRepository(repo *projecthubpb.Project_Spec_Repository) repositoryS
 	}
 
 	return repositorySummary{
-		URL:           repo.GetUrl(),
-		Name:          repo.GetName(),
-		Owner:         repo.GetOwner(),
-		DefaultBranch: repo.GetDefaultBranch(),
-		PipelineFile:  repo.GetPipelineFile(),
-		Integration:   normalizeIntegration(repo.GetIntegrationType()),
-		Public:        repo.GetPublic(),
-		Connected:     repo.GetConnected(),
-		RepositoryID:  repo.GetId(),
-		RunOnPresent:  repo.GetRunPresent() != nil,
+		URL:               repo.GetUrl(),
+		Name:              repo.GetName(),
+		Owner:             repo.GetOwner(),
+		DefaultBranch:     repo.GetDefaultBranch(),
+		PipelineFile:      repo.GetPipelineFile(),
+		PullRequestCommit: normalizePullRequestCommit(repo.GetPullRequestCommit()),
+		Integration:       normalizeIntegration(repo.GetIntegrationType()),
+		Public:            repo.GetPublic(),
+		Connected:         repo.GetConnected(),
+		RepositoryID:      repo.GetId(),
+		RunOnPresent:      repo.GetRunPresent() != nil,
 	}
 }
 
@@ -974,6 +979,14 @@ func normalizeProjectVisibility(spec *projecthubpb.Project_Spec) string {
 
 func normalizeIntegration(integration repoipb.IntegrationType) string {
 	return normalizeEnumName(integration.String(), "IntegrationType_")
+}
+
+// UNSPECIFIED is a write-side value ("keep the stored setting"), so it has no label.
+func normalizePullRequestCommit(commit projecthubpb.Project_Spec_Repository_PullRequestCommit) string {
+	if commit == projecthubpb.Project_Spec_Repository_PULL_REQUEST_COMMIT_UNSPECIFIED {
+		return ""
+	}
+	return normalizeEnumName(commit.String(), "Project_Spec_Repository_")
 }
 
 func normalizePermissionTypes(perms []projecthubpb.Project_Spec_PermissionType) []string {

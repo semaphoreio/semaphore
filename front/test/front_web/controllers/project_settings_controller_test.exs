@@ -271,6 +271,57 @@ defmodule FrontWeb.ProjectSettingsControllerTest do
 
       assert get_flash(conn, :alert) == "Failed to update."
     end
+
+    test "when the head commit is chosen, it is saved and shown on the settings page",
+         %{conn: conn, project_name: project_name} do
+      update_conn =
+        conn
+        |> put(
+          project_settings_path(conn, :update, project_name),
+          %{project: %{pull_request_commit: "head_commit"}}
+        )
+
+      assert get_flash(update_conn, :notice) == "Project has been updated."
+
+      html =
+        conn
+        |> get(project_settings_path(conn, :general, project_name))
+        |> html_response(200)
+
+      assert html =~ ~s(<input checked id="project_pull_request_commit_head_commit")
+      refute html =~ ~s(<input checked id="project_pull_request_commit_merge_commit")
+    end
+
+    test "when projecthub rejects the pull request commit, it alerts with the reason",
+         %{conn: conn, project_name: project_name} do
+      alias InternalApi.Projecthub.{ResponseMeta, UpdateResponse}
+
+      message =
+        "Building pull requests on their head commit is supported only for GitHub projects"
+
+      GrpcMock.expect(ProjecthubMock, :update, fn _req, _ ->
+        UpdateResponse.new(
+          metadata:
+            ResponseMeta.new(
+              status:
+                ResponseMeta.Status.new(
+                  code: ResponseMeta.Code.value(:FAILED_PRECONDITION),
+                  message: message
+                )
+            )
+        )
+      end)
+
+      conn =
+        conn
+        |> put(
+          project_settings_path(conn, :update, project_name),
+          %{project: %{pull_request_commit: "head_commit"}}
+        )
+
+      assert redirected_to(conn) == project_settings_path(conn, :general, project_name)
+      assert get_flash(conn, :alert) == message
+    end
   end
 
   describe "sem-approve options" do
@@ -503,6 +554,41 @@ defmodule FrontWeb.ProjectSettingsControllerTest do
         |> get(project_settings_path(conn, :general, project_name))
 
       assert html_response(conn, 200) =~ "Set up the project basics"
+    end
+
+    test "GET general - for a GitHub project => offers the pull request commit, merge commit by default",
+         %{conn: conn, project_name: project_name} do
+      html =
+        conn
+        |> get(project_settings_path(conn, :general, project_name))
+        |> html_response(200)
+
+      assert html =~ ~s(id="pull-request-commit-options")
+      assert html =~ ~s(<input checked id="project_pull_request_commit_merge_commit")
+      refute html =~ ~s(<input checked id="project_pull_request_commit_head_commit")
+    end
+
+    test "GET general - for a project that is not on GitHub => does not offer the pull request commit",
+         %{conn: conn, project_name: project_name} do
+      alias InternalApi.RepositoryIntegrator.IntegrationType
+
+      project = DB.find_by(:projects, :name, project_name)
+
+      project =
+        put_in(
+          project.api_model.spec.repository.integration_type,
+          IntegrationType.value(:BITBUCKET)
+        )
+
+      DB.update(:projects, project)
+
+      html =
+        conn
+        |> get(project_settings_path(conn, :general, project_name))
+        |> html_response(200)
+
+      assert html =~ "Set up the project basics"
+      refute html =~ "pull-request-commit-options"
     end
 
     # Confirm deletion page

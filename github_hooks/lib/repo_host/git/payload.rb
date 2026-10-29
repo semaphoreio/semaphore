@@ -31,6 +31,10 @@ module RepoHost::Git
       nil
     end
 
+    def pr_base_sha
+      nil
+    end
+
     def pr_head_branch_name
       nil
     end
