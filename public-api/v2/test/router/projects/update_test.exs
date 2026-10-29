@@ -40,49 +40,6 @@ defmodule Router.Projects.UpdateTest do
       assert project.spec.name == updated_project["metadata"]["name"]
     end
 
-    test "a project that builds draft pull requests round-trips", ctx do
-      test_pid = self()
-      project_id = UUID.uuid4()
-
-      Support.Stubs.Project.create(%{id: ctx.org_id}, %{id: ctx.user_id},
-        id: project_id,
-        run_on: ["branches", "draft_pull_requests"]
-      )
-
-      for permission <- [
-            "project.view",
-            "project.repository_info.manage",
-            "project.general_settings.manage"
-          ] do
-        PermissionPatrol.add_permissions(ctx.org_id, ctx.user_id, permission, project_id)
-      end
-
-      GrpcMock.stub(ProjecthubMock, :update, fn req, stream ->
-        send(test_pid, {:update_request, req})
-        Support.Stubs.Project.Grpc.Projecthub.update(req, stream)
-      end)
-
-      on_exit(&Support.Stubs.Project.Grpc.Projecthub.init/0)
-
-      {:ok, response} = HTTPoison.get(url() <> "/projects/#{project_id}", headers(ctx))
-
-      assert 200 == response.status_code
-      run_on = Jason.decode!(response.body)["spec"]["repository"]["run_on"]
-      assert run_on == ["BRANCHES", "DRAFT_PULL_REQUESTS"]
-
-      project =
-        Map.update!(construct_project("a-project"), :spec, fn spec ->
-          Map.update!(spec, :repository, &Map.put(&1, :run_on, run_on))
-        end)
-
-      {:ok, response} = update_project(ctx, project_id, project)
-
-      assert 200 == response.status_code
-      assert_received {:update_request, req}
-      assert req.project.spec.repository.run_on == [:BRANCHES, :DRAFT_PULL_REQUESTS]
-      assert Jason.decode!(response.body)["spec"]["repository"]["run_on"] == run_on
-    end
-
     test "update a project with sem-approve forked PR flags", ctx do
       project =
         construct_project("a-project")

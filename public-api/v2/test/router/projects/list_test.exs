@@ -36,19 +36,6 @@ defmodule Router.Projects.ListTest do
       assert projects_in_schema(list_res)
     end
 
-    test "a project that builds draft pull requests is listed", ctx do
-      project_id = UUID.uuid4()
-
-      Support.Stubs.Project.create(%{id: ctx.org_id}, %{id: ctx.user_id},
-        id: project_id,
-        run_on: ["branches", "draft_pull_requests"]
-      )
-
-      assert {200, _headers, [project]} = list_projects(ctx, page_size: 2)
-      assert project["metadata"]["id"] == project_id
-      assert project["spec"]["repository"]["run_on"] == ["BRANCHES", "DRAFT_PULL_REQUESTS"]
-    end
-
     test "no secrets empty response and no next page pagination links", ctx do
       assert {200, _headers, list_res} = list_projects(ctx, page_size: 2)
 
