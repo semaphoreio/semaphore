@@ -237,7 +237,8 @@ defmodule FrontWeb.BranchControllerTest do
     }
 
     DB.update(:hooks, hook)
-    Support.Stubs.Workflow.create(hook, Support.Stubs.User.default())
+    workflow = Support.Stubs.Workflow.create(hook, Support.Stubs.User.default())
+    Support.Stubs.Pipeline.create_initial(workflow)
 
     branch
   end
