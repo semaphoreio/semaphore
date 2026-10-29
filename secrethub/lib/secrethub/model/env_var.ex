@@ -24,6 +24,13 @@ defmodule Secrethub.Model.EnvVar do
       not EnvVarPolicy.valid_name?(name) ->
         Ecto.Changeset.add_error(changeset, :name, "of enviorment variable is invalid")
 
+      EnvVarPolicy.shell_startup?(name) ->
+        Ecto.Changeset.add_error(
+          changeset,
+          :name,
+          "#{name} can't be set because bash runs code from it when a job starts"
+        )
+
       EnvVarPolicy.reserved?(name) ->
         Ecto.Changeset.add_error(
           changeset,

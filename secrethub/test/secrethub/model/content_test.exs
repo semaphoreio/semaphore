@@ -90,10 +90,25 @@ defmodule Secrethub.Model.EnvVarTest do
       end
     end
 
+    test "with bash startup variable names" do
+      for name <- ["BASH_ENV", "SHELLOPTS"] do
+        changeset = Content.changeset(%Content{}, %{env_vars: [%{name: name, value: "x"}]})
+
+        assert %Ecto.Changeset{
+                 changes: %{env_vars: [%Ecto.Changeset{valid?: false, errors: errors}]},
+                 valid?: false
+               } = changeset
+
+        assert [name: {message, []}] = errors
+        assert message == "#{name} can't be set because bash runs code from it when a job starts"
+      end
+    end
+
     test "with Semaphore settings users are allowed to set" do
       for name <- [
             "SEMAPHORE_CACHE_BACKEND",
             "SEMAPHORE_GIT_DEPTH",
+            "SEMAPHORE_GIT_DIR",
             "SEMAPHORE_AGENT_UPLOAD_JOB_LOGS"
           ] do
         assert %Ecto.Changeset{valid?: true} =
