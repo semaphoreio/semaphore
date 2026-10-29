@@ -399,6 +399,25 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
 
         server.create_blank(req, call)
       end
+
+      it "does not record the branch as mergeable" do
+        project.update!(pull_request_commit: "head_commit")
+        expect(branch).not_to receive(:update).with(pull_request_mergeable: true)
+
+        server.create_blank(req, call)
+      end
+    end
+
+    context "when the project builds merge commits and the payload is a pull request" do
+      before do
+        allow(workflow).to receive(:payload).and_return(double(pull_request?: true))
+      end
+
+      it "records the branch as mergeable" do
+        expect(branch).to receive(:update).with(pull_request_mergeable: true)
+
+        server.create_blank(req, call)
+      end
     end
 
     context "when pull request is not mergeable" do

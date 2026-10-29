@@ -70,7 +70,7 @@ module InternalApi
         workflow.update(:branch_id => branch.id)
 
         if workflow.payload.pull_request?
-          branch.update(:pull_request_mergeable => true)
+          branch.update(:pull_request_mergeable => true) unless project.pull_request_head_commit?
           workflow.update(
             :commit_author => payload["commit_author"],
             :commit_sha => payload["commit_sha"],
@@ -145,7 +145,7 @@ module InternalApi
         workflow.update(:branch_id => branch.id)
 
         if workflow.payload.pull_request?
-          branch.update(:pull_request_mergeable => true)
+          branch.update(:pull_request_mergeable => true) unless project.pull_request_head_commit?
           workflow.update(
             :commit_author => payload["commit_author"],
             :commit_sha => payload["commit_sha"],

@@ -480,7 +480,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
     begin
       branch = find_or_create_branch(workflow, logger)
-      if workflow.payload.pull_request?
+      if workflow.payload.pull_request? && !workflow.project.pull_request_head_commit?
         update_pull_request_mergeable(workflow, meta[:mergeable])
       end
     rescue StandardError
@@ -570,9 +570,8 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     end
   end
 
-  # Head builds don't use GitHub's test merge, so they never read or wait for
-  # mergeability, and PRs with conflicts build too. Mergeability is recorded as
-  # true so the branch page shows no conflict and no unmergeable event fires.
+  # Head builds don't use GitHub's test merge, so they never read, wait for or
+  # record mergeability, and PRs with conflicts build too.
   def self.update_pr_head_data(repo_host, project, number, head_sha, allow_skip)
     pr = nil
 
@@ -591,14 +590,14 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     commit_message = commit.try(:commit).try(:message).to_s
 
     if allow_skip && ::Semaphore::SkipCi.new.call(commit_message)
-      return [:skip_ci, { :pr => pr, :mergeable => true }, ""]
+      return [:skip_ci, { :pr => pr }, ""]
     end
 
     begin
       ref = "refs/semaphoreci/#{head_sha}"
       ensure_ref(repo_host, project.repo_owner_and_name, ref, head_sha)
 
-      [:ok, { :pr => pr, :ref => ref, :commit_sha => head_sha, :mergeable => true, :commit_author => commit_author, :head_sha => head_sha }, ""]
+      [:ok, { :pr => pr, :ref => ref, :commit_sha => head_sha, :commit_author => commit_author, :head_sha => head_sha }, ""]
     rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
       # The recorded ref is the PR head ref, which moves with the fork, so the
       # live head is what the approval check has to compare against.
@@ -608,7 +607,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         return [:not_found, {}, e]
       end
 
-      [:without_reference, { :pr => pr, :ref => "refs/pull/#{number}/head", :commit_sha => head_sha, :mergeable => true, :commit_author => commit_author, :head_sha => pr[:head][:sha] }, ""]
+      [:without_reference, { :pr => pr, :ref => "refs/pull/#{number}/head", :commit_sha => head_sha, :commit_author => commit_author, :head_sha => pr[:head][:sha] }, ""]
     end
   end
 

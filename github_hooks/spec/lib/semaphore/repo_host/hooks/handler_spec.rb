@@ -1458,11 +1458,22 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
 
             expect(@workflow.reload.commit_sha).to eq(head_sha)
             expect(@workflow.git_ref).to eq("refs/semaphoreci/#{head_sha}")
-            expect(described_class.find_branch(@workflow).pull_request_mergeable).to be(true)
+          end
+
+          it "leaves the branch mergeability unrecorded and emits no unmergeable event" do
+            allow(repo_host).to receive(:create_ref)
+            allow(described_class).to receive(:launch_pipeline)
+            expect(described_class).not_to receive(:update_pull_request_mergeable)
+            expect(Semaphore::Events::PullRequestUnmergeable).not_to receive(:emit)
+
+            described_class.run(@workflow, @logger)
+
+            expect(described_class.find_branch(@workflow).pull_request_mergeable).to be_nil
           end
 
           it "falls back to the pull request head ref when the head can't be pinned" do
             allow(repo_host).to receive(:create_ref).and_raise(::RepoHost::RemoteException::Unauthorized, "no token")
+            allow(repo_host).to receive(:pull_request).and_return(:head => { :sha => head_sha })
             expect(described_class).to receive(:launch_pipeline)
 
             described_class.run(@workflow, @logger)
@@ -1506,7 +1517,8 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         state, meta, = described_class.update_pr_data(project, 1, nil, false)
 
         expect(state).to eq(:ok)
-        expect(meta).to include(:commit_sha => head_sha, :ref => "refs/semaphoreci/#{head_sha}", :mergeable => true)
+        expect(meta).to include(:commit_sha => head_sha, :ref => "refs/semaphoreci/#{head_sha}")
+        expect(meta).not_to have_key(:mergeable)
       end
 
       it "keeps the commit when the head ref can't be pinned" do
