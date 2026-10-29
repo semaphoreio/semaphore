@@ -369,6 +369,13 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
     end
   end
 
+  describe "rule_type/2" do
+    test "keeps job types other than :debug_job" do
+      assert ReservedEnvVars.rule_type(@job, :pipeline_job) == :pipeline_job
+      assert ReservedEnvVars.rule_type(@job, :project_debug_job) == :project_debug_job
+    end
+  end
+
   describe "validate/5 for jobs outside a pipeline" do
     test "rejects any reserved name" do
       assert validate(:project_debug_job, ["SEMAPHORE_WORKFLOW_TRIGGERED_BY_API"]) ==

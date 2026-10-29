@@ -68,7 +68,13 @@ defmodule Zebra.Workers.JobRequestFactory do
 
     with :ok <- Machine.validate(org_id, job),
          {:ok, spec_env_vars} <- Spec.env_vars(spec),
-         :ok <- ReservedEnvVars.validate_spec(job, job_type, spec, spec_env_vars),
+         :ok <-
+           ReservedEnvVars.validate_spec(
+             job,
+             ReservedEnvVars.rule_type(job, job_type),
+             spec,
+             spec_env_vars
+           ),
          generate_token <-
            Task.async(fn ->
              if Job.self_hosted?(job.machine_type),

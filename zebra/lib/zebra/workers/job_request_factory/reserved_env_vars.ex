@@ -37,6 +37,23 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
     end)
   end
 
+  @doc """
+  The job type whose rule applies to the spec. A debug session of a job outside a
+  pipeline gets that job's strict rule, since Plumber never set its env vars.
+  """
+  def rule_type(job, :debug_job) do
+    alias Zebra.Models.{Debug, Job}
+
+    with {:ok, debug} <- Debug.from_jobs() |> Debug.find_by_job_id(job.id),
+         {:ok, %{build_id: build_id}} when build_id != nil <- Job.find(debug.debugged_id) do
+      :debug_job
+    else
+      _ -> :project_debug_job
+    end
+  end
+
+  def rule_type(_job, job_type), do: job_type
+
   def validate_secrets(job, all_secrets) do
     validate_names(job, secret_names(all_secrets), fn -> secret_violations(all_secrets) end)
   end

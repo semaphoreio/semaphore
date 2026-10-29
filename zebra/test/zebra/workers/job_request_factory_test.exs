@@ -1509,6 +1509,21 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
              "Reserved environment variables cannot be set: SEMAPHORE_GIT_BRANCH (job env_vars)"
   end
 
+  test "when debugging a job outside a pipeline that sets a plumber-owned env var => force fails the job" do
+    {:ok, job} = Support.Factories.Job.create(:finished, %{spec: @job_spec, build_id: nil})
+    {:ok, debug_job} = Support.Factories.Job.create(:pending, %{spec: @job_spec, build_id: nil})
+    {:ok, _debug} = Support.Factories.Debug.create_for_job(job.id, debug_job.id)
+
+    capture_log(fn -> send(self(), {:result, Worker.process(debug_job)}) end)
+    assert_received {:result, {:ok, debug_job}}
+
+    assert Job.finished?(debug_job)
+    assert Job.failed?(debug_job)
+
+    assert debug_job.failure_reason ==
+             "Reserved environment variables cannot be set: SEMAPHORE_WORKFLOW_TRIGGERED_BY_HOOK (job env_vars)"
+  end
+
   test "when a container with a multi-codepoint name sets a reserved env var => stores a fitting failure_reason" do
     name = "x" <> String.duplicate("\u0301", 300)
 
