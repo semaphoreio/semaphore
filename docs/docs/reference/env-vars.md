@@ -4,6 +4,32 @@ description: Environment variables defined by Semaphore
 
 # Environment variables
 
+## Reserved variables {#reserved-variables}
+
+The `SEMAPHORE_` prefix is reserved for Semaphore. Don't define your own variables with it, except for these settings, which you can set to configure the [cache](../using-semaphore/cache), the [checkout](../using-semaphore/jobs), and the toolbox:
+
+- `SEMAPHORE_CACHE_ARCHIVE_METHOD`, `SEMAPHORE_CACHE_BACKEND`, `SEMAPHORE_CACHE_GCS_BUCKET`, `SEMAPHORE_CACHE_PRIVATE_KEY_PATH`, `SEMAPHORE_CACHE_S3_BUCKET`, `SEMAPHORE_CACHE_URL`, `SEMAPHORE_CACHE_USERNAME`
+- `SEMAPHORE_GIT_CACHE_AGE`, `SEMAPHORE_GIT_CACHE_KEEP`, `SEMAPHORE_GIT_CLONE_SLOW_RETRY`, `SEMAPHORE_GIT_DEPTH`, `SEMAPHORE_GIT_DIR`
+- `SEMAPHORE_TEST_RESULTS_NO_TRIM`, `SEMAPHORE_TOOLBOX_METRICS_ENABLED`
+- `SEMAPHORE_AGENT_UPLOAD_JOB_LOGS`
+- `SEMAPHORE_API_TOKEN`, `SEMAPHORE_HOST`, used by the [sem-ai CLI](./sem-ai-cli) and the [MCP server](../using-semaphore/ai/mcp-server)
+
+To change another variable that Semaphore provides, such as `SEMAPHORE_GIT_URL` or `SEMAPHORE_GIT_SHA` before running `checkout`, `export` it in the job commands.
+
+`BASH_ENV` and `SHELLOPTS` can't be set either, because bash runs code from them before the job's first command.
+
+A pipeline fails to start if its YAML or its promotion or task parameters set a variable that Semaphore provides, and a job created through the API fails before it starts if it sets one. The pipeline or job page shows which variable caused the failure.
+
+[Secrets](../using-semaphore/secrets) can't be saved with these names. A secret saved earlier that sets one makes every job that uses it fail before it starts, until you edit the secret and rename or remove the variable.
+
+## Variable names {#variable-names}
+
+Variable names must be valid shell identifiers: letters, digits, and underscores, not starting with a digit. A pipeline whose YAML or parameters use any other name fails to start, a job created through the API with one fails before it starts, and secrets can't be saved with one. The page shows the name under `Invalid environment variable names`.
+
+Environment variables of [service containers](../using-semaphore/containers) can also contain dots and dashes after the first character, such as `discovery.type` or `node-version`.
+
+Secrets saved before this rule was enforced can hold names that no longer pass, such as a name with a trailing newline. Every job that uses such a secret fails until you edit the secret and save the variable again with a valid name.
+
 ## Semaphore variables {#semaphore-variables}
 
 These variables describe various aspects of Semaphore workings.

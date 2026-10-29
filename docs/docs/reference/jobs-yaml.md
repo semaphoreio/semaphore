@@ -221,6 +221,8 @@ As you can see, the description of a job as returned by Semaphore 2.0 contains m
 properties. Some of them are defined by Semaphore 2.0, whereas others can be
 defined by the user. You can visit the [sem command line tool Reference](https://docs.semaphoreci.com/reference/sem-command-line-tool/) documentation to learn how to define a job using the `sem create` command.
 
+To create a job from this output with `sem create`, first remove from `envvars` the [variables Semaphore provides](./env-vars#reserved-variables), such as `SEMAPHORE_GIT_SHA` and `SEMAPHORE_WORKFLOW_ID`. A job that sets them fails before it starts.
+
 ## See also
 
 - [Pipeline YAML reference](./pipeline-yaml)
