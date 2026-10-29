@@ -12,13 +12,13 @@ defmodule Front.FeatureProviderInvalidatorWorkerTest do
     key = Billing.cache_key(:list_addons, %ListAddonsRequest{org_id: org_id})
     other_key = Billing.cache_key(:list_addons, %ListAddonsRequest{org_id: other_org_id})
 
-    Front.Cache.set(key, :stale)
-    Front.Cache.set(other_key, :other)
+    Front.Cache.set(key, "stale")
+    Front.Cache.set(other_key, "other")
 
     message = OrganizationFeaturesChanged.encode(%OrganizationFeaturesChanged{org_id: org_id})
     assert :ok = FeatureProviderInvalidatorWorker.organization_features_changed(message)
 
     assert {:not_cached, ^key} = Front.Cache.get(key)
-    assert {:ok, :other} = Front.Cache.get(other_key)
+    assert {:ok, "other"} = Front.Cache.get(other_key)
   end
 end
