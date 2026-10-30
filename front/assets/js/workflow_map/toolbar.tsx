@@ -117,7 +117,7 @@ const Search = () => {
   );
 };
 
-const Stepper = () => {
+export const Stepper = () => {
   const h = hits.value;
   if (!h.active) return null;
   return (
@@ -136,7 +136,7 @@ const Stepper = () => {
   );
 };
 
-const Chips = () => {
+export const Chips = () => {
   const c = countJobs(queryJobs.value);
   return (
     <div className="wf-map-chips" role="group" aria-label="Show jobs with status">
@@ -154,8 +154,6 @@ const Chips = () => {
 export const Toolbar = () => (
   <div className="wf-map-toolbar">
     <Search/>
-    <Stepper/>
-    <Chips/>
     {workflow.value?.skippedBlocks > 0 && (
       <button className="btn btn-secondary btn-small" onClick={() => (showSkipped.value = !showSkipped.value)}>
         {showSkipped.value ? `Hide skipped blocks` : `Show skipped blocks`}

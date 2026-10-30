@@ -316,6 +316,28 @@
   box-shadow: var(--wf-map-shadow);
 }
 
+.wf-map .react-flow__panel.wf-map-dock {
+  left: 41px;
+  right: 183px;
+  transform: none;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.wf-map-dock-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 5px 8px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: var(--wf-map-shadow);
+  pointer-events: auto;
+}
+
 .wf-map-zoom {
   min-width: 44px;
   text-align: right;

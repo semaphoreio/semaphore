@@ -5,6 +5,7 @@ import { Pipeline, STATUS_LABEL, Status, Workflow, blockStatus, countJobs, pipel
 import { focus, hits, layoutError, popover, rerunPipeline, selected, stopPipeline, togglePopover, workflow } from "./store";
 import { MapLayout, Point, layoutMap, promotionLabel } from "./layout";
 import { PromoteButton } from "./promote";
+import { Chips, Stepper } from "./toolbar";
 import { BlockCard, Counts, Duration, Highlight, PipelineTitle, StatusBar, StatusIcon } from "./ui";
 
 const CARD = { w: 300, h: 72 };
@@ -455,12 +456,18 @@ const WorkflowMap = () => {
           <button className="btn btn-secondary btn-small" onClick={() => (aim({ id: ``, how: `all` }), (openPipelines.value = new Set()), (openBlocks.value = new Set()))}>
             Close all
           </button>
+          <span className="wf-map-zoom">{Math.round(zoom * 100)}%</span>
+        </div>
+      </Panel>
+      <Panel position="bottom-center" className="wf-map-dock">
+        <div className="wf-map-dock-bar">
+          <Chips/>
+          <Stepper/>
           {h.active && (
             <button className="btn btn-secondary btn-small" onClick={openMatches} disabled={!h.pipelines.size}>
               Open matches
             </button>
           )}
-          <span className="wf-map-zoom">{Math.round(zoom * 100)}%</span>
         </div>
       </Panel>
     </ReactFlow>
