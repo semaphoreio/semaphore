@@ -148,5 +148,10 @@ defmodule EnvVarPolicyTest do
       assert EnvVarPolicy.clip(<<"bad", 0xFF, "name">>) == "badname"
       assert EnvVarPolicy.clip("a\nb\tc") == "a?b?c"
     end
+
+    test "shows a name that isn't a string as Elixir would print it" do
+      assert EnvVarPolicy.clip(nil) == "nil"
+      assert EnvVarPolicy.clip(42) == "42"
+    end
   end
 end

@@ -233,6 +233,14 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
                   "'db-pass' (secret 'db'), 'X;Y' (image pull secret 'registry')"}
     end
 
+    test "rejects a secret env var without a name instead of crashing" do
+      secrets = %{@no_secrets | job_secrets: [secret("deploy", [nil, ""])]}
+
+      assert validate(:pipeline_job, [], secrets: secrets) ==
+               {:stop_job_processing,
+                "Invalid environment variable names: 'nil' (secret 'deploy'), '' (secret 'deploy')"}
+    end
+
     test "logs escaped names" do
       log =
         capture_log(fn ->

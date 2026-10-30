@@ -138,4 +138,6 @@ defmodule EnvVarPolicy do
     |> Enum.join()
     |> String.replace(~r/[[:cntrl:]]/u, "?")
   end
+
+  def clip(name), do: name |> inspect() |> clip()
 end
