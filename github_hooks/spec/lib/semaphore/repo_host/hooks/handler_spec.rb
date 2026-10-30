@@ -1392,16 +1392,60 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             described_class.run(@workflow, @logger)
           end
 
-          it "reschedules when GitHub's head and merge commit both predate the webhook head" do
+          # GitHub reports a head other than the webhook's, and the reused merge contains it.
+          def stub_other_github_head(repo_host, merge_sha)
             allow(repo_host).to receive(:pull_request)
-              .and_return({ :merge_commit_sha => merge_sha, :mergeable => true, :head => { :sha => "previous-head" } })
-            merge_commit = { :parents => [{ :sha => "base" }, { :sha => "previous-head" }] }
+              .and_return({ :merge_commit_sha => merge_sha, :mergeable => true, :head => { :sha => "other-head" } })
+            merge_commit = { :parents => [{ :sha => "base" }, { :sha => "other-head" }] }
             allow(repo_host).to receive(:git_commit).with("renderedtext/plakatt", merge_sha).and_return(merge_commit)
+          end
+
+          it "skips the hook when a newer push overtook it" do
+            stub_other_github_head(repo_host, merge_sha)
+            allow(repo_host).to receive(:compare).with("renderedtext/plakatt", head_sha, "other-head").and_return({ :status => "ahead" })
+            expect(described_class).not_to receive(:launch_pipeline)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker).not_to receive(:perform_in)
+            expect(@logger).to receive(:info).with("pr-superseded")
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.state).to eq(Workflow::STATE_SKIP_SUPERSEDED_PR)
+            expect(Watchman).to have_received(:increment).with("hook.processing.pr_superseded")
+            expect(Watchman).not_to have_received(:increment).with("hook.processing.pr_stale_merge_commit")
+          end
+
+          it "reschedules when GitHub's head and merge commit both predate the webhook head" do
+            stub_other_github_head(repo_host, merge_sha)
+            allow(repo_host).to receive(:compare).with("renderedtext/plakatt", head_sha, "other-head").and_return({ :status => "behind" })
             expect(described_class).not_to receive(:launch_pipeline)
             expect(Semaphore::RepoHost::Hooks::Handler::Worker)
               .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
 
             described_class.run(@workflow, @logger)
+
+            expect(Watchman).to have_received(:increment).with("hook.processing.pr_stale_merge_commit")
+          end
+
+          it "reschedules when the heads diverged, as after a force-push GitHub has not caught up with" do
+            stub_other_github_head(repo_host, merge_sha)
+            allow(repo_host).to receive(:compare).with("renderedtext/plakatt", head_sha, "other-head").and_return({ :status => "diverged" })
+            expect(described_class).not_to receive(:launch_pipeline)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
+
+            described_class.run(@workflow, @logger)
+          end
+
+          it "reschedules when the heads cannot be compared" do
+            stub_other_github_head(repo_host, merge_sha)
+            allow(repo_host).to receive(:compare).and_raise(::RepoHost::RemoteException::NotFound, "gone")
+            expect(described_class).not_to receive(:launch_pipeline)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.state).not_to eq(Workflow::STATE_NOT_FOUND_REPO)
           end
 
           it "checks against the webhook head even after commit_sha was set to the merge commit" do
@@ -1577,13 +1621,24 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       expect(meta[:merge_commit_sha]).to eq(merge_sha)
     end
 
-    it "returns :mergeable_unknown for a hook overtaken by a newer push" do
+    it "returns :superseded for a hook overtaken by a newer push" do
       stub_merge_parents("base", head_sha)
+      allow(repo_host).to receive(:compare).with("owner/repo", "older-push-head", head_sha).and_return({ :status => "ahead" })
+
+      state, meta, = described_class.update_pr_data(project, 1, nil, false, :webhook_head_sha => "older-push-head")
+
+      expect(state).to eq(:superseded)
+      expect(meta[:head_sha]).to eq(head_sha)
+      expect(Watchman).not_to have_received(:increment).with("hook.processing.pr_stale_merge_commit")
+    end
+
+    it "does not compare heads for a stale merge that contains neither head" do
+      stub_merge_parents("base", "previous-head")
+      expect(repo_host).not_to receive(:compare)
 
       state, = described_class.update_pr_data(project, 1, nil, false, :webhook_head_sha => "older-push-head")
 
       expect(state).to eq(:mergeable_unknown)
-      expect(Watchman).to have_received(:increment).with("hook.processing.pr_stale_merge_commit")
     end
   end
 

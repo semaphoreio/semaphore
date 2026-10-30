@@ -17,6 +17,8 @@ class Workflow < ActiveRecord::Base
   STATE_SKIP_PR = "skip_pr"
   STATE_SKIP_FORKED_PR = "skip_forked_pr"
   STATE_SKIP_DRAFT_PR = "skip_draft_pr"
+  # A newer push to the PR was processed first; that push's hook builds it.
+  STATE_SKIP_SUPERSEDED_PR = "skip_superseded_pr"
   STATE_SKIP_FILTERED_CONTRIBUTOR = "filtered_contributor"
   STATE_SKIP_TAG = "skip_tag"
   STATE_WHITELIST_TAG = "whitelist_tag"

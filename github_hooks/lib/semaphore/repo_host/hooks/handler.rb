@@ -421,6 +421,11 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
           end
 
           return
+        when :superseded
+          logger.info("pr-superseded")
+          workflow.update(:state => Workflow::STATE_SKIP_SUPERSEDED_PR)
+
+          return
         when :skip_ci
           logger.info("request-is-filtered")
           workflow.update(:state => Workflow::STATE_SKIP_CI)
@@ -564,21 +569,49 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       return [:without_reference, { :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, ""]
     end
 
-    # A reused merge SHA may be GitHub's test-merge of a previous head. GitHub's
-    # PR head can lag too, so the webhook's head must also be a parent.
-    expected_head_shas = [head_sha, webhook_head_sha].select(&:present?).uniq
-    if !ref_created && expected_head_shas.any? && !merge_commit_of_heads?(repo_host, project.repo_owner_and_name, merge_commit_sha, expected_head_shas)
+    reuse = ref_created ? :current : reused_merge_commit_check(repo_host, project.repo_owner_and_name, merge_commit_sha, head_sha, webhook_head_sha)
+    log_fields = "repo=#{project.repo_owner_and_name} pr=#{number} head_sha=#{head_sha} webhook_head_sha=#{webhook_head_sha} merge_commit_sha=#{merge_commit_sha}"
+
+    case reuse
+    when :superseded
+      Watchman.increment("hook.processing.pr_superseded")
+      Logman.info("pr-superseded #{log_fields}")
+      return [:superseded, { :pr => pr, :head_sha => head_sha }, msg]
+    when :stale
       Watchman.increment("hook.processing.pr_stale_merge_commit")
-      Logman.info("pr-stale-merge-commit repo=#{project.repo_owner_and_name} pr=#{number} head_sha=#{head_sha} webhook_head_sha=#{webhook_head_sha} merge_commit_sha=#{merge_commit_sha}")
+      Logman.info("pr-stale-merge-commit #{log_fields}")
       return [:mergeable_unknown, { :pr => pr, :rate_limit_remaining => repo_host.last_response_rate_limit_remaining }, msg]
     end
 
     [:ok, { :pr => pr, :ref => ref, :merge_commit_sha => merge_commit_sha, :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, msg]
   end
 
-  def self.merge_commit_of_heads?(repo_host, repo_slug, merge_commit_sha, head_shas)
+  # A reused merge SHA may be GitHub's test-merge of a previous head. GitHub's
+  # PR head can lag too, so the webhook's head must also be a parent.
+  def self.reused_merge_commit_check(repo_host, repo_slug, merge_commit_sha, head_sha, webhook_head_sha)
+    expected_head_shas = [head_sha, webhook_head_sha].select(&:present?).uniq
+    return :current if expected_head_shas.empty?
+
+    parent_shas = merge_commit_parent_shas(repo_host, repo_slug, merge_commit_sha)
+    return :current if (expected_head_shas - parent_shas).empty?
+    return :superseded if parent_shas.include?(head_sha) && newer_head?(repo_host, repo_slug, webhook_head_sha, head_sha)
+
+    :stale
+  end
+
+  def self.merge_commit_parent_shas(repo_host, repo_slug, merge_commit_sha)
     parents = repo_host.git_commit(repo_slug, merge_commit_sha)&.[](:parents) || []
-    (head_shas - parents.map { |parent| parent[:sha] }).empty?
+    parents.map { |parent| parent[:sha] }
+  rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
+    []
+  end
+
+  # Only "ahead" proves GitHub's head was pushed later. "diverged" can also be
+  # a force-push GitHub has not caught up with, which must be retried, not skipped.
+  def self.newer_head?(repo_host, repo_slug, webhook_head_sha, head_sha)
+    return false if webhook_head_sha.blank? || webhook_head_sha == head_sha
+
+    repo_host.compare(repo_slug, webhook_head_sha, head_sha)&.[](:status) == "ahead"
   rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
     false
   end
