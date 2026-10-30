@@ -12,7 +12,6 @@
   --wf-map-mark-soft: #fff6d1;
   --wf-map-shadow: 0 1px 3px 0 rgba(0, 0, 0, .16), 0 0 0 1px rgba(0, 0, 0, .08);
   --wf-map-pop: rgba(0, 0, 0, .25) 0 8px 30px 3px, rgba(0, 0, 0, .08) 0 0 0 1px;
-  padding-top: 16px;
 }
 
 .wf-map-st-passed { --wf-map-st: var(--wf-map-passed); }
@@ -40,7 +39,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-  padding: 0 16px 12px;
+  padding: 16px 16px 12px;
 }
 
 .wf-map-search {
@@ -243,9 +242,12 @@
   position: relative;
   flex: 1;
   min-height: 0;
-  border-top: 1px solid #E5E8EA;
   border-bottom: 1px solid #E5E8EA;
   background: #F5F8F9;
+}
+
+.wf-map-canvas:not(:first-child) {
+  border-top: 1px solid #E5E8EA;
 }
 
 .wf-map-loading {
