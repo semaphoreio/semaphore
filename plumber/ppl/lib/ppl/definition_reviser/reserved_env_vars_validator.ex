@@ -1,7 +1,8 @@
 defmodule Ppl.DefinitionReviser.ReservedEnvVarsValidator do
   @moduledoc """
   Rejects pipelines whose definition or request parameters set env vars whose names
-  are not valid shell identifiers or are reserved for platform-supplied values.
+  are not valid shell identifiers, are supplied by the platform, or are read by bash
+  at startup (BASH_ENV, SHELLOPTS).
   """
 
   require Logger

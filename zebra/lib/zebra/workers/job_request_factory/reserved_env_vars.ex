@@ -6,6 +6,7 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
   Zebra-owned names never arrive in the spec, so any occurrence is an override.
   Plumber emits its names at most once per pipeline job, so a repeat is an override;
   jobs outside a pipeline get none, so any occurrence there is one too.
+  Bash startup names (BASH_ENV, SHELLOPTS) are rejected wherever they occur.
   """
 
   require Logger
