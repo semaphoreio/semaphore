@@ -3,6 +3,7 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
   alias RepositoryHub.Validator
 
   alias RepositoryHub.{
+    BuildStatusGuard,
     CheckRunCache,
     GithubAdapter,
     GithubApi,
@@ -167,30 +168,51 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
   # earlier one (a rebuild after the flag was turned off). The result is
   # written to this pipeline's run, created if needed, so it is the newest
   # run of that name. Best effort: the status itself is delivered, and every
-  # App repo gets here, so a failure is logged rather than retried.
+  # App repo gets here, so a failure is logged rather than retried. GitHub is
+  # only asked when the guard rows say the commit has a check-run, so a
+  # commit that never had one costs no GitHub call.
   defp mirror_to_check_run({:ok, _} = result, %{status: status, source_id: source_id} = request, context)
        when status != :PENDING and source_id != "" do
-    case GithubAppId.get() do
-      {:ok, app_id} ->
-        context
-        |> with_github_client(:find_check_run, &write_to_check_run(request, &1, app_id))
-        |> log_mirror_failure(request, context)
-
-        result
-
-      # No app id means no check-run was ever created.
-      _ ->
-        result
+    # No app id means no check-run was ever created.
+    with true <- check_run_on_commit?(request, context),
+         {:ok, app_id} <- GithubAppId.get() do
+      context
+      |> with_github_client(:find_check_run, &write_to_check_run(request, &1, app_id))
+      |> log_mirror_failure(request, context)
     end
+
+    result
   end
 
   defp mirror_to_check_run(result, _request, _context), do: result
+
+  # Every check-run write is marked on the guard rows first, and marked rows
+  # are kept 30 days, so no mark means no check-run, unless it's older than
+  # that. Unreadable marks fall back to asking GitHub.
+  defp check_run_on_commit?(request, context) do
+    case BuildStatusGuard.check_run_on_commit?(request) do
+      {:ok, found?} ->
+        found?
+
+      {:error, reason} ->
+        log_warn([
+          "Can't read the commit's check-run marks, looking the check-run up on GitHub",
+          "org_id: #{context.project.metadata.org_id}",
+          "project_id: #{context.project.metadata.id}",
+          "source_id: #{request.source_id}",
+          "reason: #{inspect(reason)}"
+        ])
+
+        true
+    end
+  end
 
   defp write_to_check_run(request, context, app_id) do
     cache_key = CheckRunCache.key(request, context.repository)
     permission_denied = GRPC.Status.permission_denied()
 
     with {:ok, run} <- check_run_to_mirror(request, context, app_id, cache_key),
+         :ok <- mark_check_run(request),
          {:ok, _} = written <- upsert_check_run(request, run, context) do
       remember_check_run(written, cache_key)
       Watchman.increment("set_check_run.mirrored_to_check_run")
@@ -300,7 +322,8 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
     record_check_run(result, request, context)
   end
 
-  # A cached run skips the lookup, so an update costs one GitHub call.
+  # A cached run skips the lookup, so an update costs one GitHub call. It
+  # was also marked before it was written, so only a miss marks.
   defp existing_check_run(request, context, cache_key) do
     case CheckRunCache.get(cache_key) do
       {:ok, run} ->
@@ -308,9 +331,19 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
         {:ok, run}
 
       :miss ->
-        with {:ok, app_id} <- github_app_id() do
+        with {:ok, app_id} <- github_app_id(),
+             :ok <- mark_check_run(request) do
           find_existing_check_run(request, context, app_id)
         end
+    end
+  end
+
+  # A write without a mark would be invisible to the commit-status path's
+  # mirror (check_run_on_commit?/2), so a failed mark stops the write.
+  defp mark_check_run(request) do
+    case BuildStatusGuard.mark_check_run(request) do
+      :ok -> :ok
+      {:error, reason} -> fail_with(:unavailable, "Can't mark the check-run on the guard: #{inspect(reason)}")
     end
   end
 

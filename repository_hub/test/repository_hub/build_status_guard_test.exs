@@ -247,6 +247,55 @@ defmodule RepositoryHub.BuildStatusGuardTest do
     end
   end
 
+  describe "mark_check_run/1 and check_run_on_commit?/1" do
+    test "a commit without a mark has no check-run", %{request: request} do
+      assert {:ok, false} = BuildStatusGuard.check_run_on_commit?(request)
+    end
+
+    test "a mark on the claimed row is seen by every pipeline of the commit", %{request: request} do
+      assert {:ok, _fence} = BuildStatusGuard.claim(request)
+      assert :ok = BuildStatusGuard.mark_check_run(request)
+
+      assert [[true, nil]] = select_fields(request, "has_check_run, last_state")
+      assert {:ok, true} = BuildStatusGuard.check_run_on_commit?(%{request | source_id: Ecto.UUID.generate()})
+    end
+
+    test "creates the row for a request that wasn't claimed", %{request: request} do
+      unguarded = %{request | source_id: ""}
+
+      assert :ok = BuildStatusGuard.mark_check_run(unguarded)
+      assert :ok = BuildStatusGuard.mark_check_run(unguarded)
+
+      assert [[true]] = select_field(unguarded, "has_check_run")
+      assert {:ok, true} = BuildStatusGuard.check_run_on_commit?(request)
+    end
+
+    test "a mark is scoped to its commit and context", %{request: request} do
+      assert :ok = BuildStatusGuard.mark_check_run(request)
+
+      assert {:ok, false} = BuildStatusGuard.check_run_on_commit?(%{request | context: "ci/semaphoreci/pr: Pipeline"})
+      assert {:ok, false} = BuildStatusGuard.check_run_on_commit?(%{request | commit_sha: "other"})
+
+      assert {:ok, false} =
+               BuildStatusGuard.check_run_on_commit?(%{request | repository_id: Ecto.UUID.generate()})
+    end
+
+    test "a claim keeps the mark", %{request: request} do
+      assert :ok = BuildStatusGuard.mark_check_run(request)
+      assert {:ok, fence} = BuildStatusGuard.claim(request)
+      assert :ok = BuildStatusGuard.finalize(request, fence)
+
+      assert [[true]] = select_field(request, "has_check_run")
+    end
+
+    test "an invalid repository_id is reported, not raised", %{request: request} do
+      invalid = %{request | repository_id: "not-a-uuid"}
+
+      assert {:error, :invalid_key} = BuildStatusGuard.mark_check_run(invalid)
+      assert {:error, :invalid_key} = BuildStatusGuard.check_run_on_commit?(invalid)
+    end
+  end
+
   defp backdate_claim(request, seconds) do
     Repo.query!(
       "UPDATE build_status_guards SET claimed_at = now() - make_interval(secs => $5) " <>
