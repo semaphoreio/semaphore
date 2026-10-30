@@ -197,6 +197,12 @@ describe(`refresh`, () => {
   let pipelines: Record<string, ApiPipelineDetail>;
   let failDetails: boolean;
   let dropped: Set<string>;
+  let open: Set<string>;
+
+  const running = (id: string, parent: string | null) => {
+    pipelines[id] = { ...detail(id, []), state: `RUNNING`, result: ``, done: false };
+    return { ...pipeline(id, id, parent), state: `RUNNING`, result: `` };
+  };
 
   const fetchedTimes = (id: string) => batches.filter((b) => b.ids.includes(id)).length;
 
@@ -207,6 +213,7 @@ describe(`refresh`, () => {
     pipelines = { ci: { ...detail(`ci`, []), done: false } };
     failDetails = false;
     dropped = new Set();
+    open = new Set([`ci`]);
     globalThis.fetch = ((url: string) => {
       const [pathname, query] = url.split(`?`);
       const searchParams = new URLSearchParams(query);
@@ -229,17 +236,50 @@ describe(`refresh`, () => {
   test(`fetches every due pipeline in one request`, async () => {
     served = { root_pipeline_id: `ci`, pipelines: [pipeline(`ci`, `Build & test`, null), { ...pipeline(`e2e`, `E2E`, `ci`), state: `RUNNING` }] };
     pipelines.e2e = { ...detail(`e2e`, []), done: false };
-    await refresh(config);
+    await refresh(config, open);
 
     expect(batches).to.deep.eq([{ ids: [`ci`, `e2e`], promotions: [`ci`, `e2e`] }]);
   });
 
+  test(`once loaded, polls only the open pipelines`, async () => {
+    served = { root_pipeline_id: `ci`, pipelines: [running(`ci`, null), running(`e2e`, `ci`), running(`deploy`, `ci`)] };
+    await refresh(config, open);
+    await refresh(config, open);
+    await refresh(config, open);
+
+    expect(batches.map((b) => b.ids)).to.deep.eq([[`ci`, `e2e`, `deploy`], [`ci`], [`ci`]]);
+  });
+
+  test(`opening a pipeline adds it to the next poll and closing it drops it`, async () => {
+    served = { root_pipeline_id: `ci`, pipelines: [running(`ci`, null), running(`e2e`, `ci`), running(`deploy`, `ci`)] };
+    await refresh(config, open);
+    open.add(`e2e`);
+    await refresh(config, open);
+    open.delete(`e2e`);
+    await refresh(config, open);
+    open.add(`e2e`);
+    await refresh(config, open);
+
+    expect(batches.map((b) => b.ids)).to.deep.eq([[`ci`, `e2e`, `deploy`], [`ci`, `e2e`], [`ci`], [`ci`, `e2e`]]);
+  });
+
+  test(`a closed pipeline is fetched once when its state changes`, async () => {
+    served = { root_pipeline_id: `ci`, pipelines: [running(`ci`, null), running(`e2e`, `ci`)] };
+    await refresh(config, open);
+    await refresh(config, open);
+    served = { root_pipeline_id: `ci`, pipelines: [running(`ci`, null), pipeline(`e2e`, `E2E`, `ci`)] };
+    await refresh(config, open);
+    await refresh(config, open);
+
+    expect(batches.map((b) => b.ids)).to.deep.eq([[`ci`, `e2e`], [`ci`], [`ci`, `e2e`], [`ci`]]);
+  });
+
   test(`keeps fetching a finished pipeline until its after pipeline jobs are done`, async () => {
-    await refresh(config);
-    await refresh(config);
+    await refresh(config, open);
+    await refresh(config, open);
     pipelines.ci = detail(`ci`, []);
-    await refresh(config);
-    await refresh(config);
+    await refresh(config, open);
+    await refresh(config, open);
 
     expect(fetchedTimes(`ci`)).to.eq(3);
     expect(details.value.ci.done).to.eq(true);
@@ -248,8 +288,8 @@ describe(`refresh`, () => {
   test(`skips the promotions of a running pipeline it already knows and keeps the last ones`, async () => {
     served = { root_pipeline_id: `ci`, pipelines: [{ ...pipeline(`ci`, `Build & test`, null), state: `RUNNING` }] };
     pipelines.ci = { ...pipelines.ci, promotions: [{ ...starting, events: [] }] };
-    await refresh(config);
-    await refresh(config);
+    await refresh(config, open);
+    await refresh(config, open);
 
     expect(batches.map((b) => b.promotions)).to.deep.eq([[`ci`], [``]]);
     expect(details.value.ci.promotions.map((p) => p.name)).to.deep.eq([`Staging`]);
@@ -257,11 +297,11 @@ describe(`refresh`, () => {
 
   test(`fetches a finished pipeline again when a new promoted pipeline appears under it`, async () => {
     pipelines.ci = detail(`ci`, []);
-    await refresh(config);
-    await refresh(config);
+    await refresh(config, open);
+    await refresh(config, open);
     served = { root_pipeline_id: `ci`, pipelines: [pipeline(`ci`, `Build & test`, null), pipeline(`e2e`, `E2E`, `ci`)] };
     pipelines.e2e = detail(`e2e`, []);
-    await refresh(config);
+    await refresh(config, open);
 
     expect(fetchedTimes(`ci`)).to.eq(2);
     expect(batches.at(-1).promotions).to.deep.eq([`ci`, `e2e`]);
@@ -269,18 +309,18 @@ describe(`refresh`, () => {
 
   test(`keeps fetching a finished pipeline while one of its promotions is starting`, async () => {
     pipelines.ci = { ...detail(`ci`, []), promotions: [starting] };
-    await refresh(config);
-    await refresh(config);
+    await refresh(config, open);
+    await refresh(config, open);
 
     expect(fetchedTimes(`ci`)).to.eq(2);
   });
 
   test(`asks again for promotions that didn't come back`, async () => {
     pipelines.ci = { ...detail(`ci`, []), promotions: null };
-    await refresh(config);
+    await refresh(config, open);
     pipelines.ci = { ...detail(`ci`, []), promotions: [{ ...starting, events: [] }] };
-    await refresh(config);
-    await refresh(config);
+    await refresh(config, open);
+    await refresh(config, open);
 
     expect(batches.map((b) => b.promotions)).to.deep.eq([[`ci`], [`ci`]]);
     expect(details.value.ci.promotions.map((p) => p.name)).to.deep.eq([`Staging`]);
@@ -288,10 +328,10 @@ describe(`refresh`, () => {
 
   test(`stops asking for promotions that keep failing to load`, async () => {
     pipelines.ci = { ...detail(`ci`, []), promotions: null };
-    await refresh(config);
-    await refresh(config);
-    await refresh(config);
-    await refresh(config);
+    await refresh(config, open);
+    await refresh(config, open);
+    await refresh(config, open);
+    await refresh(config, open);
 
     expect(fetchedTimes(`ci`)).to.eq(2);
     expect(details.value.ci.promotions).to.deep.eq([]);
@@ -299,47 +339,47 @@ describe(`refresh`, () => {
 
   test(`keeps asking for a pipeline the server left out of its answer`, async () => {
     pipelines.ci = { ...detail(`ci`, []), promotions: [{ ...starting, events: [] }] };
-    await refresh(config);
+    await refresh(config, open);
     const ci = workflow.value.pipelineById.get(`ci`);
     await promote(ci, ci.promotions[0], {});
     dropped.add(`ci`);
-    await refresh(config);
-    await refresh(config);
-    await refresh(config);
+    await refresh(config, open);
+    await refresh(config, open);
+    await refresh(config, open);
     dropped.delete(`ci`);
-    await refresh(config);
-    await refresh(config);
+    await refresh(config, open);
+    await refresh(config, open);
 
     expect(fetchedTimes(`ci`)).to.eq(5);
   });
 
   test(`keeps the refresh after a promote when the request fails`, async () => {
     pipelines.ci = { ...detail(`ci`, []), promotions: [{ ...starting, events: [] }] };
-    await refresh(config);
+    await refresh(config, open);
     const ci = workflow.value.pipelineById.get(`ci`);
     await promote(ci, ci.promotions[0], {});
     failDetails = true;
-    await refresh(config);
+    await refresh(config, open);
     failDetails = false;
-    await refresh(config);
-    await refresh(config);
+    await refresh(config, open);
+    await refresh(config, open);
 
     expect(fetchedTimes(`ci`)).to.eq(3);
   });
 
   test(`reports whether anything changed`, async () => {
-    expect(await refresh(config)).to.eq(true);
-    expect(await refresh(config)).to.eq(false);
+    expect(await refresh(config, open)).to.eq(true);
+    expect(await refresh(config, open)).to.eq(false);
     pipelines.ci = { ...pipelines.ci, result: `FAILED` };
-    expect(await refresh(config)).to.eq(true);
+    expect(await refresh(config, open)).to.eq(true);
     pipelines.ci = detail(`ci`, []);
-    await refresh(config);
-    expect(await refresh(config)).to.eq(false);
+    await refresh(config, open);
+    expect(await refresh(config, open)).to.eq(false);
     expect(batches.length).to.eq(4);
   });
 
   test(`drops the results of a refresh started before the page was left`, async () => {
-    const pending = refresh(config);
+    const pending = refresh(config, open);
     resetState(`other`);
     await pending;
 

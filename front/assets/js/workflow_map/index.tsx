@@ -54,7 +54,7 @@ const App = ({ config }: { config: Config, }) => {
       running = true;
       let changed = false;
       try {
-        if (!document.hidden) changed = await refresh(config);
+        if (!document.hidden) changed = await refresh(config, openPipelines.peek());
         const root = ensureSelection();
         if (root) {
           openPipelines.value = new Set([root]);
@@ -73,9 +73,17 @@ const App = ({ config }: { config: Config, }) => {
       delay = config.pollInterval;
       void loop();
     };
-    onNudge(() => {
+    const poke = () => {
       delay = config.pollInterval;
       void loop();
+    };
+    onNudge(poke);
+    let opened = openPipelines.peek();
+    const watchOpened = effect(() => {
+      const next = openPipelines.value;
+      const added = [...next].some((id) => !opened.has(id));
+      opened = next;
+      if (added) poke();
     });
     document.addEventListener(`visibilitychange`, wake);
     window.addEventListener(`focus`, wake);
@@ -84,6 +92,7 @@ const App = ({ config }: { config: Config, }) => {
 
     return () => {
       stopped = true;
+      watchOpened();
       onNudge(() => undefined);
       document.removeEventListener(`visibilitychange`, wake);
       window.removeEventListener(`focus`, wake);

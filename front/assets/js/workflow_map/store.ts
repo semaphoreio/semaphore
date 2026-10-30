@@ -1,6 +1,6 @@
 import { computed, signal } from "@preact/signals";
 import * as APIRequest from "js/toolbox/api_request";
-import { ApiPipelineDetail, ApiWorkflow, Block, Job, Pipeline, Promotion, Status, blockStatus, buildWorkflow } from "./model";
+import { ApiPipeline, ApiPipelineDetail, ApiWorkflow, Block, Job, Pipeline, Promotion, Status, blockStatus, buildWorkflow } from "./model";
 
 export interface Config {
   workflowUrl: string;
@@ -188,7 +188,7 @@ async function fetchJson<T>(url: string): Promise<T | null> {
 
 type FetchedDetail = Omit<ApiPipelineDetail, `promotions`> & { promotions: ApiPipelineDetail[`promotions`] | null, };
 
-export async function refresh(config: Config): Promise<boolean> {
+export async function refresh(config: Config, open: Set<string>): Promise<boolean> {
   const started = generation;
   const nextTree = await fetchJson<ApiWorkflow>(config.workflowUrl);
   if (started !== generation) return false;
@@ -208,7 +208,9 @@ export async function refresh(config: Config): Promise<boolean> {
     stale.has(id) ||
     known[id].promotions.some((promotion) => promotion.events.some((e) => !e.processed)) ||
     children(nextTree, id) > children(previous, id);
-  const due = nextTree.pipelines.filter((p) => fresh(p.id) || p.state !== `DONE` || !known[p.id].done);
+  const before = new Map(previous?.pipelines.map((p) => [p.id, p]));
+  const moved = (p: ApiPipeline) => before.get(p.id)?.state !== p.state || before.get(p.id)?.result !== p.result;
+  const due = nextTree.pipelines.filter((p) => fresh(p.id) || moved(p) || (open.has(p.id) && (p.state !== `DONE` || !known[p.id].done)));
   if (!due.length) return treeChanged;
   const withPromotions = due.filter((p) => fresh(p.id) || p.state === `DONE`).map((p) => p.id);
   const params = new URLSearchParams({ ids: due.map((p) => p.id).join(`,`), promotions: withPromotions.join(`,`) });
