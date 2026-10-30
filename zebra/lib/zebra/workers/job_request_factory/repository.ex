@@ -121,6 +121,7 @@ defmodule Zebra.Workers.JobRequestFactory.Repository do
         JobRequest.env_var("SEMAPHORE_GIT_BRANCH", repo_proxy.branch_name),
         JobRequest.env_var("SEMAPHORE_GIT_PR_SLUG", repo_proxy.pr_slug),
         JobRequest.env_var("SEMAPHORE_GIT_PR_SHA", repo_proxy.pr_sha),
+        JobRequest.env_var("SEMAPHORE_GIT_PR_BASE_SHA", repo_proxy.pr_base_sha),
         JobRequest.env_var("SEMAPHORE_GIT_PR_NUMBER", repo_proxy.pr_number),
         JobRequest.env_var("SEMAPHORE_GIT_PR_NAME", repo_proxy.pr_name),
         JobRequest.env_var("SEMAPHORE_GIT_PR_BRANCH", repo_proxy.pr_branch_name),
