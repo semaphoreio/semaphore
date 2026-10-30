@@ -93,9 +93,20 @@ defmodule EnvVarPolicyTest do
             "discovery.type",
             "A B",
             "X=1; id; Y",
+            "SEMAPHORE_WORKFLOW_TRIGGERED_BY_API=true #",
+            "A\nB",
             "FOO\n",
             "\nFOO",
+            "FOO\0",
+            "FOO\r",
+            "FOO\t",
+            "FOO\u200B",
+            "FOO\u00A0BAR",
             "ÉCOLE",
+            "ÜBER",
+            "SEMAPHORE_JOB_İD",
+            "ſEMAPHORE",
+            "FOO/BAR",
             nil
           ] do
         refute EnvVarPolicy.valid_name?(name), "expected #{inspect(name)} to be invalid"
@@ -105,7 +116,7 @@ defmodule EnvVarPolicyTest do
 
   describe "valid_container_name?/1" do
     test "also accepts dotted and dashed names" do
-      for name <- ["discovery.type", "xpack.security.enabled", "node-version", "MY_VAR"] do
+      for name <- ["discovery.type", "xpack.security.enabled", "node-version", "MY_VAR", "_a.b"] do
         assert EnvVarPolicy.valid_container_name?(name), "expected #{name} to be valid"
       end
     end

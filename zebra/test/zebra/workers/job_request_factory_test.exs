@@ -6,7 +6,6 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
 
   alias Zebra.Models.Job
   alias Zebra.Workers.JobRequestFactory, as: Worker
-  alias Zebra.Workers.JobRequestFactory.ReservedEnvVars
 
   @artifact_token "asdfg"
   @project_id Ecto.UUID.generate()
@@ -1735,8 +1734,7 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
         assert "SEMAPHORE_OIDC_TOKEN" in injected
         assert "SEMAPHORE_TEST_RESULTS_NO_TRIM" in injected
 
-        unreserved =
-          Enum.reject(injected, &(ReservedEnvVars.reserved?(&1) or &1 in @user_settable))
+        unreserved = Enum.reject(injected, &(EnvVarPolicy.reserved?(&1) or &1 in @user_settable))
 
         assert unreserved == []
       end

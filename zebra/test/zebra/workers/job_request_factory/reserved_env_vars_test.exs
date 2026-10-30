@@ -26,8 +26,7 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
     capture_log(fn ->
       send(
         self(),
-        {:result,
-         ReservedEnvVars.validate(@job, job_type, spec, env_vars(spec_env_var_names), secrets)}
+        {:result, check(job_type, spec, env_vars(spec_env_var_names), secrets)}
       )
     end)
 
@@ -35,27 +34,9 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
     result
   end
 
-  describe "reserved?/1" do
-    test "matches zebra-owned, plumber-owned and artefact-id names" do
-      assert ReservedEnvVars.reserved?("SEMAPHORE_GIT_BRANCH")
-      assert ReservedEnvVars.reserved?("SEMAPHORE_WORKFLOW_TRIGGERED_BY_API")
-      assert ReservedEnvVars.reserved?("SEMAPHORE_PIPELINE_3_ARTEFACT_ID")
-      assert ReservedEnvVars.reserved?("SEMAPHORE")
-    end
-
-    test "does not match names users are documented to set" do
-      refute ReservedEnvVars.reserved?("SEMAPHORE_CACHE_BACKEND")
-      refute ReservedEnvVars.reserved?("SEMAPHORE_CACHE_URL")
-      refute ReservedEnvVars.reserved?("SEMAPHORE_CACHE_USERNAME")
-      refute ReservedEnvVars.reserved?("SEMAPHORE_CACHE_PRIVATE_KEY_PATH")
-      refute ReservedEnvVars.reserved?("SEMAPHORE_GIT_CLONE_SLOW_RETRY")
-      refute ReservedEnvVars.reserved?("SEMAPHORE_CACHE_ARCHIVE_METHOD")
-      refute ReservedEnvVars.reserved?("SEMAPHORE_TOOLBOX_METRICS_ENABLED")
-      refute ReservedEnvVars.reserved?("SEMAPHORE_TEST_RESULTS_NO_TRIM")
-      refute ReservedEnvVars.reserved?("SEMAPHORE_GIT_DEPTH")
-      refute ReservedEnvVars.reserved?("SEMAPHORE_JOB_RESULT")
-      refute ReservedEnvVars.reserved?("SEMAPHORE_PIPELINE_X_ARTEFACT_ID")
-      refute ReservedEnvVars.reserved?("IGOR")
+  defp check(job_type, spec, spec_env_vars, secrets) do
+    with :ok <- ReservedEnvVars.validate_spec(@job, job_type, spec, spec_env_vars) do
+      ReservedEnvVars.validate_secrets(@job, secrets)
     end
   end
 
@@ -85,7 +66,7 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
     "SEMAPHORE_PIPELINE_2_ARTEFACT_ID"
   ]
 
-  describe "validate/5 with the env vars Plumber sends" do
+  describe "validation with the env vars Plumber sends" do
     test "accepts a parallel, rerun job of a promoted pipeline" do
       names =
         @plumber_base_names ++
@@ -136,7 +117,7 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
     end
   end
 
-  describe "validate/5 name casing" do
+  describe "validation name casing" do
     test "rejects a differently-cased repeat of a plumber-owned name" do
       names = ["SEMAPHORE_WORKFLOW_TRIGGERED_BY_API", "semaphore_workflow_triggered_by_api"]
 
@@ -152,59 +133,20 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
     end
 
     test "rejects mixed-case reserved names in secrets and artefact ids" do
-      assert ReservedEnvVars.reserved?("Semaphore_Oidc_Token")
-      assert ReservedEnvVars.reserved?("semaphore_pipeline_4_artefact_id")
-      refute ReservedEnvVars.reserved?("semaphore_cache_backend")
+      secrets = %{@no_secrets | job_secrets: [secret("deploy", ["Semaphore_Oidc_Token"])]}
+
+      assert validate(:pipeline_job, [], secrets: secrets) ==
+               {:stop_job_processing,
+                "Reserved environment variables cannot be set: Semaphore_Oidc_Token (secret 'deploy')"}
+
+      assert {:stop_job_processing, _} =
+               validate(:project_debug_job, ["semaphore_pipeline_4_artefact_id"])
+
+      assert validate(:pipeline_job, ["semaphore_cache_backend"]) == :ok
     end
   end
 
-  describe "valid_container_name?/1" do
-    test "accepts the dotted and dashed names service containers use" do
-      for name <- ["discovery.type", "xpack.security.enabled", "node-version", "MY_VAR", "_a.b"] do
-        assert ReservedEnvVars.valid_container_name?(name), "expected #{name} to be valid"
-      end
-    end
-
-    test "rejects names that would break the docker-compose environment line" do
-      for name <- ["", "1ST", ".hidden", "A B", "A=B", "A:B", "A#B", "A\nB", "FOO\n", nil] do
-        refute ReservedEnvVars.valid_container_name?(name),
-               "expected #{inspect(name)} to be invalid"
-      end
-    end
-  end
-
-  describe "valid_name?/1" do
-    test "accepts shell identifiers" do
-      assert ReservedEnvVars.valid_name?("MY_VAR")
-      assert ReservedEnvVars.valid_name?("_private1")
-      assert ReservedEnvVars.valid_name?("a")
-    end
-
-    test "rejects names the agent would not export as a single identifier" do
-      refute ReservedEnvVars.valid_name?("")
-      refute ReservedEnvVars.valid_name?("1VAR")
-      refute ReservedEnvVars.valid_name?("MY-VAR")
-      refute ReservedEnvVars.valid_name?("SEMAPHORE_WORKFLOW_TRIGGERED_BY_API=true #")
-      refute ReservedEnvVars.valid_name?("X=1; id; Y")
-      refute ReservedEnvVars.valid_name?("A\nB")
-      refute ReservedEnvVars.valid_name?("FOO\n")
-      refute ReservedEnvVars.valid_name?("\nFOO")
-      refute ReservedEnvVars.valid_name?("A B")
-      refute ReservedEnvVars.valid_name?("ÜBER")
-      refute ReservedEnvVars.valid_name?("FOO\0")
-      refute ReservedEnvVars.valid_name?("FOO\r")
-      refute ReservedEnvVars.valid_name?("FOO\t")
-      refute ReservedEnvVars.valid_name?("FOO\u200B")
-      refute ReservedEnvVars.valid_name?("FOO\u00A0BAR")
-      refute ReservedEnvVars.valid_name?("SEMAPHORE_JOB_İD")
-      refute ReservedEnvVars.valid_name?("ſEMAPHORE")
-      refute ReservedEnvVars.valid_name?("FOO.BAR")
-      refute ReservedEnvVars.valid_name?("FOO/BAR")
-      refute ReservedEnvVars.valid_name?(nil)
-    end
-  end
-
-  describe "validate/5 with invalid names" do
+  describe "validation with invalid names" do
     test "rejects a name that would inject shell code" do
       assert validate(:pipeline_job, ["X=1; id; Y"]) ==
                {:stop_job_processing,
@@ -294,8 +236,7 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
     test "logs escaped names" do
       log =
         capture_log(fn ->
-          ReservedEnvVars.validate(
-            @job,
+          check(
             :pipeline_job,
             spec(),
             [JobRequest.env_var("A\nB", "very-secret-value")],
@@ -310,14 +251,14 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
     end
   end
 
-  describe "validate/5 known limitation" do
+  describe "validation known limitation" do
     test "accepts a single copy of a conditional plumber-owned name in a pipeline job" do
       # Zebra cannot tell this copy apart from one Plumber added for a parallel or rerun job.
       assert validate(:pipeline_job, @plumber_base_names ++ ["SEMAPHORE_JOB_COUNT"]) == :ok
     end
   end
 
-  describe "validate/5 for pipeline jobs" do
+  describe "validation for pipeline jobs" do
     test "accepts plumber-owned names present once" do
       names = [
         "SEMAPHORE_WORKFLOW_ID",
@@ -376,7 +317,7 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
     end
   end
 
-  describe "validate/5 for jobs outside a pipeline" do
+  describe "validation for jobs outside a pipeline" do
     test "rejects any reserved name" do
       assert validate(:project_debug_job, ["SEMAPHORE_WORKFLOW_TRIGGERED_BY_API"]) ==
                {:stop_job_processing,
@@ -405,7 +346,7 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
     end
   end
 
-  describe "validate/5 for secrets and containers" do
+  describe "validation for secrets and containers" do
     test "rejects a reserved name in a job secret" do
       secrets = %{@no_secrets | job_secrets: [secret("deploy", ["A", "SEMAPHORE_GIT_SHA"])]}
 
@@ -528,17 +469,9 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
 
       assert ReservedEnvVars.validate_secrets(@job, secrets) == :ok
     end
-
-    test "validate/5 reports spec violations without reading secrets" do
-      secrets = %{@no_secrets | job_secrets: [secret("deploy", ["SEMAPHORE_GIT_SHA"])]}
-
-      assert validate(:pipeline_job, ["SEMAPHORE_GIT_BRANCH"], secrets: secrets) ==
-               {:stop_job_processing,
-                "Reserved environment variables cannot be set: SEMAPHORE_GIT_BRANCH (job env_vars)"}
-    end
   end
 
-  describe "validate/5 rejection message" do
+  describe "validation rejection message" do
     test "lists each violation once" do
       secrets = %{
         @no_secrets
@@ -629,8 +562,7 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
     test "logs names only, never values" do
       log =
         capture_log(fn ->
-          ReservedEnvVars.validate(
-            @job,
+          check(
             :pipeline_job,
             spec(),
             [JobRequest.env_var("SEMAPHORE_GIT_BRANCH", "very-secret-value")],

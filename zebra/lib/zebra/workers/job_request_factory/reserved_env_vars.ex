@@ -15,16 +15,6 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
   @message_prefix "Reserved environment variables cannot be set: "
   @invalid_message_prefix "Invalid environment variable names: "
 
-  defdelegate reserved?(name), to: EnvVarPolicy
-  defdelegate valid_name?(name), to: EnvVarPolicy
-  defdelegate valid_container_name?(name), to: EnvVarPolicy
-
-  def validate(job, job_type, spec, spec_env_vars, all_secrets) do
-    with :ok <- validate_spec(job, job_type, spec, spec_env_vars) do
-      validate_secrets(job, all_secrets)
-    end
-  end
-
   @doc """
   Checks the names Zebra already holds, so a rejected job never checks out a secret
   or mints a token.
@@ -83,8 +73,8 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
   defp invalid_names(names) do
     names
     |> Enum.reject(fn
-      {name, :container, _label} -> valid_container_name?(name)
-      {name, _kind, _label} -> valid_name?(name)
+      {name, :container, _label} -> EnvVarPolicy.valid_container_name?(name)
+      {name, _kind, _label} -> EnvVarPolicy.valid_name?(name)
     end)
     |> Enum.uniq()
   end
@@ -124,7 +114,7 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
   defp spec_violations(:project_debug_job, env_vars) do
     env_vars
     |> Enum.map(& &1["name"])
-    |> Enum.filter(&reserved?/1)
+    |> Enum.filter(&EnvVarPolicy.reserved?/1)
     |> Enum.map(&{&1, :spec, "job env_vars"})
   end
 
@@ -176,7 +166,7 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
   defp reserved_names(env_vars, name_fun, kind, label) do
     env_vars
     |> Enum.map(name_fun)
-    |> Enum.filter(&reserved?/1)
+    |> Enum.filter(&EnvVarPolicy.reserved?/1)
     |> Enum.map(&{&1, kind, label})
   end
 
@@ -205,7 +195,8 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
       )
     end)
 
-    names = invalid |> Enum.map(fn {name, _kind, _label} -> display(name) end) |> Enum.uniq()
+    names =
+      invalid |> Enum.map(fn {name, _kind, _label} -> FailureReason.clip(name) end) |> Enum.uniq()
 
     Logger.warning(
       "Invalid env var names rejected job_id=#{job.id} org_id=#{job.organization_id} names=#{inspect(names)}"
@@ -214,12 +205,9 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVars do
 
   defp invalid_message(invalid) do
     invalid
-    |> Enum.map(fn {name, _kind, label} -> "'#{display(name)}' (#{label})" end)
+    |> Enum.map(fn {name, _kind, label} -> "'#{FailureReason.clip(name)}' (#{label})" end)
     |> FailureReason.join(@invalid_message_prefix)
   end
-
-  defp display(name) when is_binary(name), do: FailureReason.clip(name)
-  defp display(name), do: FailureReason.clip(inspect(name))
 
   defp message(violations) do
     violations

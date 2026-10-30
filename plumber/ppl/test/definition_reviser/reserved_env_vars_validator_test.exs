@@ -40,68 +40,6 @@ defmodule Ppl.DefinitionReviser.ReservedEnvVarsValidator.Test do
   defp invalid(entries),
     do: {:error, {:malformed, "Invalid environment variable names: " <> entries}}
 
-  describe "reserved?/1" do
-    test "matches reserved names in any case and the artefact-id pattern" do
-      assert ReservedEnvVarsValidator.reserved?("SEMAPHORE_JOB_COUNT")
-      assert ReservedEnvVarsValidator.reserved?("semaphore_workflow_triggered_by_api")
-      assert ReservedEnvVarsValidator.reserved?("SEMAPHORE_PIPELINE_7_ARTEFACT_ID")
-      assert ReservedEnvVarsValidator.reserved?("SEMAPHORE")
-    end
-
-    test "does not match the settings users are documented to set" do
-      for name <- [
-            "SEMAPHORE_CACHE_BACKEND",
-            "SEMAPHORE_CACHE_URL",
-            "SEMAPHORE_CACHE_USERNAME",
-            "SEMAPHORE_CACHE_PRIVATE_KEY_PATH",
-            "SEMAPHORE_CACHE_ARCHIVE_METHOD",
-            "SEMAPHORE_GIT_DEPTH",
-            "SEMAPHORE_GIT_DIR",
-            "SEMAPHORE_GIT_CLONE_SLOW_RETRY",
-            "SEMAPHORE_TEST_RESULTS_NO_TRIM",
-            "SEMAPHORE_TOOLBOX_METRICS_ENABLED",
-            "SEMAPHORE_AGENT_UPLOAD_JOB_LOGS",
-            "SEMAPHORE_JOB_RESULT",
-            "SEMAPHORE_PIPELINE_X_ARTEFACT_ID",
-            "MY_VAR"
-          ] do
-        refute ReservedEnvVarsValidator.reserved?(name), "expected #{name} to be allowed"
-      end
-
-      refute ReservedEnvVarsValidator.reserved?(nil)
-    end
-  end
-
-  describe "valid_container_name?/1" do
-    test "accepts the dotted and dashed names service containers use" do
-      for name <- ["discovery.type", "xpack.security.enabled", "node-version", "MY_VAR"] do
-        assert ReservedEnvVarsValidator.valid_container_name?(name),
-               "expected #{name} to be valid"
-      end
-    end
-
-    test "rejects names that would break the docker-compose environment line" do
-      for name <- ["", "1ST", ".hidden", "A B", "A=B", "A:B", "A#B", "A\nB", "FOO\n", nil] do
-        refute ReservedEnvVarsValidator.valid_container_name?(name),
-               "expected #{inspect(name)} to be invalid"
-      end
-    end
-  end
-
-  describe "valid_name?/1" do
-    test "accepts shell identifiers" do
-      assert ReservedEnvVarsValidator.valid_name?("MY_VAR")
-      assert ReservedEnvVarsValidator.valid_name?("_private1")
-    end
-
-    test "rejects names the agent would not export as a single identifier" do
-      for name <- ["", "1VAR", "MY-VAR", "A B", "X=1; id; Y", "FOO\n", "\nFOO", "ÉCOLE", nil] do
-        refute ReservedEnvVarsValidator.valid_name?(name),
-               "expected #{inspect(name)} to be invalid"
-      end
-    end
-  end
-
   describe "validate/2" do
     test "accepts a definition without reserved or invalid names" do
       definition =

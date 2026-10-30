@@ -12,10 +12,6 @@ defmodule Ppl.DefinitionReviser.ReservedEnvVarsValidator do
   @invalid_prefix "Invalid environment variable names: "
   @max_listed 20
 
-  defdelegate reserved?(name), to: EnvVarPolicy
-  defdelegate valid_name?(name), to: EnvVarPolicy
-  defdelegate valid_container_name?(name), to: EnvVarPolicy
-
   def validate(definition, ppl_req) do
     names = Enum.uniq(definition_names(definition) ++ parameter_names(ppl_req))
 
@@ -33,7 +29,7 @@ defmodule Ppl.DefinitionReviser.ReservedEnvVarsValidator do
     case Enum.reject(names, &valid_entry?/1) do
       [] ->
         names
-        |> Enum.filter(fn {name, _location, _rule} -> reserved?(name) end)
+        |> Enum.filter(fn {name, _location, _rule} -> EnvVarPolicy.reserved?(name) end)
         |> result(:reserved, ppl_req)
 
       invalid ->
@@ -41,8 +37,8 @@ defmodule Ppl.DefinitionReviser.ReservedEnvVarsValidator do
     end
   end
 
-  defp valid_entry?({name, _location, :container}), do: valid_container_name?(name)
-  defp valid_entry?({name, _location, :shell}), do: valid_name?(name)
+  defp valid_entry?({name, _location, :container}), do: EnvVarPolicy.valid_container_name?(name)
+  defp valid_entry?({name, _location, :shell}), do: EnvVarPolicy.valid_name?(name)
 
   defp result([], _kind, _ppl_req), do: :ok
 
