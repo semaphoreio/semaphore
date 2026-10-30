@@ -5,7 +5,7 @@ import { Pipeline, STATUS_LABEL, Status, Workflow, blockStatus, countJobs, pipel
 import { focus, hits, layoutError, popover, rerunPipeline, selected, stopPipeline, togglePopover, workflow } from "./store";
 import { MapLayout, Point, layoutMap, promotionLabel } from "./layout";
 import { PromoteButton } from "./promote";
-import { Chips, Stepper } from "./toolbar";
+import { Chips, Search, Stepper } from "./toolbar";
 import { BlockCard, Counts, Duration, Highlight, PipelineTitle, StatusBar, StatusIcon } from "./ui";
 
 const CARD = { w: 300, h: 72 };
@@ -461,6 +461,7 @@ const WorkflowMap = () => {
       </Panel>
       <Panel position="bottom-center" className="wf-map-dock">
         <div className="wf-map-dock-bar">
+          <Search/>
           <Chips/>
           <Stepper/>
           {h.active && (

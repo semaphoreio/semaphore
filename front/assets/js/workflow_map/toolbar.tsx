@@ -6,7 +6,7 @@ import { Highlight, PipelineTitle, StatusIcon } from "./ui";
 
 const MAX_RESULTS = 60;
 
-const Search = () => {
+export const Search = () => {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
@@ -151,13 +151,11 @@ export const Chips = () => {
   );
 };
 
-export const Toolbar = () => (
-  <div className="wf-map-toolbar">
-    <Search/>
-    {workflow.value?.skippedBlocks > 0 && (
+export const Toolbar = () =>
+  workflow.value?.skippedBlocks > 0 && (
+    <div className="wf-map-toolbar">
       <button className="btn btn-secondary btn-small" onClick={() => (showSkipped.value = !showSkipped.value)}>
         {showSkipped.value ? `Hide skipped blocks` : `Show skipped blocks`}
       </button>
-    )}
-  </div>
-);
+    </div>
+  );

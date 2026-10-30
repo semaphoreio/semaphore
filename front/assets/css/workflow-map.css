@@ -338,6 +338,15 @@
   pointer-events: auto;
 }
 
+.wf-map-dock .wf-map-search {
+  width: 320px;
+}
+
+.wf-map-dock .wf-map-results {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
 .wf-map-zoom {
   min-width: 44px;
   text-align: right;
