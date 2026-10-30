@@ -245,6 +245,8 @@ The checkout command uses the following environment variables.
 - [`SEMAPHORE_GIT_CACHE_AGE`](./env-vars#git-cache-age) (only available after using `--use-cache`)
 - [`SEMAPHORE_GIT_CACHE_KEEP`](./env-vars#git-cache-keep) (only available after using `--use-cache`)
 
+Semaphore sets `SEMAPHORE_GIT_URL` and `SEMAPHORE_GIT_SHA`, so to change them, `export` them in the job commands before running `checkout`. See [reserved variables](./env-vars#reserved-variables).
+
 ## checksum {#checksum}
 
 This tool takes a single argument which is the file to checksum. It outputs the MD5 checksum of the file's contents. This tool is useful for tagging [artifacts](../using-semaphore/artifacts) or generating [cache keys](../using-semaphore/cache).
