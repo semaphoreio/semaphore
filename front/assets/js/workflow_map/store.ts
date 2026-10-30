@@ -31,6 +31,8 @@ export const focus = signal<FocusTarget | null>(null);
 let seq = 0;
 let generation = 0;
 const stale = new Set<string>();
+const promotionMisses = new Map<string, number>();
+const PROMOTION_TRIES = 2;
 let nudge = () => undefined;
 
 export const onNudge = (fn: () => void) => {
@@ -137,6 +139,7 @@ export function writePipelineId(id: string, rootId: string, loc: { href: string,
 export function resetState(selectedPipelineId: string) {
   generation++;
   stale.clear();
+  promotionMisses.clear();
   tree.value = null;
   details.value = {};
   loadError.value = null;
@@ -213,9 +216,23 @@ export async function refresh(config: Config): Promise<boolean> {
 
   const response = await fetchJson<{ pipelines: FetchedDetail[], }>(`${config.pipelinesUrl}?${params.toString()}`);
   if (started !== generation) return treeChanged;
-  const returned = new Map(response?.pipelines.map((d) => [d.id, d]));
-  withPromotions.filter((id) => !returned.get(id)?.promotions).forEach((id) => stale.add(id));
-  if (!response) return treeChanged;
+  if (!response) {
+    withPromotions.forEach((id) => stale.add(id));
+    return treeChanged;
+  }
+  const returned = new Map(response.pipelines.map((d) => [d.id, d]));
+  for (const id of withPromotions) {
+    const d = returned.get(id);
+    if (!d) {
+      stale.add(id);
+    } else if (d.promotions) {
+      promotionMisses.delete(id);
+    } else {
+      const misses = (promotionMisses.get(id) ?? 0) + 1;
+      promotionMisses.set(id, misses);
+      if (misses < PROMOTION_TRIES) stale.add(id);
+    }
+  }
   const fetched: Record<string, ApiPipelineDetail> = {};
   for (const d of response.pipelines) fetched[d.id] = { ...d, promotions: d.promotions ?? known[d.id]?.promotions ?? [] };
   const detailsChanged = Object.values(fetched).some((d) => JSON.stringify(d) !== JSON.stringify(known[d.id]));

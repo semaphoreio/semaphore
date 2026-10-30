@@ -196,6 +196,7 @@ describe(`refresh`, () => {
   let served: unknown;
   let pipelines: Record<string, ApiPipelineDetail>;
   let failDetails: boolean;
+  let dropped: Set<string>;
 
   const fetchedTimes = (id: string) => batches.filter((b) => b.ids.includes(id)).length;
 
@@ -205,6 +206,7 @@ describe(`refresh`, () => {
     served = { root_pipeline_id: `ci`, pipelines: [pipeline(`ci`, `Build & test`, null)] };
     pipelines = { ci: { ...detail(`ci`, []), done: false } };
     failDetails = false;
+    dropped = new Set();
     globalThis.fetch = ((url: string) => {
       const [pathname, query] = url.split(`?`);
       const searchParams = new URLSearchParams(query);
@@ -214,7 +216,7 @@ describe(`refresh`, () => {
         const promotions = searchParams.get(`promotions`).split(`,`);
         batches.push({ ids, promotions });
         if (failDetails) return Promise.resolve(new Response(`{}`, { status: 500 }));
-        body = { pipelines: ids.map((id) => ({ ...pipelines[id], promotions: promotions.includes(id) ? pipelines[id].promotions : null })) };
+        body = { pipelines: ids.filter((id) => !dropped.has(id)).map((id) => ({ ...pipelines[id], promotions: promotions.includes(id) ? pipelines[id].promotions : null })) };
       }
       return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
     }) as typeof fetch;
@@ -282,6 +284,33 @@ describe(`refresh`, () => {
 
     expect(batches.map((b) => b.promotions)).to.deep.eq([[`ci`], [`ci`]]);
     expect(details.value.ci.promotions.map((p) => p.name)).to.deep.eq([`Staging`]);
+  });
+
+  test(`stops asking for promotions that keep failing to load`, async () => {
+    pipelines.ci = { ...detail(`ci`, []), promotions: null };
+    await refresh(config);
+    await refresh(config);
+    await refresh(config);
+    await refresh(config);
+
+    expect(fetchedTimes(`ci`)).to.eq(2);
+    expect(details.value.ci.promotions).to.deep.eq([]);
+  });
+
+  test(`keeps asking for a pipeline the server left out of its answer`, async () => {
+    pipelines.ci = { ...detail(`ci`, []), promotions: [{ ...starting, events: [] }] };
+    await refresh(config);
+    const ci = workflow.value.pipelineById.get(`ci`);
+    await promote(ci, ci.promotions[0], {});
+    dropped.add(`ci`);
+    await refresh(config);
+    await refresh(config);
+    await refresh(config);
+    dropped.delete(`ci`);
+    await refresh(config);
+    await refresh(config);
+
+    expect(fetchedTimes(`ci`)).to.eq(5);
   });
 
   test(`keeps the refresh after a promote when the request fails`, async () => {
