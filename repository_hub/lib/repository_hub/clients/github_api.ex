@@ -163,19 +163,26 @@ defmodule RepositoryHub.GithubApi do
 
   defp get_remaining_rate_limit(client) do
     case Tesla.get(client, "/rate_limit") do
-      {:ok, %Tesla.Env{status: 200, body: body}} ->
-        {:ok, get_in(body, ["rate", "remaining"])}
+      {:ok, %Tesla.Env{status: 200, body: %{"rate" => %{"remaining" => remaining}}}} when is_integer(remaining) ->
+        {:ok, remaining}
 
       {:ok, %Tesla.Env{status: 401}} ->
         fail_with(:precondition, @err_not_authorized)
 
-      other ->
-        log_error("Failed to get the rate limit #{inspect(other)}")
+      # Never inspect the Tesla.Env itself: its __client__ holds the
+      # authorization header with the token.
+      {:ok, %Tesla.Env{status: status, body: body}} ->
+        log_error("Failed to get the rate limit status=#{status} body=#{inspect(body)}")
+        assumed_rate_limit()
 
-        # if we can't find the limit, assume something very low
-        {:ok, 100}
+      {:error, reason} ->
+        log_error("Failed to get the rate limit reason=#{inspect(reason)}")
+        assumed_rate_limit()
     end
   end
+
+  # if we can't find the limit, assume something very low
+  defp assumed_rate_limit, do: {:ok, 100}
 
   # GitHub signals both primary and secondary rate limits with a 403 or 429,
   # marked by an exhausted x-ratelimit-remaining, a retry-after header or the

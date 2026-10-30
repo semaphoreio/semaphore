@@ -88,7 +88,7 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
         |> report_via_check_run(context)
         |> mirror_to_commit_status(request, context)
       end)
-      |> fallback_to_status_when_checks_forbidden(request, context)
+      |> fallback_to_commit_status(request, context)
     else
       request
       |> create_build_status(context.repository, context.github_token)
@@ -255,26 +255,38 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
   defp own_run({:ok, run}), do: {:ok, run}
   defp own_run({:error, _}), do: {:ok, nil}
 
-  # An installation without the Checks permission gets a 403 on every call.
-  # Nothing was written, so report through the Commit Status API instead.
-  defp fallback_to_status_when_checks_forbidden({:error, %{status: status}} = error, request, context) do
-    if status == GRPC.Status.permission_denied() do
-      Watchman.increment("set_check_run.fallback_to_status")
+  # When the Checks API can't be used at all, a retry wouldn't help and
+  # nothing was written, so report through the Commit Status API instead.
+  defp fallback_to_commit_status({:error, reason} = error, request, context) do
+    case fallback_reason(reason) do
+      nil ->
+        error
 
-      log_warn([
-        "GitHub App installation is missing the Checks permission, falling back to commit status",
-        "org_id: #{context.project.metadata.org_id}",
-        "project_id: #{context.project.metadata.id}",
-        "repo: #{context.repository.owner}/#{context.repository.name}"
-      ])
+      message ->
+        Watchman.increment("set_check_run.fallback_to_status")
 
-      create_build_status(request, context.repository, context.github_token)
-    else
-      error
+        log_warn([
+          "#{message}, falling back to commit status",
+          "org_id: #{context.project.metadata.org_id}",
+          "project_id: #{context.project.metadata.id}",
+          "repo: #{context.repository.owner}/#{context.repository.name}"
+        ])
+
+        create_build_status(request, context.repository, context.github_token)
     end
   end
 
-  defp fallback_to_status_when_checks_forbidden(result, _request, _context), do: result
+  defp fallback_to_commit_status(result, _request, _context), do: result
+
+  # An installation without the Checks permission gets a 403 on every call.
+  # Without a GitHub App id, no check-run was ever created for the commit.
+  defp fallback_reason(:github_app_id_not_configured), do: "GitHub App id is not configured"
+
+  defp fallback_reason(%{status: status}) do
+    if status == GRPC.Status.permission_denied(), do: "GitHub App installation is missing the Checks permission"
+  end
+
+  defp fallback_reason(_reason), do: nil
 
   defp report_via_check_run(request, context) do
     cache_key = CheckRunCache.key(request, context.repository)
@@ -296,9 +308,22 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
         {:ok, run}
 
       :miss ->
-        with {:ok, app_id} <- GithubAppId.get() do
+        with {:ok, app_id} <- github_app_id() do
           find_existing_check_run(request, context, app_id)
         end
+    end
+  end
+
+  # A missing configuration is told apart from instance_config being
+  # unreachable: the first falls back to a commit status
+  # (fallback_to_commit_status/3), the second fails so the notifier retries,
+  # since the pipeline may already have a run that needs completing.
+  defp github_app_id do
+    precondition = GRPC.Status.failed_precondition()
+
+    case GithubAppId.get() do
+      {:error, %{status: ^precondition}} -> {:error, :github_app_id_not_configured}
+      result -> result
     end
   end
 

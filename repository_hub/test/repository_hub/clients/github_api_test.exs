@@ -46,6 +46,28 @@ defmodule RepositoryHub.GithubApiTest do
       assert {:error, :rate_limit} = call()
     end
 
+    test "assumes a low limit when the reply has no remaining count" do
+      mock_github(json(%{"rate" => %{}}), fn env -> flunk("unexpected request #{env.url}") end)
+
+      assert {:error, :rate_limit} = call()
+    end
+
+    test "assumes a low limit when the rate limit call fails" do
+      mock_github({:error, :econnrefused}, fn env -> flunk("unexpected request #{env.url}") end)
+
+      assert {:error, :rate_limit} = call()
+    end
+
+    test "doesn't log the token when the limit can't be read" do
+      # A tuple keeps the request env, whose __client__ holds the token.
+      mock_github({500, [], "Server Error"})
+
+      log = ExUnit.CaptureLog.capture_log(fn -> assert {:error, :rate_limit} = call() end)
+
+      assert log =~ "Failed to get the rate limit status=500"
+      refute log =~ @token
+    end
+
     test "fails as precondition when the token is not authorized" do
       mock_github(json(%{"message" => "Bad credentials"}, status: 401))
 
