@@ -142,7 +142,7 @@ export const Chips = () => {
   return (
     <div className="wf-map-chips" role="group" aria-label="Show jobs with status">
       {STATUSES.filter((s) => c[s] || statuses.value.has(s)).map((s) => (
-        <button key={s} className={`wf-map-chip ${statuses.value.has(s) ? `on` : ``}`} aria-pressed={statuses.value.has(s)} onClick={() => toggleStatus(s)}>
+        <button key={s} className={`wf-map-chip wf-map-st-${s} ${statuses.value.has(s) ? `on` : ``}`} aria-pressed={statuses.value.has(s)} onClick={() => toggleStatus(s)}>
           <StatusIcon status={s} size={14}/>
           {STATUS_LABEL[s]}
           <span className="wf-map-chip-count">{c[s]}</span>

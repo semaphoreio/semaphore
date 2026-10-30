@@ -335,9 +335,21 @@
   gap: 6px 12px;
   padding: 5px 8px;
   background: #fff;
-  border-radius: 8px;
-  box-shadow: var(--wf-map-shadow);
+  border: 1px solid #D3DADE;
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .22), 0 1px 3px rgba(0, 0, 0, .12);
   pointer-events: auto;
+}
+
+.wf-map-dock-bar .wf-map-chip.on {
+  background: color-mix(in srgb, var(--wf-map-st) 12%, #fff);
+  border-color: var(--wf-map-st);
+  box-shadow: 0 0 0 1px var(--wf-map-st);
+  color: #202B30;
+}
+
+.wf-map-dock-bar .wf-map-chip.on .wf-map-chip-count {
+  color: #495358;
 }
 
 .wf-map-dock .wf-map-search {
