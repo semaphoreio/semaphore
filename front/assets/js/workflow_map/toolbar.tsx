@@ -1,5 +1,6 @@
 import { Fragment } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
+import { install, uninstall } from "@github/hotkey";
 import { STATUSES, STATUS_LABEL, countJobs } from "./model";
 import { SearchResult, clearFilters, cursor, focusOn, hits, query, queryJobs, results, scope, selected, showSkipped, statuses, step, toggleStatus, workflow } from "./store";
 import { Highlight, PipelineTitle, StatusIcon } from "./ui";
@@ -15,18 +16,18 @@ export const Search = () => {
   const current = workflow.value?.pipelineById.get(selected.value);
 
   useEffect(() => {
+    const el = input.current;
+    install(el, `/`);
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
       if ([`INPUT`, `TEXTAREA`, `SELECT`].includes(t.tagName) || t.isContentEditable || e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.key === `/`) {
-        e.preventDefault();
-        input.current?.focus();
-      } else if (e.key === `n` || e.key === `N`) {
-        step(e.shiftKey ? -1 : 1);
-      }
+      if (e.key === `n` || e.key === `N`) step(e.shiftKey ? -1 : 1);
     };
     window.addEventListener(`keydown`, onKey);
-    return () => window.removeEventListener(`keydown`, onKey);
+    return () => {
+      uninstall(el);
+      window.removeEventListener(`keydown`, onKey);
+    };
   }, []);
 
   const choose = (x: SearchResult) => {
