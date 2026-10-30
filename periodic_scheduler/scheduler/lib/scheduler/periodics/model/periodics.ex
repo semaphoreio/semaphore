@@ -27,6 +27,8 @@ defmodule Scheduler.Periodics.Model.Periodics do
     field :paused, :boolean, read_after_writes: true, default: false
     field :pause_toggled_by, :string, read_after_writes: true, default: ""
     field :pause_toggled_at, :utc_datetime_usec, read_after_writes: true
+    field :skip_scheduled_run_notifications, :boolean, read_after_writes: true, default: false
+    field :skip_manual_run_notifications, :boolean, read_after_writes: true, default: false
 
     embeds_many :parameters, Scheduler.Periodics.Model.PeriodicsParam, on_replace: :delete
 
@@ -43,11 +45,13 @@ defmodule Scheduler.Periodics.Model.Periodics do
 
   @required_fields ~w(id requester_id organization_id name project_name
                       project_id recurring reference pipeline_file)a
-  @optional_fields ~w(description at paused pause_toggled_by pause_toggled_at)a
+  @optional_fields ~w(description at paused pause_toggled_by pause_toggled_at
+                      skip_scheduled_run_notifications skip_manual_run_notifications)a
 
   @required_fields_update ~w(requester_id)a
   @optional_fields_update ~w(name project_name reference at pipeline_file recurring
-                             description suspended paused pause_toggled_by pause_toggled_at)a
+                             description suspended paused pause_toggled_by pause_toggled_at
+                             skip_scheduled_run_notifications skip_manual_run_notifications)a
 
   @doc """
   ## Examples:

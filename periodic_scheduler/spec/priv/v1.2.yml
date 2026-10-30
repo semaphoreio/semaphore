@@ -25,6 +25,10 @@ properties:
     type: boolean
   recurring:
     type: boolean
+  skip_scheduled_run_notifications:
+    type: boolean
+  skip_manual_run_notifications:
+    type: boolean
   parameters:
     type: array
     items:

@@ -109,7 +109,14 @@ defmodule Support.Factories do
             hook_id: "3",
             branch_name: "master",
             commit_sha: "1234567",
-            state: :RUNNING,
+            state: Keyword.get(opts, :state, :RUNNING),
+            result: Keyword.get(opts, :result, :PASSED),
+            result_reason: Keyword.get(opts, :result_reason, :TEST),
+            queue:
+              struct(InternalApi.Plumber.Queue,
+                queue_id: "queue-1",
+                type: Keyword.get(opts, :queue_type, :IMPLICIT)
+              ),
             created_at: %Google.Protobuf.Timestamp{nanos: 0, seconds: 0},
             pending_at: %Google.Protobuf.Timestamp{nanos: 0, seconds: 0},
             queuing_at: %Google.Protobuf.Timestamp{nanos: 0, seconds: 0},
@@ -118,7 +125,14 @@ defmodule Support.Factories do
             done_at: %Google.Protobuf.Timestamp{nanos: 0, seconds: 0},
             wf_id: "3",
             yaml_file_name: yaml_file_name,
-            working_directory: working_directory
+            working_directory: working_directory,
+            promotion_of: Keyword.get(opts, :promotion_of, ""),
+            triggerer:
+              struct(InternalApi.Plumber.Triggerer,
+                wf_triggered_by: Keyword.get(opts, :triggered_by, :HOOK),
+                wf_triggerer_id: Keyword.get(opts, :wf_triggerer_id, ""),
+                ppl_triggered_by: Keyword.get(opts, :ppl_triggered_by, :WORKFLOW)
+              )
           ),
         blocks: [
           struct(InternalApi.Plumber.Block,
@@ -198,6 +212,26 @@ defmodule Support.Factories do
       |> then(&struct(InternalApi.Projecthub.Project.Spec, &1))
 
     struct(InternalApi.Projecthub.Project, metadata: meta, spec: spec)
+  end
+
+  def periodic_describe_response(opts \\ []) do
+    struct(InternalApi.PeriodicScheduler.DescribeResponse,
+      status: struct(InternalApi.Status, code: :OK),
+      periodic:
+        struct(InternalApi.PeriodicScheduler.Periodic,
+          id: Keyword.get(opts, :id, "task-1"),
+          name: "nightly",
+          skip_scheduled_run_notifications:
+            Keyword.get(opts, :skip_scheduled_run_notifications, false),
+          skip_manual_run_notifications: Keyword.get(opts, :skip_manual_run_notifications, false)
+        )
+    )
+  end
+
+  def periodic_not_found_response do
+    struct(InternalApi.PeriodicScheduler.DescribeResponse,
+      status: struct(InternalApi.Status, code: :NOT_FOUND, message: "periodic not found")
+    )
   end
 
   def response_meta(code \\ :OK) do

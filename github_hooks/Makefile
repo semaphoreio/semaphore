@@ -14,6 +14,11 @@ endif
 
 APP_NAME=github_hooks
 
+# Pin the dependency-scan image to the app's Ruby line: the floating ruby:3
+# tag moved to 3.4, whose toolchain cannot compile the forked grpc gem's
+# native extension during the scan's bundle install.
+SECURITY_TOOLBOX_RUBY_IMAGE=registry.semaphoreci.com/ruby:3.3
+
 POSTGRES_DB_NAME="front"
 POSTGRES_DB_USER?="postgres"
 POSTGRES_DB_PASSWORD?="the-cake-is-a-lie"
@@ -28,6 +33,7 @@ INTERNAL_API_URL_PLUMBER?="localhost:50051"
 INTERNAL_API_URL_REPOSITORY?="localhost:50051"
 INTERNAL_API_URL_HOOKS?="localhost:50051"
 INTERNAL_API_URL_USER?="localhost:50051"
+INTERNAL_API_URL_FEATURE?="localhost:50051"
 BASE_DOMAIN?="semaphore.test"
 LOG_LEVEL?=info
 
@@ -48,6 +54,7 @@ CONTAINER_ENV_VARS= \
   -e INTERNAL_API_URL_REPOSITORY=$(INTERNAL_API_URL_REPOSITORY) \
   -e INTERNAL_API_URL_HOOKS=$(INTERNAL_API_URL_HOOKS) \
   -e INTERNAL_API_URL_USER=$(INTERNAL_API_URL_USER) \
+  -e INTERNAL_API_URL_FEATURE=$(INTERNAL_API_URL_FEATURE) \
   -e BASE_DOMAIN=$(BASE_DOMAIN) \
   -e CI=$(CI)
 

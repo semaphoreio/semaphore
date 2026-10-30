@@ -95,10 +95,20 @@ defmodule FrontWeb.ProjectForkController do
           end
 
         conn
-        |> put_flash(:alert, "Failed to connect with Repository.")
+        |> put_connect_failed_alert()
         |> redirect(to: redirect_path)
       end
     end)
+  end
+
+  # FrontWeb.Plug.OAuthFlash may already have put the provider's own reason
+  # here (invalid_uid, login_not_allowed, ...). Replacing it with the generic
+  # message would throw away the only actionable part.
+  defp put_connect_failed_alert(conn) do
+    case get_flash(conn, :alert) do
+      nil -> put_flash(conn, :alert, "Failed to connect with Repository.")
+      _ -> conn
+    end
   end
 
   def initializing(conn, params) do

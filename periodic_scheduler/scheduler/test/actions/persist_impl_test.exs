@@ -15,6 +15,61 @@ defmodule Test.Actions.PersistImpl.Test do
     {:ok, params}
   end
 
+  test "persist stores the notification skip flags", ctx do
+    request =
+      API.PersistRequest.new(
+        name: "flagged periodic",
+        recurring: false,
+        organization_id: ctx.org_id,
+        project_id: ctx.pr_id,
+        requester_id: ctx.usr_id,
+        reference: "master",
+        pipeline_file: ".semaphore/cron.yml",
+        skip_scheduled_run_notifications: true,
+        skip_manual_run_notifications: false
+      )
+
+    assert {:ok, periodic} = PersistImpl.persist(request)
+
+    assert periodic.skip_scheduled_run_notifications == true
+    assert periodic.skip_manual_run_notifications == false
+  end
+
+  test "persist is full-replace: a request that omits the flags clears them", ctx do
+    request =
+      API.PersistRequest.new(
+        name: "flagged periodic",
+        recurring: false,
+        organization_id: ctx.org_id,
+        project_id: ctx.pr_id,
+        requester_id: ctx.usr_id,
+        reference: "master",
+        pipeline_file: ".semaphore/cron.yml",
+        skip_scheduled_run_notifications: true,
+        skip_manual_run_notifications: true
+      )
+
+    assert {:ok, periodic} = PersistImpl.persist(request)
+    assert periodic.skip_scheduled_run_notifications == true
+
+    update =
+      API.PersistRequest.new(
+        id: periodic.id,
+        name: "flagged periodic",
+        recurring: false,
+        organization_id: ctx.org_id,
+        project_id: ctx.pr_id,
+        requester_id: ctx.usr_id,
+        reference: "master",
+        pipeline_file: ".semaphore/cron.yml"
+      )
+
+    assert {:ok, updated} = PersistImpl.persist(update)
+
+    assert updated.skip_scheduled_run_notifications == false
+    assert updated.skip_manual_run_notifications == false
+  end
+
   test "perist doesn't start quantum job when periodic is non-recurring", ctx do
     request =
       API.PersistRequest.new(

@@ -267,6 +267,10 @@ input[type="radio"][disabled] {
   border: 0 !important;
   border-radius: 6px !important;
 }
+.ts-wrapper.input-hidden .ts-control > input {
+  left: 0;
+}
+
 textarea {
     display: block;
     min-height: 50px;

@@ -44,6 +44,7 @@ defmodule FrontWeb.Router do
     plug(FrontWeb.Plug.AssignOrgInfo)
     plug(FrontWeb.Plug.AssignBillingInfo)
     plug(FrontWeb.Plug.SentryContext)
+    plug(FrontWeb.Plug.OAuthFlash)
     plug(FrontWeb.Plugs.LicenseVerifier)
     plug(Traceman.Plug.TraceHeaders)
     plug(Front.Tracing.TracingPlug)

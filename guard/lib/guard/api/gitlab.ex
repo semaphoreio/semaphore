@@ -22,13 +22,20 @@ defmodule Guard.Api.Gitlab do
     client = build_validate_token_client(token)
 
     case Tesla.get(client, @oauth_token_info_path) do
-      {:ok, res} ->
+      {:ok, res} when res.status in 200..299 ->
         expires_at = OAuth.calc_expires_at(res.body["expires_in"])
-        {:ok, res.status in 200..299 && OAuth.valid_token?(expires_at, nil_valid: false)}
+        {:ok, OAuth.valid_token?(expires_at, nil_valid: false)}
+
+      {:ok, res} when res.status in [401, 403] ->
+        {:ok, false}
+
+      {:ok, res} ->
+        Logger.warning("Transient GitLab token validation failure (HTTP #{res.status})")
+        {:error, :transient}
 
       {:error, error} ->
         Logger.error("Error validating token: #{inspect(error)}")
-        {:error, :network_error}
+        {:error, :transient}
     end
   end
 

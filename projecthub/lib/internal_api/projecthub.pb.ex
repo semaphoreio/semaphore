@@ -149,6 +149,13 @@ defmodule InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests do
 
   field(:allowed_secrets, 1, repeated: true, type: :string, json_name: "allowedSecrets")
   field(:allowed_contributors, 2, repeated: true, type: :string, json_name: "allowedContributors")
+
+  field(:allow_sem_approve_include_secrets, 3,
+    type: :bool,
+    json_name: "allowSemApproveIncludeSecrets"
+  )
+
+  field(:allow_sem_approve_enable_cache, 4, type: :bool, json_name: "allowSemApproveEnableCache")
 end
 
 defmodule InternalApi.Projecthub.Project.Spec.Repository.Status.PipelineFile do
@@ -259,6 +266,13 @@ defmodule InternalApi.Projecthub.Project.Spec.Task do
   field(:recurring, 7, type: :bool)
   field(:parameters, 8, repeated: true, type: InternalApi.Projecthub.Project.Spec.Task.Parameter)
   field(:description, 9, type: :string)
+
+  field(:skip_scheduled_run_notifications, 10,
+    type: :bool,
+    json_name: "skipScheduledRunNotifications"
+  )
+
+  field(:skip_manual_run_notifications, 11, type: :bool, json_name: "skipManualRunNotifications")
 end
 
 defmodule InternalApi.Projecthub.Project.Spec do

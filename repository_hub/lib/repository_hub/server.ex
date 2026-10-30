@@ -168,6 +168,10 @@ defmodule RepositoryHub.Server do
         Watchman.increment("build_status_guard.skipped_stale_pending")
         %CreateBuildStatusResponse{code: :OK, skipped: true}
 
+      :suppressed ->
+        Watchman.increment("build_status_guard.suppressed")
+        %CreateBuildStatusResponse{code: :OK, skipped: true}
+
       :busy ->
         Watchman.increment("build_status_guard.busy")
 

@@ -283,6 +283,7 @@ defmodule InternalApi.Repository.CreateBuildStatusRequest do
   field(:description, 5, type: :string)
   field(:context, 6, type: :string)
   field(:source_id, 7, type: :string, json_name: "sourceId")
+  field(:suppress, 8, type: :bool)
 end
 
 defmodule InternalApi.Repository.CreateBuildStatusResponse do

@@ -830,9 +830,13 @@ defmodule FrontWeb.SchedulersController do
       description: params["description"] || "",
       pipeline_file: params["pipeline_file"],
       recurring: recurring?,
+      skip_scheduled_run_notifications: checked?(params["skip_scheduled_run_notifications"]),
+      skip_manual_run_notifications: checked?(params["skip_manual_run_notifications"]),
       parameters: parse_form_parameters(params["parameters"] || %{})
     }
   end
+
+  defp checked?(value), do: value in ["true", "on", true]
 
   defp get_at_value(params, true), do: String.trim(params["at"] || "")
   defp get_at_value(_params, false), do: ""
@@ -1007,6 +1011,8 @@ defmodule FrontWeb.SchedulersController do
       recurring: true,
       pipeline_file: ".semaphore/semaphore.yml",
       project_name: project_name,
+      skip_scheduled_run_notifications: false,
+      skip_manual_run_notifications: false,
       parameters: []
     }
   end

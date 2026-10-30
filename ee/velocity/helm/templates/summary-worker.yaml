@@ -37,6 +37,11 @@ spec:
               value: 'yes'
             - name: START_JOB_SUMMARY_WORKER
               value: 'yes'
+            - name: INTERNAL_API_URL_JOB
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_JOB
             - name: POSTGRES_DB_SSL
               value: {{ .Values.global.database.ssl | quote }}
             - name: DB_NAME

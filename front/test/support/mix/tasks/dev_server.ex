@@ -133,6 +133,15 @@ defmodule Mix.Tasks.Dev.Server do
     periodic = Stubs.Scheduler.create(project, user, params)
     Stubs.Scheduler.create_trigger(periodic, workflow.api_model, user, branch: branch.name)
 
+    params = [
+      name: "Quiet Scheduler",
+      branch: branch.name,
+      skip_scheduled_run_notifications: true
+    ]
+
+    periodic = Stubs.Scheduler.create(project, user, params)
+    Stubs.Scheduler.create_trigger(periodic, workflow.api_model, user, branch: branch.name)
+
     project
   end
 
@@ -193,6 +202,16 @@ defmodule Mix.Tasks.Dev.Server do
     periodic = Stubs.Scheduler.create(project, user, params)
     params = [branch: branch.name, scheduling_status: "failed"]
     Stubs.Scheduler.create_trigger(periodic, workflow.api_model, user, params)
+
+    params = [
+      name: "Silent Scheduler",
+      branch: branch.name,
+      skip_scheduled_run_notifications: true,
+      skip_manual_run_notifications: true
+    ]
+
+    periodic = Stubs.Scheduler.create(project, user, params)
+    Stubs.Scheduler.create_trigger(periodic, workflow.api_model, user, branch: branch.name)
 
     Stubs.Deployments.create(project, user, "Production")
 

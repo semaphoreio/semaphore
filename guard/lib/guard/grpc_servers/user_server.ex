@@ -392,10 +392,11 @@ defmodule Guard.GrpcServers.UserServer do
       ) do
     observe_and_log(
       "grpc.user.create",
+      # No password here: observe_and_log/3 inspects this map at debug on
+      # entry and exit, and at error on any GRPC.RPCError.
       %{
         email: email,
         name: name,
-        password: password,
         repository_providers: providers,
         skip_password_change: skip_password_change
       },

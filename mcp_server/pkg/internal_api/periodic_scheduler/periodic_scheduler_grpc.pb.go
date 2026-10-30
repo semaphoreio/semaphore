@@ -19,19 +19,20 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PeriodicService_Apply_FullMethodName          = "/InternalApi.PeriodicScheduler.PeriodicService/Apply"
-	PeriodicService_Persist_FullMethodName        = "/InternalApi.PeriodicScheduler.PeriodicService/Persist"
-	PeriodicService_Pause_FullMethodName          = "/InternalApi.PeriodicScheduler.PeriodicService/Pause"
-	PeriodicService_Unpause_FullMethodName        = "/InternalApi.PeriodicScheduler.PeriodicService/Unpause"
-	PeriodicService_RunNow_FullMethodName         = "/InternalApi.PeriodicScheduler.PeriodicService/RunNow"
-	PeriodicService_Describe_FullMethodName       = "/InternalApi.PeriodicScheduler.PeriodicService/Describe"
-	PeriodicService_LatestTriggers_FullMethodName = "/InternalApi.PeriodicScheduler.PeriodicService/LatestTriggers"
-	PeriodicService_History_FullMethodName        = "/InternalApi.PeriodicScheduler.PeriodicService/History"
-	PeriodicService_List_FullMethodName           = "/InternalApi.PeriodicScheduler.PeriodicService/List"
-	PeriodicService_ListKeyset_FullMethodName     = "/InternalApi.PeriodicScheduler.PeriodicService/ListKeyset"
-	PeriodicService_Delete_FullMethodName         = "/InternalApi.PeriodicScheduler.PeriodicService/Delete"
-	PeriodicService_GetProjectId_FullMethodName   = "/InternalApi.PeriodicScheduler.PeriodicService/GetProjectId"
-	PeriodicService_Version_FullMethodName        = "/InternalApi.PeriodicScheduler.PeriodicService/Version"
+	PeriodicService_Apply_FullMethodName              = "/InternalApi.PeriodicScheduler.PeriodicService/Apply"
+	PeriodicService_Persist_FullMethodName            = "/InternalApi.PeriodicScheduler.PeriodicService/Persist"
+	PeriodicService_Pause_FullMethodName              = "/InternalApi.PeriodicScheduler.PeriodicService/Pause"
+	PeriodicService_Unpause_FullMethodName            = "/InternalApi.PeriodicScheduler.PeriodicService/Unpause"
+	PeriodicService_RunNow_FullMethodName             = "/InternalApi.PeriodicScheduler.PeriodicService/RunNow"
+	PeriodicService_Describe_FullMethodName           = "/InternalApi.PeriodicScheduler.PeriodicService/Describe"
+	PeriodicService_LatestTriggers_FullMethodName     = "/InternalApi.PeriodicScheduler.PeriodicService/LatestTriggers"
+	PeriodicService_History_FullMethodName            = "/InternalApi.PeriodicScheduler.PeriodicService/History"
+	PeriodicService_List_FullMethodName               = "/InternalApi.PeriodicScheduler.PeriodicService/List"
+	PeriodicService_ListKeyset_FullMethodName         = "/InternalApi.PeriodicScheduler.PeriodicService/ListKeyset"
+	PeriodicService_Delete_FullMethodName             = "/InternalApi.PeriodicScheduler.PeriodicService/Delete"
+	PeriodicService_GetProjectId_FullMethodName       = "/InternalApi.PeriodicScheduler.PeriodicService/GetProjectId"
+	PeriodicService_Version_FullMethodName            = "/InternalApi.PeriodicScheduler.PeriodicService/Version"
+	PeriodicService_BulkUpsertAndPrune_FullMethodName = "/InternalApi.PeriodicScheduler.PeriodicService/BulkUpsertAndPrune"
 )
 
 // PeriodicServiceClient is the client API for PeriodicService service.
@@ -79,6 +80,14 @@ type PeriodicServiceClient interface {
 	// Operation returns string representing version of the periodic scheduler service.
 	// Operation is synchronous.
 	Version(ctx context.Context, in *VersionRequest, opts ...grpc.CallOption) (*VersionResponse, error)
+	// Atomically reconciles the entire set of periodics for a single project:
+	// every entry in `periodics` is upserted, and any existing periodic on the
+	// project whose id is not in the desired set is deleted. The entire operation
+	// runs inside a single DB transaction in the periodic_scheduler service, so
+	// either everything succeeds or no rows change.
+	//
+	// Operation is synchronous.
+	BulkUpsertAndPrune(ctx context.Context, in *BulkUpsertAndPruneRequest, opts ...grpc.CallOption) (*BulkUpsertAndPruneResponse, error)
 }
 
 type periodicServiceClient struct {
@@ -219,6 +228,16 @@ func (c *periodicServiceClient) Version(ctx context.Context, in *VersionRequest,
 	return out, nil
 }
 
+func (c *periodicServiceClient) BulkUpsertAndPrune(ctx context.Context, in *BulkUpsertAndPruneRequest, opts ...grpc.CallOption) (*BulkUpsertAndPruneResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BulkUpsertAndPruneResponse)
+	err := c.cc.Invoke(ctx, PeriodicService_BulkUpsertAndPrune_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PeriodicServiceServer is the server API for PeriodicService service.
 // All implementations should embed UnimplementedPeriodicServiceServer
 // for forward compatibility.
@@ -264,6 +283,14 @@ type PeriodicServiceServer interface {
 	// Operation returns string representing version of the periodic scheduler service.
 	// Operation is synchronous.
 	Version(context.Context, *VersionRequest) (*VersionResponse, error)
+	// Atomically reconciles the entire set of periodics for a single project:
+	// every entry in `periodics` is upserted, and any existing periodic on the
+	// project whose id is not in the desired set is deleted. The entire operation
+	// runs inside a single DB transaction in the periodic_scheduler service, so
+	// either everything succeeds or no rows change.
+	//
+	// Operation is synchronous.
+	BulkUpsertAndPrune(context.Context, *BulkUpsertAndPruneRequest) (*BulkUpsertAndPruneResponse, error)
 }
 
 // UnimplementedPeriodicServiceServer should be embedded to have
@@ -311,6 +338,9 @@ func (UnimplementedPeriodicServiceServer) GetProjectId(context.Context, *GetProj
 }
 func (UnimplementedPeriodicServiceServer) Version(context.Context, *VersionRequest) (*VersionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Version not implemented")
+}
+func (UnimplementedPeriodicServiceServer) BulkUpsertAndPrune(context.Context, *BulkUpsertAndPruneRequest) (*BulkUpsertAndPruneResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BulkUpsertAndPrune not implemented")
 }
 func (UnimplementedPeriodicServiceServer) testEmbeddedByValue() {}
 
@@ -566,6 +596,24 @@ func _PeriodicService_Version_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PeriodicService_BulkUpsertAndPrune_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BulkUpsertAndPruneRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PeriodicServiceServer).BulkUpsertAndPrune(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PeriodicService_BulkUpsertAndPrune_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PeriodicServiceServer).BulkUpsertAndPrune(ctx, req.(*BulkUpsertAndPruneRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PeriodicService_ServiceDesc is the grpc.ServiceDesc for PeriodicService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -624,6 +672,10 @@ var PeriodicService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Version",
 			Handler:    _PeriodicService_Version_Handler,
+		},
+		{
+			MethodName: "BulkUpsertAndPrune",
+			Handler:    _PeriodicService_BulkUpsertAndPrune_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
