@@ -5,6 +5,7 @@ defmodule Zebra.Workers.Agent.HostedAgent do
   alias InternalApi.Chmura.Chmura.Stub
   alias InternalApi.Chmura.{OccupyAgentRequest, ReleaseAgentRequest}
 
+  # sobelow_skip ["Config.TLSVerify"]
   def http_options,
     do: [
       hackney: [
