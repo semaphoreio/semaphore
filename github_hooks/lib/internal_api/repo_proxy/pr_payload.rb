@@ -45,7 +45,7 @@ module InternalApi::RepoProxy
 
       {
         "semaphore_ref" => meta[:ref],
-        "merge_commit_sha" => meta[:merge_commit_sha],
+        "commit_sha" => meta[:commit_sha],
         "commit_author" => meta[:commit_author],
         "action" => pr["state"],
         "ref" => meta[:ref],
