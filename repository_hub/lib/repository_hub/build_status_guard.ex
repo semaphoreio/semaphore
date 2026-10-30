@@ -19,6 +19,10 @@ defmodule RepositoryHub.BuildStatusGuard do
   `{:error, :guard_unavailable}` so callers can deliver unguarded. A malformed
   repository_id returns `{:error, :invalid_key}` so the caller's own request
   validation can reject it instead of the guard crashing.
+
+  The rows also record which pipelines wrote a check-run
+  (`mark_check_run/1`), so the commit-status path knows whether a commit has
+  one to mirror to (`check_run_on_commit?/1`) without asking GitHub.
   """
 
   import Ecto.Query
@@ -166,6 +170,57 @@ defmodule RepositoryHub.BuildStatusGuard do
 
       {:error, :invalid_key} ->
         :ok
+    end
+  end
+
+  @doc """
+  Records that the request's pipeline writes a check-run for its commit and
+  context. Called before the write, so a check-run that lands is never
+  unrecorded; a write that then fails leaves the mark, which only costs a
+  GitHub lookup later. Creates the row when needed, so requests that skip
+  `claim/1` (no source_id, guard unavailable) are recorded too.
+
+  Marked rows are kept 30 days instead of 7
+  (`RepositoryHub.BuildStatusGuardCleanupWorker`), which is what lets
+  `check_run_on_commit?/1` answer without asking GitHub.
+  """
+  @spec mark_check_run(CreateBuildStatusRequest.t()) :: :ok | {:error, term}
+  def mark_check_run(request) do
+    with {:ok, key} <- key(request) do
+      transaction(fn ->
+        Repo.insert_all(
+          BuildStatusGuards,
+          [Map.merge(key, %{has_check_run: true, updated_at: DateTime.utc_now()})],
+          on_conflict: [set: [has_check_run: true, updated_at: DateTime.utc_now()]],
+          conflict_target: [:repository_id, :commit_sha, :context, :source_id]
+        )
+
+        :ok
+      end)
+    end
+  end
+
+  @doc """
+  Whether any pipeline marked a check-run for the request's commit and
+  context (`mark_check_run/1`) in the last 30 days. Check-runs are only ever
+  written after a mark, so `false` means there is no check-run to mirror to,
+  unless one is older than that.
+  """
+  @spec check_run_on_commit?(CreateBuildStatusRequest.t()) :: {:ok, boolean} | {:error, term}
+  def check_run_on_commit?(request) do
+    with {:ok, key} <- key(request) do
+      transaction(fn ->
+        from(g in BuildStatusGuards,
+          where:
+            g.repository_id == ^key.repository_id and g.commit_sha == ^key.commit_sha and
+              g.context == ^key.context and g.has_check_run == true
+        )
+        |> Repo.exists?()
+      end)
+      |> case do
+        found? when is_boolean(found?) -> {:ok, found?}
+        error -> error
+      end
     end
   end
 

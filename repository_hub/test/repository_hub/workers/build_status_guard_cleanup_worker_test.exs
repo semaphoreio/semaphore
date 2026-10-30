@@ -27,16 +27,31 @@ defmodule RepositoryHub.BuildStatusGuardCleanupWorkerTest do
     refute_received {:trace, ^pid, :receive, :tick}
   end
 
-  defp seed_rows(count, age) do
+  test "keeps rows that wrote a check-run for 30 days" do
+    pid = start_supervised!(BuildStatusGuardCleanupWorker)
+    Ecto.Adapters.SQL.Sandbox.allow(Repo, self(), pid)
+
+    seed_rows(@expired_rows, "9 days", true)
+    seed_rows(3, "31 days", true)
+    seed_rows(2, "31 days")
+
+    send(pid, :tick)
+    :sys.get_state(pid)
+
+    assert row_count("9 days ago batch") == @expired_rows
+    assert row_count("31 days ago batch") == 0
+  end
+
+  defp seed_rows(count, age, has_check_run \\ nil) do
     Repo.query!(
       """
       INSERT INTO build_status_guards
-        (repository_id, commit_sha, context, source_id, updated_at)
-      SELECT md5('#{age}' || i::text)::uuid, 'sha', '#{age} ago batch', i::text,
-             now() - interval '#{age}'
+        (repository_id, commit_sha, context, source_id, updated_at, has_check_run)
+      SELECT md5('#{age} #{has_check_run}' || i::text)::uuid, 'sha',
+             '#{age} ago batch', i::text, now() - interval '#{age}', $1
       FROM generate_series(1, #{count}) AS i
       """,
-      [],
+      [has_check_run],
       timeout: 30_000
     )
   end

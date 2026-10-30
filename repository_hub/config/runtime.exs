@@ -27,7 +27,10 @@ if config_env() == :prod do
     user_grpc_server: System.get_env("USER_GRPC_URL"),
     repository_integrator_grpc_server: System.get_env("REPOSITORY_INTEGRATOR_GRPC_URL"),
     organization_grpc_endpoint: System.get_env("ORGANIZATION_GRPC_URL"),
-    webhook_host: System.get_env("HOOKS_HOST") || "example.com/hooks"
+    webhook_host: System.get_env("HOOKS_HOST") || "example.com/hooks",
+    feature_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_FEATURE"),
+    instance_config_grpc_endpoint: System.get_env("INTERNAL_API_URL_INSTANCE_CONFIG"),
+    github_application_id: System.get_env("GITHUB_APPLICATION_ID")
 
   log_level =
     System.get_env("LOG_LEVEL", "info")
@@ -58,6 +61,30 @@ if config_env() == :prod do
 
   config :repository_hub, RepositoryHub.BuildStatusGuardCleanupWorker,
     enabled: System.get_env("BUILD_STATUS_GUARD_CLEANUP_ENABLED") != "false"
+
+  feature_provider =
+    case System.get_env("FEATURE_YAML_PATH") do
+      nil ->
+        {RepositoryHub.FeatureHubProvider,
+         [
+           # stale_ttl_ms keeps serving the last known flags while FeatureHub
+           # is down, instead of reading the flag as off. A few hours rides out
+           # an outage without keeping a day of orgs in ETS per pod. The breaker
+           # stops calling FeatureHub while it is unreachable, so a lookup
+           # doesn't wait for the gRPC timeout on every cache miss.
+           cache:
+             {FeatureProvider.CachexCache,
+              name: :feature_provider_cache,
+              ttl_ms: :timer.minutes(10),
+              stale_ttl_ms: :timer.hours(4),
+              breaker: :feature_provider_breaker}
+         ]}
+
+      path ->
+        {FeatureProvider.YamlProvider, [yaml_path: path, agent_name: :feature_provider_agent]}
+    end
+
+  config FeatureProvider, :provider, feature_provider
 end
 
 on_prem? = if(System.get_env("ON_PREM") == "true", do: true, else: false)
