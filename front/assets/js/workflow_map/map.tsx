@@ -433,6 +433,8 @@ const WorkflowMap = () => {
         zoomable
         position="bottom-right"
         style={{ width: 168, height: 110 }}
+        maskStrokeColor="var(--wf-map-select)"
+        maskStrokeWidth={2}
         nodeClassName={(n) => {
           const id = (n.data as { id: string, }).id;
           if (n.type === `block`) {
