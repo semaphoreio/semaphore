@@ -169,6 +169,16 @@ defmodule Rbac.Permissions do
         description: "Manage service accounts within the organization."
       },
       %{
+        id: "22b50338-7577-4e53-9b15-1e42c2342bb4",
+        name: "organization.computers.view",
+        description: "View computers within the organization."
+      },
+      %{
+        id: "78d9a0b7-93c2-4e5d-b356-391cdabf5173",
+        name: "organization.computers.manage",
+        description: "Manage computers within the organization."
+      },
+      %{
         id: "bcaf879d-987f-42d7-9c89-f10911db6041",
         name: "project.view",
         description:
