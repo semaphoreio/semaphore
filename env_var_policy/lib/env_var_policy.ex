@@ -1,7 +1,7 @@
 defmodule EnvVarPolicy do
   @moduledoc """
   Names of the environment variables users can't set, either because Semaphore
-  supplies them to jobs or because bash runs code from them, and the rules
+  supplies them to jobs or because bash reads them at startup, and the rules
   user-defined variable names must follow.
   """
 
@@ -76,9 +76,10 @@ defmodule EnvVarPolicy do
 
   @plumber_owned_pattern ~r/\ASEMAPHORE_PIPELINE_\d+_ARTEFACT_ID\z/
 
-  # Read by every bash the agent starts, including `bash <pre-job hook>`, so a job
-  # could run code before the hook or skip it.
-  @shell_startup MapSet.new(["BASH_ENV", "SHELLOPTS"])
+  # Read by every bash the agent starts, including `bash <pre-job hook>`: BASH_ENV runs
+  # a file first, SHELLOPTS/BASHOPTS set options, and PS4 runs code under xtrace.
+  # ENV is left out: only an interactive or POSIX-mode sh reads it, and the agent runs bash.
+  @shell_startup MapSet.new(["BASH_ENV", "BASHOPTS", "PS4", "SHELLOPTS"])
 
   # The agent writes job env var names unquoted into `export NAME=value`.
   @valid_name ~r/\A[a-zA-Z_][a-zA-Z0-9_]*\z/
@@ -89,7 +90,7 @@ defmodule EnvVarPolicy do
   @max_name_length 64
 
   @doc """
-  Whether users can't set this name: Semaphore supplies it, or bash runs code from it.
+  Whether users can't set this name: Semaphore supplies it, or bash reads it at startup.
 
   Semaphore names are compared case-insensitively because Windows env vars are
   case-insensitive. Bash startup names are compared exactly, as bash reads them.

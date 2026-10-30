@@ -28,7 +28,7 @@ defmodule Secrethub.Model.EnvVar do
         Ecto.Changeset.add_error(
           changeset,
           :name,
-          "#{name} can't be set because bash runs code from it when a job starts"
+          "#{name} can't be set because bash reads it when a job starts"
         )
 
       EnvVarPolicy.reserved?(name) ->

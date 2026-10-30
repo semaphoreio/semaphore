@@ -91,7 +91,7 @@ defmodule Secrethub.Model.EnvVarTest do
     end
 
     test "with bash startup variable names" do
-      for name <- ["BASH_ENV", "SHELLOPTS"] do
+      for name <- ["BASH_ENV", "BASHOPTS", "PS4", "SHELLOPTS"] do
         changeset = Content.changeset(%Content{}, %{env_vars: [%{name: name, value: "x"}]})
 
         assert %Ecto.Changeset{
@@ -100,7 +100,7 @@ defmodule Secrethub.Model.EnvVarTest do
                } = changeset
 
         assert [name: {message, []}] = errors
-        assert message == "#{name} can't be set because bash runs code from it when a job starts"
+        assert message == "#{name} can't be set because bash reads it when a job starts"
       end
     end
 

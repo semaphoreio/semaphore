@@ -16,7 +16,7 @@ The `SEMAPHORE_` prefix is reserved for Semaphore. Don't define your own variabl
 
 To change another variable that Semaphore provides, such as `SEMAPHORE_GIT_URL` or `SEMAPHORE_GIT_SHA` before running `checkout`, `export` it in the job commands.
 
-`BASH_ENV` and `SHELLOPTS` can't be set either, because bash runs code from them before the job's first command.
+`BASH_ENV`, `BASHOPTS`, `PS4` and `SHELLOPTS` can't be set either, because bash reads them when it starts and they can run code before or during the job's setup, including a pre-job hook.
 
 A pipeline fails to start if its YAML or its promotion or task parameters set a variable that Semaphore provides, and a job created through the API fails before it starts if it sets one. The pipeline or job page shows which variable caused the failure.
 

@@ -49,8 +49,10 @@ defmodule EnvVarPolicyTest do
     end
 
     test "matches the bash startup variables exactly" do
-      assert EnvVarPolicy.reserved?("BASH_ENV")
-      assert EnvVarPolicy.reserved?("SHELLOPTS")
+      for name <- ["BASH_ENV", "BASHOPTS", "PS4", "SHELLOPTS"] do
+        assert EnvVarPolicy.reserved?(name), "expected #{name} to be reserved"
+      end
+
       refute EnvVarPolicy.reserved?("bash_env")
       refute EnvVarPolicy.reserved?("ENV")
     end
