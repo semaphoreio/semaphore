@@ -9,7 +9,14 @@ defmodule Front.Models.Project do
   alias InternalApi.Projecthub.{DestroyRequest, RequestMeta, UpdateRequest}
   alias InternalApi.Projecthub.Project.{Metadata, Spec, Spec.Repository}
   alias InternalApi.Projecthub.Project.Spec.PermissionType
-  alias InternalApi.Projecthub.Project.Spec.Repository.{ForkedPullRequests, RunType, Whitelist}
+
+  alias InternalApi.Projecthub.Project.Spec.Repository.{
+    ForkedPullRequests,
+    PullRequestCommit,
+    RunType,
+    Whitelist
+  }
+
   alias InternalApi.Projecthub.ProjectService.Stub
 
   require Logger
@@ -41,6 +48,7 @@ defmodule Front.Models.Project do
     field(:build_prs, :boolean)
     field(:build_forked_prs, :boolean)
     field(:build_draft_prs, :boolean, default: true)
+    field(:pull_request_commit, :string, default: "merge_commit")
     field(:expose_secrets, :boolean)
     field(:allowed_secrets, :string)
     field(:filter_contributors, :boolean)
@@ -86,6 +94,7 @@ defmodule Front.Models.Project do
     :build_prs,
     :build_forked_prs,
     :build_draft_prs,
+    :pull_request_commit,
     :custom_permissions,
     :allow_debug_empty_session,
     :allow_debug_default_branch,
@@ -123,6 +132,7 @@ defmodule Front.Models.Project do
     |> validate_format(:name, ~r/\A[\w\-\.]+\z/,
       message: "Project name can have only alphanumeric characters, underscore and dash"
     )
+    |> validate_inclusion(:pull_request_commit, ["merge_commit", "head_commit"])
     |> validate_run_on_table
     |> validate_branch_whitelists
     |> validate_tag_whitelists
@@ -327,6 +337,7 @@ defmodule Front.Models.Project do
       run_on = extract_run_on(project_data)
       debug_permissions = extract_debug_permissions(project_data)
       attach_permissions = extract_attach_permissions(project_data)
+      pull_request_commit = extract_pull_request_commit(project_data)
       run = run_on |> Enum.any?()
 
       forked_pull_requests =
@@ -367,7 +378,8 @@ defmodule Front.Models.Project do
                     Whitelist.new(
                       branches: branches,
                       tags: tags
-                    )
+                    ),
+                  pull_request_commit: pull_request_commit
                 ),
               visibility: visibility,
               custom_permissions: project_data.custom_permissions,
@@ -827,6 +839,8 @@ defmodule Front.Models.Project do
         project.spec.repository.run_on |> Enum.member?(RunType.value(:FORKED_PULL_REQUESTS)),
       :build_draft_prs =>
         project.spec.repository.run_on |> Enum.member?(RunType.value(:DRAFT_PULL_REQUESTS)),
+      :pull_request_commit =>
+        map_pull_request_commit(project.spec.repository.pull_request_commit),
       :custom_permissions => project.spec.custom_permissions,
       :allow_debug_empty_session =>
         project.spec.debug_permissions |> Enum.member?(PermissionType.value(:EMPTY)),
@@ -893,6 +907,12 @@ defmodule Front.Models.Project do
       Enum.join(whitelist.branches, ", "),
       Enum.join(whitelist.tags, ", ")
     }
+  end
+
+  defp map_pull_request_commit(pull_request_commit) do
+    if pull_request_commit == PullRequestCommit.value(:HEAD_COMMIT),
+      do: "head_commit",
+      else: "merge_commit"
   end
 
   def find_by_id(id, org_id \\ "")
@@ -1187,6 +1207,20 @@ defmodule Front.Models.Project do
       []
     end
   end
+
+  # Only GitHub projects can build the head commit. Unspecified asks projecthub
+  # to keep the stored value.
+  defp extract_pull_request_commit(%{integration_type: type, pull_request_commit: commit})
+       when type in [:GITHUB_APP, :GITHUB_OAUTH_TOKEN] do
+    case commit do
+      "head_commit" -> PullRequestCommit.value(:HEAD_COMMIT)
+      "merge_commit" -> PullRequestCommit.value(:MERGE_COMMIT)
+      _ -> PullRequestCommit.value(:PULL_REQUEST_COMMIT_UNSPECIFIED)
+    end
+  end
+
+  defp extract_pull_request_commit(_data),
+    do: PullRequestCommit.value(:PULL_REQUEST_COMMIT_UNSPECIFIED)
 
   defp extract_debug_permissions(%{custom_permissions: false}), do: []
 

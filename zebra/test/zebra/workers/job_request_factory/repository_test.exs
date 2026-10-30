@@ -188,6 +188,7 @@ defmodule Zebra.Workers.JobRequestFactory.RepositoryTest do
           pr_name: "First PR",
           pr_number: "1",
           pr_sha: "8d762d04c7c753c2181030a9385b496559e5a883",
+          pr_base_sha: "5f2a1d8c9e0b7a6f4d3c2b1a0e9f8d7c6b5a4f3e",
           tag_name: "",
           branch_name: "master",
           pr_branch_name: "hotfix"
@@ -243,6 +244,10 @@ defmodule Zebra.Workers.JobRequestFactory.RepositoryTest do
                %{
                  "name" => "SEMAPHORE_GIT_PR_SHA",
                  "value" => Base.encode64("8d762d04c7c753c2181030a9385b496559e5a883")
+               },
+               %{
+                 "name" => "SEMAPHORE_GIT_PR_BASE_SHA",
+                 "value" => Base.encode64("5f2a1d8c9e0b7a6f4d3c2b1a0e9f8d7c6b5a4f3e")
                },
                %{
                  "name" => "SEMAPHORE_GIT_PR_NUMBER",
