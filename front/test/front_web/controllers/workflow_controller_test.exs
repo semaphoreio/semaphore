@@ -636,6 +636,7 @@ defmodule FrontWeb.WorkflowControllerTest do
       assert html =~ "/workflows/#{workflow.id}/map"
       refute html =~ ~s(id="diagram")
       refute html =~ ~s(data-poll-href="/workflows/#{workflow.id}/status")
+      refute html =~ "pipelineStatusUrl"
     end
 
     test "renders the diagram when the feature is disabled", %{
@@ -650,6 +651,9 @@ defmodule FrontWeb.WorkflowControllerTest do
 
       assert html =~ ~s(id="diagram")
       refute html =~ ~s(id="workflow-map")
+
+      assert html =~
+               ~s(window.InjectedDataByBackend.pipelineStatusUrl = "/workflows/#{workflow.id}/pipelines/#{pipeline.id}/status")
     end
 
     test "escapes the selected pipeline id in the injected config", %{

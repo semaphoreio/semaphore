@@ -38,6 +38,8 @@
     </div>
   <% end %>
 </div>
+<%= unless workflow_map? do %>
 <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
   window.InjectedDataByBackend.pipelineStatusUrl = "<%= pipeline_path(@conn, :status, @workflow_id, @selected_pipeline_id) %>";
 </script>
+<% end %>
