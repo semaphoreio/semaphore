@@ -463,6 +463,8 @@ defmodule FrontWeb.WorkflowController do
         |> Enum.filter(&MapSet.member?(in_workflow, &1))
         |> Enum.uniq()
 
+      Watchman.submit("map_pipelines.ids", length(ids), :count)
+
       pipelines =
         TaskSupervisor
         |> Task.Supervisor.async_stream_nolink(
