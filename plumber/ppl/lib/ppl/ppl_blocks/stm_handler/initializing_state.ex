@@ -4,7 +4,7 @@ defmodule Ppl.PplBlocks.STMHandler.InitializingState do
   """
   alias Ppl.PplBlocks.Model.{PplBlocks, PplBlocksQueries}
   alias Ppl.Ppls.Model.PplsQueries
-  alias Ppl.PplBlocks.STMHandler.Common
+  alias Ppl.PplBlocks.STMHandler.{Common, WaitingState}
 
   use Looper.STM,
     id: __MODULE__,
@@ -83,5 +83,16 @@ defmodule Ppl.PplBlocks.STMHandler.InitializingState do
     Common.notify_ppl_when_done(data)
     data |> Map.get(:user_exit_function) |> Common.send_state_watch_metric()
   end
+  # Pipeline can already be running when its blocks finish initializing
+  def epilogue_handler({:ok, data = %{user_exit_function: %{state: "waiting"}}}) do
+    trigger_waiting_state(data)
+  end
   def epilogue_handler(_exit_state), do: :nothing
+
+  defp trigger_waiting_state(data) do
+    data
+    |> Map.get(:exit_transition, %{})
+    |> Map.get(:ppl_id)
+    |> WaitingState.execute_now_for_pipeline()
+  end
 end

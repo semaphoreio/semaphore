@@ -308,7 +308,7 @@ configure.sign:
 		--credential-source-file=/tmp/oidc_token \
 		--credential-source-type="text" && \
 	export GOOGLE_APPLICATION_CREDENTIALS=/home/semaphore/creds.json && \
-	pip install packaging google-cloud-iam && \
+	pip install --break-system-packages packaging google-cloud-iam && \
 	$(ROOT_MAKEFILE_PATH)/get_id_token.py $$GOOGLE_PROJECT_NAME ci-image-signer > /tmp/sigstore-token
 
 registry.push:
@@ -327,7 +327,7 @@ registry.configure:
 	@printf "%s" "$(GITHUB_TOKEN)" | docker login ghcr.io -u "$(GITHUB_USERNAME)" --password-stdin
 
 registry.helm.configure:
-	@printf "%s" "$(GITHUB_TOKEN)" | helm registry login ghcr.io/semaphoreio --username "$(GITHUB_USERNAME)" --password-stdin
+	@printf "%s" "$(GITHUB_TOKEN)" | helm registry login ghcr.io --username "$(GITHUB_USERNAME)" --password-stdin
 
 cosign.install:
 	curl -O -L "https://github.com/sigstore/cosign/releases/download/v2.4.1/cosign-linux-amd64" && \
