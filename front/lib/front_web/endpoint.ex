@@ -5,6 +5,14 @@ defmodule FrontWeb.Endpoint do
 
   plug(
     Plug.Static,
+    at: "/projects/assets/workers",
+    from: {:front, "priv/static/assets/workers"},
+    gzip: false,
+    headers: %{"cross-origin-embedder-policy" => "credentialless"}
+  )
+
+  plug(
+    Plug.Static,
     at: "/projects",
     from: :front,
     gzip: false,
