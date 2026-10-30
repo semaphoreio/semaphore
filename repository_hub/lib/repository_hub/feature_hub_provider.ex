@@ -5,6 +5,11 @@ defmodule RepositoryHub.FeatureHubProvider do
   Used as the production provider for `FeatureProvider`. Talks to the
   `InternalApi.Feature.FeatureService` over gRPC and caches results via
   `FeatureProvider.CachexCache`.
+
+  Errors that mean FeatureHub can't be reached (a failed connection, gRPC
+  `UNAVAILABLE` or `DEADLINE_EXCEEDED`) are returned as
+  `{:error, {:unavailable, reason}}`, so the cache's circuit breaker opens on
+  them. Any other error is returned as is.
   """
 
   use FeatureProvider.Provider
@@ -17,6 +22,8 @@ defmodule RepositoryHub.FeatureHubProvider do
   }
 
   alias InternalApi.Feature.FeatureService.Stub
+
+  @unavailable_statuses [GRPC.Status.unavailable(), GRPC.Status.deadline_exceeded()]
 
   @impl FeatureProvider.Provider
   def provide_features(org_id, _opts \\ [])
@@ -62,11 +69,11 @@ defmodule RepositoryHub.FeatureHubProvider do
       {:ok, channel} ->
         request = %InternalApi.Feature.ListOrganizationFeaturesRequest{org_id: org_id}
 
-        try do: Stub.list_organization_features(channel, request, opts),
+        try do: Stub.list_organization_features(channel, request, opts) |> classify_error(),
             after: GRPC.Stub.disconnect(channel)
 
-      error ->
-        error
+      {:error, reason} ->
+        {:error, {:unavailable, reason}}
     end
   end
 
@@ -78,13 +85,18 @@ defmodule RepositoryHub.FeatureHubProvider do
       {:ok, channel} ->
         request = %InternalApi.Feature.ListFeaturesRequest{}
 
-        try do: Stub.list_features(channel, request, opts),
+        try do: Stub.list_features(channel, request, opts) |> classify_error(),
             after: GRPC.Stub.disconnect(channel)
 
-      error ->
-        error
+      {:error, reason} ->
+        {:error, {:unavailable, reason}}
     end
   end
+
+  defp classify_error({:error, %GRPC.RPCError{status: status} = error}) when status in @unavailable_statuses,
+    do: {:error, {:unavailable, error}}
+
+  defp classify_error(result), do: result
 
   @impl FeatureProvider.Provider
   def provide_machines(_org_id, _opts \\ []) do

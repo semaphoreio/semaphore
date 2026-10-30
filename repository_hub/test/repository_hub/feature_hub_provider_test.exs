@@ -43,4 +43,37 @@ defmodule RepositoryHub.FeatureHubProviderTest do
       assert_called_exactly(GRPC.Stub.disconnect(:channel), 1)
     end
   end
+
+  describe "errors" do
+    defp provide_with(connect, call) do
+      with_mocks([
+        {GRPC.Stub, [:passthrough], [connect: connect, disconnect: fn channel -> {:ok, channel} end]},
+        {Stub, [], [list_organization_features: call, list_features: call]}
+      ]) do
+        {FeatureHubProvider.provide_features(Ecto.UUID.generate()), FeatureHubProvider.provide_features(nil)}
+      end
+    end
+
+    defp connected(_endpoint), do: {:ok, :channel}
+
+    test "UNAVAILABLE and DEADLINE_EXCEEDED are reported as unavailable" do
+      for status <- [GRPC.Status.unavailable(), GRPC.Status.deadline_exceeded()] do
+        error = GRPC.RPCError.exception(status, "down")
+
+        assert {{:error, {:unavailable, ^error}}, {:error, {:unavailable, ^error}}} =
+                 provide_with(&connected/1, fn _, _, _ -> {:error, error} end)
+      end
+    end
+
+    test "a failed connection is reported as unavailable" do
+      assert {{:error, {:unavailable, "refused"}}, {:error, {:unavailable, "refused"}}} =
+               provide_with(fn _ -> {:error, "refused"} end, fn _, _, _ -> flunk("called without a channel") end)
+    end
+
+    test "other gRPC errors are returned as is" do
+      error = GRPC.RPCError.exception(GRPC.Status.not_found(), "no org")
+
+      assert {{:error, ^error}, {:error, ^error}} = provide_with(&connected/1, fn _, _, _ -> {:error, error} end)
+    end
+  end
 end

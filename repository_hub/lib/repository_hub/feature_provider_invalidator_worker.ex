@@ -27,14 +27,23 @@ defmodule RepositoryHub.FeatureProviderInvalidatorWorker do
 
   def features_changed(_message) do
     log("invalidating features")
-    {:ok, _} = FeatureProvider.list_features(reload: true)
-    :ok
+    reload(reload: true)
   end
 
   def organization_features_changed(message) do
     event = InternalApi.Feature.OrganizationFeaturesChanged.decode(message)
     log("invalidating features for org #{event.org_id}")
-    {:ok, _} = FeatureProvider.list_features(reload: true, param: event.org_id)
+    reload(reload: true, param: event.org_id)
+  end
+
+  # A failed reload keeps the last known flags (or fails fast while the
+  # breaker is open); crashing the consumer wouldn't make FeatureHub answer.
+  defp reload(opts) do
+    case FeatureProvider.list_features(opts) do
+      {:ok, _} -> :ok
+      {:error, reason} -> log("reload failed: #{inspect(reason)}")
+    end
+
     :ok
   end
 

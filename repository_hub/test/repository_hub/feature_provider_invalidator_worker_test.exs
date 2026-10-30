@@ -25,4 +25,10 @@ defmodule RepositoryHub.FeatureProviderInvalidatorWorkerTest do
       assert_called(FeatureProvider.list_features(reload: true, param: org_id))
     end
   end
+
+  test "a failed reload doesn't crash the consumer" do
+    with_mock FeatureProvider, list_features: fn _opts -> {:error, {:not_found, :list_features}} end do
+      assert :ok = FeatureProviderInvalidatorWorker.features_changed("")
+    end
+  end
 end

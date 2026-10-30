@@ -28,6 +28,7 @@ defmodule RepositoryHub.Application do
         {{RepositoryHub.Repo, []}, true},
         {{RepositoryHub.MaxStatusesCache, []}, true},
         {%{id: FeatureProvider.Cachex, start: {Cachex, :start_link, [:feature_provider_cache, []]}}, true},
+        {{FeatureProvider.CircuitBreaker, name: :feature_provider_breaker}, true},
         {{feature_provider_module, feature_provider_opts}, feature_provider_module == FeatureProvider.YamlProvider},
         {{RepositoryHub.GithubAppId, []}, true},
         {{RepositoryHub.CheckRunCache, []}, true},
