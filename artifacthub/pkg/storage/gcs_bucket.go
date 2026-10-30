@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"time"
 
 	gcsstorage "cloud.google.com/go/storage"
@@ -206,18 +207,42 @@ func (b *GcsBucket) CreatedAt(ctx context.Context, path string) (time.Time, erro
 	return a.Created, nil
 }
 
+// DeleteObjects returns an error when any of the objects survived, as the S3
+// implementation does, since a caller relies on it to decide that a storage is empty.
 func (b *GcsBucket) DeleteObjects(paths []string) error {
+	var mu sync.Mutex
+	var failed int
+	var firstErr error
 
 	// GCS does not support deleting objects in bulk,
 	// so we parallelize the deletion requests to make them faster.
 	processor := parallel.NewParallelProcessor(paths, func(path string) {
 		err := b.BucketHandler.Object(path).Delete(context.Background())
+
+		// Already gone is the outcome we asked for, and other deleters share these paths.
+		if errors.Is(err, gcsstorage.ErrObjectNotExist) {
+			return
+		}
+
 		if err != nil {
 			log.Error("Failed to delete object", zap.String("object", path), zap.Error(err))
+
+			mu.Lock()
+			defer mu.Unlock()
+
+			failed++
+			if firstErr == nil {
+				firstErr = err
+			}
 		}
 	}, 10)
 
 	processor.Run()
+
+	if failed > 0 {
+		return fmt.Errorf("failed to delete %d of %d objects, first error: %w", failed, len(paths), firstErr)
+	}
+
 	return nil
 }
 
