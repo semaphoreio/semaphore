@@ -1524,6 +1524,19 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
              "Reserved environment variables cannot be set: SEMAPHORE_WORKFLOW_TRIGGERED_BY_HOOK (job env_vars)"
   end
 
+  test "when the debugged job can't be found => applies the strict rule" do
+    {:ok, debug_job} = Support.Factories.Job.create(:pending, %{spec: @job_spec, build_id: nil})
+    {:ok, _debug} = Support.Factories.Debug.create_for_job(Ecto.UUID.generate(), debug_job.id)
+
+    capture_log(fn -> send(self(), {:result, Worker.process(debug_job)}) end)
+    assert_received {:result, {:ok, debug_job}}
+
+    assert Job.failed?(debug_job)
+
+    assert debug_job.failure_reason ==
+             "Reserved environment variables cannot be set: SEMAPHORE_WORKFLOW_TRIGGERED_BY_HOOK (job env_vars)"
+  end
+
   test "when a container with a multi-codepoint name sets a reserved env var => stores a fitting failure_reason" do
     name = "x" <> String.duplicate("\u0301", 300)
 
