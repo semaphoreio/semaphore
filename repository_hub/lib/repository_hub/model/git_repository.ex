@@ -45,9 +45,10 @@ defmodule RepositoryHub.Model.GitRepository do
     |> unwrap(&new/1)
   end
 
+  # The url is kept as is (ssh_git_url), so an explicit port reaches every git command.
   @spec from_generic(String.t()) :: Toolkit.tupled_result(t(), String.t())
   def from_generic(url) do
-    ~r/^ssh:\/\/(?:(?<username>[^@\/]+)@)?(?<host>[^\/:]+)\/(?:.+\/)?(?<owner>[^\/]+)\/(?<repo>[^\/]+)\.git$/
+    ~r/^ssh:\/\/(?:(?<username>[^@\/]+)@)?(?<host>[^\/:]+)(?::\d+)?\/(?:.+\/)?(?<owner>[^\/]+)\/(?<repo>[^\/]+)\.git$/
     |> Regex.named_captures(url)
     |> case do
       nil ->
