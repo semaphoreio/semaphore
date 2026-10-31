@@ -1,6 +1,7 @@
 import Config
 
 config :ppl, Ppl.EctoRepo,
+  prepare: :unnamed,
   database: System.get_env("POSTGRES_DB_NAME"),
   username: System.get_env("POSTGRES_DB_USER"),
   password: System.get_env("POSTGRES_DB_PASSWORD"),
@@ -17,6 +18,7 @@ config :cloak, Cloak.AES.GCM,
   ]
 
 config :block, Block.EctoRepo,
+  prepare: :unnamed,
   database: System.get_env("BLOCK_POSTGRES_DB_NAME"),
   username: System.get_env("BLOCK_POSTGRES_DB_USER"),
   password: System.get_env("BLOCK_POSTGRES_DB_PASSWORD"),
