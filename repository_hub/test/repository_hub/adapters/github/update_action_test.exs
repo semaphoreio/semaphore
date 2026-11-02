@@ -67,6 +67,22 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       assert_not_called(UserClient.describe(:_))
     end
 
+    test "rejects a pipeline file longer than 255 characters with a clear error", %{github_app_adapter: adapter} do
+      repository = RepositoryModelFactory.githubapp_repo()
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:dummy/repository.git",
+          pipeline_file: String.duplicate("a", 256)
+        )
+
+      assert {:error, "pipeline_file should be at most 255 character(s)"} = UpdateAction.execute(adapter, request)
+
+      {:ok, unchanged_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert unchanged_repository.pipeline_file == repository.pipeline_file
+    end
+
     test "renames a github_app repository within the same installation", %{github_app_adapter: adapter} do
       repository = RepositoryModelFactory.githubapp_repo()
       DeployKeysModelFactory.create_deploy_key(project_id: repository.project_id, repository_id: repository.id)
