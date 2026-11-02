@@ -147,6 +147,21 @@ defmodule FrontWeb.BillingController.AddonsTest do
       assert json_response(conn, 422) == %{"ok" => false, "error" => "Failed to update addon."}
     end
 
+    test "falls back to the generic message when a failed precondition has no reason", %{
+      conn: conn
+    } do
+      GrpcMock.stub(BillingMock, :update_addon, fn _, _ ->
+        raise GRPC.RPCError, status: 9, message: ""
+      end)
+
+      conn =
+        conn
+        |> put_req_header("content-type", "application/json")
+        |> post("/billing/update_addon.json", %{addon_name: "support-tier-3", enabled: true})
+
+      assert json_response(conn, 422) == %{"ok" => false, "error" => "Failed to update addon."}
+    end
+
     test "disables an addon", %{conn: conn} do
       conn =
         conn
