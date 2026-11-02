@@ -1,0 +1,19 @@
+<div class="wf-head-summary">
+  <h1 class="wf-head-title"><%= commit_message(@hook) %></h1>
+  <div class="wf-head-meta">
+    <%= link get_header_navigation_element(@breadcrumbs, :project, :name), to: get_header_navigation_element(@breadcrumbs, :project, :url) %>
+    <span>›</span>
+    <%= link get_header_navigation_element(@breadcrumbs, :branch, :name), to: get_header_navigation_element(@breadcrumbs, :branch, :url), class: "truncate" %>
+    <span>·</span>
+    <%= if @hook.type == "pr" do %>
+      <%= link "#{pr_commit_sha(@hook)}", to: pr_commit_url(@hook), target: "_blank", class: "link gray hover-dark-gray" %>
+      <%= link "(##{@hook.pr_number})", to: pr_url(@hook), target: "_blank", class: "link gray hover-dark-gray" %>
+    <% else %>
+      <%= link "#{commit_sha(@hook)}", to: commit_url(@hook), target: "_blank", class: "link gray hover-dark-gray" %>
+    <% end %>
+    <span>·</span>
+    <span class="truncate">by <%= @hook.repo_host_username %>, <time-ago datetime="<%= Timex.format!(@workflow.created_at, "%FT%T%:z", :strftime) %>"><%= Timex.format!(@workflow.created_at, "%FT%T%:z", :strftime) %></time-ago></span>
+    <span>·</span>
+    <span class="gray hover-dark-gray pointer js-dropdown-menu-trigger" data-template="workflowCLI" aria-expanded="false">CLI</span>
+  </div>
+</div>

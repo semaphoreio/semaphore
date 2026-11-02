@@ -134,6 +134,8 @@ data:
       enabled: true
     ui_partial_ppl_rebuild:
       enabled: true
+    ui_workflow_map:
+      enabled: false
     project_page_all_pipelines:
       enabled: true
     workflow_filtering:
@@ -268,6 +270,8 @@ data:
       enabled: true
     ui_partial_ppl_rebuild:
       enabled: true
+    ui_workflow_map:
+      enabled: false
     project_page_all_pipelines:
       enabled: true
     workflow_filtering:

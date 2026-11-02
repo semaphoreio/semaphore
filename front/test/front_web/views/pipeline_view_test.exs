@@ -5,6 +5,260 @@ defmodule FrontWeb.PipelineViewTest do
   alias FrontWeb.PipelineView
   alias Support.Factories
 
+  describe "render map.json" do
+    defp map_pipeline(state, blocks, after_jobs \\ []) do
+      %{
+        id: "ppl-1",
+        state: state,
+        result: :PASSED,
+        error_description: "",
+        compile_task: %{present?: false},
+        blocks: blocks,
+        after_task: %{jobs: after_jobs}
+      }
+    end
+
+    defp task_job(state, result, extra \\ %{}) do
+      Map.merge(
+        %{
+          id: "job-#{state}-#{result}",
+          name: "#{state} #{result}",
+          state: state,
+          result: result,
+          started_at: %{seconds: 100},
+          finished_at: %{seconds: 160}
+        },
+        extra
+      )
+    end
+
+    defp render_map(pipeline),
+      do: PipelineView.render("map.json", %{pipeline: pipeline})
+
+    test "renders the classic error, escaped, for a pipeline that failed to start" do
+      pipeline = %{map_pipeline(:DONE, []) | error_description: "bad <script>alert(1)</script>"}
+
+      json = render_map(pipeline)
+
+      assert json.error_html =~ "Unprocessable YAML file."
+      assert json.error_html =~ "bad &lt;script&gt;alert(1)&lt;/script&gt;"
+      refute json.error_html =~ "<script>"
+      assert render_map(map_pipeline(:DONE, [])).error_html == nil
+    end
+
+    test "links the initialization job with its status" do
+      init = fn task -> %{map_pipeline(:RUNNING, []) | compile_task: task} end
+
+      task = %{
+        present?: true,
+        job_log_path: "/jobs/init-1",
+        running?: false,
+        failed?: true,
+        done?: true
+      }
+
+      assert render_map(init.(task)).init_job == %{url: "/jobs/init-1", status: :failed}
+
+      assert render_map(init.(%{task | failed?: false})).init_job == %{
+               url: "/jobs/init-1",
+               status: :passed
+             }
+
+      assert render_map(init.(%{task | running?: true, done?: false, failed?: false})).init_job ==
+               %{url: "/jobs/init-1", status: :running}
+
+      assert render_map(init.(%{present?: true, job_log_path: nil})).init_job == nil
+      assert render_map(map_pipeline(:RUNNING, [])).init_job == nil
+    end
+
+    test "maps task job states and results to statuses" do
+      block = %{
+        name: "Tests",
+        dependencies: [],
+        state: :RUNNING,
+        skipped?: false,
+        jobs: [
+          task_job(:ENQUEUED, :PASSED, %{started_at: nil, finished_at: nil}),
+          task_job(:RUNNING, :PASSED, %{finished_at: nil}),
+          task_job(:FINISHED, :PASSED),
+          task_job(:FINISHED, :FAILED),
+          task_job(:FINISHED, :STOPPED)
+        ]
+      }
+
+      [%{jobs: jobs}] = render_map(map_pipeline(:RUNNING, [block])).blocks
+
+      assert Enum.map(jobs, & &1.status) == [:queued, :running, :passed, :failed, :stopped]
+      assert Enum.at(jobs, 1).started_at == 100
+      assert Enum.at(jobs, 1).finished_at == nil
+      assert Enum.at(jobs, 2).finished_at == 160
+      assert Enum.at(jobs, 0).id == "job-ENQUEUED-PASSED"
+    end
+
+    test "marks jobs that never started as skipped or not started" do
+      topology_jobs = [%{name: "build"}]
+
+      blocks = [
+        %{name: "Skipped", dependencies: [], state: :DONE, skipped?: true, jobs: topology_jobs},
+        %{name: "Canceled", dependencies: [], state: :DONE, skipped?: false, jobs: topology_jobs},
+        %{name: "Waiting", dependencies: ["Skipped"], skipped?: false, jobs: topology_jobs}
+      ]
+
+      statuses =
+        render_map(map_pipeline(:DONE, blocks)).blocks
+        |> Enum.map(fn block -> hd(block.jobs).status end)
+
+      assert statuses == [:skipped, :pending, :pending]
+    end
+
+    test "links reused jobs to the original job" do
+      block = %{
+        name: "Tests",
+        dependencies: [],
+        state: :DONE,
+        skipped?: false,
+        jobs: [task_job(:FINISHED, :PASSED, %{id: "new", original_job_id: "original"})]
+      }
+
+      [%{jobs: [job]}] = render_map(map_pipeline(:DONE, [block])).blocks
+
+      assert job.id == "original"
+      assert job.reused
+    end
+
+    test "includes after pipeline jobs" do
+      after_jobs = [
+        %{
+          id: "a1",
+          name: "cleanup",
+          running?: false,
+          failed?: true,
+          stopped?: false,
+          passed?: false,
+          done?: true,
+          started_at: 10,
+          done_at: 20
+        },
+        %{
+          id: "a2",
+          name: "notify",
+          running?: false,
+          failed?: false,
+          stopped?: false,
+          passed?: false,
+          done?: false,
+          started_at: nil,
+          done_at: nil
+        }
+      ]
+
+      json = render_map(map_pipeline(:DONE, [], after_jobs))
+
+      assert Enum.map(json.after_jobs, &{&1.name, &1.status}) == [
+               {"cleanup", :failed},
+               {"notify", :pending}
+             ]
+
+      assert hd(json.after_jobs).finished_at == 20
+      refute json.done
+    end
+
+    test "lists promotions with parameters, deployment access and history" do
+      pipeline = map_pipeline(:DONE, []) |> Map.merge(%{workflow_id: "wf-1"})
+
+      switch = %{
+        id: "sw-1",
+        targets: [
+          %{
+            name: "Production",
+            parameters: [
+              %{
+                name: "REGION",
+                description: "Where",
+                required: true,
+                options: ["eu", "us"],
+                default_value: "eu"
+              }
+            ],
+            deployment: %{
+              name: "prod",
+              allowed?: false,
+              message: "You can't deploy to %{deployment_target}"
+            },
+            events: [
+              %{
+                pipeline_id: "ppl-2",
+                processed: true,
+                result: :PASSED,
+                auto_triggered: false,
+                triggered_at: 10,
+                author: %{name: "Ana"}
+              },
+              %{
+                pipeline_id: "",
+                processed: false,
+                result: :FAILED,
+                auto_triggered: true,
+                triggered_at: 20,
+                author: nil
+              }
+            ]
+          }
+        ]
+      }
+
+      [promotion] =
+        PipelineView.render("map.json", %{
+          pipeline: pipeline,
+          switch: switch,
+          can_promote?: true,
+          conn: build_conn()
+        }).promotions
+
+      assert promotion.name == "Production"
+
+      assert promotion.trigger_url ==
+               "/workflows/wf-1/pipelines/ppl-1/swithes/sw-1/targets/Production"
+
+      refute promotion.can_promote
+
+      assert promotion.deployment == %{
+               name: "prod",
+               allowed: false,
+               message: "You can't deploy to prod Deployment Target"
+             }
+
+      assert [%{name: "REGION", required: true, options: ["eu", "us"], default_value: "eu"}] =
+               promotion.parameters
+
+      assert [
+               %{pipeline_id: "ppl-2", author: "Ana", auto: false},
+               %{pipeline_id: nil, processed: false, auto: true}
+             ] = promotion.events
+    end
+
+    test "has no promotions without a switch" do
+      assert render_map(map_pipeline(:DONE, [])).promotions == []
+    end
+
+    test "is done once the pipeline and its after pipeline jobs are done" do
+      after_job = %{
+        id: "a1",
+        name: "cleanup",
+        running?: false,
+        failed?: false,
+        stopped?: false,
+        passed?: true,
+        done?: true,
+        started_at: 10,
+        done_at: 20
+      }
+
+      assert render_map(map_pipeline(:DONE, [], [after_job])).done
+      refute render_map(map_pipeline(:RUNNING, [], [])).done
+    end
+  end
+
   describe ".format_triggerer" do
     test "for an initial workflow" do
       pipeline =

@@ -7,6 +7,14 @@ import sinon from "sinon";
 
 describe("Pollman", () => {
   describe("#requestUrl", () => {
+    const originalWindow = global.window;
+    const originalURL = global.URL;
+
+    afterEach(() => {
+      global.window = originalWindow;
+      global.URL = originalURL;
+    });
+
     beforeEach(() => {
       // Mock window.location.origin for the host validation
       global.window = {

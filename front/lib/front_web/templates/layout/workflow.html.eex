@@ -2,6 +2,15 @@
   <%= if @showForkExplanation? do %>
     <%= render "workflow/_fork_explanation.html", project: @project %>
   <% end %>
+  <%= if FeatureProvider.feature_enabled?(:ui_workflow_map, param: @conn.assigns[:organization_id]) do %>
+    <div class="wf-compact-head nh3 nh4-m nt3 nt4-m">
+      <%= render "workflow/_map_summary.html", assigns %>
+      <div class="wf-compact-row">
+        <div class="tabs"><%= render "workflow/_tabs.html", assigns %></div>
+        <%= render "workflow/_map_actions.html", assigns %>
+      </div>
+    </div>
+  <% else %>
   <div class="bb b--lighter-gray nt3-m pb3">
     <div class="flex-l items-end nh3">
       <div class="ph3">
@@ -69,36 +78,10 @@
       </div>
     </div>
     <div class="tabs">
-      <%= link raw(~s'
-            <svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M1 4.5A3.5 3.5 0 014.5 1h7A3.5 3.5 0 0115 4.5v7a3.5 3.5 0 01-3.5 3.5h-7A3.5 3.5 0 011 11.5v-7zm3.5-2.1a2.1 2.1 0 00-1.99 1.431h3.592a2.192 2.192 0 010 4.385H2.4V11.5a2.1 2.1 0 002.1 2.1h7a2.1 2.1 0 001.985-1.416H9.898a2.192 2.192 0 010-4.384H13.6V4.5a2.1 2.1 0 00-2.1-2.1h-7zm9.1 6.8H9.898a.792.792 0 100 1.584H13.6V9.2zM2.4 6.816V5.23h3.702a.792.792 0 110 1.585H2.4z"/></svg>
-            Workflow
-          '),
-          to: workflow_path(@conn, :show, @workflow.id, pipeline_id: @workflow.root_pipeline_id),
-          class: Front.Decorators.Header.Workflow.tab_class(@conn, workflow_path(@conn, :show, @workflow.id, pipeline_id: @workflow.root_pipeline_id)) %>
-      <%= link raw(~s'
-            <svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M4.322 2.408A2.1 2.1 0 002.4 4.5v7a2.1 2.1 0 002.1 2.1h7a2.1 2.1 0 002.1-2.1v-7a2.1 2.1 0 00-1.922-2.092A2.099 2.099 0 019.602 4.2H6.398a2.099 2.099 0 01-2.076-1.792zM11.388 1h.112A3.5 3.5 0 0115 4.5v7a3.5 3.5 0 01-3.5 3.5h-7A3.5 3.5 0 011 11.5v-7A3.5 3.5 0 014.5 1h.112A2.097 2.097 0 016.398.003h3.204c.755 0 1.416.399 1.786.997zM5.7 2.102c0-.386.313-.699.698-.699h3.204a.698.698 0 010 1.397H6.398a.698.698 0 01-.698-.698zM4.7 6.8a.7.7 0 100 1.4h6.6a.7.7 0 100-1.4H4.7zm0 3.016a.7.7 0 100 1.4h6.6a.7.7 0 100-1.4H4.7z"></path></svg>
-            #{Front.Decorators.Header.Workflow.summary(@conn)}
-          '),
-          to: test_results_path(@conn, :pipeline_summary, @workflow.id),
-          class: Front.Decorators.Header.Workflow.tab_class(@conn, test_results_path(@conn, :pipeline_summary, @workflow.id)) %>
-      <%= if FeatureProvider.feature_enabled?(:artifacts, param: @conn.assigns[:organization_id]) do %>
-        <%= link raw(~s'
-              <svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M8 .675c-.952 0-1.87.31-2.552 1.006-.638.653-1 1.58-1.044 2.723-1.144.043-2.07.406-2.723 1.044C.985 6.13.675 7.048.675 8s.31 1.87 1.006 2.552c.653.638 1.58 1 2.723 1.044.043 1.144.406 2.07 1.044 2.723.681.696 1.6 1.006 2.552 1.006s1.87-.31 2.552-1.006c.638-.654 1-1.58 1.044-2.723 1.144-.043 2.07-.406 2.723-1.044.696-.681 1.006-1.6 1.006-2.552s-.31-1.87-1.006-2.552c-.654-.638-1.58-1-2.723-1.044-.043-1.144-.406-2.07-1.044-2.723C9.87.985 8.952.675 8 .675zM5.8 4.638c0-.978.282-1.602.65-1.978.369-.378.9-.585 1.55-.585s1.181.207 1.55.585c.368.376.65 1 .65 1.978 0 .14-.005.282-.017.425l-.04.518A3.22 3.22 0 008 4.769a3.22 3.22 0 00-2.142.812l-.041-.518a5.377 5.377 0 01-.017-.425zm-.22 1.22l-.517-.041a5.377 5.377 0 00-.425-.018c-.978 0-1.602.283-1.978.65-.378.37-.585.9-.585 1.551 0 .65.207 1.181.585 1.55.376.368 1 .65 1.978.65.14 0 .282-.005.425-.017l.518-.04A3.22 3.22 0 014.769 8c0-.822.307-1.572.812-2.142zm.278 4.561l-.041.518a5.379 5.379 0 00-.017.425c0 .978.282 1.602.65 1.978.369.378.9.585 1.55.585s1.181-.207 1.55-.585c.368-.376.65-1 .65-1.978 0-.14-.005-.282-.017-.425l-.04-.518c-.571.505-1.321.812-2.143.812a3.219 3.219 0 01-2.142-.812zm4.561-.277l.518.041c.143.012.285.018.425.018.978 0 1.602-.283 1.978-.65.378-.37.585-.9.585-1.551 0-.65-.207-1.181-.585-1.55-.376-.368-1-.65-1.978-.65-.14 0-.282.005-.425.017l-.518.04c.505.571.812 1.321.812 2.143 0 .822-.306 1.572-.812 2.142zM6.17 8A1.831 1.831 0 119.83 8 1.831 1.831 0 016.17 8z"/></svg>
-              <span>Artifacts</span>
-            '),
-            to: artifacts_path(@conn, :workflows, @workflow.id),
-            class: Front.Decorators.Header.Workflow.tab_class(@conn, artifacts_path(@conn, :workflows, @workflow.id)) %>
-      <% end %>
-      <%= if FeatureProvider.feature_enabled?(:ui_reports, param: @conn.assigns[:organization_id]) do %>
-        <%= link raw(~s'
-            <svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M2.025 2.025A3.5 3.5 0 001 4.5v7A3.5 3.5 0 004.5 15h7a3.5 3.5 0 003.5-3.5v-7A3.5 3.5 0 0011.5 1h-7a3.5 3.5 0 00-2.475 1.025zm.99.99A2.1 2.1 0 014.5 2.4h7a2.1 2.1 0 012.1 2.1v7a2.1 2.1 0 01-2.1 2.1h-7a2.1 2.1 0 01-2.1-2.1v-7a2.1 2.1 0 01.615-1.485zM4.7 4a.7.7 0 100 1.4h3.194a.7.7 0 100-1.4H4.7zM4 8a.7.7 0 01.7-.7h4.975a.7.7 0 110 1.4H4.7A.7.7 0 014 8zm4.731 2.594a.7.7 0 100 1.4h2.788a.7.7 0 000-1.4H8.73zm-4.731.7a.7.7 0 01.7-.7h1.787a.7.7 0 110 1.4H4.7a.7.7 0 01-.7-.7zM10.512 4a.7.7 0 100 1.4h1.007a.7.7 0 000-1.4h-1.007z"/></svg>
-            <span>Report</span>
-          '),
-          to: report_path(@conn, :workflow, @workflow.id),
-          class: Front.Decorators.Header.Workflow.tab_class(@conn, report_path(@conn, :workflow, @workflow.id)) %>
-      <% end %>
+      <%= render "workflow/_tabs.html", assigns %>
     </div>
   </div>
+  <% end %>
   <%= Map.get(assigns, :nested_layout) || @inner_content %>
   <%= render "workflow/_cli_popup.html", workflow: @workflow, organization: @organization %>
 <% end %>

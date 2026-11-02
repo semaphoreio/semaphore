@@ -42,6 +42,7 @@
         class: Front.Decorators.Header.Workflow.tab_class(@conn, test_results_path(@conn, :pipeline_summary, @workflow.id)) %>
   </div>
 
+<%= unless FeatureProvider.feature_enabled?(:ui_workflow_map, param: @conn.assigns[:organization_id]) do %>
   <div
       data-poll-background
       data-poll-state="poll"
@@ -52,6 +53,7 @@
     <img class="mr2" width="22" height="22" src=<%= image_source("spinner-2.svg") %> />
     Fetching pipelines...
   </div>
+<% end %>
 </div>
 
 <%= render "_workflow.html", conn: @conn, workflow_id: @workflow.id, selected_pipeline_id: @selected_pipeline_id, permissions: @permissions%>
