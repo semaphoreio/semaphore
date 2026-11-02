@@ -8,32 +8,36 @@ defmodule Ppl.Actions.ListActivityImpl do
   alias Ppl.EctoRepo, as: Repo
   alias Ppl.Ppls.Model.Triggerer
   alias Ppl.PplBlocks.Model.PplBlocksQueries
+  alias Ppl.PplRequests.Model.PplRequests
   alias Ppl.Actions.DescribeTopologyImpl
 
   import Ecto.Query
   import Ppl.Actions.ListImpl, only: [non_empty_value_or_default: 3]
   import Ppl.Ppls.Model.PplsQueries, only: [join_request_trace_and_ppl: 0]
 
-  # The activity view only needs block names and the job names that result
-  # from matrix, parallelism and booster expansion. Pipeline definitions can be
-  # large (commands, env vars, secrets, ...), so instead of loading the whole
-  # document for every active pipeline, Postgres builds a minimal projection
-  # with just the keys DescribeTopologyImpl reads to compute those names:
-  #   blocks[].name
+  # The activity view only needs block names, dependencies and the job names
+  # that result from matrix, parallelism and booster expansion. Pipeline
+  # definitions can be large (commands, env vars, secrets, ...), so instead of
+  # loading the whole document, Postgres builds a minimal projection with just
+  # the keys DescribeTopologyImpl reads for blocks:
+  #   blocks[].name, blocks[].dependencies
   #   blocks[].build.jobs[].{name, matrix, parallelism}
   #   blocks[].build.jobs[].env_vars (only SEMAPHORE_JOB_COUNT entries)
   #   blocks[].build.boosters
   # Keys missing from the original stay missing (jsonb_strip_nulls), so the
   # topology code sees the same shape it would see for the full definition.
+  # The inner subquery (OFFSET 0 keeps it from being inlined) reads the
+  # definition column only once per row.
   defmacrop topology_definition(definition) do
     quote do
       fragment(
         """
-        (SELECT CASE WHEN jsonb_typeof(def.d->'blocks') = 'array' THEN
+        (SELECT CASE WHEN jsonb_typeof(def.blocks) = 'array' THEN
            jsonb_strip_nulls(jsonb_build_object('blocks', coalesce((
              SELECT jsonb_agg(
                CASE WHEN jsonb_typeof(b) = 'object' THEN jsonb_build_object(
                  'name', b->'name',
+                 'dependencies', b->'dependencies',
                  'build', CASE WHEN jsonb_typeof(b->'build') = 'object' THEN jsonb_build_object(
                    'jobs', CASE WHEN jsonb_typeof(b->'build'->'jobs') = 'array' THEN (
                      SELECT coalesce(jsonb_agg(
@@ -54,10 +58,10 @@ defmodule Ppl.Actions.ListActivityImpl do
                    ELSE b->'build' END)
                ELSE b END
                ORDER BY b_ord)
-             FROM jsonb_array_elements(def.d->'blocks') WITH ORDINALITY AS bl(b, b_ord)),
+             FROM jsonb_array_elements(def.blocks) WITH ORDINALITY AS bl(b, b_ord)),
              '[]'::jsonb)))
          END
-         FROM (SELECT ?::jsonb AS d) AS def)
+         FROM (SELECT (?::jsonb)->'blocks' AS blocks OFFSET 0) AS def)
         """,
         unquote(definition)
       )
@@ -133,19 +137,31 @@ defmodule Ppl.Actions.ListActivityImpl do
 
     defp add_blocks_details(page = %{entries: entries}) when entries == [], do: page
     defp add_blocks_details(page) do
-      page.entries
-      |> Enum.map(fn %{ppl_id: id} -> id end)
+      ppl_ids = Enum.map(page.entries, fn %{ppl_id: id} -> id end)
+
+      ppl_ids
       |> PplBlocksQueries.all_blocks_from_pipelines()
-      |> group_data(page.entries)
+      |> group_data(page.entries, topology_definitions(ppl_ids))
       |> reverse_map_put(:entries, page)
     end
 
-    defp group_data({:ok, blocks}, pipelines) do
+    # Projected definitions are fetched only for the pipelines of the current
+    # page, after pagination, so the projection never runs for other rows.
+    defp topology_definitions(ppl_ids) do
+      from(pr in PplRequests,
+        where: pr.id in ^ppl_ids,
+        select: {pr.id, topology_definition(pr.definition)})
+      |> Repo.all()
+      |> Map.new()
+    end
+
+    defp group_data({:ok, blocks}, pipelines, definitions) do
       blocks_by_ppl = Enum.group_by(blocks, & &1.ppl_id)
 
       pipelines
       |> Enum.reduce_while([], fn pipeline, acc ->
-        pipeline.definition
+        definitions
+        |> Map.get(pipeline.ppl_id)
         |> DescribeTopologyImpl.describe_topology()
         |> case do
           {:error, msg} -> {:halt, {:error, msg}}
@@ -161,7 +177,7 @@ defmodule Ppl.Actions.ListActivityImpl do
         pipelines -> Enum.reverse(pipelines)
       end
     end
-    defp group_data(error = {:error, _msg}, _pipelines), do: error
+    defp group_data(error = {:error, _msg}, _pipelines, _definitions), do: error
 
     defp add_blocks_data(topology_blocks, ppl_blocks, pipeline) do
       topology_blocks
@@ -169,7 +185,7 @@ defmodule Ppl.Actions.ListActivityImpl do
       |> reverse_map_put(:blocks, pipeline)
       |> Map.put(:definition_file,
                   pipeline.working_directory <> "/" <> pipeline.yaml_file_name)
-      |> Map.drop([:definition, :working_directory, :yaml_file_name])
+      |> Map.drop([:working_directory, :yaml_file_name])
     end
 
     defp merge_with_block_details(topology_blocks, ppl_blocks) do
@@ -232,7 +248,6 @@ defmodule Ppl.Actions.ListActivityImpl do
             pending_at: pt.pending_at,
             queuing_at: pt.queuing_at,
             running_at: pt.running_at,
-            definition: topology_definition(pr.definition),
             queue:  %{
               queue_id: fragment("coalesce(?::text, '')", q.queue_id),
               name: fragment("coalesce(?, '')", q.name),
