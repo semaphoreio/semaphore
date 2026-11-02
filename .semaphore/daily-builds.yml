@@ -2034,7 +2034,7 @@ blocks:
       jobs:
         - name: "Check code"
           commands:
-            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated" --ignores G706'
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
         - name: "Check dependencies"
           commands:
             - make check.go.deps
@@ -2364,7 +2364,7 @@ blocks:
       jobs:
         - name: "Check code"
           commands:
-            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated" --ignores G706,G204'
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
         - name: "Check dependencies"
           commands:
             - make check.go.deps
@@ -2615,7 +2615,7 @@ blocks:
       jobs:
         - name: "Check code"
           commands:
-            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated" --ignores G115,G101,G705'
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated" --ignores G115'
         - name: "Check dependencies"
           commands:
             - make check.go.deps
