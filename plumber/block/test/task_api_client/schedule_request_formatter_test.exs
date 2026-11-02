@@ -122,6 +122,40 @@ defmodule Block.TaskApiClient.ScheduleRequestFormatter.Test do
     assert original_job_id_env(j1) == b_orig_id
   end
 
+  # zebra signs the OIDC actor and trg claims from the first match of these names,
+  # so the platform values must precede block and job duplicates.
+  @claim_env_vars ~w(
+    SEMAPHORE_WORKFLOW_TRIGGERED_BY
+    SEMAPHORE_WORKFLOW_TRIGGERED_BY_API
+    SEMAPHORE_WORKFLOW_TRIGGERED_BY_HOOK
+    SEMAPHORE_WORKFLOW_TRIGGERED_BY_SCHEDULE
+    SEMAPHORE_WORKFLOW_TRIGGERED_BY_MANUAL_RUN
+    SEMAPHORE_WORKFLOW_RERUN
+    SEMAPHORE_PIPELINE_PROMOTION
+    SEMAPHORE_PIPELINE_PROMOTED_BY
+    SEMAPHORE_PIPELINE_RERUN
+  )
+
+  test "platform env vars read for OIDC claims come before block and job duplicates", ctx do
+    job = %{"name" => "job1", "commands" => ["echo foo"],
+            "env_vars" => claim_env_vars("job")}
+
+    task_def = ctx.task_def |> Map.merge(%{
+      "jobs" => [job],
+      "ppl_env_variables" => claim_env_vars("platform"),
+      "env_vars" => claim_env_vars("block")
+    })
+
+    assert {:ok, req} =
+      ScheduleRequestFormatter.to_proto_request(task_def, additional_params(%{}))
+
+    assert [job] = req.jobs
+    for name <- @claim_env_vars, do: assert env_value(job, name) == "platform"
+  end
+
+  defp claim_env_vars(value),
+    do: Enum.map(@claim_env_vars, &%{"name" => &1, "value" => value})
+
   test "partition without rerun_jobs key (older format) injects no env", ctx do
     ppl_args = %{@partition_key =>
       %{"original_block_id" => ctx.orig_block_id, "jobs" => %{"0" => UUID.uuid4()}}}

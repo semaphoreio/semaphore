@@ -156,10 +156,18 @@ defmodule Test.Helpers do
 
   def start_ppl_block_loopers(loopers \\ []) do
     loopers
+    |> Enum.concat(start_waiting_drain())
     |> Enum.concat([Ppl.PplBlocks.STMHandler.InitializingState.start_link()])
     |> Enum.concat([Ppl.PplBlocks.STMHandler.WaitingState.start_link()])
     |> Enum.concat([Ppl.PplBlocks.STMHandler.RunningState.start_link()])
     |> Enum.concat([Ppl.PplBlocks.STMHandler.StoppingState.start_link()])
+  end
+
+  def start_waiting_drain() do
+    [
+      Task.Supervisor.start_link(name: Ppl.PplBlocks.WaitingDrain.task_supervisor()),
+      Ppl.PplBlocks.WaitingDrain.start_link()
+    ]
   end
 
   def start_block_loopers(loopers \\ []) do

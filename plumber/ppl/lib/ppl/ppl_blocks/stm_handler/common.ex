@@ -11,6 +11,7 @@ defmodule Ppl.PplBlocks.STMHandler.Common do
   alias Ppl.TimeLimits.Model.TimeLimitsQueries
   alias Ppl.PplBlocks.STMHandler.RunningState, as: PplBlocksRunningState
   alias Ppl.PplBlocks.STMHandler.StoppingState, as: PplBlocksStoppingState
+  alias Ppl.PplBlocks.STMHandler.WaitingState, as: PplBlocksWaitingState
   alias Google.Protobuf.Timestamp
   alias Util.{Proto, ToTuple, Metrics}
   alias LogTee, as: LT
@@ -85,12 +86,15 @@ defmodule Ppl.PplBlocks.STMHandler.Common do
   def string_to_enum_atom(_, _), do: PplBlockState.key(0)
 
   @doc """
-  Notifies Ppl that particular PplBlock transitioned to 'done'.
+  Notifies Ppl that particular PplBlock transitioned to 'done', and schedules
+  waiting blocks of the same pipeline which might be ready now.
   """
   def notify_ppl_when_done(data) do
     import Ecto.Query
 
     ppl_id = data |> Map.get(:exit_transition, %{}) |> Map.get(:ppl_id)
+
+    PplBlocksWaitingState.execute_now_for_pipeline(ppl_id)
 
     query_fun = fn query -> query |> where(ppl_id: ^ppl_id) end
 

@@ -21,6 +21,10 @@ defmodule PipelinesAPI.Pipelines.Common do
     respond_(conn, 403, message, encode?)
   end
 
+  def respond({:error, {:service_unavailable, message}}, conn, encode?) do
+    respond_(conn, 503, message, encode?)
+  end
+
   def respond({:error, {:unprocessable, message}}, conn, encode?) do
     respond_(conn, 422, message, encode?)
   end

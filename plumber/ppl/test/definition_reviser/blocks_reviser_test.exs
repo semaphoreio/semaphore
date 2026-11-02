@@ -4,6 +4,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
   alias Ppl.DefinitionReviser.BlocksReviser
   alias Ppl.PplRequests.Model.PplRequestsQueries
   alias InternalApi.User.DescribeResponse
+  alias InternalApi.User.RepositoryProvider
   alias Ppl.Actions
   alias Util.Proto
 
@@ -195,12 +196,12 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
     end)
   end
 
-  test "BlocksReviser calls user API and correctly sets promoted_by and triggered_by env var in promotions", ctx do
+  test "BlocksReviser sets promoted_by from the promoter and triggered_by from the webhook in promotions", ctx do
     req_args = ctx.req_args |> Map.put("promoter_id", "user_id_1") |> Map.put("requester_id", "user_id_2")
     ppl_req = ctx.ppl_req |> Map.put(:request_args, req_args)
 
     UserServiceMock
-    |> GrpcMock.expect(:describe, 4, fn
+    |> GrpcMock.expect(:describe, 2, fn
       %{user_id: "user_id_1"}, _ ->
         %{github_login: "github_username_1", status: %{code: 0}}
         |> Proto.deep_new!(DescribeResponse)
@@ -229,7 +230,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
         %{"name" => @pipeline_rerun, "value" => "false"},
         %{"name" => @pipeline_promotion, "value" => "false"},
         %{"name" => @pipeline_promoted_by, "value" => "github_username_1"},
-        %{"name" => @workflow_triggered_by, "value" => "github_username_2"},
+        %{"name" => @workflow_triggered_by, "value" => "gh_username_1"},
         %{"name" => @git_commit_author, "value" => "gh_username_2"},
         %{"name" => @git_committer, "value" => "gh_username_1"},
         %{"name" => @organization_id, "value" => "test-org-id-123"},
@@ -239,6 +240,88 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
     end)
 
     GrpcMock.verify!(UserServiceMock)
+  end
+
+  describe "SEMAPHORE_WORKFLOW_TRIGGERED_BY" do
+    test "hook pushes name the webhook's pusher, not the requester's stored login", ctx do
+      stub_requester([provider(:GITHUB, "github-login"), provider(:GITLAB, "gitlab-login")])
+
+      for service <- ["git_hub", "gitlab", "bitbucket"] do
+        ppl_req = with_request_args(ctx.ppl_req, %{"service" => service, "triggered_by" => "hook",
+                                                    "requester_id" => "user_id_1"})
+
+        assert triggered_by_env(ctx.ppl_def, ppl_req) == "gh_username_1"
+      end
+    end
+
+    test "promotions name the workflow triggerer, not the promoter", ctx do
+      stub_requester([provider(:GITHUB, "promoter-login")])
+      ppl_req = with_request_args(ctx.ppl_req, %{"service" => "git_hub", "triggered_by" => "hook",
+                                                  "promoter_id" => "user_id_1"})
+
+      assert triggered_by_env(ctx.ppl_def, ppl_req) == "gh_username_1"
+    end
+
+    test "API, scheduled and manual runs name the requester's login on the repo's provider", ctx do
+      stub_requester([provider(:GITHUB, "github-login"), provider(:GITLAB, "gitlab-login"),
+                      provider(:BITBUCKET, "bitbucket-login")])
+
+      for {service, login} <- [{"git_hub", "github-login"}, {"gitlab", "gitlab-login"},
+                               {"bitbucket", "bitbucket-login"}],
+          trigger <- ["api", "schedule", "manual_run"] do
+        ppl_req = with_request_args(ctx.ppl_req, %{"service" => service, "triggered_by" => trigger,
+                                                    "requester_id" => "user_id_1"})
+
+        assert triggered_by_env(ctx.ppl_def, ppl_req) == login
+      end
+    end
+
+    test "is empty when the requester has no account on the repo's provider", ctx do
+      stub_requester([provider(:GITHUB, "github-login")])
+      ppl_req = with_request_args(ctx.ppl_req, %{"service" => "bitbucket", "triggered_by" => "api",
+                                                  "requester_id" => "user_id_1"})
+
+      assert triggered_by_env(ctx.ppl_def, ppl_req) == ""
+    end
+
+    test "is empty for API, scheduled and manual runs without a requester", ctx do
+      ppl_req = with_request_args(ctx.ppl_req, %{"service" => "git_hub", "triggered_by" => "schedule"})
+
+      assert triggered_by_env(ctx.ppl_def, ppl_req) == ""
+    end
+
+    test "generic Git names the requester's GitHub login, or the hook's author without one", ctx do
+      stub_requester([provider(:GITHUB, "github-login")])
+      with_requester = with_request_args(ctx.ppl_req, %{"service" => "git", "triggered_by" => "hook",
+                                                         "requester_id" => "user_id_1"})
+      without_requester = with_request_args(ctx.ppl_req, %{"service" => "git", "triggered_by" => "hook"})
+
+      assert triggered_by_env(ctx.ppl_def, with_requester) == "stored-login"
+      assert triggered_by_env(ctx.ppl_def, without_requester) == "gh_username_1"
+    end
+  end
+
+  defp stub_requester(providers) do
+    UserServiceMock
+    |> GrpcMock.stub(:describe, fn _, _ ->
+      %{github_login: "stored-login", repository_providers: providers, status: %{code: 0}}
+      |> Proto.deep_new!(DescribeResponse)
+    end)
+  end
+
+  defp provider(type, login),
+    do: %{type: RepositoryProvider.Type.value(type), login: login, uid: "uid-#{login}"}
+
+  defp with_request_args(ppl_req, args),
+    do: Map.update!(ppl_req, :request_args, &Map.merge(&1, args))
+
+  defp triggered_by_env(ppl_def, ppl_req) do
+    assert {:ok, %{"blocks" => [block | _]}} = BlocksReviser.revise_blocks_definition(ppl_def, ppl_req)
+
+    block
+    |> get_in(["build", "ppl_env_variables"])
+    |> Enum.find(fn env_var -> env_var["name"] == @workflow_triggered_by end)
+    |> Map.get("value")
   end
 
   test "old style epilogue commands both in blocks and global are transformed into always commands", ctx do

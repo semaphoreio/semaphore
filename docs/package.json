@@ -69,7 +69,8 @@
         "minimatch": "9.0.7"
       }
     },
-    "serialize-javascript": "7.0.3"
+    "serialize-javascript": "7.0.3",
+    "markdown-it": "14.3.3"
   },
   "resolutions": {
     "node-forge": "1.4.0",
@@ -81,6 +82,7 @@
     "@redocly/openapi-core/minimatch": "5.1.8",
     "sucrase/glob/minimatch": "9.0.7",
     "serve-handler/minimatch": "3.1.4",
-    "serialize-javascript": "7.0.3"
+    "serialize-javascript": "7.0.3",
+    "markdown-it": "14.3.3"
   }
 }

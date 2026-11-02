@@ -32,6 +32,7 @@ defmodule InternalApi.RepositoryIntegrator.GetTokenRequest do
   )
 
   field(:project_id, 4, type: :string, json_name: "projectId")
+  field(:repository_remote_id, 5, type: :string, json_name: "repositoryRemoteId")
 end
 
 defmodule InternalApi.RepositoryIntegrator.GetTokenResponse do

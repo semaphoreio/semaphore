@@ -604,7 +604,7 @@ This step installs the **Enterprise Edition**. If you want to install the Commun
     ```shell title="Remote shell: install Semaphore"
     helm upgrade --install semaphore "oci://ghcr.io/semaphoreio/semaphore" \
       --debug \
-      --version v1.5.0 \
+      --version v1.6.0 \
       --timeout 30m \
       --set global.edition=ee \
       --set global.license="$(cat ${LICENSE_FILE})"\

@@ -17,12 +17,23 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState do
   alias Ppl.PplRequests.Model.PplRequestsQueries
   alias Ppl.PplBlocks.Model.{PplBlocks, PplBlocksQueries, WaitingStateScheduling}
   alias Ppl.PplBlocks.STMHandler.Common
+  alias Ppl.PplBlocks.WaitingDrain
   alias LogTee, as: LT
   alias Util.{ToTuple, Metrics}
 
+  # Max number of blocks scheduled in one drain of a pipeline, after that the
+  # pipeline is put at the end of the drain queue so it doesn't starve others.
+  @default_drain_batch_size 100
+
+  # Same as the Wormhole timeout of periodic scheduling, it keeps scheduling of
+  # one block shorter than the threshold after which Beholder recovers it.
+  @drain_step_timeout_ms 16_000
+
+  # The periodic (global) scheduling is only a safety net, blocks are scheduled
+  # by draining pipelines when they are triggered, see execute_now_for_pipeline/1
   use Looper.STM,
     id: __MODULE__,
-    period_ms: 1_000,
+    period_ms: Util.Config.get_sleeping_period(:ppl, :ppl_blk_waiting_sp),
     repo: Ppl.EctoRepo,
     schema: Ppl.PplBlocks.Model.PplBlocks,
     observed_state: "waiting",
@@ -35,24 +46,83 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState do
 
 #######################
 
-  def enter_scheduling(_) do
-    with {:ok, [{old, new}]} <- WaitingStateScheduling.get_ready_block(),
-         true                <- ppl_block_in_waiting_state(old)
+  @doc """
+  Schedule all ready waiting blocks of given pipeline as soon as possible.
+  """
+  def execute_now_for_pipeline(ppl_id), do: WaitingDrain.trigger(ppl_id)
+
+  @doc """
+  Schedules ready waiting blocks of given pipeline one by one until none is left.
+  Called from Ppl.PplBlocks.WaitingDrain tasks.
+  """
+  def drain_pipeline(ppl_id) do
+    Metrics.benchmark("Ppl.ppl_blk.waiting_STM", "drain", fn ->
+      args() |> Map.put(:ppl_id, ppl_id) |> drain_pipeline_(0, drain_batch_size())
+    end)
+  end
+
+  defp drain_pipeline_(params, count, batch_size) when count >= batch_size do
+    execute_now_for_pipeline(params.ppl_id)
+    {:ok, count}
+  end
+  defp drain_pipeline_(params, count, batch_size) do
+    case drain_step(params) do
+      {:ok, :no_item} -> {:ok, count}
+      # Block could not be scheduled, it stays in scheduling until Beholder
+      # recovers it, so it is not picked again and other blocks can continue.
+      {:ok, _exit_state} -> drain_pipeline_(params, count + 1, batch_size)
+      {:error, {:enter_scheduling, _}} = error -> error
+      {:error, {:timeout, _}} = error -> error
+      _exit_error -> drain_pipeline_(params, count + 1, batch_size)
+    end
+  end
+
+  defp drain_step(params) do
+    case Wormhole.capture(__MODULE__, :recurring, [params],
+                          timeout: @drain_step_timeout_ms, stacktrace: true) do
+      {:ok, result} -> result
+      {:error, {:timeout, _}} = error -> error |> LT.warn("WaitingState drain step timed out")
+      {:error, reason} -> {:error, reason} |> LT.warn("WaitingState drain step failed")
+    end
+  end
+
+  defp drain_batch_size do
+    case Application.get_env(:ppl, :ppl_blk_waiting_drain_batch_size) do
+      value when is_integer(value) and value > 0 -> value
+      _ -> @default_drain_batch_size
+    end
+  end
+
+  def enter_scheduling(params) do
+    ppl_id = Map.get(params, :ppl_id)
+
+    with {:ok, [{old, new}]} <- get_ready_block(ppl_id),
+         true                <- ppl_block_in_waiting_state(old, ppl_id)
     do
       {:ok, {old, new}}
     else
       {:ok, []}   -> {:ok, {nil, nil}}
       :skip_scheduling -> {:ok, {nil, nil}}
-      err         -> err |> LT.error("Error in waiting scheduling")
+      err         -> err |> LT.error("Error in waiting scheduling") |> enter_error(ppl_id)
     end
   end
 
-  defp ppl_block_in_waiting_state(%{state: "waiting"}), do: true
-  defp ppl_block_in_waiting_state(ppl) do
+  # Drain stops when ready blocks can not be fetched, see drain_pipeline_/3
+  defp enter_error(err, nil), do: err
+  defp enter_error(err, _ppl_id), do: {:error, {:enter_scheduling, err}}
+
+  defp get_ready_block(nil), do: WaitingStateScheduling.get_ready_block()
+  defp get_ready_block(ppl_id), do: WaitingStateScheduling.get_ready_block(ppl_id)
+
+  defp ppl_block_in_waiting_state(%{state: "waiting"}, _ppl_id), do: true
+  defp ppl_block_in_waiting_state(ppl, ppl_id) do
     ppl |> LT.info("Race in waiting STM, selected ppl_block was already processed")
-    execute_now()
+    retry_scheduling(ppl_id)
     :skip_scheduling
   end
+
+  defp retry_scheduling(nil), do: execute_now()
+  defp retry_scheduling(ppl_id), do: execute_now_for_pipeline(ppl_id)
 
 #######################
 
@@ -401,9 +471,15 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState do
 
 #######################
 
+  # notify_ppl_when_done/1 also schedules blocks that depend on this one
   def epilogue_handler({:ok, data = %{user_exit_function: %{state: "done"}}}) do
     Common.notify_ppl_when_done(data)
     data |> Map.get(:user_exit_function) |> Common.send_state_watch_metric()
+  end
+  # Block that was found by periodic scheduling could have other ready blocks
+  # alongside it, and fast-failing block stays waiting with terminate request.
+  def epilogue_handler({:ok, data}) do
+    data |> Map.get(:exit_transition, %{}) |> Map.get(:ppl_id) |> execute_now_for_pipeline()
   end
   def epilogue_handler(_exit_state), do: :nothing
 end
