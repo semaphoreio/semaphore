@@ -423,5 +423,19 @@ defmodule InternalClients.SchedulersClientTest do
       assert response.spec.pipeline_file == "semaphore.yml"
       assert response.metadata.triggered_by.id == "user-1"
     end
+
+    test "returns service_unavailable when gRPC client returns UNAVAILABLE status" do
+      GrpcMock.stub(SchedulerMock, :run_now, fn _, _stream ->
+        %InternalApi.PeriodicScheduler.RunNowResponse{
+          status: %InternalApi.Status{
+            code: Google.Rpc.Code.value(:UNAVAILABLE),
+            message: "GitHub API temporarily unavailable"
+          }
+        }
+      end)
+
+      assert {:error, {:service_unavailable, "GitHub API temporarily unavailable"}} =
+               Client.run_now(%{task_id: UUID.uuid4(), requester_id: "user-1"})
+    end
   end
 end
