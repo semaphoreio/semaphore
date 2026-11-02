@@ -409,6 +409,16 @@ defmodule Guard.GrpcServers.OrganizationServer do
             organization: org_to_proto(organization)
           }
 
+        {:error, :organization_limit_reached} ->
+          limit = Guard.Store.Organization.organization_limit_per_creator()
+
+          Logger.info("Organization limit reached for creator #{request.creator_id}")
+
+          grpc_error!(
+            :failed_precondition,
+            "You have reached the maximum number of organizations you can create (#{limit})."
+          )
+
         {:error, changeset} ->
           Logger.error(
             "Error while creating org req #{inspect(request)} errors: #{inspect(changeset.errors)}"

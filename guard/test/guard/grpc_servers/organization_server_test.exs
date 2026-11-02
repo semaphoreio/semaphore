@@ -1495,6 +1495,141 @@ defmodule Guard.GrpcServers.OrganizationServerTest do
     end
   end
 
+  describe "create/2 with organization limit per creator" do
+    setup do
+      previous = Application.get_env(:guard, :organization_limit_per_creator)
+      Application.put_env(:guard, :organization_limit_per_creator, 3)
+
+      on_exit(fn ->
+        if previous == nil,
+          do: Application.delete_env(:guard, :organization_limit_per_creator),
+          else: Application.put_env(:guard, :organization_limit_per_creator, previous)
+      end)
+
+      :ok
+    end
+
+    defp create_org(channel, creator_id, username) do
+      request =
+        Organization.CreateRequest.new(
+          organization_name: "Limit Test",
+          organization_username: username,
+          creator_id: creator_id
+        )
+
+      Organization.OrganizationService.Stub.create(channel, request)
+    end
+
+    defp insert_orgs!(creator_id, count, opts \\ []) do
+      Enum.map(1..count, fn i ->
+        Support.Factories.Organization.insert!(
+          Keyword.merge(
+            [
+              creator_id: creator_id,
+              username: "existing-#{i}-#{System.unique_integer([:positive])}"
+            ],
+            opts
+          )
+        )
+      end)
+    end
+
+    test "creates organization when creator is under the limit", %{grpc_channel: channel} do
+      with_mocks [{Guard.Events.OrganizationCreated, [], [publish: fn _ -> :ok end]}] do
+        creator_id = Ecto.UUID.generate()
+        insert_orgs!(creator_id, 2)
+
+        assert {:ok, response} = create_org(channel, creator_id, "under-limit-org")
+        assert response.organization.owner_id == creator_id
+        assert_called(Guard.Events.OrganizationCreated.publish(response.organization.org_id))
+      end
+    end
+
+    test "refuses with failed_precondition when creator is at the limit", %{
+      grpc_channel: channel
+    } do
+      with_mocks [{Guard.Events.OrganizationCreated, [], [publish: fn _ -> :ok end]}] do
+        creator_id = Ecto.UUID.generate()
+        insert_orgs!(creator_id, 3)
+
+        assert {:error, error} = create_org(channel, creator_id, "over-limit-org")
+        assert error.status == GRPC.Status.failed_precondition()
+
+        assert error.message ==
+                 "You have reached the maximum number of organizations you can create (3)."
+
+        refute Guard.FrontRepo.get_by(Guard.FrontRepo.Organization, username: "over-limit-org")
+        assert_not_called(Guard.Events.OrganizationCreated.publish(:_))
+      end
+    end
+
+    test "soft-deleted organizations do not count towards the limit", %{grpc_channel: channel} do
+      with_mocks [{Guard.Events.OrganizationCreated, [], [publish: fn _ -> :ok end]}] do
+        creator_id = Ecto.UUID.generate()
+        insert_orgs!(creator_id, 2)
+        insert_orgs!(creator_id, 2, deleted_at: DateTime.utc_now() |> DateTime.truncate(:second))
+
+        assert {:ok, _} = create_org(channel, creator_id, "after-deleted-org")
+        assert {:error, error} = create_org(channel, creator_id, "after-deleted-org-2")
+        assert error.status == GRPC.Status.failed_precondition()
+      end
+    end
+
+    test "limits are tracked independently per creator", %{grpc_channel: channel} do
+      with_mocks [{Guard.Events.OrganizationCreated, [], [publish: fn _ -> :ok end]}] do
+        full_creator = Ecto.UUID.generate()
+        other_creator = Ecto.UUID.generate()
+        insert_orgs!(full_creator, 3)
+
+        assert {:error, _} = create_org(channel, full_creator, "full-creator-org")
+        assert {:ok, response} = create_org(channel, other_creator, "other-creator-org")
+        assert response.organization.owner_id == other_creator
+      end
+    end
+
+    test "honors the configured limit", %{grpc_channel: channel} do
+      with_mocks [{Guard.Events.OrganizationCreated, [], [publish: fn _ -> :ok end]}] do
+        Application.put_env(:guard, :organization_limit_per_creator, 1)
+        creator_id = Ecto.UUID.generate()
+
+        assert {:ok, _} = create_org(channel, creator_id, "configured-limit-org")
+        assert {:error, error} = create_org(channel, creator_id, "configured-limit-org-2")
+        assert error.status == GRPC.Status.failed_precondition()
+        assert error.message =~ "(1)"
+      end
+    end
+
+    test "a limit of 0 disables the check", %{grpc_channel: channel} do
+      with_mocks [{Guard.Events.OrganizationCreated, [], [publish: fn _ -> :ok end]}] do
+        Application.put_env(:guard, :organization_limit_per_creator, 0)
+        creator_id = Ecto.UUID.generate()
+        insert_orgs!(creator_id, 5)
+
+        assert {:ok, _} = create_org(channel, creator_id, "unlimited-org")
+      end
+    end
+
+    test "requests without a creator keep returning invalid_argument", %{grpc_channel: channel} do
+      with_mocks [{Guard.Events.OrganizationCreated, [], [publish: fn _ -> :ok end]}] do
+        assert {:error, error} = create_org(channel, "", "no-creator-org")
+        assert error.status == GRPC.Status.invalid_argument()
+        assert Jason.decode!(error.message)["creator_id"] == ["Cannot be empty"]
+        assert_not_called(Guard.Events.OrganizationCreated.publish(:_))
+      end
+    end
+
+    test "username errors are still reported when under the limit", %{
+      grpc_channel: channel,
+      organization: organization
+    } do
+      with_mocks [{Guard.Events.OrganizationCreated, [], [publish: fn _ -> :ok end]}] do
+        assert {:error, error} = create_org(channel, Ecto.UUID.generate(), organization.username)
+        assert error.status == GRPC.Status.invalid_argument()
+        assert Jason.decode!(error.message) == %{"username" => ["Already taken"]}
+      end
+    end
+  end
+
   describe "update/2" do
     test "updates organization with valid params", %{
       grpc_channel: channel,
