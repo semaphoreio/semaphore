@@ -33,7 +33,7 @@ defmodule RepositoryHub.GithubConnector do
     end)
   end
 
-  def update_repository_url(connector, url, target_token, user_id) do
+  def prepare_url_change(connector, url, target_token, user_id) do
     connector.git_repository
     |> Model.GitRepository.equal?(url)
     |> unwrap(fn
@@ -80,7 +80,21 @@ defmodule RepositoryHub.GithubConnector do
              token,
              "Connect your GitHub account to Semaphore to change the repository URL."
            ) do
-      prepare_url_change(connector, url, token, github_repository)
+      repository_changes = %{
+        name: git_repository.repo,
+        owner: git_repository.owner,
+        url: git_repository.ssh_git_url,
+        remote_id: github_repository.id,
+        private: github_repository.is_private?,
+        default_branch: github_repository.default_branch,
+        connected: true
+      }
+
+      if github_repository.id != connector.repository.remote_id do
+        create_target_resources(connector, git_repository, token, repository_changes)
+      else
+        wrap(%{unchanged(connector) | repository_changes: repository_changes})
+      end
     else
       {:ok, _permissions} ->
         fail_with(:precondition, denied_message)
@@ -131,54 +145,72 @@ defmodule RepositoryHub.GithubConnector do
     %{connector: connector, repository_changes: %{}, new_deploy_key: nil, old_resources: nil, created: nil}
   end
 
-  defp prepare_url_change(connector, url, target_token, github_repository) do
-    Model.GitRepository.from_github(url)
-    |> unwrap(fn new_git_repository ->
-      repository_changes = %{
-        name: new_git_repository.repo,
-        owner: new_git_repository.owner,
-        url: new_git_repository.ssh_git_url,
-        remote_id: github_repository.id,
-        private: github_repository.is_private?,
-        default_branch: github_repository.default_branch,
-        connected: true
-      }
-
-      if github_repository.id != connector.repository.remote_id do
-        create_target_resources(connector, new_git_repository, target_token, repository_changes)
-      else
-        wrap(%{unchanged(connector) | repository_changes: repository_changes})
-      end
-    end)
-  end
-
-  defp create_target_resources(connector, new_git_repository, token, repository_changes) do
+  defp create_target_resources(connector, git_repository, token, repository_changes) do
     repository = connector.repository
+    old_resources = capture_old_resources(connector)
+
+    {private_key, public_key} = Model.DeployKeys.generate_private_public_key_pair()
+
+    {:ok, private_key_enc} =
+      RepositoryHub.Encryptor.encrypt(
+        RepositoryHub.DeployKeyEncryptor,
+        private_key,
+        "semaphore-#{repository.project_id}"
+      )
+
+    {:ok, {secret, secret_enc}} = Model.Repositories.generate_hook_secret(repository)
 
     created = %{
       label: "created",
-      owner: new_git_repository.owner,
-      repo: new_git_repository.repo,
+      owner: git_repository.owner,
+      repo: git_repository.repo,
       token: token,
       hook_id: nil,
       deploy_key: nil
     }
 
-    with {:ok, {webhook, secret_enc}} <- create_webhook(repository, new_git_repository, token),
-         created = %{created | hook_id: webhook.id},
-         {:ok, new_deploy_key} <- create_deploy_key(repository, new_git_repository, token, created) do
-      wrap(%{
-        connector: connector,
-        repository_changes: Map.merge(repository_changes, %{hook_id: webhook.id, hook_secret_enc: secret_enc}),
-        new_deploy_key: new_deploy_key,
-        old_resources: capture_old_resources(connector),
-        created: %{created | deploy_key: %{remote_id: new_deploy_key.remote_id}}
-      })
-    end
-  end
+    create_webhook(repository, git_repository, token, secret)
+    |> unwrap(fn webhook ->
+      created = %{created | hook_id: webhook.id}
 
-  def apply_url_change(%{repository_changes: changes} = change) when map_size(changes) == 0 do
-    wrap(change.connector.repository)
+      try do
+        GithubClient.create_deploy_key(
+          %{
+            repo_owner: git_repository.owner,
+            repo_name: git_repository.repo,
+            title: "semaphore-#{git_repository.owner}-#{git_repository.repo}",
+            key: public_key,
+            read_only: true
+          },
+          token: token
+        )
+      rescue
+        error ->
+          remove_github_resources(created)
+          reraise error, __STACKTRACE__
+      end
+      |> case do
+        {:ok, remote_key} ->
+          wrap(%{
+            connector: connector,
+            repository_changes: Map.merge(repository_changes, %{hook_id: webhook.id, hook_secret_enc: secret_enc}),
+            new_deploy_key: %{
+              public_key: public_key,
+              private_key_enc: private_key_enc,
+              deployed: true,
+              remote_id: remote_key.id,
+              project_id: repository.project_id,
+              repository_id: repository.id
+            },
+            old_resources: old_resources,
+            created: %{created | deploy_key: %{remote_id: remote_key.id}}
+          })
+
+        error ->
+          remove_github_resources(created)
+          error
+      end
+    end)
   end
 
   def apply_url_change(change) do
@@ -251,13 +283,13 @@ defmodule RepositoryHub.GithubConnector do
 
   defp log_removal_failure(kind, resources, reason) do
     log_warn([
-      "failed to remove #{resources.label} #{kind} for #{resources.owner}/#{resources.repo} after url change: #{inspect(reason)}"
+      "url change: failed to remove the #{resources.label} #{kind} on #{resources.owner}/#{resources.repo}: #{inspect(reason)}"
     ])
 
     Watchman.increment({"github_app.update_url.#{resources.label}_#{kind}_removal_failed", []})
   end
 
-  defp create_webhook(repository, git_repository, token) do
+  defp create_webhook(repository, git_repository, token, secret) do
     params = %{
       repo_owner: git_repository.owner,
       repo_name: git_repository.repo,
@@ -270,47 +302,8 @@ defmodule RepositoryHub.GithubConnector do
       GithubClient.remove_webhook(Map.put(params, :webhook_id, existing.id), token: token)
     end)
 
-    {:ok, {secret, secret_enc}} = Model.Repositories.generate_hook_secret(repository)
-
     params
     |> Map.put(:secret, secret)
     |> GithubClient.create_webhook(token: token)
-    |> unwrap(fn webhook -> wrap({webhook, secret_enc}) end)
-  end
-
-  defp create_deploy_key(repository, git_repository, token, created) do
-    {private_key, public_key} = Model.DeployKeys.generate_private_public_key_pair()
-
-    {:ok, private_key_enc} =
-      RepositoryHub.Encryptor.encrypt(
-        RepositoryHub.DeployKeyEncryptor,
-        private_key,
-        "semaphore-#{repository.project_id}"
-      )
-
-    GithubClient.create_deploy_key(
-      %{
-        repo_owner: git_repository.owner,
-        repo_name: git_repository.repo,
-        title: "semaphore-#{git_repository.owner}-#{git_repository.repo}",
-        key: public_key,
-        read_only: true
-      },
-      token: token
-    )
-    |> unwrap(fn remote_key ->
-      wrap(%{
-        public_key: public_key,
-        private_key_enc: private_key_enc,
-        deployed: true,
-        remote_id: remote_key.id,
-        project_id: repository.project_id,
-        repository_id: repository.id
-      })
-    end)
-    |> unwrap_error(fn reason ->
-      remove_github_resources(created)
-      error(reason)
-    end)
   end
 end

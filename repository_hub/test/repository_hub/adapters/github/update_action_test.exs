@@ -83,7 +83,7 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       assert unchanged_repository.pipeline_file == repository.pipeline_file
     end
 
-    test "renames a github_app repository within the same installation", %{github_app_adapter: adapter} do
+    test "changes the url to another repository within the same installation", %{github_app_adapter: adapter} do
       repository = RepositoryModelFactory.githubapp_repo()
       DeployKeysModelFactory.create_deploy_key(project_id: repository.project_id, repository_id: repository.id)
 
@@ -291,6 +291,97 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       end
 
       assert_old_resources_kept_and_created_resources_removed(repository, deploy_key)
+    end
+
+    test "removes the target webhook when creating the target deploy key raises", %{github_app_adapter: adapter} do
+      repository =
+        RepositoryModelFactory.githubapp_repo(
+          owner: "old-org",
+          url: "git@github.com:old-org/repository.git",
+          remote_id: "999"
+        )
+
+      {:ok, deploy_key} =
+        DeployKeysModelFactory.create_deploy_key(project_id: repository.project_id, repository_id: repository.id)
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:new-org/repository.git",
+          user_id: "requester-user-id"
+        )
+
+      :meck.expect(GithubClient, :create_deploy_key, fn _params, _opts -> raise RuntimeError, "connection reset" end)
+
+      with_mock RepositoryIntegratorClient, [:passthrough],
+        get_token: fn
+          _integration_type, "old-org/repository", _remote_id -> {:ok, "old-tok"}
+          _integration_type, "new-org/repository", _remote_id -> {:ok, "new-tok"}
+        end do
+        assert_raise RuntimeError, fn -> UpdateAction.execute(adapter, request) end
+      end
+
+      {:ok, unchanged_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert unchanged_repository.url == "git@github.com:old-org/repository.git"
+      assert unchanged_repository.hook_id == repository.hook_id
+      assert {:ok, %{id: deploy_key_id}} = RepositoryHub.Model.DeployKeyQuery.get_by_repository_id(repository.id)
+      assert deploy_key_id == deploy_key.id
+
+      [{:ok, created_webhook}] =
+        for {_pid, {GithubClient, :create_webhook, _args}, result} <- :meck.history(GithubClient), do: result
+
+      assert_called(
+        GithubClient.remove_webhook(%{repo_owner: "new-org", webhook_id: created_webhook.id}, token: "new-tok")
+      )
+
+      assert_not_called(GithubClient.remove_webhook(%{repo_owner: "old-org"}, :_))
+      assert_not_called(GithubClient.remove_deploy_key(:_, :_))
+    end
+
+    test "completes the move when the transaction raises after it committed", %{github_app_adapter: adapter} do
+      repository =
+        RepositoryModelFactory.githubapp_repo(
+          owner: "old-org",
+          url: "git@github.com:old-org/repository.git",
+          remote_id: "999"
+        )
+
+      DeployKeysModelFactory.create_deploy_key(project_id: repository.project_id, repository_id: repository.id)
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:new-org/repository.git",
+          user_id: "requester-user-id"
+        )
+
+      with_mocks [
+        {RepositoryIntegratorClient, [:passthrough],
+         get_token: fn
+           _integration_type, "old-org/repository", _remote_id -> {:ok, "old-tok"}
+           _integration_type, "new-org/repository", _remote_id -> {:ok, "new-tok"}
+         end},
+        {RepositoryHub.Repo, [:passthrough],
+         transaction: fn %Ecto.Multi{} = multi ->
+           :meck.passthrough([multi])
+           raise DBConnection.ConnectionError, "connection closed"
+         end}
+      ] do
+        assert %UpdateResponse{repository: response_repository} = UpdateAction.execute(adapter, request)
+        assert response_repository.url == "git@github.com:new-org/repository.git"
+      end
+
+      [{:ok, created_webhook}] =
+        for {_pid, {GithubClient, :create_webhook, _args}, result} <- :meck.history(GithubClient), do: result
+
+      {:ok, updated_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert updated_repository.url == "git@github.com:new-org/repository.git"
+      assert updated_repository.hook_id == created_webhook.id
+
+      assert_called(GithubClient.remove_webhook(%{repo_owner: "old-org", repo_name: "repository"}, token: "old-tok"))
+      assert_called(GithubClient.remove_deploy_key(%{repo_owner: "old-org", repo_name: "repository"}, token: "old-tok"))
+      assert_not_called(GithubClient.remove_webhook(%{repo_owner: "new-org"}, :_))
+      assert_not_called(GithubClient.remove_deploy_key(%{repo_owner: "new-org"}, :_))
     end
 
     test "rotates the webhook secret when an orphan webhook already exists on the target", %{
