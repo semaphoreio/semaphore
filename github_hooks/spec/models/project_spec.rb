@@ -83,6 +83,28 @@ RSpec.describe Project, :type => :model do
     end
   end
 
+  describe "pull_request_head_commit?" do
+    it "is false by default" do
+      expect(FactoryBot.create(:project).pull_request_head_commit?).to be(false)
+    end
+
+    context "when the project builds pull request head commits" do
+      let(:project) { FactoryBot.create(:project, :pull_request_commit => "head_commit") }
+
+      it "is true while pr_head_builds is enabled for the organization" do
+        allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:pr_head_builds, project.organization_id).and_return(true)
+
+        expect(project.pull_request_head_commit?).to be(true)
+      end
+
+      it "is false once pr_head_builds is turned off" do
+        allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:pr_head_builds, project.organization_id).and_return(false)
+
+        expect(project.pull_request_head_commit?).to be(false)
+      end
+    end
+  end
+
   describe "bitbucket_repository?" do
     before do
       @project = FactoryBot.create(:project)

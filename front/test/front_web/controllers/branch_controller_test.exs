@@ -71,6 +71,38 @@ defmodule FrontWeb.BranchControllerTest do
       assert html_response(conn, 200) =~ "icn-pullrequest.svg"
     end
 
+    test "shows the conflict banner for a conflicting pull request", %{
+      conn: conn,
+      project: project
+    } do
+      branch = conflicting_pull_request_branch(project)
+
+      html = conn |> get(branch_path(conn, :show, branch.id)) |> html_response(200)
+
+      assert html =~ "has conflicts that must be resolved"
+    end
+
+    test "hides the conflict banner when the project builds pull request head commits", %{
+      conn: conn,
+      project: project
+    } do
+      alias InternalApi.Projecthub.Project.Spec.Repository.PullRequestCommit
+
+      branch = conflicting_pull_request_branch(project)
+
+      project =
+        put_in(
+          project.api_model.spec.repository.pull_request_commit,
+          PullRequestCommit.value(:HEAD_COMMIT)
+        )
+
+      DB.update(:projects, project)
+
+      html = conn |> get(branch_path(conn, :show, branch.id)) |> html_response(200)
+
+      refute html =~ "has conflicts that must be resolved"
+    end
+
     test "when branch is tag, opens the page", %{conn: conn, project: project} do
       branch =
         Support.Stubs.Branch.create(project,
@@ -182,5 +214,33 @@ defmodule FrontWeb.BranchControllerTest do
       assert conn.status == 200
       assert html_response(conn, 200) =~ "Pull new workflows on the branch page"
     end
+  end
+
+  defp conflicting_pull_request_branch(project) do
+    branch =
+      Support.Stubs.Branch.create(project,
+        pr_name: "PR name",
+        pr_number: "12",
+        display_name: "PR name",
+        type: InternalApi.Branch.Branch.Type.value(:PR)
+      )
+
+    hook = Support.Stubs.Hook.create(branch)
+
+    hook = %{
+      hook
+      | api_model: %{
+          hook.api_model
+          | git_ref_type: InternalApi.RepoProxy.Hook.Type.value(:PR),
+            pr_mergeable: false
+        }
+    }
+
+    DB.update(:hooks, hook)
+    workflow = Support.Stubs.Workflow.create(hook, Support.Stubs.User.default())
+    Support.Stubs.Pipeline.create_initial(workflow)
+    DB.delete(:workflows, fn w -> w.id != workflow.id end)
+
+    branch
   end
 end

@@ -81,6 +81,16 @@ defmodule Projecthub.Models.ProjectTest do
     end)
   end
 
+  describe ".changeset" do
+    test "accepts only known pull request commits" do
+      params = %{name: "semaphore", organization_id: Ecto.UUID.generate(), creator_id: Ecto.UUID.generate()}
+
+      assert Project.changeset(Map.put(params, :pull_request_commit, "head_commit")).valid?
+      assert Project.changeset(Map.put(params, :pull_request_commit, "merge_commit")).valid?
+      refute Project.changeset(Map.put(params, :pull_request_commit, "rebase")).valid?
+    end
+  end
+
   describe ".id_is_uuid?" do
     test "returns false for appsignal-server" do
       assert Project.id_is_uuid?("appsignal-server") == false
@@ -139,6 +149,7 @@ defmodule Projecthub.Models.ProjectTest do
       assert project.build_branch == true
       assert project.build_forked_pr == false
       assert project.build_draft_pr == true
+      assert project.pull_request_commit == "merge_commit"
     end
 
     test "it should create a repo record" do
@@ -300,6 +311,7 @@ defmodule Projecthub.Models.ProjectTest do
         org_id: org_id,
         description: "A repo for testing SemaphoreCI features",
         build_draft_pr: false,
+        pull_request_commit: "head_commit",
         state: "ready"
       }
 
@@ -326,6 +338,7 @@ defmodule Projecthub.Models.ProjectTest do
       assert updated_project.organization_id == project.organization_id
       assert updated_project.description == "A repo for testing SemaphoreCI features"
       assert updated_project.build_draft_pr == false
+      assert updated_project.pull_request_commit == "head_commit"
     end
 
     test "it emits a project created event" do

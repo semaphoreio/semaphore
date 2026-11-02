@@ -168,7 +168,7 @@ Semaphore starts a workflow for every push to a pull request originating from a 
 
 :::note
 
-Instead of pushing the HEAD commit to the pull request, Semaphore uses the MERGE commit between the source and the upstream branch. You can find the SHA of the HEAD commit of the Pull Request in the [`SEMAPHORE_GIT_PR_SHA`](../reference/env-vars#pr-sha) environment variable.
+By default, instead of building the HEAD commit of the pull request, Semaphore uses the MERGE commit between the source and the upstream branch. On GitHub projects, you can [build the HEAD commit instead](./workflows#pr-commit). You can find the SHA of the HEAD commit of the Pull Request in the [`SEMAPHORE_GIT_PR_SHA`](../reference/env-vars#pr-sha) environment variable.
 
 :::
 
@@ -324,7 +324,7 @@ You may also delete a project using the [Semaphore CLI](../reference/semaphore-c
 
 ### Workflow triggers {#settings-triggers}
 
-See [workflow triggers](./workflows#project-triggers) to learn how to customize what actions trigger a workflow.
+See [workflow triggers](./workflows#project-triggers) to learn how to customize what actions trigger a workflow, and [commit to build for pull requests](./workflows#pr-commit) to choose which commit pull request workflows build.
 
 ### Repository {#settings-repo}
 
