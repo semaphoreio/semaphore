@@ -77,25 +77,6 @@ config :guard,
 
 config :guard, on_prem: System.get_env("ON_PREM") == "true"
 
-# Maximum number of live organizations a single user can create through the
-# Organization Create API. Unset or blank means 3. 0 disables the limit.
-organization_limit_per_creator =
-  case String.trim(System.get_env("ORGANIZATION_LIMIT_PER_CREATOR") || "") do
-    "" ->
-      3
-
-    value ->
-      case Integer.parse(value) do
-        {limit, ""} when limit >= 0 ->
-          limit
-
-        _ ->
-          raise "ORGANIZATION_LIMIT_PER_CREATOR must be 0 (disabled) or a positive integer, got: #{inspect(value)}"
-      end
-  end
-
-config :guard, organization_limit_per_creator: organization_limit_per_creator
-
 config :guard, root_login: System.get_env("ROOT_LOGIN") == "true"
 
 config :guard,
