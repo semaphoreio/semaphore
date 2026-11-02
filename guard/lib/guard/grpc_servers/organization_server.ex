@@ -413,6 +413,7 @@ defmodule Guard.GrpcServers.OrganizationServer do
           limit = Guard.Store.Organization.organization_limit_per_creator()
 
           Logger.info("Organization limit reached for creator #{request.creator_id}")
+          Watchman.increment("guard.organization.create.limit_reached")
 
           grpc_error!(
             :failed_precondition,

@@ -1535,20 +1535,27 @@ defmodule Guard.GrpcServers.OrganizationServerTest do
     end
 
     test "creates organization when creator is under the limit", %{grpc_channel: channel} do
-      with_mocks [{Guard.Events.OrganizationCreated, [], [publish: fn _ -> :ok end]}] do
+      with_mocks [
+        {Guard.Events.OrganizationCreated, [], [publish: fn _ -> :ok end]},
+        {Watchman, [:passthrough], []}
+      ] do
         creator_id = Ecto.UUID.generate()
         insert_orgs!(creator_id, 2)
 
         assert {:ok, response} = create_org(channel, creator_id, "under-limit-org")
         assert response.organization.owner_id == creator_id
         assert_called(Guard.Events.OrganizationCreated.publish(response.organization.org_id))
+        assert_not_called(Watchman.increment("guard.organization.create.limit_reached"))
       end
     end
 
     test "refuses with failed_precondition when creator is at the limit", %{
       grpc_channel: channel
     } do
-      with_mocks [{Guard.Events.OrganizationCreated, [], [publish: fn _ -> :ok end]}] do
+      with_mocks [
+        {Guard.Events.OrganizationCreated, [], [publish: fn _ -> :ok end]},
+        {Watchman, [:passthrough], []}
+      ] do
         creator_id = Ecto.UUID.generate()
         insert_orgs!(creator_id, 3)
 
@@ -1560,6 +1567,7 @@ defmodule Guard.GrpcServers.OrganizationServerTest do
 
         refute Guard.FrontRepo.get_by(Guard.FrontRepo.Organization, username: "over-limit-org")
         assert_not_called(Guard.Events.OrganizationCreated.publish(:_))
+        assert_called(Watchman.increment("guard.organization.create.limit_reached"))
       end
     end
 

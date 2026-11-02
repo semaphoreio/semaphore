@@ -103,6 +103,12 @@ defmodule Guard.Store.Organization do
 
   # Fixed first key for the two-key form of pg_advisory_xact_lock, so the
   # per-creator lock does not collide with advisory locks taken for other purposes.
+  #
+  # The per-creator limit relies on READ COMMITTED isolation (the Postgres
+  # default). The advisory lock is taken in its own statement before the count,
+  # so the count's snapshot is taken after the previous lock holder has
+  # committed. Under REPEATABLE READ or SERIALIZABLE the snapshot would be
+  # fixed at the first statement and the count could miss that insert.
   @creator_lock_namespace 1_330_464_355
 
   @doc """
