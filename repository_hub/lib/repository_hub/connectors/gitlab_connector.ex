@@ -131,10 +131,11 @@ defmodule RepositoryHub.GitlabConnector do
       |> Map.put(:secret, secret)
       |> GitlabClient.create_webhook(token: token)
       |> case do
-        {:ok, _} ->
+        {:ok, webhook} ->
           Model.RepositoryQuery.update(repository, %{
             hook_secret_enc: secret_enc
           })
+          |> unwrap(fn _ -> wrap(webhook) end)
 
         error ->
           error
