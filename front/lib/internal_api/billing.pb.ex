@@ -22,11 +22,13 @@ defmodule InternalApi.Billing.CanSetupOrganizationRequest do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          owner_id: String.t()
+          owner_id: String.t(),
+          reserve: boolean
         }
-  defstruct [:owner_id]
+  defstruct [:owner_id, :reserve]
 
   field(:owner_id, 1, type: :string)
+  field(:reserve, 2, type: :bool)
 end
 
 defmodule InternalApi.Billing.CanSetupOrganizationResponse do
