@@ -22,13 +22,20 @@ defmodule Guard.Api.Gitlab do
     client = build_validate_token_client(token)
 
     case Tesla.get(client, @oauth_token_info_path) do
-      {:ok, res} ->
+      {:ok, res} when res.status in 200..299 ->
         expires_at = OAuth.calc_expires_at(res.body["expires_in"])
-        {:ok, res.status in 200..299 && OAuth.valid_token?(expires_at, nil_valid: false)}
+        {:ok, OAuth.valid_token?(expires_at, nil_valid: false)}
+
+      {:ok, res} when res.status in [401, 403] ->
+        {:ok, false}
+
+      {:ok, res} ->
+        Logger.warning("Transient GitLab token validation failure (HTTP #{res.status})")
+        {:error, :transient}
 
       {:error, error} ->
         Logger.error("Error validating token: #{inspect(error)}")
-        {:error, :network_error}
+        {:error, :transient}
     end
   end
 
@@ -50,25 +57,49 @@ defmodule Guard.Api.Gitlab do
       {:ok, %Tesla.Env{status: status, body: body}} when status in 200..299 ->
         OAuth.handle_ok_token_response(repo_host_account, body)
 
-      {:ok, %Tesla.Env{status: status, body: body}} when status in 400..499 ->
-        Logger.warning(
-          "Failed to refresh gitlab token for #{repo_host_account.login}, with: #{inspect(body)}"
-        )
+      {:ok, %Tesla.Env{status: status, body: body}} ->
+        case OAuth.classify_refresh_response(status, body) do
+          :revoked ->
+            Logger.warning(
+              "Failed to refresh GitLab token (HTTP #{status}): " <>
+                "error=#{inspect(safe_oauth_error(body))} " <>
+                "rha=#{repo_host_account.id} user=#{repo_host_account.user_id}"
+            )
 
-        {:error, :revoked}
+            {:error, :revoked}
 
-      {:ok, %Tesla.Env{status: _status, body: body}} ->
-        Logger.debug(
-          "Failed to refresh gitlab token for #{repo_host_account.login}, with: #{inspect(body)}"
-        )
+          :transient ->
+            Logger.warning(
+              "Transient failure refreshing GitLab token (HTTP #{status}): " <>
+                "error=#{inspect(safe_oauth_error(body))} " <>
+                "rha=#{repo_host_account.id} user=#{repo_host_account.user_id}"
+            )
 
-        {:error, :failed}
+            {:error, :transient}
+        end
 
       {:error, error} ->
-        Logger.error("Error fetching gitlab token: #{inspect(error)}")
+        Logger.error(
+          "Error fetching GitLab token: #{inspect(error)} " <>
+            "rha=#{repo_host_account.id} user=#{repo_host_account.user_id}"
+        )
+
         {:error, :network_error}
     end
   end
+
+  # Never log the raw body (it can carry token material); surface only the
+  # OAuth `error` code.
+  defp safe_oauth_error(body) when is_map(body), do: Map.get(body, "error")
+
+  defp safe_oauth_error(body) when is_binary(body) do
+    case Jason.decode(body) do
+      {:ok, decoded} -> safe_oauth_error(decoded)
+      _ -> nil
+    end
+  end
+
+  defp safe_oauth_error(_), do: nil
 
   defp build_token_client do
     {:ok, {client_id, client_secret}} = Guard.GitProviderCredentials.get(:gitlab)

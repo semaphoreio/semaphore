@@ -96,6 +96,7 @@ dependencies:
   - name: public-api
     version: "@chartVersion@"
     repository: "file://../public-api/v2/helm"
+    condition: public-api.enabled
   - name: rbac_ee
     version: "@chartVersion@"
     repository: "file://../ee/rbac/helm"

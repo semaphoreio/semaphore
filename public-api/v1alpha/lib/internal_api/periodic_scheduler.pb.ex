@@ -45,7 +45,9 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest do
           pipeline_file: String.t(),
           at: String.t(),
           parameters: [InternalApi.PeriodicScheduler.Periodic.Parameter.t()],
-          project_id: String.t()
+          project_id: String.t(),
+          skip_scheduled_run_notifications: boolean,
+          skip_manual_run_notifications: boolean
         }
   defstruct [
     :id,
@@ -60,7 +62,9 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest do
     :pipeline_file,
     :at,
     :parameters,
-    :project_id
+    :project_id,
+    :skip_scheduled_run_notifications,
+    :skip_manual_run_notifications
   ]
 
   field(:id, 1, type: :string)
@@ -76,6 +80,8 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest do
   field(:at, 11, type: :string)
   field(:parameters, 12, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
   field(:project_id, 13, type: :string)
+  field(:skip_scheduled_run_notifications, 14, type: :bool)
+  field(:skip_manual_run_notifications, 15, type: :bool)
 end
 
 defmodule InternalApi.PeriodicScheduler.PersistRequest.ScheduleState do
@@ -240,7 +246,9 @@ defmodule InternalApi.PeriodicScheduler.Periodic do
           recurring: boolean,
           parameters: [InternalApi.PeriodicScheduler.Periodic.Parameter.t()],
           description: String.t(),
-          organization_id: String.t()
+          organization_id: String.t(),
+          skip_scheduled_run_notifications: boolean,
+          skip_manual_run_notifications: boolean
         }
   defstruct [
     :id,
@@ -259,7 +267,9 @@ defmodule InternalApi.PeriodicScheduler.Periodic do
     :recurring,
     :parameters,
     :description,
-    :organization_id
+    :organization_id,
+    :skip_scheduled_run_notifications,
+    :skip_manual_run_notifications
   ]
 
   field(:id, 1, type: :string)
@@ -279,6 +289,8 @@ defmodule InternalApi.PeriodicScheduler.Periodic do
   field(:parameters, 15, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
   field(:description, 16, type: :string)
   field(:organization_id, 17, type: :string)
+  field(:skip_scheduled_run_notifications, 18, type: :bool)
+  field(:skip_manual_run_notifications, 19, type: :bool)
 end
 
 defmodule InternalApi.PeriodicScheduler.Periodic.Parameter do
@@ -672,7 +684,9 @@ defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest.PeriodicDefini
           at: String.t(),
           pipeline_file: String.t(),
           parameters: [InternalApi.PeriodicScheduler.Periodic.Parameter.t()],
-          state: integer
+          state: integer,
+          skip_scheduled_run_notifications: boolean,
+          skip_manual_run_notifications: boolean
         }
   defstruct [
     :id,
@@ -683,7 +697,9 @@ defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest.PeriodicDefini
     :at,
     :pipeline_file,
     :parameters,
-    :state
+    :state,
+    :skip_scheduled_run_notifications,
+    :skip_manual_run_notifications
   ]
 
   field(:id, 1, type: :string)
@@ -695,6 +711,8 @@ defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneRequest.PeriodicDefini
   field(:pipeline_file, 7, type: :string)
   field(:parameters, 8, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
   field(:state, 9, type: InternalApi.PeriodicScheduler.PersistRequest.ScheduleState, enum: true)
+  field(:skip_scheduled_run_notifications, 10, type: :bool)
+  field(:skip_manual_run_notifications, 11, type: :bool)
 end
 
 defmodule InternalApi.PeriodicScheduler.BulkUpsertAndPruneResponse do

@@ -109,7 +109,7 @@ defmodule FrontWeb.ArtifactsController do
       {:ok, workflow} = Async.await(fetch_workflow)
 
       source_kind = "jobs"
-      source_id = job.id
+      source_id = Front.Models.Job.source_job_id(job)
 
       badge_pollman = %{
         state: job.state,
@@ -118,7 +118,7 @@ defmodule FrontWeb.ArtifactsController do
 
       block =
         Enum.find(pipeline.blocks, fn block ->
-          Enum.any?(block.jobs, fn job -> job.id == source_id end)
+          Enum.any?(block.jobs, fn block_job -> block_job.id == job.id end)
         end)
 
       case Artifacthub.list(project.id, source_kind, source_id, conn.assigns.page_path) do
@@ -152,7 +152,7 @@ defmodule FrontWeb.ArtifactsController do
   end
 
   def jobs_download(conn, _params) do
-    download(conn, "jobs", conn.assigns.job.id)
+    download(conn, "jobs", Front.Models.Job.source_job_id(conn.assigns.job))
   end
 
   defp download(conn, source_kind, source_id) do

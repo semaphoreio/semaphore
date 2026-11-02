@@ -1,5 +1,6 @@
 import $ from "jquery"
 import _ from "lodash"
+import { Features } from "../../../features"
 
 import { Utils } from "./utils"
 
@@ -33,6 +34,7 @@ export class BlockConfigurator {
     this.registerEnvVarHandler()
 
     this.registerDeleteBlockHandler()
+    this.registerPartialRerunHandler()
 
     this.agentView = new AgentConfigurator(this)
     this.registerAgentOverrideEnabled()
@@ -179,6 +181,14 @@ export class BlockConfigurator {
     this.parent.on(event, `[data-type=block] ${selector}`, callback)
   }
 
+  registerPartialRerunHandler() {
+    this.on("change", "[data-action=selectBlockPartialRerun]", (e) => {
+      let value = $(e.currentTarget).find(":selected").attr("value")
+
+      this.model.setPartialRerun(value)
+    })
+  }
+
   render() {
     if(this.renderingDisabled) return;
 
@@ -195,6 +205,7 @@ export class BlockConfigurator {
             ${ BlockConfigTemplate.secrets(this.model) }
             ${ this.skipConfig.render() }
             ${ BlockConfigTemplate.agent(this.model) }
+            ${ Features.isEnabled("jobLevelPartialRerun") ? BlockConfigTemplate.partialRerun(this.model) : "" }
             ${ BlockConfigTemplate.deleteBlock() }
           `
 

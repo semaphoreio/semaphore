@@ -33,3 +33,23 @@ GHSA-gp9c-pm5m-5cxr
 GHSA-j9wq-vxxc-94wf
 GHSA-mp55-p8c9-rfw2
 GHSA-pj7v-xfvx-wmjq
+
+# --- grpc 0.5.0-beta.1 advisories, all first patched in grpc 1.0.0 ---
+# ee/audit runs an internal gRPC server (InternalApi.Audit.AuditService, started by
+# GRPC.Server.Supervisor under START_GRPC_API); it is reachable only from inside the cluster by
+# authenticated Semaphore services, not from the internet. The fix is grpc 1.0.0, but moving from
+# 0.5.0-beta.1 to 1.0.0 is a major upgrade that changes the grpc-elixir API and cascades to
+# grpc_gun/gun (~> 2.0), cowboy (~> 2.7) and the generated .pb.ex stubs — a large, separately-tracked
+# migration, not a security-patch bump. Accepted for now, with the 1.0.0 migration tracked as the
+# real fix.
+#   GHSA-grp7-v8xh-rj7h (critical) — RCE via attacker-controlled gRPC payloads. Requires an attacker
+#     able to send crafted payloads to the internal audit endpoint (a cluster foothold or a
+#     compromised upstream service); the endpoint is not exposed to external clients.
+#   GHSA-6ccx-9c9f-327w (high) — unbounded gzip decompression (decompression bomb). ee/audit does not
+#     enable gRPC message compression in lib/; reachable only if a client sends gzip-encoded messages
+#     to the internal endpoint; DoS only.
+#   GHSA-q8gf-9rvj-gmgj (high) — unbounded request body accumulation in read_full_body/3. DoS via
+#     large HTTP/2 request bodies to the cowboy-backed gRPC server; internal-only.
+GHSA-grp7-v8xh-rj7h
+GHSA-6ccx-9c9f-327w
+GHSA-q8gf-9rvj-gmgj

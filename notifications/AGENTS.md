@@ -8,7 +8,7 @@
 
 ## Supported platforms / runtime versions
 - Elixir ~> 1.12 (see `mix.exs`).
-- Docker defaults: Elixir 1.12.3, OTP 24.3.4.17, Alpine 3.20.3 (see `Dockerfile`).
+- Docker defaults: Elixir 1.12.3, OTP 24.3.4.17, Alpine 3.22.4 (see `Dockerfile`).
 - Local dependencies via docker compose: Postgres 9.6 and RabbitMQ 3-management (see `docker-compose.yml`).
 
 ## Golden Rules (Must Follow)

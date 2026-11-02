@@ -26,6 +26,7 @@ defmodule Support.Stubs do
     Support.Stubs.Scheduler.init()
     Support.Stubs.SelfHostedAgent.init()
     Support.Stubs.Deployments.init()
+    Support.Stubs.PreFlightChecks.init()
     Support.Stubs.Job.init()
     Support.Stubs.RepoProxy.init()
     Support.Stubs.Feature.init()
@@ -49,6 +50,7 @@ defmodule Support.Stubs do
     Support.Stubs.Scheduler.Grpc.init()
     Support.Stubs.SelfHostedAgent.Grpc.init()
     Support.Stubs.Deployments.Grpc.init()
+    Support.Stubs.PreFlightChecks.Grpc.init()
     Support.Stubs.Job.Grpc.init()
     Support.Stubs.RepoProxy.Grpc.init()
     Support.Stubs.Feature.Grpc.init()
@@ -84,7 +86,11 @@ defmodule Support.Stubs do
       "project.scheduler.view",
       "project.artifacts.view",
       "project.deployment_targets.view",
-      "project.deployment_targets.manage"
+      "project.deployment_targets.manage",
+      "organization.pre_flight_checks.view",
+      "organization.pre_flight_checks.manage",
+      "project.pre_flight_checks.view",
+      "project.pre_flight_checks.manage"
     ]
   end
 

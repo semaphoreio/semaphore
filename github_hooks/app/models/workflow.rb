@@ -5,6 +5,13 @@ class Workflow < ActiveRecord::Base
   STATE_PROCESSING = "processing"
   STATE_NO_PROJECT = "no_project"
   STATE_PR_APPROVAL = "pr_approval"
+  # A /sem-approve was accepted, but between approval and launch the fork
+  # pushed a new commit, so the live PR head no longer matches the reviewed
+  # SHA. We fail closed here rather than run unreviewed code (potentially
+  # with granted secrets/cache) — the approver must re-issue /sem-approve.
+  STATE_PR_APPROVAL_STALE = "pr_approval_stale"
+  # A /sem-approve claimed this blocked workflow and is processing it.
+  STATE_PR_APPROVAL_IN_PROGRESS = "pr_approval_in_progress"
   STATE_SKIP_CI = "skip_ci"
   STATE_DELETING_BRANCH = "deleting_branch"
   STATE_SKIP_PR = "skip_pr"
@@ -38,6 +45,7 @@ class Workflow < ActiveRecord::Base
   scope :recent, ->(limit) { order(:created_at => :desc).limit(limit) }
   scope :pr_number_in_git_ref, ->(number) { where(:git_ref => "refs/pull/#{number}/merge") }
   scope :initial_state, -> { where(:state => STATE_PROCESSING) }
+  scope :with_commit_sha_prefix, ->(sha) { where("commit_sha LIKE ?", "#{sanitize_sql_like(sha)}%") }
   scope :created_before, -> (datetime) { where(Workflow.arel_table[:created_at].lt(datetime)) }
   scope :created_after, -> (datetime) { where(Workflow.arel_table[:created_at].gt(datetime)) }
 

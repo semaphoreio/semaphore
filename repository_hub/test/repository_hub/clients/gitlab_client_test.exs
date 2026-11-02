@@ -115,6 +115,31 @@ defmodule RepositoryHub.GitlabClientTest do
       end
     end
 
+    test "create_build_status maps a 5xx to unavailable" do
+      with_mock(HTTPoison, [],
+        post: fn _url, _body, _headers, _opts ->
+          {:ok, %HTTPoison.Response{status_code: 502, body: "", headers: []}}
+        end
+      ) do
+        params = %{
+          repo_owner: "owner",
+          repo_name: "repo",
+          commit_sha: "abc123",
+          state: "success",
+          url: "https://example.com",
+          description: "Build successful",
+          context: "ci/semaphore"
+        }
+
+        unavailable = GRPC.Status.unavailable()
+
+        assert {:error, %{status: ^unavailable, message: message}} =
+                 GitlabClient.create_build_status(params, token: "token")
+
+        assert message =~ "GitLab is unavailable"
+      end
+    end
+
     test "list_repository_collaborators" do
       next_page_url = "http://url.example?page=2"
 

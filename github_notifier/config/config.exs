@@ -9,6 +9,7 @@ config :github_notifier,
   hook_api_grpc_endpoint: "0.0.0.0:50052",
   repositoryhub_api_grpc_endpoint: "0.0.0.0:50052",
   velocityhub_api_grpc_endpoint: "0.0.0.0:50052",
-  feature_grpc_endpoint: "0.0.0.0:50052"
+  feature_grpc_endpoint: "0.0.0.0:50052",
+  scheduler_grpc_endpoint: "0.0.0.0:50052"
 
 import_config "#{config_env()}.exs"

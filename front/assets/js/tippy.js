@@ -2,10 +2,45 @@ import tippy, {roundArrow} from 'tippy.js';
 
 window.tippy = tippy;
 
+export function tooltipTargets(root) {
+  const scope = root || document;
+  const selector = "[data-tippy-content]";
+
+  const found = scope.querySelectorAll ? Array.from(scope.querySelectorAll(selector)) : [];
+
+  const targets =
+    scope.nodeType === 1 && scope.matches && scope.matches(selector) ? [scope].concat(found) : found;
+
+  return targets.filter((element) => !element._tippy);
+}
+
 export var Tippy = {
   defaultTip: function(target) {
     tippy(target, {
       duration: [150, 50]
+    });
+  },
+
+  rebind: function(root) {
+    const targets = tooltipTargets(root);
+
+    if (targets.length > 0) {
+      this.defaultTip(targets);
+    }
+  },
+
+  destroyIn: function(root) {
+    if (!root) return;
+
+    const scope = root.length !== undefined && !root.nodeType ? Array.from(root) : [root];
+
+    scope.forEach((element) => {
+      if (!element.querySelectorAll) return;
+
+      const inside = Array.from(element.querySelectorAll("*"));
+      const all = [element].concat(inside);
+
+      all.forEach((node) => node._tippy && node._tippy.destroy());
     });
   },
 
@@ -93,3 +128,5 @@ export var Tippy = {
     });
   }
 }
+
+window.Tippy = Tippy;

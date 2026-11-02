@@ -70,13 +70,13 @@ defmodule Ppl.Mixfile do
       {:job_matrix, path: "../job_matrix"},
       {:feature_provider, path: "../../feature_provider"},
       # feature_provider requests yaml_elixir >= 2.0, but plumber's
-      # definition_validator (pipeline YAML validation) pins ~> 1.1. We only use
-      # feature_provider's FeatureHub provider (not its YamlProvider), so pin the
-      # existing 1.3 line to keep a single version across the umbrella.
+      # definition_validator (pipeline YAML validation) pins ~> 1.1. config/runtime.exs
+      # gives feature_provider's YamlProvider a 1.x reader, so pin the existing 1.3
+      # line to keep a single version across the umbrella.
       {:yaml_elixir, "~> 1.3", override: true},
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
       {:amqp_client, "~> 3.9.2"},
-      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.2.1"},
+      {:tackle, github: "renderedtext/ex-tackle", tag: "v0.4.1"},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:looper, path: "../looper"},
       {:cloak, "~> 0.5.0"},

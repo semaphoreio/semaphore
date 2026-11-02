@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y -qq \
   libjemalloc2 \
   libgnutls30 \
   openssl \
+  perl-base \
   && apt-get clean && rm -f /var/lib/apt/lists/*_*
 
 ENV LANG=C.UTF-8 \

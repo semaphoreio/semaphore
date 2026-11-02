@@ -1,6 +1,6 @@
 defmodule Projecthub.Models.User do
   require Logger
-  defstruct [:id, :name, :github_token, :github_uid, :github_login, :avatar_url]
+  defstruct [:id, :name, :github_token, :github_uid, :github_login, :avatar_url, service_account?: false]
 
   def find(user_id, metadata \\ nil) do
     req = InternalApi.User.DescribeRequest.new(user_id: user_id)
@@ -55,7 +55,8 @@ defmodule Projecthub.Models.User do
       :id => raw_user.user_id,
       :name => raw_user.name,
       :github_token => raw_user.github_token,
-      :github_login => raw_user.github_login
+      :github_login => raw_user.github_login,
+      service_account?: match?(%{creation_source: :SERVICE_ACCOUNT}, raw_user.user)
     }
   end
 

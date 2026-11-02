@@ -193,7 +193,9 @@ defmodule Router.Deployments.CreateTest do
       {status_code, _, created_target} = create_deployment(ctx, params)
       assert status_code == 200
 
-      assert %{"users" => ["milica-nerlovic"], "roles" => ["Admin"]} =
+      admin_role_id = Support.Stubs.DB.find_by(:rbac_roles, :name, "Admin").id
+
+      assert %{"users" => ["milica-nerlovic"], "roles" => [^admin_role_id]} =
                created_target["spec"]["subject_rules"]
 
       target = Support.Stubs.DB.find(:deployment_targets, created_target["metadata"]["id"])
@@ -205,7 +207,10 @@ defmodule Router.Deployments.CreateTest do
                  subject_id: subject_id,
                  type: :USER
                },
-               %InternalApi.Gofer.DeploymentTargets.SubjectRule{subject_id: "Admin", type: :ROLE}
+               %InternalApi.Gofer.DeploymentTargets.SubjectRule{
+                 subject_id: admin_role_id,
+                 type: :ROLE
+               }
              ] == target.api_model.subject_rules
 
       assert length(target.api_model.object_rules) == 2

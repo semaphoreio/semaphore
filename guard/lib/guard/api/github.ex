@@ -86,15 +86,31 @@ defmodule Guard.Api.Github do
       {:ok, %Tesla.Env{status: status, body: body}} when status in 200..299 ->
         OAuth.handle_ok_token_response(repo_host_account, body)
 
-      {:ok, %Tesla.Env{status: status}} when status in 400..499 ->
-        Logger.warning("Failed to refresh github token, account might be revoked")
-        {:error, :revoked}
+      {:ok, %Tesla.Env{status: status, body: body}} ->
+        case OAuth.classify_refresh_response(status, body) do
+          :revoked ->
+            Logger.warning(
+              "Failed to refresh GitHub token (HTTP #{status}), account might be revoked: " <>
+                "rha=#{repo_host_account.id} user=#{repo_host_account.user_id}"
+            )
 
-      {:ok, %Tesla.Env{status: _status}} ->
-        {:error, :failed}
+            {:error, :revoked}
+
+          :transient ->
+            Logger.warning(
+              "Transient failure refreshing GitHub token (HTTP #{status}): " <>
+                "rha=#{repo_host_account.id} user=#{repo_host_account.user_id}"
+            )
+
+            {:error, :transient}
+        end
 
       {:error, error} ->
-        Logger.error("Error fetching github token: #{inspect(error)}")
+        Logger.error(
+          "Error fetching GitHub token: #{inspect(error)} " <>
+            "rha=#{repo_host_account.id} user=#{repo_host_account.user_id}"
+        )
+
         {:error, :network_error}
     end
   end

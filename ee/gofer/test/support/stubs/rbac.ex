@@ -20,7 +20,7 @@ defmodule Support.Stubs.RBAC do
     GRPC.Server.stop(@mock)
 
     on_exit(fn ->
-      GRPC.Server.start(@mock, 50_051)
+      GRPC.Server.start(@mock, 51_051)
       Stub.Grpc.init(@mock)
     end)
   end

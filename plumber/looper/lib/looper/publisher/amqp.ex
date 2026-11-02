@@ -23,6 +23,16 @@ defmodule Looper.Publisher.AMQP do
     {:ok, %{url: url, channel: channel, exchanges: []}}
   end
 
+  # Called by :sys.get_status/1,2 (and therefore by the crash/termination
+  # report gen_server writes to the logger) to build the status term. The
+  # default implementation would dump `state` as-is; here the reported view
+  # replaces the url field with a placeholder. Only the reported view is
+  # changed; the actual GenServer state used by init/handle_call is untouched.
+  @impl true
+  def format_status(_reason, [_pdict, state]) do
+    [{:data, [{'State', %{state | url: "[FILTERED]"}}]}]
+  end
+
   @impl true
   def handle_call({:publish, %{exchange: exchange, routing_key: routing_key, message: message}},
           _from, state = %{channel: channel, exchanges: exchanges}) do

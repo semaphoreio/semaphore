@@ -3,3 +3,4 @@ ignore:
   - CVE-2024-26143
   - CVE-2024-34341
   - CVE-2026-38969 # webrick 1.9.2 trailer reparse; no patched release yet
+  - CVE-2026-71847 # json 2.20.0 ResumableParser use-after-free; API unused here (JSON.parse only), bump to >= 2.21.2 tracked separately

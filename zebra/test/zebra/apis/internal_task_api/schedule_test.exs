@@ -1,7 +1,11 @@
 defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
   use Zebra.DataCase
 
+  import Mox
+
   alias Zebra.Apis.InternalTaskApi.Schedule
+  alias Zebra.LegacyRepo, as: Repo
+  alias Support.Factories
 
   # in seconds
   @default_job_execution_time_limit 24 * 60 * 60
@@ -129,6 +133,325 @@ defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
       assert {:ok, task2} = Schedule.schedule(req)
 
       assert task1.id == task2.id
+    end
+  end
+
+  describe ".schedule with job-level lightweight copies" do
+    test "a member marker mints a copy row and does not schedule execution" do
+      {orig_task, member} = original_with_passed_job()
+
+      req =
+        copy_request(orig_task,
+          jobs: [copy_job_spec("copied", member.id)]
+        )
+
+      assert {:ok, task} = Schedule.schedule(req)
+      task = Repo.preload(task, [:jobs])
+
+      assert [copy] = task.jobs
+      assert copy.original_job_id == member.id
+      assert copy.aasm_state == "finished"
+      assert copy.result == "passed"
+      assert copy.build_id == task.id
+    end
+
+    test "mixes run and copy jobs under one task, preserving each job's index" do
+      {orig_task, member} = original_with_passed_job(%{index: 5})
+
+      req =
+        copy_request(orig_task,
+          jobs: [run_job_spec("run0"), copy_job_spec("copy1", member.id)]
+        )
+
+      assert {:ok, task} = Schedule.schedule(req)
+      task = Repo.preload(task, [:jobs])
+
+      run = Enum.find(task.jobs, fn j -> j.name == "run0" end)
+      copy = Enum.find(task.jobs, fn j -> j.original_job_id == member.id end)
+
+      assert run.aasm_state == "pending"
+      assert is_nil(run.original_job_id)
+      assert run.index == 0
+
+      assert copy.aasm_state == "finished"
+      assert copy.result == "passed"
+      # copies carry the original job's index, not the request position
+      assert copy.index == 5
+    end
+
+    test "markers present but original_task_id empty => invalid_argument" do
+      req =
+        copy_request(nil,
+          jobs: [copy_job_spec("copy", Ecto.UUID.generate())],
+          original_task_id: ""
+        )
+
+      assert {:error, :invalid_argument, _msg} = Schedule.schedule(req)
+      assert {:error, :not_found} = Schedule.find_already_scheduled_task(req)
+    end
+
+    test "original_task_id referencing a nonexistent task => invalid_argument" do
+      req =
+        copy_request(nil,
+          jobs: [copy_job_spec("copy", Ecto.UUID.generate())],
+          original_task_id: Ecto.UUID.generate()
+        )
+
+      assert {:error, :invalid_argument, _msg} = Schedule.schedule(req)
+    end
+
+    test "original_task_id that is not a valid UUID => invalid_argument" do
+      req =
+        copy_request(nil,
+          jobs: [copy_job_spec("copy", Ecto.UUID.generate())],
+          original_task_id: "not-a-uuid"
+        )
+
+      assert {:error, :invalid_argument, msg} = Schedule.schedule(req)
+      assert msg =~ "not a valid UUID"
+    end
+
+    test "marker that is not a valid UUID => invalid_argument" do
+      {orig_task, _member} = original_with_passed_job()
+
+      req =
+        copy_request(orig_task,
+          jobs: [copy_job_spec("copy", "not-a-uuid")]
+        )
+
+      assert {:error, :invalid_argument, msg} = Schedule.schedule(req)
+      assert msg =~ "not a valid UUID"
+      assert {:error, :not_found} = Schedule.find_already_scheduled_task(req)
+    end
+
+    test "original_task_id in a different workflow => invalid_argument" do
+      {orig_task, member} = original_with_passed_job()
+
+      req =
+        copy_request(orig_task,
+          jobs: [copy_job_spec("copy", member.id)],
+          wf_id: Ecto.UUID.generate()
+        )
+
+      assert {:error, :invalid_argument, _msg} = Schedule.schedule(req)
+    end
+
+    test "marker whose job belongs to a DIFFERENT task => invalid_argument (cross-membership forge)" do
+      {orig_task, _member} = original_with_passed_job()
+      {:ok, other_task} = Factories.Task.create()
+
+      {:ok, foreign} =
+        Factories.Job.create(:finished, %{
+          build_id: other_task.id,
+          result: "passed"
+        })
+
+      req =
+        copy_request(orig_task,
+          jobs: [copy_job_spec("copy", foreign.id)]
+        )
+
+      assert {:error, :invalid_argument, _msg} = Schedule.schedule(req)
+      # nothing was created
+      assert {:error, :not_found} = Schedule.find_already_scheduled_task(req)
+    end
+
+    test "marker resolving to no row anywhere degrades to running the job" do
+      {orig_task, _member} = original_with_passed_job()
+
+      req =
+        copy_request(orig_task,
+          jobs: [copy_job_spec("vanished", Ecto.UUID.generate())]
+        )
+
+      assert {:ok, task} = Schedule.schedule(req)
+      task = Repo.preload(task, [:jobs])
+
+      assert [job] = task.jobs
+      assert job.aasm_state == "pending"
+      assert is_nil(job.original_job_id)
+    end
+
+    test "member source that is not passed degrades to running the job" do
+      {:ok, orig_task} = Factories.Task.create()
+
+      {:ok, member} =
+        Factories.Job.create(:finished, %{
+          build_id: orig_task.id,
+          result: "failed"
+        })
+
+      req =
+        copy_request(orig_task,
+          jobs: [copy_job_spec("not-passed", member.id)]
+        )
+
+      assert {:ok, task} = Schedule.schedule(req)
+      task = Repo.preload(task, [:jobs])
+
+      assert [job] = task.jobs
+      assert job.aasm_state == "pending"
+      assert is_nil(job.original_job_id)
+    end
+
+    test "member source with nil finished_at degrades to running the job" do
+      {:ok, orig_task} = Factories.Task.create()
+
+      {:ok, member} =
+        Factories.Job.create(:finished, %{
+          build_id: orig_task.id,
+          result: "passed",
+          finished_at: nil
+        })
+
+      req =
+        copy_request(orig_task,
+          jobs: [copy_job_spec("no-finish", member.id)]
+        )
+
+      assert {:ok, task} = Schedule.schedule(req)
+      task = Repo.preload(task, [:jobs])
+
+      assert [job] = task.jobs
+      assert job.aasm_state == "pending"
+    end
+
+    test "member source whose tenant differs from the request => invalid_argument" do
+      {orig_task, member} = original_with_passed_job()
+
+      req =
+        copy_request(orig_task,
+          jobs: [copy_job_spec("copy", member.id)],
+          org_id: Ecto.UUID.generate()
+        )
+
+      assert {:error, :invalid_argument, _msg} = Schedule.schedule(req)
+    end
+
+    test "a copy row is born finished and is never picked up by the pending scheduler (D-16)" do
+      {orig_task, member} = original_with_passed_job()
+
+      req =
+        copy_request(orig_task,
+          jobs: [run_job_spec("run0"), copy_job_spec("copy1", member.id)]
+        )
+
+      assert {:ok, task} = Schedule.schedule(req)
+      task = Repo.preload(task, [:jobs])
+
+      copy = Enum.find(task.jobs, fn j -> j.original_job_id == member.id end)
+      run = Enum.find(task.jobs, fn j -> j.name == "run0" end)
+
+      pending_ids =
+        Zebra.Models.Job
+        |> where([j], j.build_id == ^task.id and j.aasm_state == "pending")
+        |> select([j], j.id)
+        |> Repo.all()
+
+      # JobRequestFactory (and its lifecycle-event publishing) only ever sees
+      # pending jobs; a born-finished copy is structurally excluded.
+      refute copy.id in pending_ids
+      assert run.id in pending_ids
+    end
+
+    test "onprem_metrics is emitted for run jobs but not for copies (finding 12)" do
+      {orig_task, member} = original_with_passed_job()
+
+      req =
+        copy_request(orig_task,
+          jobs: [run_job_spec("run0"), copy_job_spec("copy1", member.id)]
+        )
+
+      with_mocks [
+        {Zebra, [:passthrough], [on_prem?: fn -> true end]},
+        {Watchman, [:passthrough], [increment: fn _ -> :ok end]}
+      ] do
+        assert {:ok, _task} = Schedule.schedule(req)
+
+        assert_called_exactly(
+          Watchman.increment(external: {"new_jobs", [agent: "e1-standard-2"]}),
+          1
+        )
+      end
+    end
+
+    test "a duplicate build_request_id surfaces as a changeset error, not a raised ConstraintError" do
+      token = Ecto.UUID.generate()
+      {:ok, _first} = Factories.Task.create(%{build_request_id: token})
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               Zebra.Models.Task.create(
+                 version: "v0.0",
+                 build_request_id: token,
+                 hook_id: Ecto.UUID.generate(),
+                 workflow_id: Ecto.UUID.generate(),
+                 ppl_id: Ecto.UUID.generate()
+               )
+
+      assert Keyword.has_key?(changeset.errors, :build_request_id)
+    end
+
+    test "a non-UUID request_token is a typed invalid_argument, not an idempotency re-read" do
+      req = construct_example_schedule_request("not-a-uuid")
+
+      assert {:error, :invalid_argument, msg} = Schedule.schedule(req)
+      assert msg =~ "request_token"
+    end
+
+    test "losing a concurrent race on request_token returns the existing task (idempotency)" do
+      token = Ecto.UUID.generate()
+      {:ok, winner} = Factories.Task.create(%{build_request_id: token})
+
+      req = construct_example_schedule_request(token)
+
+      # create_task bypasses the request_token pre-read, exercising the
+      # unique-constraint + re-read path directly.
+      assert {:ok, task} = Schedule.create_task(req)
+      assert task.id == winner.id
+
+      count =
+        Zebra.Models.Task
+        |> where([t], t.build_request_id == ^token)
+        |> Repo.aggregate(:count)
+
+      assert count == 1
+    end
+
+    test "an all-copy task is finished immediately after schedule" do
+      {orig_task, m1} = original_with_passed_job(%{index: 0})
+
+      {:ok, m2} =
+        Factories.Job.create(:finished, %{
+          build_id: orig_task.id,
+          result: "passed",
+          index: 1
+        })
+
+      req =
+        copy_request(orig_task,
+          jobs: [copy_job_spec("c1", m1.id), copy_job_spec("c2", m2.id)]
+        )
+
+      assert {:ok, task} = Schedule.schedule(req)
+
+      # finished synchronously, not left waiting on the periodic poller
+      assert task.result == "passed"
+    end
+
+    test "D-05: a marker pointing at a member that is itself a copy flattens to the terminal original" do
+      terminal = Ecto.UUID.generate()
+      {orig_task, member} = original_with_passed_job(%{original_job_id: terminal})
+
+      req =
+        copy_request(orig_task,
+          jobs: [copy_job_spec("chained", member.id)]
+        )
+
+      assert {:ok, task} = Schedule.schedule(req)
+      task = Repo.preload(task, [:jobs])
+
+      assert [copy] = task.jobs
+      assert copy.original_job_id == terminal
     end
   end
 
@@ -280,9 +603,378 @@ defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
     end
   end
 
+  describe ".configure_execution_time_limit for orgs with no limit provisioned yet" do
+    setup do
+      Cachex.clear(:zebra_cache)
+      :ok
+    end
+
+    test "young org whose feature carries a quota but is not enabled => held at that quota" do
+      org_id = UUID.uuid4()
+
+      # created 60s ago: inside the 15-minute window
+      stub_org_describe(org_username: "fresh-org", verified: false, age_seconds: 60)
+
+      # What an org with no limit of its own gets: not enabled, but still
+      # carrying the platform-wide quota. Contrast with [:hidden] alone,
+      # which is quantity 0.
+      stub_job_time_limit_feature(org_id, [:hidden, {:quantity, 30}])
+
+      # nothing requested => the default comes down together with the max
+      assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 0)
+
+      # a request under the cap is still honoured
+      assert 15 * 60 == Schedule.configure_execution_time_limit(org_id, 15)
+
+      # a request over the cap falls back to the *capped* default, not to 24h.
+      # If only the max came down, this would hand the whole day straight back.
+      assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 24 * 60)
+    end
+
+    test "the same feature shape on an older org is left alone" do
+      org_id = UUID.uuid4()
+
+      # created 20 minutes ago: outside the window. Past it, "not enabled with
+      # a quota" is ambiguous -- an established org can show it too -- so
+      # nothing is capped.
+      stub_org_describe(org_username: "old-org", verified: false, age_seconds: 20 * 60)
+      stub_job_time_limit_feature(org_id, [:hidden, {:quantity, 30}])
+
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, 0)
+
+      assert 180 * 60 == Schedule.configure_execution_time_limit(org_id, 180)
+    end
+
+    test "young org whose limit was deliberately lifted (quota 0) keeps the 24h default" do
+      org_id = UUID.uuid4()
+
+      # The shape an org gets when its limit is lifted: not enabled, quota 0.
+      # Age must not matter here.
+      stub_org_describe(org_username: "exempt-org", verified: false, age_seconds: 60)
+      stub_job_time_limit_feature(org_id, [:hidden])
+
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, 0)
+
+      assert 180 * 60 == Schedule.configure_execution_time_limit(org_id, 180)
+    end
+
+    test "young org on an install that does not carry the feature keeps the 24h default" do
+      org_id = UUID.uuid4()
+
+      # A self-hosted install: max_job_execution_time_limit is not in the
+      # features YAML at all, so every org would otherwise look unprovisioned.
+      stub_org_describe(org_username: "self-hosted-org", verified: false, age_seconds: 60)
+
+      stub(Support.MockedProvider, :provide_features, fn
+        ^org_id, _opts -> {:ok, []}
+        other_org, opts -> Support.StubbedProvider.provide_features(other_org, opts)
+      end)
+
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, 0)
+
+      assert 180 * 60 == Schedule.configure_execution_time_limit(org_id, 180)
+    end
+
+    test "young org whose feature provider errors keeps the 24h default" do
+      org_id = UUID.uuid4()
+
+      # Capping the whole fleet during a FeatureHub outage would be worse than
+      # the leak this closes, so the error path stays fail-open.
+      stub_org_describe(org_username: "degraded-org", verified: false, age_seconds: 60)
+
+      stub(Support.MockedProvider, :provide_features, fn
+        ^org_id, _opts -> {:error, :timeout}
+        other_org, opts -> Support.StubbedProvider.provide_features(other_org, opts)
+      end)
+
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, 0)
+
+      assert 180 * 60 == Schedule.configure_execution_time_limit(org_id, 180)
+    end
+
+    test "young org already provisioned uses the feature's own limit" do
+      org_id = UUID.uuid4()
+
+      stub_org_describe(org_username: "provisioned-org", verified: false, age_seconds: 60)
+      stub_job_time_limit_feature(org_id, [:enabled, {:quantity, 30}])
+
+      assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 0)
+      assert 15 * 60 == Schedule.configure_execution_time_limit(org_id, 15)
+    end
+
+    test "an enabled feature with a zero quota does not resolve to a zero time limit" do
+      org_id = UUID.uuid4()
+
+      stub_org_describe(org_username: "zero-quota-org", verified: false, age_seconds: 60)
+      stub_job_time_limit_feature(org_id, [:enabled, {:quantity, 0}])
+
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, 0)
+    end
+
+    test "the production feature shape (:disabled, not :hidden) is capped the same way" do
+      org_id = UUID.uuid4()
+
+      # StubbedProvider's :hidden trait yields state: :hidden, but
+      # FeatureHubProvider maps the wire state to :disabled -- the atom
+      # :hidden never occurs in production. Assert the real shape too, so the
+      # other tests in this block cannot be the only thing pinning the clause.
+      stub_org_describe(org_username: "prod-shape-org", verified: false, age_seconds: 60)
+
+      stub(Support.MockedProvider, :provide_features, fn
+        ^org_id, _opts ->
+          {:ok,
+           [
+             %FeatureProvider.Feature{
+               type: "max_job_execution_time_limit",
+               state: :disabled,
+               quantity: 30
+             }
+           ]}
+
+        other_org, opts ->
+          Support.StubbedProvider.provide_features(other_org, opts)
+      end)
+
+      assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 0)
+      assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 24 * 60)
+    end
+
+    test "a quota below the floor cannot shorten jobs past the platform minimum" do
+      org_id = UUID.uuid4()
+
+      # the quota is configured elsewhere and has no floor of its own: a stray
+      # edit to 1 must not hand every young org one-minute jobs
+      stub_org_describe(org_username: "tiny-quota-org", verified: false, age_seconds: 60)
+      stub_job_time_limit_feature(org_id, [:hidden, {:quantity, 1}])
+
+      assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 0)
+      refute 60 == Schedule.configure_execution_time_limit(org_id, 0)
+    end
+
+    test "the fresh-org window boundary" do
+      org_id = UUID.uuid4()
+      stub_job_time_limit_feature(org_id, [:hidden, {:quantity, 30}])
+
+      stub_org_describe(org_username: "just-inside", verified: false, age_seconds: 15 * 60 - 5)
+      Cachex.clear(:zebra_cache)
+      assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 0)
+
+      stub_org_describe(org_username: "just-outside", verified: false, age_seconds: 15 * 60 + 5)
+      Cachex.clear(:zebra_cache)
+
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, 0)
+    end
+
+    test "a created_at a few seconds in the future is still fresh" do
+      org_id = UUID.uuid4()
+
+      # Ordinary clock skew between this pod and the organization API. The very
+      # first job of a just-created org must not fall to 24h because the two
+      # clocks disagree by a second.
+      stub_org_describe(org_username: "skewed-org", verified: false, age_seconds: -5)
+      stub_job_time_limit_feature(org_id, [:hidden, {:quantity, 30}])
+
+      assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 0)
+    end
+
+    test "a created_at far in the future is not treated as fresh" do
+      org_id = UUID.uuid4()
+
+      # An hour ahead is not skew. Fall through to the unchanged default.
+      stub_org_describe(org_username: "corrupt-org", verified: false, age_seconds: -3600)
+      stub_job_time_limit_feature(org_id, [:hidden, {:quantity, 30}])
+
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, 0)
+    end
+
+    test "a self-hosted install is never capped, whatever its features YAML says" do
+      org_id = UUID.uuid4()
+
+      # A YamlProvider entry of `enabled: false` with an explicit quantity
+      # produces the same not-enabled + non-zero shape as the SaaS fallback.
+      # Self-hosted has no provisioning step, so it must resolve to 24h anyway.
+      stub_org_describe(org_username: "onprem-org", verified: false, age_seconds: 60)
+      stub_job_time_limit_feature(org_id, [:hidden, {:quantity, 30}])
+
+      System.put_env("ON_PREM", "true")
+      on_exit(fn -> System.delete_env("ON_PREM") end)
+
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, 0)
+
+      assert 180 * 60 == Schedule.configure_execution_time_limit(org_id, 180)
+    end
+  end
+
+  describe ".schedule job time limit resolution" do
+    setup do
+      Cachex.clear(:zebra_cache)
+      :ok
+    end
+
+    test "resolves the org's limits once per task and applies them to every job" do
+      org_id = UUID.uuid4()
+      req = %{construct_example_schedule_request(Ecto.UUID.generate()) | org_id: org_id}
+
+      stub_org_describe(org_username: "fresh-org-task", verified: false, age_seconds: 60)
+
+      {:ok, calls} = Agent.start_link(fn -> 0 end)
+
+      stub(Support.MockedProvider, :provide_features, fn
+        ^org_id, _opts ->
+          Agent.update(calls, &(&1 + 1))
+
+          {:ok,
+           [
+             Support.StubbedProvider.feature("max_job_execution_time_limit", [
+               :hidden,
+               {:quantity, 30}
+             ])
+           ]}
+
+        other_org, opts ->
+          Support.StubbedProvider.provide_features(other_org, opts)
+      end)
+
+      assert {:ok, task} = Schedule.schedule(req)
+      task = Repo.preload(task, [:jobs])
+
+      first_job = Enum.find(task.jobs, &(&1.name == "Papa"))
+      second_job = Enum.find(task.jobs, &(&1.name == "Papa2"))
+
+      # job 1 asks for 5 minutes, under the cap, and gets it
+      assert first_job.execution_time_limit == 5 * 60
+      # job 2 asks for 48h, over the cap, and falls to the capped default
+      assert second_job.execution_time_limit == 30 * 60
+
+      # Resolved once for the whole task, not once per job: the limits are a
+      # property of the org, and the lookup must not sit inside the
+      # scheduling transaction.
+      assert Agent.get(calls, & &1) == 1
+    end
+  end
+
   #
   # Utils
   #
+
+  # Stubs the max_job_execution_time_limit feature for one org, delegating
+  # every other org id to the default StubbedProvider. A stub that matched only
+  # `^org_id` would raise FunctionClauseError for any concurrent lookup of a
+  # different org, surfacing as unrelated tests failing on some seeds.
+  defp stub_job_time_limit_feature(org_id, traits) do
+    stub(Support.MockedProvider, :provide_features, fn
+      ^org_id, _opts ->
+        {:ok, [Support.StubbedProvider.feature("max_job_execution_time_limit", traits)]}
+
+      other_org, opts ->
+        Support.StubbedProvider.provide_features(other_org, opts)
+    end)
+  end
+
+  # Stubs the organization describe gRPC call with a `created_at` `age_seconds`
+  # in the past, so tests can exercise the young-vs-old org boundary.
+  defp stub_org_describe(org_username: org_username, verified: verified, age_seconds: age_seconds) do
+    created_at_seconds =
+      DateTime.utc_now() |> DateTime.add(-age_seconds, :second) |> DateTime.to_unix()
+
+    GrpcMock.stub(Support.FakeServers.OrganizationApi, :describe, fn _, _ ->
+      InternalApi.Organization.DescribeResponse.new(
+        status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+        organization:
+          InternalApi.Organization.Organization.new(
+            org_username: org_username,
+            verified: verified,
+            created_at: Google.Protobuf.Timestamp.new(seconds: created_at_seconds)
+          )
+      )
+    end)
+  end
+
+  defp example_agent do
+    alias InternalApi.Task.ScheduleRequest, as: R
+
+    R.Job.Agent.new(
+      machine:
+        R.Job.Agent.Machine.new(
+          type: "e1-standard-2",
+          os_image: "ubuntu1804"
+        )
+    )
+  end
+
+  defp run_job_spec(name) do
+    alias InternalApi.Task.ScheduleRequest, as: R
+
+    R.Job.new(
+      name: name,
+      agent: example_agent(),
+      commands: ["echo 'cmd'"]
+    )
+  end
+
+  defp copy_job_spec(name, original_job_id) do
+    alias InternalApi.Task.ScheduleRequest, as: R
+
+    R.Job.new(
+      name: name,
+      agent: example_agent(),
+      commands: ["echo 'cmd'"],
+      original_job_id: original_job_id
+    )
+  end
+
+  # Creates an original finished+passed job on a fresh original task.
+  # The member inherits the shared factory org/project so a copy_request/2
+  # built from the same task validates as an exact member of the same tenant.
+  defp original_with_passed_job(overrides \\ %{}) do
+    {:ok, orig_task} = Factories.Task.create()
+
+    {:ok, member} =
+      Factories.Job.create(
+        :finished,
+        Map.merge(
+          %{
+            build_id: orig_task.id,
+            result: "passed",
+            organization_id: Factories.Job.org_id(),
+            project_id: Factories.Job.project_id()
+          },
+          overrides
+        )
+      )
+
+    {orig_task, member}
+  end
+
+  # Builds a ScheduleRequest wired to copy from `orig_task`: workflow, org and
+  # project default to the original's tenant so the exact-membership validation
+  # passes unless a test overrides one to exercise a rejection path.
+  defp copy_request(orig_task, opts) do
+    alias InternalApi.Task.ScheduleRequest, as: R
+
+    defaults = [
+      jobs: [],
+      request_token: Ecto.UUID.generate(),
+      ppl_id: Ecto.UUID.generate(),
+      hook_id: Ecto.UUID.generate(),
+      wf_id: if(orig_task, do: orig_task.workflow_id, else: Ecto.UUID.generate()),
+      project_id: Factories.Job.project_id(),
+      repository_id: Ecto.UUID.generate(),
+      org_id: Factories.Job.org_id(),
+      original_task_id: if(orig_task, do: orig_task.id, else: ""),
+      fail_fast: R.FailFast.value(:NONE)
+    ]
+
+    R.new(Keyword.merge(defaults, opts))
+  end
 
   def construct_example_schedule_request(token) do
     alias InternalApi.Task.ScheduleRequest, as: R

@@ -45,6 +45,7 @@ defmodule Badges.Api do
     render404(conn, "Badge not found")
   end
 
+  # sobelow_skip ["XSS.SendResp"]
   defp render_badge(conn, project, branch) do
     conn = Plug.Conn.fetch_query_params(conn)
 

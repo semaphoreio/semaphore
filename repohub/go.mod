@@ -1,6 +1,6 @@
 module github.com/semaphoreio/semaphore/repohub
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/bmatcuk/doublestar v1.1.5
@@ -14,7 +14,7 @@ require (
 	github.com/satori/go.uuid v1.2.0
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1
-	google.golang.org/grpc v1.82.1
+	google.golang.org/grpc v1.83.1
 	google.golang.org/protobuf v1.36.11
 )
 
@@ -23,10 +23,10 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/lib/pq v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	golang.org/x/crypto v0.54.0 // indirect
-	golang.org/x/net v0.56.0 // indirect
+	golang.org/x/crypto v0.56.0 // indirect
+	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.40.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

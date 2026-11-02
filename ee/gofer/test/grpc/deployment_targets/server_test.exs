@@ -432,6 +432,43 @@ defmodule Gofer.Grpc.DeploymentTargets.ServerTest do
       assert length(targets) > 0
     end
 
+    test "checks requester's roles with a single RBAC call", ctx do
+      requester_id = UUID.uuid4()
+      role_only_ids = insert_role_only_targets(ctx, 5)
+
+      Support.Stubs.RBAC.set_role(
+        {ctx.organization_id, ctx.project_id, requester_id, ctx.role_id}
+      )
+
+      count_rbac_calls(&Support.Stubs.RBAC.Grpc.subjects_have_roles/2)
+
+      assert {:ok, %API.ListResponse{targets: targets}} =
+               send(API.ListRequest.new(project_id: ctx.project_id, requester_id: requester_id))
+
+      assert rbac_calls() == 1
+
+      assert targets
+             |> Enum.filter(&(&1.id in role_only_ids))
+             |> Enum.all?(& &1.last_deployment.can_requester_rerun)
+    end
+
+    test "checks requester's roles with a single RBAC call when RBAC fails", ctx do
+      role_only_ids = insert_role_only_targets(ctx, 5)
+
+      count_rbac_calls(fn _request, _stream ->
+        raise GRPC.RPCError, status: GRPC.Status.unavailable(), message: "RBAC is down"
+      end)
+
+      assert {:ok, %API.ListResponse{targets: targets}} =
+               send(API.ListRequest.new(project_id: ctx.project_id, requester_id: UUID.uuid4()))
+
+      assert rbac_calls() == 1
+
+      assert targets
+             |> Enum.filter(&(&1.id in role_only_ids))
+             |> Enum.all?(&(not &1.last_deployment.can_requester_rerun))
+    end
+
     test "sends metrics via watchman", ctx do
       mock_watchman()
 
@@ -1402,6 +1439,53 @@ defmodule Gofer.Grpc.DeploymentTargets.ServerTest do
     }
 
     {:ok, trigger: EctoRepo.insert!(struct!(Trigger, Map.merge(defaults, params)))}
+  end
+
+  defp insert_role_only_targets(context, count) do
+    for i <- 1..count do
+      target =
+        EctoRepo.insert!(%Deployment{
+          id: Ecto.UUID.generate(),
+          name: "Role-only #{i}",
+          description: "",
+          url: "",
+          organization_id: context[:organization_id],
+          project_id: context[:project_id],
+          created_by: context[:user_id],
+          updated_by: context[:user_id],
+          unique_token: UUID.uuid4(),
+          state: :FINISHED,
+          result: :SUCCESS,
+          secret_id: context[:secret_id],
+          secret_name: "Role-only secret name",
+          subject_rules: [%Deployment.SubjectRule{type: :ROLE, subject_id: context[:role_id]}],
+          object_rules: [%Deployment.ObjectRule{type: :BRANCH, match_mode: :ALL, pattern: ""}]
+        })
+
+      {:ok, trigger: _trigger} =
+        insert_trigger(context.switch, target, %{state: :DONE, result: "passed"})
+
+      target.id
+    end
+  end
+
+  defp count_rbac_calls(handler) do
+    test_pid = self()
+
+    GrpcMock.stub(RBACMock, :subjects_have_roles, fn request, stream ->
+      Kernel.send(test_pid, :rbac_called)
+      handler.(request, stream)
+    end)
+
+    on_exit(fn -> Support.Stubs.RBAC.Grpc.init(RBACMock) end)
+  end
+
+  defp rbac_calls(count \\ 0) do
+    receive do
+      :rbac_called -> rbac_calls(count + 1)
+    after
+      0 -> count
+    end
   end
 
   defp random_payload(n_bytes \\ 1_024),

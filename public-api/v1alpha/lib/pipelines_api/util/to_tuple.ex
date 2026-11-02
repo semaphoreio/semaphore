@@ -15,6 +15,10 @@ defmodule PipelinesAPI.Util.ToTuple do
   @spec not_found_error(any()) :: not_found_error_t
   def not_found_error(item), do: {:not_found, item} |> error()
 
+  @type unprocessable_error_t :: {:error, {:unprocessable, any()}}
+  @spec unprocessable_error(any()) :: unprocessable_error_t
+  def unprocessable_error(item), do: {:unprocessable, item} |> error()
+
   @type forbidden_error_t :: {:error, {:forbidden, any()}}
   @spec forbidden_error(any()) :: forbidden_error_t
   def forbidden_error(item), do: {:forbidden, item} |> error()

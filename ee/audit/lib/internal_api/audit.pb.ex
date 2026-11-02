@@ -73,6 +73,7 @@ defmodule InternalApi.Audit.Event.Resource do
           | :FlakyTests
           | :RBACRole
           | :ServiceAccount
+          | :Group
 
   field(:Project, 0)
 
@@ -115,6 +116,8 @@ defmodule InternalApi.Audit.Event.Resource do
   field(:RBACRole, 19)
 
   field(:ServiceAccount, 20)
+
+  field(:Group, 21)
 end
 
 defmodule InternalApi.Audit.Event.Operation do

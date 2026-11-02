@@ -343,6 +343,21 @@ defmodule Front.Models.SchedulerTest do
       end
     end
 
+    test "find action maps the notification skip flags" do
+      response =
+        DescribeResponse.new(
+          status: InternalApi.Status.new(code: Google.Rpc.Code.value(:OK), message: ""),
+          periodic: scheduler_desc(1, skip_scheduled_run_notifications: true),
+          triggers: [trigger_desc(1)]
+        )
+
+      with_mock Stub, describe: fn _c, _r, _o -> {:ok, response} end do
+        assert {:ok, scheduler} = Subject.find(@scheduler_id)
+        assert scheduler.skip_scheduled_run_notifications == true
+        assert scheduler.skip_manual_run_notifications == false
+      end
+    end
+
     test "find action returns JustRun scheduler and latest trigger data when gRPC response is valid" do
       response =
         DescribeResponse.new(
@@ -663,6 +678,25 @@ defmodule Front.Models.SchedulerTest do
       {:ok, scheduler_id} = Subject.persist(@form_data, @context_data)
 
       assert byte_size(scheduler_id) == 36
+    end
+
+    test "persist always sends both notification skip flags" do
+      response =
+        PersistResponse.new(
+          status: InternalApi.Status.new(code: Google.Rpc.Code.value(:OK), message: ""),
+          periodic: scheduler_desc(1)
+        )
+
+      with_mock Stub,
+        persist: fn _c, request, _o -> send(self(), {:persisted, request}) && {:ok, response} end do
+        form_data = Map.put(@form_data, :skip_manual_run_notifications, true)
+
+        assert {:ok, _} = Subject.persist(form_data, @context_data)
+
+        assert_received {:persisted, request}
+        assert request.skip_manual_run_notifications == true
+        assert request.skip_scheduled_run_notifications == false
+      end
     end
 
     test "when update request fails, it returns an error" do

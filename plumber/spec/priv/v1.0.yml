@@ -29,10 +29,15 @@ properties:
     $ref: "#/definitions/auto_cancel"
   queue:
     $ref: "#/definitions/queue"
+  partial_rerun:
+    $ref: "#/definitions/partial_rerun"
 additionalProperties: false
 required: [version, agent, blocks]
 
 definitions:
+  partial_rerun:
+    type: string
+    enum: [jobs, block]
   promotions:
     type: array
     minItems: 1
@@ -140,6 +145,8 @@ definitions:
         $ref: "#/definitions/task"
       task_file:
         type: string
+      partial_rerun:
+        $ref: "#/definitions/partial_rerun"
     additionalProperties: false
     not:
       anyOf:

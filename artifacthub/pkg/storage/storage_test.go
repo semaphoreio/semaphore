@@ -190,6 +190,12 @@ func Test__IsFile(t *testing.T) {
 			assert.False(t, isFile)
 		})
 
+		t.Run(backend+" existing directory with trailing slash => false", func(t *testing.T) {
+			isFile, err := bucket.IsFile(context.Background(), "artifacts/first/")
+			assert.Nil(t, err)
+			assert.False(t, isFile)
+		})
+
 		assert.Nil(t, client.DestroyBucket(context.TODO(), BucketOptions{
 			Name:       bucketName,
 			PathPrefix: TestBucketPathPrefix,

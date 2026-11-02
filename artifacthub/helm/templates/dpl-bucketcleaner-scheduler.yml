@@ -10,6 +10,8 @@ spec:
   replicas: {{ .Values.bucketCleanerScheduler.replicas }}
   template:
     metadata:
+      annotations:
+        checksum/storage-credentials: {{ printf "%s\n%s" .Values.global.artifacts.username .Values.global.artifacts.password | sha256sum }}
       name: {{ .Chart.Name }}-bucketcleaner-scheduler
       labels:
         app: {{ .Chart.Name }}-bucketcleaner-scheduler

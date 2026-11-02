@@ -66,6 +66,26 @@ defmodule Projecthub.Models.PeriodicTaskTest do
              } = PeriodicTask.construct(ctx.periodic1, "project_name")
     end
 
+    test "maps the notification skip flags", ctx do
+      flagged =
+        Map.merge(ctx.periodic1, %{
+          skip_scheduled_run_notifications: true,
+          skip_manual_run_notifications: false
+        })
+
+      task = PeriodicTask.construct(flagged, "project_name")
+
+      assert task.skip_scheduled_run_notifications == true
+      assert task.skip_manual_run_notifications == false
+    end
+
+    test "defaults the notification skip flags to false when absent", ctx do
+      task = PeriodicTask.construct(ctx.periodic1, "project_name")
+
+      assert task.skip_scheduled_run_notifications == false
+      assert task.skip_manual_run_notifications == false
+    end
+
     test "correctly maps parameters", ctx do
       assert task = PeriodicTask.construct(ctx.periodic2, "project_name")
 
@@ -294,6 +314,29 @@ defmodule Projecthub.Models.PeriodicTaskTest do
       end)
 
       assert {:ok, _} = PeriodicTask.update_all(ctx.project, [periodic_task(id: "1")], "requester_id")
+    end
+
+    test "passes the notification skip flags through to the request", ctx do
+      FunRegistry.set!(PeriodicService, :bulk_upsert_and_prune, fn req, _stream ->
+        [first | _] = req.periodics
+        assert first.skip_scheduled_run_notifications == true
+        assert first.skip_manual_run_notifications == false
+
+        API.BulkUpsertAndPruneResponse.new(
+          status: Status.new(),
+          upserted: [API.Periodic.new(id: first.id)],
+          deleted_ids: []
+        )
+      end)
+
+      task =
+        periodic_task(
+          id: "1",
+          skip_scheduled_run_notifications: true,
+          skip_manual_run_notifications: false
+        )
+
+      assert {:ok, _} = PeriodicTask.update_all(ctx.project, [task], "requester_id")
     end
 
     test "forwards regex_pattern and validate_input_format on parameters", ctx do

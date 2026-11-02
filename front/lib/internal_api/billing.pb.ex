@@ -1644,6 +1644,52 @@ defmodule InternalApi.Billing.UpdateAddonResponse do
   defstruct []
 end
 
+defmodule InternalApi.Billing.EmailRule do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          pattern: String.t(),
+          match: integer,
+          kind: integer,
+          description: String.t(),
+          created_at: Google.Protobuf.Timestamp.t(),
+          updated_at: Google.Protobuf.Timestamp.t()
+        }
+  defstruct [:pattern, :match, :kind, :description, :created_at, :updated_at]
+
+  field(:pattern, 1, type: :string)
+  field(:match, 2, type: InternalApi.Billing.EmailRuleMatch, enum: true)
+  field(:kind, 3, type: InternalApi.Billing.EmailRuleKind, enum: true)
+  field(:description, 4, type: :string)
+  field(:created_at, 5, type: Google.Protobuf.Timestamp)
+  field(:updated_at, 6, type: Google.Protobuf.Timestamp)
+end
+
+defmodule InternalApi.Billing.ListEmailRulesRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          kind: integer
+        }
+  defstruct [:kind]
+
+  field(:kind, 1, type: InternalApi.Billing.EmailRuleKind, enum: true)
+end
+
+defmodule InternalApi.Billing.ListEmailRulesResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          rules: [InternalApi.Billing.EmailRule.t()]
+        }
+  defstruct [:rules]
+
+  field(:rules, 1, repeated: true, type: InternalApi.Billing.EmailRule)
+end
+
 defmodule InternalApi.Billing.PlanType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
@@ -1745,6 +1791,25 @@ defmodule InternalApi.Billing.AddonGroupType do
   field(:ADDON_GROUP_TYPE_UNSPECIFIED, 0)
   field(:ADDON_GROUP_TYPE_EXCLUSIVE, 1)
   field(:ADDON_GROUP_TYPE_REGULAR, 2)
+end
+
+defmodule InternalApi.Billing.EmailRuleKind do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  field(:EMAIL_RULE_KIND_UNSPECIFIED, 0)
+  field(:EMAIL_RULE_KIND_BLOCK, 1)
+  field(:EMAIL_RULE_KIND_ALLOW, 2)
+end
+
+defmodule InternalApi.Billing.EmailRuleMatch do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  field(:EMAIL_RULE_MATCH_UNSPECIFIED, 0)
+  field(:EMAIL_RULE_MATCH_DOMAIN, 1)
+  field(:EMAIL_RULE_MATCH_ADDRESS, 2)
+  field(:EMAIL_RULE_MATCH_REGEX, 3)
 end
 
 defmodule InternalApi.Billing.BillingService.Service do
@@ -1879,6 +1944,12 @@ defmodule InternalApi.Billing.BillingService.Service do
     :UpdateAddon,
     InternalApi.Billing.UpdateAddonRequest,
     InternalApi.Billing.UpdateAddonResponse
+  )
+
+  rpc(
+    :ListEmailRules,
+    InternalApi.Billing.ListEmailRulesRequest,
+    InternalApi.Billing.ListEmailRulesResponse
   )
 end
 

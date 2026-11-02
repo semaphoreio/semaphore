@@ -101,11 +101,12 @@ defmodule PublicAPI.Schemas.DeploymentTargets.DeploymentTarget do
                 type: :array,
                 description: "The list of roles of users that are allowed to trigger a deployment,
                  by default project roles are `Reader`, `Contributor` and `Admin`, read more [here](https://docs.semaphoreci.com/security/default-roles/#project-roles).
-                 Role names are case insensitive.",
+                 On input, a role name (case insensitive) or a role id is accepted;
+                 responses contain role ids.",
                 items: %Schema{
-                  example: "Contributor",
+                  example: "b64d2b39-0a2b-4c1e-b190-b7d4a656e30b",
                   type: :string,
-                  description: "The name of the role."
+                  description: "The id of the role. Role names are accepted on input."
                 }
               },
               users: %Schema{

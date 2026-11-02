@@ -32,7 +32,7 @@ defmodule Guard.Application do
       {:ok, _} = Logger.add_backend(Sentry.LoggerBackend)
     end
 
-    opts = [strategy: :one_for_one, name: Guard.Supervisor]
+    opts = [strategy: :one_for_one, name: Guard.Supervisor, max_restarts: 1000]
     Supervisor.start_link(children, opts)
   end
 
@@ -178,6 +178,13 @@ defmodule Guard.Application do
       },
       %{
         worker: Supervisor.child_spec({Cachex, :config_cache}, id: :config_cache),
+        active: true
+      },
+      %{
+        worker:
+          Supervisor.child_spec({Cachex, :oauth_refresh_failure_cache},
+            id: :oauth_refresh_failure_cache
+          ),
         active: true
       }
     ])

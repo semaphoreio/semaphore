@@ -65,6 +65,33 @@ defmodule Front.WorkflowPage.DiagramTest do
       assert Map.has_key?(job, :finished_at)
     end
 
+    test "when a block task belongs to this pipeline, the block is not marked reused", context do
+      create_tasks(context.blocks)
+
+      pipeline = Front.Models.Pipeline.find(context.pipeline.id)
+      diagram = Diagram.load(pipeline)
+
+      assert Enum.all?(diagram.blocks, &(&1.reused_from == nil))
+    end
+
+    test "when a block task belongs to another pipeline, the block is marked reused", context do
+      create_tasks(context.blocks)
+
+      original_ppl_id = "b1e2a3c4-5d6e-4f70-8a9b-0c1d2e3f4a5b"
+      reuse_task_from_another_pipeline(Enum.at(context.blocks, 1), original_ppl_id)
+
+      pipeline = Front.Models.Pipeline.find(context.pipeline.id)
+      diagram = Diagram.load(pipeline)
+
+      reuses = Map.new(diagram.blocks, fn block -> {block.name, block.reused_from} end)
+
+      assert reuses == %{
+               "Block 1" => nil,
+               "Block 2" => original_ppl_id,
+               "Block 3" => nil
+             }
+    end
+
     test "when the pipeline has a compile task", context do
       Support.Stubs.Pipeline.add_compile_task(context.pipeline.id)
 
@@ -124,6 +151,17 @@ defmodule Front.WorkflowPage.DiagramTest do
 
   defp create_tasks(blocks) do
     blocks |> Enum.each(fn b -> Support.Stubs.Task.create(b) end)
+  end
+
+  defp reuse_task_from_another_pipeline(block, ppl_id) do
+    task =
+      Support.Stubs.DB.all(:tasks)
+      |> Enum.find(fn t -> t.api_model.request_token == block.api_model.build_req_id end)
+
+    Support.Stubs.DB.update(:tasks, %{
+      task
+      | api_model: %{task.api_model | ppl_id: ppl_id}
+    })
   end
 
   defp first_job(blocks) do

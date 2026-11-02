@@ -95,6 +95,7 @@ defmodule InternalApi.Audit.Event.Medium do
   field(:Web, 0)
   field(:API, 1)
   field(:CLI, 2)
+  field(:MCP, 3)
 end
 
 defmodule InternalApi.Audit.ListRequest do

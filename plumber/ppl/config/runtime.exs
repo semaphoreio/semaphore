@@ -39,6 +39,39 @@ config :watchman,
   prefix:
     System.get_env("METRICS_PREFIX") || "ppl.#{System.get_env("METRICS_NAMESPACE") || "dev"}"
 
+# Feature flags come from a YAML file when FEATURE_YAML_PATH is set (installs
+# without the Feature service); otherwise config.exs keeps FeatureHub.
+if config_env() == :prod do
+  case System.get_env("FEATURE_YAML_PATH") do
+    path when path in [nil, ""] ->
+      :ok
+
+    path ->
+      # yaml_elixir 1.x (pinned in mix.exs) returns the document from read_from_file/1.
+      opts = [
+        yaml_path: path,
+        agent_name: :feature_provider_agent,
+        reader: {YamlElixir, :read_from_file}
+      ]
+
+      config :ppl, feature_provider: {FeatureProvider.YamlProvider, opts}
+  end
+end
+
+# Scheduling of waiting pipeline blocks, see Ppl.PplBlocks.WaitingDrain.
+# How many pipelines can have their waiting blocks scheduled in parallel, 0
+# disables draining. Each drain task uses one Ppl.EctoRepo connection at a time.
+case Integer.parse(System.get_env("PPL_BLK_WAITING_DRAIN_MAX_TASKS") || "") do
+  {value, ""} when value >= 0 -> config :ppl, ppl_blk_waiting_drain_max_tasks: value
+  _ -> :ok
+end
+
+# Period in milliseconds of the periodic scan of all waiting blocks.
+case Integer.parse(System.get_env("PPL_BLK_WAITING_SP") || "") do
+  {value, ""} when value > 0 -> config :ppl, ppl_blk_waiting_sp: value
+  _ -> :ok
+end
+
 # Retention policy event consumer
 config :ppl, Ppl.Retention.Policy.Worker,
   enabled: System.get_env("RETENTION_CONSUMER_ENABLED", "false") == "true"

@@ -40,6 +40,8 @@ defmodule Front.Models.Scheduler do
     field(:at, :string)
     field(:parameters, :map)
     field(:pipeline_file, :string)
+    field(:skip_scheduled_run_notifications, :boolean, default: false)
+    field(:skip_manual_run_notifications, :boolean, default: false)
     field(:next, :string)
     field(:created_at, :string)
     field(:updated_by, :string)
@@ -441,7 +443,15 @@ defmodule Front.Models.Scheduler do
 
     # Build the reference field from reference_type and reference_name for gRPC service
     reference = build_reference(all_data)
-    grpc_data = Map.put(all_data, :reference, reference)
+
+    grpc_data =
+      all_data
+      |> Map.put(:reference, reference)
+      |> Map.put(
+        :skip_scheduled_run_notifications,
+        all_data[:skip_scheduled_run_notifications] == true
+      )
+      |> Map.put(:skip_manual_run_notifications, all_data[:skip_manual_run_notifications] == true)
 
     with true <- changeset.valid?,
          {:ok, channel} <- GRPC.Stub.connect(api_endpoint()),
@@ -566,6 +576,8 @@ defmodule Front.Models.Scheduler do
           Front.Utils.decorate_relative(raw_scheduler.pause_toggled_at.seconds),
       inactive: raw_scheduler.paused,
       blocked: raw_scheduler.suspended,
+      skip_scheduled_run_notifications: raw_scheduler.skip_scheduled_run_notifications == true,
+      skip_manual_run_notifications: raw_scheduler.skip_manual_run_notifications == true,
       latest_status: latest_trigger.scheduling_status,
       latest_scheduled_at: Front.Utils.decorate_date(latest_trigger.scheduled_at.seconds),
       latest_triggered_at: Front.Utils.decorate_date(latest_trigger.triggered_at.seconds),

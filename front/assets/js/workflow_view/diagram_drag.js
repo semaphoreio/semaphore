@@ -3,6 +3,14 @@ export var DiagramDrag = {
     var container = document.getElementById("diagram");
     if (!container) return;
 
+    //
+    // Under Turbo Drive init() runs again on every visit to the workflow view.
+    // The mousemove/mouseup listeners live on window and the cursor style tag
+    // on document.head, neither of which is replaced by the body swap, so drop
+    // the previous page's set before installing this one.
+    //
+    this.stop();
+
     var state = { active: false, startX: 0, startY: 0, scrollLeft: 0, pageScrollTop: 0 };
 
     function isPipelineContent(e) {
@@ -26,7 +34,7 @@ export var DiagramDrag = {
       container.style.userSelect = "none"; // njsscan-ignore: node_username
     });
 
-    window.addEventListener("mousemove", function (e) {
+    this.onMouseMove = function (e) {
       if (!state.active) return;
 
       if (e.buttons === 0) {
@@ -41,19 +49,44 @@ export var DiagramDrag = {
       var scrollDelta = window.scrollY - state.pageScrollTop;
       var dy = e.pageY - state.startY - scrollDelta;
       window.scrollTo(0, state.pageScrollTop - dy);
-    });
+    };
 
-    window.addEventListener("mouseup", function () {
+    this.onMouseUp = function () {
       if (!state.active) return;
       state.active = false;
       container.style.cursor = "grab";
       container.style.userSelect = "";
-    });
+    };
+
+    window.addEventListener("mousemove", this.onMouseMove);
+    window.addEventListener("mouseup", this.onMouseUp);
 
     container.style.cursor = "grab";
 
-    var style = document.createElement("style");
-    style.textContent = "#diagram .drag-ignore, #diagram .drag-ignore * { cursor: default; }";
-    document.head.appendChild(style);
+    this.style = document.createElement("style");
+    this.style.textContent = "#diagram .drag-ignore, #diagram .drag-ignore * { cursor: default; }";
+    document.head.appendChild(this.style);
+  },
+
+  //
+  // The mousedown listener is bound to #diagram, which Turbo discards along
+  // with the rest of the body, so only the window listeners and the style tag
+  // have to be released here.
+  //
+  stop: function () {
+    if (this.onMouseMove) {
+      window.removeEventListener("mousemove", this.onMouseMove);
+      this.onMouseMove = null;
+    }
+
+    if (this.onMouseUp) {
+      window.removeEventListener("mouseup", this.onMouseUp);
+      this.onMouseUp = null;
+    }
+
+    if (this.style) {
+      this.style.remove();
+      this.style = null;
+    }
   }
 };

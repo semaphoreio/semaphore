@@ -323,7 +323,9 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries do
         parameters: per.parameters,
         pause_toggled_by: per.pause_toggled_by,
         pause_toggled_at: per.pause_toggled_at,
-        inserted_at: per.inserted_at
+        inserted_at: per.inserted_at,
+        skip_scheduled_run_notifications: per.skip_scheduled_run_notifications,
+        skip_manual_run_notifications: per.skip_manual_run_notifications
       }
     )
   end

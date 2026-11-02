@@ -25,6 +25,8 @@ spec:
   replicas: {{ .Values.internalApi.replicas }}
   template:
     metadata:
+      annotations:
+        checksum/storage-credentials: {{ printf "%s\n%s" .Values.global.artifacts.username .Values.global.artifacts.password | sha256sum }}
       name: "{{ .Chart.Name }}-internal-grpc-api"
       labels:
         app: "{{ .Chart.Name }}-internal-grpc-api"

@@ -18,6 +18,9 @@ defmodule PipelinesAPI.Organizations.Onboarding.Test do
     on_prem? = Application.fetch_env!(:pipelines_api, :on_prem?)
     on_exit(fn -> Application.put_env(:pipelines_api, :on_prem?, on_prem?) end)
 
+    single_tenant = Application.fetch_env!(:pipelines_api, :single_tenant)
+    on_exit(fn -> Application.put_env(:pipelines_api, :single_tenant, single_tenant) end)
+
     test_pid = self()
 
     # Innocuous defaults; individual tests re-stub what they exercise. Billing
@@ -114,6 +117,31 @@ defmodule PipelinesAPI.Organizations.Onboarding.Test do
       end)
 
       assert {:error, {:user, "Organization name is already taken"}} =
+               Onboarding.create_organization("Acme Org", "acme", @owner_id)
+
+      refute_receive :create_called, 200
+    end
+  end
+
+  describe "create_organization/3 on a single-tenant install (org creation disabled)" do
+    setup do
+      Application.put_env(:pipelines_api, :single_tenant, true)
+      :ok
+    end
+
+    test "returns a forbidden (403) error and never validates, bills, or creates" do
+      assert {:error, {:forbidden, "Organization creation is disabled on this instance."}} =
+               Onboarding.create_organization("Acme Org", "acme", @owner_id)
+
+      # the single-tenant guard runs before is_valid/billing/create, so nothing downstream fires
+      refute_receive :billing_called, 200
+      refute_receive :create_called, 200
+    end
+
+    test "blocks regardless of on_prem? (single_tenant is the sole gate)" do
+      Application.put_env(:pipelines_api, :on_prem?, false)
+
+      assert {:error, {:forbidden, "Organization creation is disabled on this instance."}} =
                Onboarding.create_organization("Acme Org", "acme", @owner_id)
 
       refute_receive :create_called, 200

@@ -5,6 +5,7 @@ import { Props } from "../props"
 import toggleSpinner from "../people/spinner";
 import reRenderPage from "../people/render_response_html";
 import { App } from "../app";
+import { groupUserRowMarkup } from "./user_row";
 
 export var GroupManagement = {
   init: function() {
@@ -130,7 +131,7 @@ export var GroupManagement = {
     .then((response) => response.text())
     .then((html) => {
       reRenderPage(html)
-      App.run()
+      App.runPage()
       App["people_page"]()
     })
     .catch(e =>{
@@ -164,7 +165,7 @@ export var GroupManagement = {
     })
     .then((html) => {
       reRenderPage(html)
-      App.run()
+      App.runPage()
       App["people_page"]()
     })
     .catch(e =>{
@@ -240,22 +241,8 @@ export var GroupManagement = {
   renderNewUser(user) {
     const usersList = document.getElementById('group-users');
 
-    newUserDiv=
-    `
-    <div id="${user.id}" class="flex items-center justify-between bg-white shadow-1 mv1 mh1 ph3 pv2 br3">
-      <div class="flex items-center">
-        ${user.avatar
-          ? `<img src="${user.avatar}" class="w2 h2 br-100 mr2 ba b--black-50">`
-          : `<div class="bg-washed-gray w2 h2 br-100 mr2 ba b--black-50"></div>`
-        }
-        <div class="flex items-center">
-          <div class="b">${escapeHtml(user.name)}</div>
-          ${user.github_login ? `<div class="ml2 f6 gray">@${user.github_login}</div>` : `` }
-        </div>
-      </div>
-      <button name="rmv_btn" class="btn btn-secondary">×</button>
-    </div>
-    `
+    const newUserDiv = groupUserRowMarkup(user)
+
     usersList.insertAdjacentHTML('afterbegin', newUserDiv);
     const removeUserBtn = document.getElementById(user.id).querySelector('[name="rmv_btn"]');;
     removeUserBtn.onclick = () => this.removeUser(user.id)

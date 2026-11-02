@@ -39,6 +39,7 @@ config :github_notifier,
 if config_env() == :prod do
   config :github_notifier,
     pipeline_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_PLUMBER"),
+    scheduler_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_SCHEDULER"),
     projecthub_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_PROJECT"),
     organization_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_ORGANIZATION"),
     hook_api_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_REPO_PROXY"),

@@ -82,6 +82,7 @@ defmodule Zebra.Workers.TaskFinisher do
       |> Enum.max_by(fn t ->
         Zebra.Time.datetime_to_ms(t)
       end)
+      |> clamp_to_task_creation(task)
 
     Zebra.Metrics.submit_datetime_diff(
       "task.finishing.duration",
@@ -168,7 +169,7 @@ defmodule Zebra.Workers.TaskFinisher do
           task_id: task.id,
           timestamp:
             Google.Protobuf.Timestamp.new(
-              seconds: Zebra.Models.Task.finished_at(task) |> DateTime.to_unix()
+              seconds: task |> task_finished_timestamp() |> DateTime.to_unix()
             )
         )
       )
@@ -178,4 +179,22 @@ defmodule Zebra.Workers.TaskFinisher do
 
     log(task.id, "published task finished event")
   end
+
+  # A task made only of lightweight copies keeps the original jobs'
+  # finished_at timestamps, which predate the task itself; clamp so the
+  # task never reports finishing before it was created.
+  def task_finished_timestamp(task) do
+    task
+    |> Zebra.Models.Task.finished_at()
+    |> clamp_to_task_creation(task)
+  end
+
+  defp clamp_to_task_creation(finished_at = %DateTime{}, %{created_at: created_at = %DateTime{}}) do
+    case DateTime.compare(finished_at, created_at) do
+      :lt -> created_at
+      _ -> finished_at
+    end
+  end
+
+  defp clamp_to_task_creation(finished_at, _task), do: finished_at
 end

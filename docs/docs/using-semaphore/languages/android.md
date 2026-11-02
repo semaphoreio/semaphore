@@ -33,7 +33,7 @@ To use an Android container in your pipeline, follow these steps:
 1. Open the pipeline
 2. Select "Docker Containers" in **Environment Type**
 3. Choose a machine
-4. Type the name of the **Image**. Use one of the available [Android SDK images](#sdks)
+4. Type the name of the **Image**. Use one of the available [Semaphore Container Registry](../containers/container-registry).
 
     ![Selecting an Android image](./img/android-container.jpg)
 
@@ -58,12 +58,12 @@ To configure your Android container using YAML, follow these steps:
     name: Initial Pipeline
     agent:
       machine:
-        type: e1-standard-2
+        type: f1-standard-2
         os_image: ubuntu2404
         # highlight-start
       containers:
         - name: main
-          image: 'registry.semaphoreci.com/android:34'
+          image: 'registry.semaphoreci.com/android:36'
         # highlight-end
     blocks:
       - name: 'Block #1'
@@ -75,7 +75,7 @@ To configure your Android container using YAML, follow these steps:
                 - checkout
     ```
 
-4. The first item `name: main` and in `image` select one of the available [Android SDK images](#sdks)
+4. The first item `name: main` and in `image` select one of the available in the [Semaphore Container Registry](../containers/container-registry).
 5. Save the file and push it to the repository
 
 </Steps>
@@ -139,7 +139,7 @@ version: v1.0
 name: React Native example
 agent:
   machine:
-    type: e1-standard-2
+    type: f1-standard-2
     os_image: ubuntu2404
     # highlight-start
   # Use an image with Node.js for React Native  
@@ -193,41 +193,6 @@ There are Docker images for each recent version of Android. There are also varia
 - `android:<version>-node`: basic image extended with Node.js
 - `android:<version>-flutter`: basic image extended with Flutter toolchain
 
-## Android SDK images {#sdks}
-
-These are the pre-built Android images available:
-
-- `android:34`
-- `android:34-node`
-- `android:34-flutter`
-- `android:33`
-- `android:33-node`
-- `android:33-flutter`
-- `android:31`
-- `android:31-node`
-- `android:31-flutter`
-- `android:30`
-- `android:30-node`
-- `android:30-flutter`
-- `android:29`
-- `android:29-node`
-- `android:29-flutter`
-- `android:28`
-- `android:28-node`
-- `android:28-flutter`
-- `android:27`
-- `android:27-node`
-- `android:27-flutter`
-- `android:26`
-- `android:26-node`
-- `android:26-flutter`
-- `android:25`
-- `android:25-node`
-- `android:25-flutter`
-- `android:24`
-- `android:24-node`
-- `android:23`
-- `android:23-node`
 
 ## Pre-installed software {#software}
 

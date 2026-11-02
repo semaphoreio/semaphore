@@ -40,6 +40,10 @@ func ProjectHubEndpoint() string {
 
 func ServerFarmEndpoint() string {
 	if flag.Lookup("test.v") == nil {
+		if endpoint := os.Getenv("INTERNAL_API_URL_JOB"); endpoint != "" {
+			return endpoint
+		}
+
 		return "semaphore-job-api:50051"
 	}
 

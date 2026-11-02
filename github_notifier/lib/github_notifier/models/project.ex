@@ -43,16 +43,23 @@ defmodule GithubNotifier.Models.Project do
       :repository_id => raw_project.spec.repository.id,
       :status =>
         raw_project.spec.repository.status
+        |> drop_unknown_fields()
         |> Poison.encode!()
         |> Poison.decode!()
-        |> drop_unknown_fields()
     }
   end
 
-  defp drop_unknown_fields(map) when is_map(map) do
-    map
-    |> Map.delete("__unknown_fields__")
+  # Unknown fields hold {tag, wire_type, value} tuples that Poison cannot
+  # encode, so they must be dropped before the JSON round-trip.
+  defp drop_unknown_fields(%_{} = struct) do
+    struct
+    |> Map.from_struct()
+    |> Map.delete(:__unknown_fields__)
     |> Map.new(fn {k, v} -> {k, drop_unknown_fields(v)} end)
+  end
+
+  defp drop_unknown_fields(map) when is_map(map) do
+    Map.new(map, fn {k, v} -> {k, drop_unknown_fields(v)} end)
   end
 
   defp drop_unknown_fields(list) when is_list(list), do: Enum.map(list, &drop_unknown_fields/1)

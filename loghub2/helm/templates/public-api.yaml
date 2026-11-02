@@ -31,6 +31,8 @@ spec:
       maxUnavailable: 0
   template:
     metadata:
+      annotations:
+        checksum/storage-credentials: {{ printf "%s\n%s" .Values.global.logs.username .Values.global.logs.password | sha256sum }}
       name: {{ .Chart.Name }}-public-api
       labels:
         app: {{ .Chart.Name }}-public-api

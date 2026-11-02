@@ -60,7 +60,7 @@ For the full list of member permissions, see [organization roles](./user-managem
 
 ### Admin {#org-admin}
 
-Admins can modify settings within the organization or any of its projects. They do not have access to billing information, and they cannot change general organization details, such as the organization name and URL.
+Admins can modify settings within the organization or any of its projects. They cannot change general organization details, such as the organization name and URL.
 
 Only Admins and Owners can invite users to the organization.
 

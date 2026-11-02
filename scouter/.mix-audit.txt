@@ -1,0 +1,5 @@
+# gun 2.4.1 is only the test suite's gRPC client transport and is not in the release.
+# GHSA-w4f7-4cxr-rv3c covers cowboy < 2.16.0 and gun < 2.4.0, but the published data gives
+# 2.16.0, cowboy's patched version, as gun's patched version too, so the audit flags every
+# gun release. gun 2.4.1 is outside the advisory's own vulnerable range (< 2.4.0).
+GHSA-w4f7-4cxr-rv3c

@@ -68,5 +68,20 @@ defmodule FeatureProvider.YamlProviderTest do
                }
              ]
     end
+
+    test "decodes the file with the given reader" do
+      provider =
+        {YamlProvider,
+         yaml_path: "reader/features.yml",
+         agent_name: :reader_yaml_provider,
+         reader: {__MODULE__, :read_features}}
+
+      start_supervised!(provider)
+
+      assert {:ok, [%Feature{type: "from_reader", state: :disabled}]} =
+               FeatureProvider.list_features(provider: provider)
+    end
   end
+
+  def read_features("reader/features.yml"), do: %{"from_reader" => %{"enabled" => false}}
 end

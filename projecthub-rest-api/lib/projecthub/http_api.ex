@@ -83,9 +83,11 @@ defmodule Projecthub.HttpApi do
     user_id = conn.assigns.user_id
     org_id = conn.assigns.org_id
 
-    if Auth.has_permissions?(org_id, user_id, "organization.projects.create") do
+    with true <- Auth.has_permissions?(org_id, user_id, "organization.projects.create"),
+         :ok <- validate_notification_flags(conn) do
       spec = conn.body_params["spec"]
       repository = spec["repository"]
+      forked_pull_requests = repository["forked_pull_requests"] || %{}
 
       {schedulers, tasks} = construct_schedulers_and_tasks(conn.body_params)
 
@@ -106,10 +108,13 @@ defmodule Projecthub.HttpApi do
                       url: repository["url"],
                       forked_pull_requests:
                         Repository.ForkedPullRequests.new(
-                          allowed_secrets:
-                            repository["forked_pull_requests"]["allowed_secrets"] || [],
+                          allowed_secrets: forked_pull_requests["allowed_secrets"] || [],
                           allowed_contributors:
-                            repository["forked_pull_requests"]["allowed_contributors"] || []
+                            forked_pull_requests["allowed_contributors"] || [],
+                          allow_sem_approve_include_secrets:
+                            forked_pull_requests["allow_sem_approve_include_secrets"] || false,
+                          allow_sem_approve_enable_cache:
+                            forked_pull_requests["allow_sem_approve_enable_cache"] || false
                         ),
                       run_on: run_on_map(repository["run_on"]),
                       pipeline_file: repository["pipeline_file"] || "",
@@ -150,9 +155,15 @@ defmodule Projecthub.HttpApi do
           send_resp(conn, 422, Poison.encode!(%{message: res.metadata.status.message}))
       end
     else
-      send_resp(conn, 401, Poison.encode!(%{message: "Unauthorized"}))
+      false ->
+        send_resp(conn, 401, Poison.encode!(%{message: "Unauthorized"}))
+
+      {:invalid, message} ->
+        send_resp(conn, 422, Poison.encode!(%{message: message}))
     end
   end
+
+  @notification_flags ~w(skip_scheduled_run_notifications skip_manual_run_notifications)
 
   @update_permissions ["project.general_settings.manage", "project.repository_info.manage"]
   patch "/api/#{@version}/projects/:id" do
@@ -162,12 +173,15 @@ defmodule Projecthub.HttpApi do
     org_id = conn.assigns.org_id
     project_id = conn.params["id"]
 
-    if Auth.has_permissions?(org_id, user_id, project_id, @update_permissions) do
+    with true <- Auth.has_permissions?(org_id, user_id, project_id, @update_permissions),
+         :ok <- validate_notification_flags(conn),
+         {:ok, stored_flags} <- stored_notification_flags(conn) do
       metadata = conn.body_params["metadata"]
       spec = conn.body_params["spec"]
       repository = spec["repository"]
+      forked_pull_requests = repository["forked_pull_requests"] || %{}
 
-      {schedulers, tasks} = construct_schedulers_and_tasks(conn.body_params)
+      {schedulers, tasks} = construct_schedulers_and_tasks(conn.body_params, stored_flags)
 
       req =
         InternalApi.Projecthub.UpdateRequest.new(
@@ -187,10 +201,13 @@ defmodule Projecthub.HttpApi do
                       url: repository["url"],
                       forked_pull_requests:
                         Repository.ForkedPullRequests.new(
-                          allowed_secrets:
-                            repository["forked_pull_requests"]["allowed_secrets"] || [],
+                          allowed_secrets: forked_pull_requests["allowed_secrets"] || [],
                           allowed_contributors:
-                            repository["forked_pull_requests"]["allowed_contributors"] || []
+                            forked_pull_requests["allowed_contributors"] || [],
+                          allow_sem_approve_include_secrets:
+                            forked_pull_requests["allow_sem_approve_include_secrets"] || false,
+                          allow_sem_approve_enable_cache:
+                            forked_pull_requests["allow_sem_approve_enable_cache"] || false
                         ),
                       run_on: run_on_map(repository["run_on"]),
                       pipeline_file:
@@ -229,7 +246,25 @@ defmodule Projecthub.HttpApi do
           send_resp(conn, 422, Poison.encode!(%{message: res.metadata.status.message}))
       end
     else
-      send_resp(conn, 401, Poison.encode!(%{message: "Unauthorized"}))
+      false ->
+        send_resp(conn, 401, Poison.encode!(%{message: "Unauthorized"}))
+
+      {:invalid, message} ->
+        send_resp(conn, 422, Poison.encode!(%{message: message}))
+
+      {:error, reason} ->
+        Logger.error(
+          "Reading the stored task notification settings for #{project_id} failed: #{inspect(reason)}"
+        )
+
+        send_resp(
+          conn,
+          503,
+          Poison.encode!(%{
+            message:
+              "Could not read the stored commit status settings for this project's tasks, so nothing was changed. Please retry."
+          })
+        )
     end
   end
 
@@ -458,10 +493,8 @@ defmodule Projecthub.HttpApi do
         "name" => p.spec.repository.name,
         "owner" => p.spec.repository.owner,
         "url" => p.spec.repository.url,
-        "forked_pull_requests" => %{
-          "allowed_secrets" => p.spec.repository.forked_pull_requests.allowed_secrets,
-          "allowed_contributors" => p.spec.repository.forked_pull_requests.allowed_contributors
-        },
+        "forked_pull_requests" =>
+          encode_forked_pull_requests(p.spec.repository.forked_pull_requests),
         "run_on" => map_run_types(p.spec.repository.run_on),
         "pipeline_file" => p.spec.repository.pipeline_file,
         "status" => encode_status(p.spec.repository.status),
@@ -497,6 +530,31 @@ defmodule Projecthub.HttpApi do
       "tags" => whitelist.tags
     }
   end
+
+  defp encode_forked_pull_requests(nil) do
+    %{
+      "allowed_secrets" => [],
+      "allowed_contributors" => []
+    }
+  end
+
+  defp encode_forked_pull_requests(forked_pull_requests) do
+    %{
+      "allowed_secrets" => forked_pull_requests.allowed_secrets,
+      "allowed_contributors" => forked_pull_requests.allowed_contributors
+    }
+    |> maybe_put_true(
+      "allow_sem_approve_include_secrets",
+      forked_pull_requests.allow_sem_approve_include_secrets
+    )
+    |> maybe_put_true(
+      "allow_sem_approve_enable_cache",
+      forked_pull_requests.allow_sem_approve_enable_cache
+    )
+  end
+
+  defp maybe_put_true(map, _key, value) when value in [nil, false], do: map
+  defp maybe_put_true(map, key, value), do: Map.put(map, key, value)
 
   @unspecified_status InternalApi.Projecthub.Project.Spec.Scheduler.Status.value(
                         :STATUS_UNSPECIFIED
@@ -601,9 +659,9 @@ defmodule Projecthub.HttpApi do
     |> String.downcase()
   end
 
-  defp construct_schedulers_and_tasks(body_params) do
+  defp construct_schedulers_and_tasks(body_params, stored_flags \\ %{}) do
     schedulers = construct_schedulers(body_params["spec"]["schedulers"])
-    tasks = construct_tasks(body_params["spec"]["tasks"])
+    tasks = construct_tasks(body_params["spec"]["tasks"], stored_flags)
 
     if Enum.empty?(tasks),
       do: {schedulers, []},
@@ -632,7 +690,7 @@ defmodule Projecthub.HttpApi do
     end
   end
 
-  defp construct_tasks(raw_tasks) do
+  defp construct_tasks(raw_tasks, stored_flags) do
     alias InternalApi.Projecthub.Project.Spec.Task, as: SpecTask
 
     if raw_tasks do
@@ -649,12 +707,95 @@ defmodule Projecthub.HttpApi do
           at: task["at"] || "",
           pipeline_file: task["pipeline_file"] || "",
           parameters: construct_task_parameters(task["parameters"]),
-          status: task_status(task["status"])
+          status: task_status(task["status"]),
+          skip_scheduled_run_notifications:
+            notification_flag(task, "skip_scheduled_run_notifications", stored_flags),
+          skip_manual_run_notifications:
+            notification_flag(task, "skip_manual_run_notifications", stored_flags)
         )
       end)
     else
       []
     end
+  end
+
+  # A proto3 bool cannot say "not provided", so presence has to be resolved
+  # here - this is the last layer that still sees whether the key was in the
+  # request body. An omitted key keeps the stored value; an explicit true or
+  # false wins, so a flag can still be cleared through the API.
+  defp notification_flag(task, key, stored_flags) do
+    if Map.has_key?(task, key) do
+      task[key] == true
+    else
+      stored_flags |> Map.get(task["id"], %{}) |> Map.get(key, false)
+    end
+  end
+
+  defp stored_notification_flags(conn) do
+    if tasks_in_request?(conn) do
+      with {:ok, project} <- fetch_project_by_id(conn) do
+        {:ok,
+         Map.new(project.spec.tasks, fn task ->
+           {task.id,
+            %{
+              "skip_scheduled_run_notifications" => task.skip_scheduled_run_notifications == true,
+              "skip_manual_run_notifications" => task.skip_manual_run_notifications == true
+            }}
+         end)}
+      end
+    else
+      {:ok, %{}}
+    end
+  end
+
+  defp tasks_in_request?(conn), do: request_tasks(conn) != []
+
+  defp request_tasks(conn) do
+    case conn.body_params["spec"] do
+      %{"tasks" => tasks} when is_list(tasks) -> Enum.filter(tasks, &is_map/1)
+      _ -> []
+    end
+  end
+
+  # A proto3 bool takes anything truthy silently, so a quoted "true" would land
+  # as false and clear the flag instead of setting it. Reject it here, the way
+  # the scheduler YAML schema and the task form both do.
+  defp validate_notification_flags(conn) do
+    conn
+    |> request_tasks()
+    |> Enum.flat_map(fn task ->
+      Enum.filter(@notification_flags, &(Map.has_key?(task, &1) and not is_boolean(task[&1])))
+    end)
+    |> case do
+      [] -> :ok
+      [key | _] -> {:invalid, "#{key} must be true or false"}
+    end
+  end
+
+  defp fetch_project_by_id(conn) do
+    req =
+      InternalApi.Projecthub.DescribeRequest.new(
+        metadata: Utils.construct_req_meta(conn),
+        id: conn.params["id"],
+        detailed: true
+      )
+
+    {:ok, channel} =
+      GRPC.Stub.connect(Application.fetch_env!(:projecthub, :projecthub_grpc_endpoint))
+
+    try do
+      {:ok, res} =
+        InternalApi.Projecthub.ProjectService.Stub.describe(channel, req, timeout: 30_000)
+
+      case InternalApi.Projecthub.ResponseMeta.Code.key(res.metadata.status.code) do
+        :OK -> {:ok, res.project}
+        code -> {:error, code}
+      end
+    after
+      GRPC.Stub.disconnect(channel)
+    end
+  rescue
+    error -> {:error, error}
   end
 
   defp construct_reference("branch", reference_name) do

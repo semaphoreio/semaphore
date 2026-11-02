@@ -83,4 +83,47 @@ defmodule Zebra.Apis.InternalTaskApi.SerializerTest do
                )
     end
   end
+
+  describe ".serialize_job with original_job_id (Describe lineage exposure)" do
+    test "a copy row serializes original_job_id equal to the original id" do
+      original_id = Ecto.UUID.generate()
+
+      {:ok, copy} =
+        Support.Factories.Job.create(:finished, %{
+          original_job_id: original_id,
+          result: "passed"
+        })
+
+      serialized = Serializer.serialize_job(copy)
+
+      assert serialized.original_job_id == original_id
+    end
+
+    test "a normal job serializes with original_job_id absent (backward compatible)" do
+      {:ok, job} = Support.Factories.Job.create(:pending)
+
+      serialized = Serializer.serialize_job(job)
+
+      # nil marker drops out via remove_nils_from_keywordlist, leaving the
+      # proto default for non-copy jobs — existing consumers see no change.
+      assert serialized.original_job_id in [nil, ""]
+    end
+
+    test "top-level serialize/1 loads original_job_id for copy jobs" do
+      original_id = Ecto.UUID.generate()
+      {:ok, task} = Support.Factories.Task.create()
+
+      {:ok, _copy} =
+        Support.Factories.Job.create(:finished, %{
+          build_id: task.id,
+          original_job_id: original_id,
+          result: "passed"
+        })
+
+      reply = Serializer.serialize(task)
+
+      assert [job] = reply.jobs
+      assert job.original_job_id == original_id
+    end
+  end
 end

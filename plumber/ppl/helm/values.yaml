@@ -17,6 +17,14 @@ db:
   blockName: block_repo
   blockPoolSize: 3
 
+# Scheduling of waiting pipeline blocks.
+# drainMaxTasks: pipelines drained in parallel (0 disables draining), each uses
+#   one connection from pplPoolSize at a time.
+# periodicSchedulingMs: period of the safety-net scan of all waiting blocks.
+waitingBlocks:
+  drainMaxTasks: 1
+  periodicSchedulingMs: 5000
+
 statsd:
   resources:
     limits:

@@ -26,15 +26,25 @@ defmodule Gofer.Deployment.Model.DeploymentQueries do
 
   def list_by_project_with_last_triggers(project_id) do
     Watchman.benchmark("Gofer.deployments.queries.list_detailed", fn ->
+      last_trigger_id =
+        from(trigger in DeploymentTrigger,
+          where: trigger.deployment_id == parent_as(:deployment).id,
+          order_by: [desc: trigger.triggered_at],
+          limit: 1,
+          select: %{id: trigger.id}
+        )
+
       EctoRepo.all(
         from(deployment in Deployment,
+          as: :deployment,
+          left_lateral_join: last_trigger in subquery(last_trigger_id),
+          on: true,
           left_join: trigger in DeploymentTrigger,
-          on: trigger.deployment_id == deployment.id,
+          on: trigger.id == last_trigger.id,
           left_join: switch in Switch,
           on: trigger.switch_id == switch.id,
           where: deployment.project_id == ^project_id,
-          distinct: deployment.id,
-          order_by: [asc: deployment.name, desc: trigger.triggered_at],
+          order_by: [asc: deployment.name],
           select: %{deployment: deployment, switch: switch, last_trigger: trigger}
         )
       )

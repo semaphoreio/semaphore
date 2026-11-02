@@ -55,6 +55,9 @@ if config_env() == :prod do
   config :repository_hub, RepositoryHub.RemoteIdSyncWorker,
     enabled: System.get_env("REMOTE_ID_SYNC_ENABLED") != "false",
     rate_limit_per_minute: String.to_integer(System.get_env("REMOTE_ID_SYNC_RATE_LIMIT_PER_MINUTE") || "10")
+
+  config :repository_hub, RepositoryHub.BuildStatusGuardCleanupWorker,
+    enabled: System.get_env("BUILD_STATUS_GUARD_CLEANUP_ENABLED") != "false"
 end
 
 on_prem? = if(System.get_env("ON_PREM") == "true", do: true, else: false)

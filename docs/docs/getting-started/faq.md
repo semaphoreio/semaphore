@@ -218,6 +218,15 @@ curl -X POST -H "Authorization: token <OAUTH_TOKEN>" \
     -d '{"body":"body"}'
 ```
 
+### When trying to clone a public repository hosted on GitHub, I get the following error: fatal: could not read Username for 'https://github.com'
+
+[Due to changes on how GitHub handles unauthenticated clones of public repositories](https://github.com/orgs/community/discussions/206581#discussioncomment-18269083), clones of public repositories may result in authentication being requested. Because a job is non-interactive, this results in failure.
+
+If this is occuring to you, you can configure the git client to use `HTTP/1.1`, which may resolve the issue:
+```git config --global http.version HTTP/1.1```
+
+[Otherwise, you can authenticate via the git cli](https://git-scm.com/docs/gitcredentials).
+
 ## Pipelines
 
 ### Can I insert multiline commands?
@@ -372,7 +381,7 @@ Check the following possible causes:
 
 :::tip
 
-While an issue is ongoing, you might consider using a shorter [execution_time_limit](../using-semaphore/pipelines#time-limit) in your pipelines. This will prevent stale builds from running for a full hour.
+While an issue is ongoing, you might consider using a shorter [execution_time_limit](../using-semaphore/pipelines#time-limit) in your pipelines. This will prevent stale builds from running for a full hour. After-pipeline jobs inherit that limit unless they set their own, so lowering it caps them too.
 
 :::
 
@@ -508,7 +517,14 @@ This can happen in self-hosted versions of Semaphore. The problem is that the ag
 
 ### Can I approve blocked workflow triggers? {#sem-approve}
 
-If you are using a [filter for contributors](../using-semaphore/workflows#project-triggers), you can still review and approve blocked pull requests by commenting with a `/sem-approve` message. Anyone who can run a forked pull request can also approve one.
+If you are using a [filter for contributors](../using-semaphore/workflows#project-triggers), you can still review and approve blocked pull requests by commenting with a `/sem-approve` message. Any Semaphore user with access to the project, whose GitHub account is connected to Semaphore, can approve one.
+
+You can also allow extra options for approved runs in **Project settings > General > Forked pull requests**:
+
+- `/sem-approve <sha> --include-secrets`
+- `/sem-approve <sha> --enable-cache`
+
+These options work only when the corresponding project settings are enabled, and only for approvers who can start pipelines in the project (`project.job.rerun`). `<sha>` is the fork commit you reviewed (at least 12 characters); if the fork pushes a new commit, review it and approve again with the new SHA.
 
 Approving forked pull requests is limited to new comments only and is not possible for comment edits. Due to security concerns, `/sem-approve` will work only once. Subsequent pushes to the forked pull request must be approved again.
 
@@ -576,3 +592,7 @@ Enabling the `set -e` option in the Bash shell causes autocomplete to fail and e
 ### Why are my secrets empty?
 
 We have discontinued exposing secret content via the CLI, API, and web interface to ensure enhanced security measures. Retrieval of secret values is now exclusively available through the job mechanism.
+
+### Why are my forked PRs failing with "error: no SEMAPHORE_CACHE_BACKEND environment variable set"?
+
+Due to security reasons, we do not allow cache access on forked PR's by default. If you want to change this behaviour, reach out to `support@semaphore.io` requesting access.

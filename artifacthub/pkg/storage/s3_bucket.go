@@ -53,7 +53,8 @@ func (b *S3Bucket) IsFile(ctx context.Context, path string) (bool, error) {
 
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
-			if aerr.Code() == s3.ErrCodeNoSuchKey {
+			switch aerr.Code() {
+			case s3.ErrCodeNoSuchKey, "NoSuchVersion", "NotFound":
 				return false, nil
 			}
 		}
