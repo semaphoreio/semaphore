@@ -6,7 +6,7 @@ defmodule Ppl.Actions.ListActivityImpl.Test do
   alias Ppl.Actions.{DescribeTopologyImpl, ListActivityImpl}
   alias Ppl.EctoRepo, as: Repo
   alias Ppl.PplBlocks.Model.{PplBlocks, PplBlocksQueries}
-  alias Ppl.PplRequests.Model.PplRequestsQueries
+  alias Ppl.PplRequests.Model.{PplRequests, PplRequestsQueries}
   alias Ppl.Ppls.Model.{Ppls, PplsQueries}
   alias Ppl.PplTraces.Model.PplTracesQueries
 
@@ -49,6 +49,33 @@ defmodule Ppl.Actions.ListActivityImpl.Test do
       ]),
       definition([
         %{"name" => "unnamed job", "build" => %{"jobs" => [%{"commands" => ["echo"]}]}}
+      ]),
+      definition([
+        block("first", [job("a")], %{}, []),
+        block("second", [job("b")], %{}, ["first"]),
+        block("third", [job("c")], %{}, ["first", "second"]),
+        block("no deps key", [job("d")])
+      ]),
+      definition([
+        block("parallelism and matrix", [
+          job("pm", %{
+            "parallelism" => 3,
+            "matrix" => [%{"env_var" => "IGNORED", "values" => ["x", "y"]}]
+          })
+        ]),
+        block("software versions", [
+          job("sv", %{
+            "matrix" => [
+              %{"software" => "Elixir", "versions" => ["1.14", "1.15"]},
+              %{"env_var" => "DB", "values" => ["pg", "mysql"]}
+            ]
+          })
+        ]),
+        block("bl\u00f6ck \u2713 \u69cb\u7bc9", [
+          job("j\u00f6b \u30c6\u30b9\u30c8", %{
+            "matrix" => [%{"env_var" => "\u00c9", "values" => ["\u00e0", "\u00fc"]}]
+          })
+        ])
       ])
     ]
 
@@ -66,12 +93,13 @@ defmodule Ppl.Actions.ListActivityImpl.Test do
     Enum.each(ppls, fn {ppl, definition} ->
       pipeline = Enum.find(result, &(&1.ppl_id == ppl.ppl_id))
       assert_same_jobs(pipeline, definition)
+      assert_same_blocks(pipeline, definition)
 
       refute Map.has_key?(pipeline, :definition)
       assert pipeline.definition_file == ".semaphore/semaphore.yml"
     end)
 
-    [_, booster_ppl, _] = ppls |> Enum.map(fn {ppl, _} -> ppl.ppl_id end)
+    [_, booster_ppl, _, deps_ppl, _] = ppls |> Enum.map(fn {ppl, _} -> ppl.ppl_id end)
     booster_result = Enum.find(result, &(&1.ppl_id == booster_ppl))
 
     assert ["job count env with matrix", "boosters", "no jobs"] ==
@@ -91,6 +119,69 @@ defmodule Ppl.Actions.ListActivityImpl.Test do
            |> Enum.all?(&(&1.status == "pending"))
 
     assert booster_result.blocks |> Enum.at(2) |> Map.get(:jobs) == []
+
+    deps_result = Enum.find(result, &(&1.ppl_id == deps_ppl))
+
+    assert Enum.map(deps_result.blocks, & &1.dependencies) ==
+             [[], ["first"], ["first", "second"], nil]
+  end
+
+  test "gRPC response carries the same block details" do
+    {ppl, definition} =
+      insert_active_ppl(
+        definition([
+          block("first", [job("a", %{"parallelism" => 2})], %{}, []),
+          block("second", [job("b")], %{}, ["first"]),
+          block("no deps key", [job("c")])
+        ])
+      )
+
+    set_block_state(ppl.ppl_id, 0, "running")
+
+    {:ok, %{blocks: topology}} = DescribeTopologyImpl.describe_topology(definition)
+
+    assert %{pipelines: [pipeline]} = grpc_list_activity()
+    assert pipeline.ppl_id == ppl.ppl_id
+
+    assert Enum.map(pipeline.blocks, &{&1.name, &1.dependencies}) ==
+             Enum.map(topology, &{&1.name, &1.dependencies || []})
+
+    assert Enum.map(pipeline.blocks, fn b -> Enum.map(b.jobs, &{&1.name, &1.index, &1.status}) end) ==
+             [
+               [{"a - 1/2", 0, "scheduled"}, {"a - 2/2", 1, "scheduled"}],
+               [{"b", 0, "pending"}],
+               [{"c", 0, "pending"}]
+             ]
+
+    assert Enum.map(pipeline.blocks, & &1.state) == [:RUNNING, :INITIALIZING, :INITIALIZING]
+  end
+
+  test "pipeline without a definition is listed with no blocks" do
+    {with_def, definition} = insert_active_ppl(definition([block("b", [job("a")], %{}, [])]))
+    {without_def, _} = insert_active_ppl(definition([block("b", [job("a")])]))
+
+    from(pb in PplBlocks, where: pb.ppl_id == ^without_def.ppl_id) |> Repo.delete_all()
+
+    from(pr in PplRequests, where: pr.id == ^without_def.ppl_id)
+    |> Repo.update_all(set: [definition: nil])
+
+    assert {:ok, %{pipelines: result}} = list_activity()
+    assert Enum.map(result, & &1.ppl_id) == [without_def.ppl_id, with_def.ppl_id]
+
+    assert Enum.find(result, &(&1.ppl_id == without_def.ppl_id)).blocks == []
+    assert_same_blocks(Enum.find(result, &(&1.ppl_id == with_def.ppl_id)), definition)
+  end
+
+  test "definition is projected only for pipelines on the requested page" do
+    for _ <- 1..3, do: insert_active_ppl(definition([block("b", [job("a")])]))
+
+    rows =
+      capture_query_rows(fn ->
+        assert {:ok, %{pipelines: [_]}} = list_activity(1)
+      end)
+
+    projected = Enum.filter(rows, &match?([_, %{"blocks" => _}], &1))
+    assert length(projected) == 1
   end
 
   test "full definition is not loaded from the database" do
@@ -147,11 +238,11 @@ defmodule Ppl.Actions.ListActivityImpl.Test do
 
   # Helpers
 
-  defp list_activity do
+  defp list_activity(page_size \\ 30) do
     ListActivityImpl.list_activity_sql(@org_id, %{
       page_token: nil,
       direction: :NEXT,
-      page_size: 30,
+      page_size: page_size,
       order: :BY_CREATION_TIME_DESC
     })
   end
@@ -168,6 +259,41 @@ defmodule Ppl.Actions.ListActivityImpl.Test do
       expected_indexes = expected_block.jobs |> Enum.with_index() |> Enum.map(&elem(&1, 1))
       assert Enum.map(block.jobs, & &1.index) == expected_indexes
     end)
+  end
+
+  # Rebuilds the blocks the way they were built from the full definition:
+  # topology of the whole definition merged with the pipeline_blocks rows.
+  defp assert_same_blocks(pipeline, definition) do
+    {:ok, %{blocks: topology}} = DescribeTopologyImpl.describe_topology(definition)
+    {:ok, rows} = PplBlocksQueries.all_blocks_from_pipelines([pipeline.ppl_id])
+
+    expected =
+      Enum.map(rows, fn row ->
+        block = topology |> Enum.find(&(&1.name == row.name)) |> Map.merge(row)
+        status = if block.state in ["running", "done"], do: "scheduled", else: "pending"
+
+        jobs =
+          block.jobs
+          |> Enum.with_index()
+          |> Enum.map(fn {name, index} -> %{name: name, index: index, status: status} end)
+
+        Map.put(block, :jobs, jobs)
+      end)
+
+    assert pipeline.blocks == expected
+  end
+
+  defp grpc_list_activity do
+    request =
+      %{organization_id: @org_id, page_token: "", page_size: 30}
+      |> Util.Proto.deep_new!(InternalApi.Plumber.ListActivityRequest)
+
+    {:ok, channel} = GRPC.Stub.connect("localhost:50053")
+
+    assert {:ok, response} =
+             InternalApi.Plumber.PipelineService.Stub.list_activity(channel, request)
+
+    Util.Proto.to_map!(response)
   end
 
   defp capture_query_rows(fun) do
@@ -208,8 +334,14 @@ defmodule Ppl.Actions.ListActivityImpl.Test do
     %{"version" => "v1.0", "agent" => agent, "blocks" => blocks}
   end
 
-  defp block(name, jobs, build_extra \\ %{}) do
+  defp block(name, jobs, build_extra \\ %{}, dependencies \\ :none)
+
+  defp block(name, jobs, build_extra, :none) do
     %{"name" => name, "build" => Map.merge(%{"jobs" => jobs}, build_extra)}
+  end
+
+  defp block(name, jobs, build_extra, dependencies) do
+    name |> block(jobs, build_extra, :none) |> Map.put("dependencies", dependencies)
   end
 
   defp job(name, extra \\ %{}) do
@@ -237,7 +369,9 @@ defmodule Ppl.Actions.ListActivityImpl.Test do
              |> PplBlocksQueries.multi_insert(ppl_req)
              |> Repo.transaction()
 
-    set_ppl_state(ppl.ppl_id, "running")
+    from(p in Ppls, where: p.ppl_id == ^ppl.ppl_id)
+    |> Repo.update_all(set: [state: "running", wf_number: 1])
+
     {ppl, definition}
   end
 
