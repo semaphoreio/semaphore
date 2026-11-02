@@ -101,15 +101,85 @@ defmodule Guard.Store.Organization do
     end
   end
 
+  # Fixed first key for the two-key form of pg_advisory_xact_lock, so the
+  # per-creator lock does not collide with advisory locks taken for other purposes.
+  #
+  # The per-creator limit relies on READ COMMITTED isolation (the Postgres
+  # default). The advisory lock is taken in its own statement before the count,
+  # so the count's snapshot is taken after the previous lock holder has
+  # committed. Under REPEATABLE READ or SERIALIZABLE the snapshot would be
+  # fixed at the first statement and the count could miss that insert.
+  @creator_lock_namespace 1_330_464_355
+
   @doc """
   Creates a new organization.
-  Returns {:ok, organization} if successful, or {:error, changeset} if validation fails.
+
+  When an organization limit per creator is configured (see
+  `organization_limit_per_creator/0`), the insert runs in a transaction that
+  holds a per-creator advisory lock and counts the creator's live (not
+  soft-deleted) organizations first, so concurrent requests for the same
+  creator cannot exceed the limit.
+
+  Returns {:ok, organization} if successful, {:error, changeset} if validation
+  fails, or {:error, :organization_limit_reached} if the creator already has
+  the maximum number of organizations.
   """
-  @spec create(map()) :: {:ok, Guard.FrontRepo.Organization.t()} | {:error, Ecto.Changeset.t()}
+  @spec create(map()) ::
+          {:ok, Guard.FrontRepo.Organization.t()}
+          | {:error, Ecto.Changeset.t()}
+          | {:error, :organization_limit_reached}
   def create(attrs) do
-    %Guard.FrontRepo.Organization{}
-    |> Guard.FrontRepo.Organization.changeset(attrs)
-    |> Guard.FrontRepo.insert()
+    changeset =
+      %Guard.FrontRepo.Organization{}
+      |> Guard.FrontRepo.Organization.changeset(attrs)
+
+    case organization_limit_per_creator() do
+      0 -> Guard.FrontRepo.insert(changeset)
+      limit -> create_within_limit(changeset, limit)
+    end
+  end
+
+  @doc """
+  Maximum number of live organizations a single creator may create.
+  Configured with ORGANIZATION_LIMIT_PER_CREATOR; 0 disables the limit.
+  """
+  @spec organization_limit_per_creator() :: non_neg_integer()
+  def organization_limit_per_creator do
+    Application.get_env(:guard, :organization_limit_per_creator, 3)
+  end
+
+  defp create_within_limit(%Ecto.Changeset{valid?: false} = changeset, _limit),
+    do: Guard.FrontRepo.insert(changeset)
+
+  defp create_within_limit(changeset, limit) do
+    creator_id = Ecto.Changeset.get_field(changeset, :creator_id)
+
+    Guard.FrontRepo.transaction(fn ->
+      lock_creator(creator_id)
+
+      if count_live_by_creator(creator_id) >= limit do
+        Guard.FrontRepo.rollback(:organization_limit_reached)
+      else
+        case Guard.FrontRepo.insert(changeset) do
+          {:ok, organization} -> organization
+          {:error, changeset} -> Guard.FrontRepo.rollback(changeset)
+        end
+      end
+    end)
+  end
+
+  defp lock_creator(creator_id) do
+    Ecto.Adapters.SQL.query!(
+      Guard.FrontRepo,
+      "SELECT pg_advisory_xact_lock($1, hashtext($2))",
+      [@creator_lock_namespace, creator_id]
+    )
+  end
+
+  defp count_live_by_creator(creator_id) do
+    Guard.FrontRepo.Organization
+    |> where([o], o.creator_id == ^creator_id and is_nil(o.deleted_at))
+    |> Guard.FrontRepo.aggregate(:count, :id)
   end
 
   @spec update(FrontRepo.Organization.t(), map()) ::
