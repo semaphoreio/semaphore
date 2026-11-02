@@ -42,6 +42,7 @@ defmodule PipelinesAPI.OrganizationsClient do
   end
 
   # Billing gate — boolean allow/deny for the user, no inline payment.
+  # Called right before create/3 with reserve: true.
   @spec can_setup_organization(String.t()) :: :ok | {:error, tuple()}
   def can_setup_organization(owner_id) do
     case Wormhole.capture(__MODULE__, :can_setup_organization_, [owner_id],
@@ -59,7 +60,7 @@ defmodule PipelinesAPI.OrganizationsClient do
     Metrics.benchmark("PipelinesAPI.organizations_client", ["can_setup_organization"], fn ->
       channel
       |> BillingService.Stub.can_setup_organization(
-        %CanSetupOrganizationRequest{owner_id: owner_id},
+        %CanSetupOrganizationRequest{owner_id: owner_id, reserve: true},
         opts()
       )
       |> process_billing()

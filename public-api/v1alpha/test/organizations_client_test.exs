@@ -75,6 +75,8 @@ defmodule PipelinesAPI.OrganizationsClient.Test do
 
       assert_receive {:billing_request, req}, 1_000
       assert req.owner_id == @owner_id
+      # Called right before Create, with reserve: true.
+      assert req.reserve == true
     end
 
     test "billing denies with reasons -> user error joining them" do
