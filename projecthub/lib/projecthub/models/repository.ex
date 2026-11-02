@@ -79,7 +79,8 @@ defmodule Projecthub.Models.Repository do
           optional(:url) => String.t(),
           optional(:pipeline_file) => String.t(),
           optional(:commit_status) => InternalApi.Projecthub.Project.Spec.Repository.Status.t(),
-          optional(:whitelist) => InternalApi.Projecthub.Project.Spec.Repository.Whitelist.t()
+          optional(:whitelist) => InternalApi.Projecthub.Project.Spec.Repository.Whitelist.t(),
+          optional(:user_id) => String.t()
         }
 
   @spec create(create_params) :: Toolkit.maybe_result(InternalApi.Repository.Repository.t())

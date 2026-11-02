@@ -34,6 +34,11 @@ defmodule RepositoryHub.Model.RepositoryQuery do
     repository
     |> Repositories.changeset(params)
     |> Repo.update(opts)
+    |> unwrap_error(fn changeset ->
+      changeset
+      |> consolidate_changeset_errors()
+      |> error
+    end)
   rescue
     e -> {:error, e}
   catch

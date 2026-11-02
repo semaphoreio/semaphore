@@ -1,6 +1,7 @@
 defmodule RepositoryHub.GithubAdapter do
   alias RepositoryHub.{
     UserClient,
+    GithubClient,
     RepositoryIntegratorClient,
     Model,
     Toolkit,
@@ -67,6 +68,25 @@ defmodule RepositoryHub.GithubAdapter do
         |> log(level: :error)
         |> error()
     end
+  end
+
+  @spec repository_permissions(
+          Ecto.UUID.t(),
+          %{repo_owner: String.t(), repo_name: String.t()},
+          String.t(),
+          String.t()
+        ) :: Toolkit.tupled_result(map())
+  def repository_permissions(user_id, repository, token, no_login_message) do
+    UserClient.get_repository_provider_logins(:GITHUB, user_id)
+    |> unwrap(fn
+      [] ->
+        fail_with(:precondition, no_login_message)
+
+      [username | _] ->
+        repository
+        |> Map.put(:username, username)
+        |> GithubClient.repository_permissions(token: token)
+    end)
   end
 
   def fetch_token_by_user_id(adapter, user_id) do
