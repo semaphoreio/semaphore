@@ -14,6 +14,56 @@ defmodule Ppl.Actions.ListActivityImpl do
   import Ppl.Actions.ListImpl, only: [non_empty_value_or_default: 3]
   import Ppl.Ppls.Model.PplsQueries, only: [join_request_trace_and_ppl: 0]
 
+  # The activity view only needs block names and the job names that result
+  # from matrix, parallelism and booster expansion. Pipeline definitions can be
+  # large (commands, env vars, secrets, ...), so instead of loading the whole
+  # document for every active pipeline, Postgres builds a minimal projection
+  # with just the keys DescribeTopologyImpl reads to compute those names:
+  #   blocks[].name
+  #   blocks[].build.jobs[].{name, matrix, parallelism}
+  #   blocks[].build.jobs[].env_vars (only SEMAPHORE_JOB_COUNT entries)
+  #   blocks[].build.boosters
+  # Keys missing from the original stay missing (jsonb_strip_nulls), so the
+  # topology code sees the same shape it would see for the full definition.
+  defmacrop topology_definition(definition) do
+    quote do
+      fragment(
+        """
+        (SELECT CASE WHEN jsonb_typeof(def.d->'blocks') = 'array' THEN
+           jsonb_strip_nulls(jsonb_build_object('blocks', coalesce((
+             SELECT jsonb_agg(
+               CASE WHEN jsonb_typeof(b) = 'object' THEN jsonb_build_object(
+                 'name', b->'name',
+                 'build', CASE WHEN jsonb_typeof(b->'build') = 'object' THEN jsonb_build_object(
+                   'jobs', CASE WHEN jsonb_typeof(b->'build'->'jobs') = 'array' THEN (
+                     SELECT coalesce(jsonb_agg(
+                       CASE WHEN jsonb_typeof(j) = 'object' THEN jsonb_build_object(
+                         'name', j->'name',
+                         'matrix', j->'matrix',
+                         'parallelism', j->'parallelism',
+                         'env_vars', CASE WHEN jsonb_typeof(j->'env_vars') = 'array' THEN (
+                           SELECT coalesce(jsonb_agg(e ORDER BY e_ord), '[]'::jsonb)
+                           FROM jsonb_array_elements(j->'env_vars') WITH ORDINALITY AS ev(e, e_ord)
+                           WHERE e->>'name' = 'SEMAPHORE_JOB_COUNT')
+                           ELSE j->'env_vars' END)
+                       ELSE j END
+                       ORDER BY j_ord), '[]'::jsonb)
+                     FROM jsonb_array_elements(b->'build'->'jobs') WITH ORDINALITY AS jb(j, j_ord))
+                     ELSE b->'build'->'jobs' END,
+                   'boosters', b->'build'->'boosters')
+                   ELSE b->'build' END)
+               ELSE b END
+               ORDER BY b_ord)
+             FROM jsonb_array_elements(def.d->'blocks') WITH ORDINALITY AS bl(b, b_ord)),
+             '[]'::jsonb)))
+         END
+         FROM (SELECT ?::jsonb AS d) AS def)
+        """,
+        unquote(definition)
+      )
+    end
+  end
+
   def list_activity(request) do
     with {:ok, params}     <- Proto.to_map(request),
          {:ok, page_size}  <- non_empty_value_or_default(params, :page_size, 30),
@@ -91,6 +141,8 @@ defmodule Ppl.Actions.ListActivityImpl do
     end
 
     defp group_data({:ok, blocks}, pipelines) do
+      blocks_by_ppl = Enum.group_by(blocks, & &1.ppl_id)
+
       pipelines
       |> Enum.reduce_while([], fn pipeline, acc ->
         pipeline.definition
@@ -99,26 +151,29 @@ defmodule Ppl.Actions.ListActivityImpl do
           {:error, msg} -> {:halt, {:error, msg}}
 
           {:ok, %{blocks: topology_blocks}} ->
-            pipeline = add_blocks_data(topology_blocks, blocks, pipeline)
-            {:cont, acc ++ [pipeline]}
+            ppl_blocks = Map.get(blocks_by_ppl, pipeline.ppl_id, [])
+            pipeline = add_blocks_data(topology_blocks, ppl_blocks, pipeline)
+            {:cont, [pipeline | acc]}
         end
       end)
+      |> case do
+        {:error, _msg} = error -> error
+        pipelines -> Enum.reverse(pipelines)
+      end
     end
     defp group_data(error = {:error, _msg}, _pipelines), do: error
 
-    defp add_blocks_data(topology_blocks, blocks, pipeline) do
+    defp add_blocks_data(topology_blocks, ppl_blocks, pipeline) do
       topology_blocks
-      |> merge_with_block_details(blocks, pipeline)
+      |> merge_with_block_details(ppl_blocks)
       |> reverse_map_put(:blocks, pipeline)
       |> Map.put(:definition_file,
                   pipeline.working_directory <> "/" <> pipeline.yaml_file_name)
       |> Map.drop([:definition, :working_directory, :yaml_file_name])
     end
 
-    defp merge_with_block_details(topology_blocks, all_blocks, ppl) do
-      all_blocks
-      |> Enum.filter(fn %{ppl_id: id} -> id == ppl.ppl_id end)
-      |> Enum.map(fn block ->
+    defp merge_with_block_details(topology_blocks, ppl_blocks) do
+      Enum.map(ppl_blocks, fn block ->
         topology_blocks
         |> Enum.find(fn %{name: name} -> name == block.name end)
         |> Map.merge(block)
@@ -177,7 +232,7 @@ defmodule Ppl.Actions.ListActivityImpl do
             pending_at: pt.pending_at,
             queuing_at: pt.queuing_at,
             running_at: pt.running_at,
-            definition: pr.definition,
+            definition: topology_definition(pr.definition),
             queue:  %{
               queue_id: fragment("coalesce(?::text, '')", q.queue_id),
               name: fragment("coalesce(?, '')", q.name),
