@@ -20,16 +20,12 @@ defimpl RepositoryHub.Server.UpdateAction, for: RepositoryHub.GithubAdapter do
     with {:ok, adapter_context} <- GithubAdapter.context(adapter, request.repository_id),
          {:ok, target_git_repository} <- Model.GitRepository.from_github(request.url),
          {:ok, target_token} <-
-           GithubAdapter.token(adapter, adapter_context.project.metadata.owner_id, target_git_repository) do
+           GithubAdapter.token(adapter, adapter_context.project.metadata.owner_id, target_git_repository),
+         {:ok, connector} <- GithubConnector.setup(adapter_context.repository.id, adapter_context.github_token),
+         {:ok, change} <- GithubConnector.update_repository_url(connector, request.url, target_token, request.user_id) do
       Multi.new()
-      |> Multi.put(:repository, adapter_context.repository)
-      |> Multi.put(:github_token, adapter_context.github_token)
-      |> Multi.run(:connector, fn _repo, context ->
-        GithubConnector.setup(context.repository.id, context.github_token)
-      end)
-      |> Multi.run(:update_repository_url, fn _repo, context ->
-        context.connector
-        |> GithubConnector.update_repository_url(request.url, target_token, request.user_id)
+      |> Multi.run(:repository, fn _repo, _context ->
+        GithubConnector.apply_url_change(change)
       end)
       |> Multi.run(:updated_repository, fn _repo, context ->
         params =
@@ -40,7 +36,7 @@ defimpl RepositoryHub.Server.UpdateAction, for: RepositoryHub.GithubAdapter do
           }
           |> with_github_app_switch?(adapter, request)
 
-        context.update_repository_url.repository
+        context.repository
         |> Model.RepositoryQuery.update(
           params,
           returning: true
@@ -48,11 +44,24 @@ defimpl RepositoryHub.Server.UpdateAction, for: RepositoryHub.GithubAdapter do
         |> unwrap(&Model.Repositories.to_grpc_model/1)
         |> wrap()
       end)
-      |> RepositoryHub.Repo.transaction()
-      |> unwrap(fn context ->
-        %UpdateResponse{repository: context.updated_repository}
-      end)
+      |> commit(change)
     end
+  end
+
+  defp commit(multi, change) do
+    case RepositoryHub.Repo.transaction(multi) do
+      {:ok, context} ->
+        GithubConnector.remove_github_resources(change.old_resources)
+        %UpdateResponse{repository: context.updated_repository}
+
+      error ->
+        GithubConnector.remove_github_resources(change.created)
+        unwrap(error, & &1)
+    end
+  rescue
+    error ->
+      GithubConnector.remove_github_resources(change.created)
+      reraise error, __STACKTRACE__
   end
 
   def with_github_app_switch?(params, adapter, request) do
