@@ -160,6 +160,89 @@ config FeatureProvider, :provider, {MyApp.GrpcProvider, [timeout: 10_000, server
 FeatureProvider.find_feature("some_feature", param: org_id)
 ```
 
+### Caching
+
+Calling a remote provider on every lookup is slow, so providers are usually cached with `FeatureProvider.CachexCache`. The cache needs a `Cachex` process in the supervision tree:
+
+```elixir
+# config.exs
+config FeatureProvider, :provider, {MyApp.GrpcProvider, [
+  server: "feature_hub:50051",
+  cache: {FeatureProvider.CachexCache, name: :feature_cache, ttl_ms: :timer.minutes(15)}
+]}
+
+# application.ex
+children = [
+  {Cachex, name: :feature_cache},
+  # ...
+]
+```
+
+A value is loaded from the provider on a cache miss and kept for `ttl_ms`. By default, once it expires, a failing provider makes every lookup fail with `{:error, {:not_found, _}}`.
+
+#### Serving the last known value (`stale_ttl_ms`)
+
+With `stale_ttl_ms`, the cache also keeps the last value it loaded for each key (for example each organization), for `ttl_ms + stale_ttl_ms` after it was stored. When a load fails, that value is served instead of the error, and a warning is logged. The warning is logged at most once a minute per key, and again after that key loads successfully: until then every lookup of the key falls back, and logging each one would log once per request. Every successful load replaces the value and restarts the window.
+
+```elixir
+cache: {FeatureProvider.CachexCache,
+        name: :feature_cache, ttl_ms: :timer.minutes(15), stale_ttl_ms: :timer.hours(24)}
+```
+
+- A load fails when the provider returns `{:error, _}` (or `:error`), raises, exits or throws. **A provider that turns errors into a successful result, such as `{:ok, []}`, never fails: the empty list replaces the last known value and every feature reads as disabled.** Return `{:error, reason}` from your provider instead.
+- A key with no last known value (never loaded, or not loaded within `ttl_ms + stale_ttl_ms`) fails as before. A raise, exit or throw is propagated.
+- Invalidating a key (`invalidate: true`) keeps its last known value, so a failing reload can still fall back to it. Clearing the cache drops it.
+- `stale_ttl_ms` has to be a positive integer, or `0` to disable it. Any other value, such as a string read from an environment variable, raises an `ArgumentError` on every lookup, so it can't be turned off by mistake.
+
+#### Circuit breaker (`breaker`)
+
+`stale_ttl_ms` keeps lookups working during a provider outage, but every cache miss still calls the provider and waits for it to time out. A provider outage affects all keys at once, so `FeatureProvider.CircuitBreaker` stops calling it for the whole service:
+
+```elixir
+# config.exs
+cache: {FeatureProvider.CachexCache,
+        name: :feature_cache, stale_ttl_ms: :timer.hours(24), breaker: :feature_breaker}
+
+# application.ex
+children = [
+  {Cachex, name: :feature_cache},
+  {FeatureProvider.CircuitBreaker, name: :feature_breaker}
+]
+```
+
+1. **Closed**: cache misses call the provider. Each failed load is still served from the last known value. Loads that find the provider unavailable (see below) are counted, and any other result resets the count.
+2. **Open**: after `failure_threshold` (default 3) unavailable loads in a row, cache misses stop calling the provider. They get the last known value, or fail straight away for a key that has none. Fresh values in the cache are served as usual. `reload: true` doesn't call the provider either.
+3. **Probing**: while open, the breaker re-runs the load that opened it, in the background; requests never wait for it. The first probe runs after `probe_base_ms` (default 5s), and each unavailable probe doubles the delay up to `probe_max_ms` (default 60s). Each delay is picked at random between half and all of that value, so pods don't probe the provider at the same moment. A probe still running after `probe_timeout_ms` (default 30s) is killed and counts as failed.
+4. Any other probe result closes the breaker, because the provider answered. A successful probe also stores its result in the cache. Other keys are refreshed on their next cache miss.
+
+Only `{:error, :unavailable}` and `{:error, {:unavailable, reason}}` count as the provider being unavailable. Return them from your provider for errors that mean it can't be reached, such as a gRPC `UNAVAILABLE` or `DEADLINE_EXCEEDED`, a refused connection or a timeout:
+
+```elixir
+case Stub.list_features(channel, request, timeout: 3_000) do
+  {:ok, response} -> {:ok, to_features(response)}
+  # 14 is UNAVAILABLE, 4 is DEADLINE_EXCEEDED
+  {:error, %GRPC.RPCError{status: status} = error} when status in [14, 4] -> {:error, {:unavailable, error}}
+  {:error, error} -> {:error, error}
+end
+```
+
+Any other error, and a raise, exit or throw, is an answer about that key: it falls back to the last known value, but doesn't count towards opening the breaker. Otherwise a key that the provider keeps rejecting, such as an unknown organization, would open the breaker for every key.
+
+The breaker logs when it opens, when a probe fails and when it closes, instead of logging every lookup. Its state is kept in an ETS table, so lookups don't go through the breaker process. Each pod has its own breaker.
+
+Without the `breaker` option, or when the breaker process isn't running, the cache behaves as if there was no breaker. The breaker is useful together with `stale_ttl_ms`. Without it, an open breaker only makes lookups fail faster.
+
+#### Compatibility
+
+With neither `stale_ttl_ms` nor `breaker` set, the cache behaves as before they were added: no extra keys are written, and results, errors and exceptions are unchanged.
+
+Enabling either of them changes one more thing. A provider that returns a bare value instead of `{:ok, value}`:
+
+- **with neither option:** the first lookup returns `:not_found`, which makes `find_feature/2` return `{:error, {:not_found, _}}`. The value is still cached, so lookups after it return the value.
+- **with either option:** every lookup returns the value, including the first one.
+
+Return `{:ok, value}` from your provider so both behave the same.
+
 ### Other providers
 
 You can implement your own provider by implementing the `FeatureProvider.Provider` behaviour. See example implementations in the [github repository](https://github.com/renderedtext/feature_provider/blob/master/test/providers).

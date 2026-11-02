@@ -53,7 +53,8 @@ defmodule FeatureProvider.MixProject do
           FeatureProvider.YamlProvider
         ],
         Caches: [
-          FeatureProvider.CachexCache
+          FeatureProvider.CachexCache,
+          FeatureProvider.CircuitBreaker
         ],
         Behaviours: [
           FeatureProvider.Provider,
