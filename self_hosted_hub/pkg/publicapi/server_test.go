@@ -1478,6 +1478,10 @@ func newAgentWithMetadata(agentType *models.AgentType, metadata models.AgentMeta
 }
 
 func run(method, path, token string, body interface{}) *httptest.ResponseRecorder {
+	return runOn(testServer, testOrgID, method, path, token, body)
+}
+
+func runOn(server *Server, orgID uuid.UUID, method, path, token string, body interface{}) *httptest.ResponseRecorder {
 	stringBody := ""
 
 	if body != nil {
@@ -1495,13 +1499,13 @@ func run(method, path, token string, body interface{}) *httptest.ResponseRecorde
 
 	req, _ := http.NewRequest(method, "/api/v1/self_hosted_agents"+path, bodyReader)
 	req.Header.Add("Authorization", "Token "+token)
-	req.Header.Add("x-semaphore-org-id", testOrgID.String())
+	req.Header.Add("x-semaphore-org-id", orgID.String())
 	req.Header.Add("x-forwarded-for", "1.1.1.1")
 	req.Header.Add("user-agent", "Agent/v1.2.3")
 
 	rr := httptest.NewRecorder()
 
-	testServer.Router.ServeHTTP(rr, req)
+	server.Router.ServeHTTP(rr, req)
 
 	return rr
 }
