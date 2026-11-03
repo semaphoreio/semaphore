@@ -6,7 +6,16 @@ defmodule Support.Factories.FrontUser do
     email = get_email(options[:email])
     name = get_name(options[:name])
 
-    %Guard.FrontRepo.User{id: id, email: email, name: name} |> Guard.FrontRepo.insert()
+    %Guard.FrontRepo.User{
+      id: id,
+      email: email,
+      name: name,
+      salt: options[:salt],
+      blocked_at: options[:blocked_at],
+      deactivated: options[:deactivated],
+      deactivated_at: options[:deactivated_at]
+    }
+    |> Guard.FrontRepo.insert()
   end
 
   defp get_id(nil), do: UUID.generate()
