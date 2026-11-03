@@ -255,24 +255,30 @@ func (s *Server) Register(w http.ResponseWriter, r *http.Request) {
 		IPAddress:               r.RemoteAddr, // populated by handlers.ProxyHeaders middleware
 	}
 
-	// We use a blocking advisory lock here because counting the current number of agents
-	// and inserting a new one is not an atomic operation.
-	// If we don't use a lock, and multiple agents register around
-	// the same time, we can end up allowing the organization to go beyond its quota.
-	// The blocking advisory lock makes it atomic, and guarantees that this issue doesn't happen.
-	// We use the request's context to cancel the operation if the lock isn't grabbed on time.
+	// The organization quota is looked up before taking the lock below.
+	// It does not depend on the agents table, so there's no need to hold
+	// the organization-wide lock while fetching it.
 	var agent *models.Agent
 	var agentToken string
-	err = database.WithBlockingAdvisoryLock(r.Context(), agentType.OrganizationID.String(), func(tx *gorm.DB) error {
-		a, t, err := s.registerAgent(r.Context(), tx, agentType, agentName, info.JobID, metadata)
-		if err != nil {
-			return err
-		}
+	orgQuota, err := s.findQuotaForNewAgent(r.Context(), agentType.OrganizationID.String())
+	if err == nil {
+		// We use a blocking advisory lock here because counting the current number of agents
+		// and inserting a new one is not an atomic operation.
+		// If we don't use a lock, and multiple agents register around
+		// the same time, we can end up allowing the organization to go beyond its quota.
+		// The blocking advisory lock makes it atomic, and guarantees that this issue doesn't happen.
+		// We use the request's context to cancel the operation if the lock isn't grabbed on time.
+		err = database.WithBlockingAdvisoryLock(r.Context(), agentType.OrganizationID.String(), func(tx *gorm.DB) error {
+			a, t, err := s.registerAgent(r.Context(), tx, agentType, orgQuota, agentName, info.JobID, metadata)
+			if err != nil {
+				return err
+			}
 
-		agent = a
-		agentToken = t
-		return nil
-	})
+			agent = a
+			agentToken = t
+			return nil
+		})
+	}
 
 	// If everything was successful, we publish an audit log
 	// and write the response back to the agent.
@@ -324,8 +330,8 @@ func (s *Server) parseJobID(job string) (*uuid.UUID, error) {
 	return &jobID, nil
 }
 
-func (s *Server) registerAgent(ctx context.Context, tx *gorm.DB, agentType *models.AgentType, agentName, job string, metadata models.AgentMetadata) (*models.Agent, string, error) {
-	err := s.checkQuotaForNewAgent(ctx, tx, agentType.OrganizationID.String())
+func (s *Server) registerAgent(ctx context.Context, tx *gorm.DB, agentType *models.AgentType, orgQuota *quotas.OrganizationQuota, agentName, job string, metadata models.AgentMetadata) (*models.Agent, string, error) {
+	err := checkAgentCountForNewAgent(ctx, tx, agentType.OrganizationID.String(), orgQuota)
 	if err != nil {
 		return nil, "", err
 	}
@@ -361,21 +367,30 @@ func (s *Server) registerAgent(ctx context.Context, tx *gorm.DB, agentType *mode
 	)
 }
 
-func (s *Server) checkQuotaForNewAgent(ctx context.Context, tx *gorm.DB, orgID string) error {
+// findQuotaForNewAgent must be called outside of the organization advisory lock.
+// It may call the feature service, and holding the lock while doing so
+// would serialize every registration for the organization behind that call.
+func (s *Server) findQuotaForNewAgent(ctx context.Context, orgID string) (*quotas.OrganizationQuota, error) {
 	orgQuota, err := s.quotaClient.GetQuotaWithContext(ctx, orgID)
 
 	// if we can't get the quotas, we don't let any agents register.
 	if err != nil {
 		log.Errorf("Error finding agent quota for organization %s: %v", orgID, err)
-		return fmt.Errorf("unknown agent quota for organization %s", orgID)
+		return nil, fmt.Errorf("unknown agent quota for organization %s", orgID)
 	}
 
 	// self-hosted feature is not enabled for organization
 	if !orgQuota.Enabled {
 		log.Infof("Self-hosted is not available for %s - rejecting", orgID)
-		return ErrFeatureNotAvailable
+		return nil, ErrFeatureNotAvailable
 	}
 
+	return orgQuota, nil
+}
+
+// checkAgentCountForNewAgent must be called while holding the organization advisory lock,
+// so that counting the current agents and inserting the new one is atomic.
+func checkAgentCountForNewAgent(ctx context.Context, tx *gorm.DB, orgID string, orgQuota *quotas.OrganizationQuota) error {
 	currentCount, err := models.CountAgentsInOrganizationInTransaction(ctx, tx, orgID)
 	if err != nil {
 		log.Errorf("Error finding current agent count for organization %s: %v", orgID, err)
