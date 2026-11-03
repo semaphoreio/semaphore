@@ -18,6 +18,14 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) error
 	return err
 }
 
+// respondWithJobPayload serves the agent job payload as JSON. The payload
+// must be a valid JSON document: it is re-encoded (compacted, with HTML
+// characters escaped) and served with an application/json content type.
+// Nothing is written when the payload is not valid JSON.
+func respondWithJobPayload(w http.ResponseWriter, payload string) error {
+	return respondWithJSON(w, http.StatusOK, json.RawMessage(payload))
+}
+
 func respondWithString(w http.ResponseWriter, code int, payload string) error {
 	w.WriteHeader(code)
 	_, err := w.Write([]byte(payload))
