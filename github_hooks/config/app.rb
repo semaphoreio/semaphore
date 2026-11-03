@@ -46,6 +46,12 @@ class App < Configurable # :nodoc:
   config.mergeable_unknown_max_retries        = (SemaphoreConfig.mergeable_unknown_max_retries.presence || 10).to_i
   config.mergeable_unknown_rate_limit_reserve = (SemaphoreConfig.mergeable_unknown_rate_limit_reserve.presence || 0).to_i
 
+  # How often a PR whose merge commit does not contain the pushed head yet is re-checked.
+  config.stale_merge_commit_max_retries = (SemaphoreConfig.stale_merge_commit_max_retries.presence || 5).to_i
+
+  # Share GitHub results (merge commit per PR event, commit lookups) between hook workers through Redis.
+  config.github_shared_cache_enabled = (SemaphoreConfig.github_shared_cache_enabled.presence || "true") == "true"
+
   def self.ee?
     config.semaphore_edition == "ee"
   end
