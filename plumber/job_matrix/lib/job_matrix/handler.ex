@@ -7,6 +7,10 @@ defmodule JobMatrix.Handler do
   """
 
   alias JobMatrix.Validator
+
+  # Ppl.Actions.ListActivityImpl feeds this module a SQL projection of the
+  # pipeline definition (see its topology_definition/1). Any new job field
+  # read here must be added to that projection too.
   alias JobMatrix.Transformer
   alias JobMatrix.ParallelismHandler
 
