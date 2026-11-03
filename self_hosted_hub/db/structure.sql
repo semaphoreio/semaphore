@@ -148,6 +148,20 @@ ALTER TABLE ONLY public.schema_migrations
 
 
 --
+-- Name: index_agents_on_org_and_assigned_job_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agents_on_org_and_assigned_job_id ON public.agents USING btree (organization_id, assigned_job_id) WHERE (assigned_job_id IS NOT NULL);
+
+
+--
+-- Name: index_agents_on_organization_id_and_token_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agents_on_organization_id_and_token_hash ON public.agents USING btree (organization_id, token_hash);
+
+
+--
 -- Name: uix_agent_name_in_orgs; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -218,7 +232,7 @@ SET row_security = off;
 --
 
 COPY public.schema_migrations (version, dirty) FROM stdin;
-20230930195246	f
+20261103140100	f
 \.
 
 
