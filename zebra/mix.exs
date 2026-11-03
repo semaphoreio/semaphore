@@ -70,6 +70,7 @@ defmodule Zebra.Mixfile do
       {:yaml_elixir, "~> 2.4"},
       {:mox, "~> 1.0", only: [:dev, :test]},
       {:feature_provider, path: "../feature_provider"},
+      {:env_var_policy, path: "../env_var_policy"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end

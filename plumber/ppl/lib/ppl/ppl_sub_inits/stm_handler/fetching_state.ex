@@ -12,6 +12,7 @@ defmodule Ppl.PplSubInits.STMHandler.FetchingState do
   alias Ppl.PplOrigins.Model.PplOriginsQueries
   alias Ppl.PplSubInits.STMHandler.Common
   alias Ppl.PplSubInits.STMHandler.Compilation
+  alias Ppl.DefinitionReviser.ReservedEnvVarsValidator
   alias Ppl.TaskClient
   alias Block.CodeRepo
   alias Ppl.EctoRepo, as: Repo
@@ -40,6 +41,7 @@ defmodule Ppl.PplSubInits.STMHandler.FetchingState do
 
   def scheduling_handler(psi) do
     with {:ok, ppl_req}          <- PplRequestsQueries.get_by_id(psi.ppl_id),
+         :ok                     <- ReservedEnvVarsValidator.validate_parameters(ppl_req),
          {:ok, yaml, definition} <- acquire_definition(psi, ppl_req),
          {:ok, pfcs}             <- acquire_pre_flight_checks(ppl_req),
          {:ok, settings}         <- acquire_organization_settings(ppl_req),
