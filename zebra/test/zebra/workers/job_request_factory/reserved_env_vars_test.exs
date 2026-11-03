@@ -241,6 +241,18 @@ defmodule Zebra.Workers.JobRequestFactory.ReservedEnvVarsTest do
                 "Invalid environment variable names: 'nil' (secret 'deploy'), '' (secret 'deploy')"}
     end
 
+    test "rejects env vars with non-string names instead of crashing" do
+      secrets = %{@no_secrets | job_secrets: [secret("deploy", [42])]}
+
+      assert validate(:pipeline_job, [42, nil]) ==
+               {:stop_job_processing,
+                "Invalid environment variable names: '42' (job env_vars), 'nil' (job env_vars)"}
+
+      assert validate(:pipeline_job, [], secrets: secrets) ==
+               {:stop_job_processing,
+                "Invalid environment variable names: '42' (secret 'deploy')"}
+    end
+
     test "logs escaped names" do
       log =
         capture_log(fn ->
