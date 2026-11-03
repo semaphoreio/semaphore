@@ -48,6 +48,7 @@ defmodule RepositoryHub.Model.Repositories do
     repository
     |> cast(params, @fields)
     |> validate_required(@required_fields)
+    |> validate_length(:pipeline_file, max: 255)
   end
 
   def to_grpc_model(model) do
