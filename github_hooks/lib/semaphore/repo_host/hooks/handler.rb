@@ -25,6 +25,13 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     Faraday::ConnectionFailed
   ].freeze
 
+  # Per process and bounded, not Rails.cache: that is a disk store in production,
+  # and a lost entry only costs one GitHub request.
+  MERGE_PARENTS_CACHE = ActiveSupport::Cache::MemoryStore.new(:size => 4.megabytes, :expires_in => 1.hour)
+
+  # How long after a hook another hook for the same PR can supersede it.
+  SUPERSEDING_HOOK_WINDOW = 30.minutes
+
   # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
   def self.run(workflow, logger, hook_payload = "", signature = "", retries = 0, stale_attempts = 0) # rubocop:disable Metrics/ParameterLists
     # stops hooks from deleted projects from generating exceptions
@@ -647,7 +654,10 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     return false if head_sha.blank? || head_sha == workflow.payload.pr_head_sha
     return false unless Array(meta[:merge_parent_shas]).include?(head_sha)
 
-    later = Workflow.in_project(workflow.project_id).created_after(workflow.created_at).where.not(:id => workflow.id)
+    later = Workflow
+      .in_project(workflow.project_id)
+      .where(:created_at => workflow.created_at...(workflow.created_at + SUPERSEDING_HOOK_WINDOW))
+      .where.not(:id => workflow.id)
     branch = find_branch(workflow)
     same_pr = later.pr_number_in_git_ref(workflow.pull_request_number)
     same_pr = same_pr.or(later.where(:branch_id => branch.id)) if branch
@@ -658,11 +668,26 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   # Commit objects never change, so parents are cached by SHA. Returns nil when
   # GitHub refused the lookup.
   def self.merge_commit_parent_shas(repo_host, repo_slug, merge_commit_sha)
-    Rails.cache.fetch("github_hooks/merge_commit_parents/#{repo_slug}/#{merge_commit_sha}", :expires_in => 1.day, :skip_nil => true) do
-      parents = repo_host.git_commit(repo_slug, merge_commit_sha)&.[](:parents) || []
-      parents.map { |parent| parent[:sha] }.presence
-    end || []
+    cache_key = "#{repo_slug}/#{merge_commit_sha}"
+    cached = cache_read(cache_key)
+    return cached if cached
+
+    parent_shas = (repo_host.git_commit(repo_slug, merge_commit_sha)&.[](:parents) || []).map { |parent| parent[:sha] }
+    cache_write(cache_key, parent_shas) if parent_shas.any?
+    parent_shas
   rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
+    nil
+  end
+
+  def self.cache_read(key)
+    MERGE_PARENTS_CACHE.read(key)
+  rescue StandardError
+    nil
+  end
+
+  def self.cache_write(key, value)
+    MERGE_PARENTS_CACHE.write(key, value)
+  rescue StandardError
     nil
   end
 

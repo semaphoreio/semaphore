@@ -1541,6 +1541,18 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             described_class.run(@workflow, @logger)
           end
 
+          it "does not count a hook received long after this one" do
+            late = create_later_workflow(:commit_sha => other_head)
+            late.update(:created_at => @workflow.created_at + 31.minutes)
+            stub_github_pr(repo_host, :head => other_head, :parents => [base_sha, other_head], :merge_sha => merge_sha)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(1.minute, @workflow.id, anything, anything, 1, 1)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.state).not_to eq(Workflow::STATE_SKIP_SUPERSEDED_PR)
+          end
+
           it "does not count an earlier hook for GitHub's head" do
             earlier = create_later_workflow(:commit_sha => other_head)
             earlier.update(:created_at => @workflow.created_at - 1.minute)
@@ -1760,7 +1772,6 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
     end
 
     it "reads the parents of a merge commit once per SHA" do
-      allow(Rails).to receive(:cache).and_return(ActiveSupport::Cache::MemoryStore.new)
       stub_merge_parents(base_sha, head_sha)
 
       2.times { described_class.update_pr_data(project, 1, nil, false) }
@@ -1769,12 +1780,30 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
     end
 
     it "does not cache a failed lookup" do
-      allow(Rails).to receive(:cache).and_return(ActiveSupport::Cache::MemoryStore.new)
       allow(repo_host).to receive(:git_commit).and_raise(::RepoHost::RemoteException::NotFound, "gone")
 
       2.times { described_class.update_pr_data(project, 1, nil, false) }
 
       expect(repo_host).to have_received(:git_commit).twice
+    end
+
+    it "does not use the application cache, which is a disk store in production" do
+      expect(Rails.cache).not_to receive(:fetch)
+      expect(Rails.cache).not_to receive(:write)
+      stub_merge_parents(base_sha, head_sha)
+
+      described_class.update_pr_data(project, 1, nil, false)
+    end
+
+    it "treats a failing cache as a miss" do
+      allow(described_class::MERGE_PARENTS_CACHE).to receive(:read).and_raise(Errno::ENOSPC)
+      allow(described_class::MERGE_PARENTS_CACHE).to receive(:write).and_raise(Errno::ENOSPC)
+      stub_merge_parents(base_sha, head_sha)
+
+      state, = described_class.update_pr_data(project, 1, nil, false)
+
+      expect(state).to eq(:ok)
+      expect(repo_host).to have_received(:git_commit).once
     end
   end
 
