@@ -491,7 +491,7 @@ defmodule Guard.GrpcServers.UserServer do
   defp keep_revoked_on_uid_conflict({:error, %Ecto.Changeset{} = changeset}, repo_account) do
     if FrontRepo.RepoHostAccount.uid_taken_error?(changeset) do
       Logger.warning(
-        "Keeping #{repo_account.repo_host} account revoked for user #{repo_account.user_id}: uid is actively held by another user"
+        "Keeping #{repo_account.repo_host} account revoked for user #{repo_account.user_id}: uid is held by another user"
       )
 
       {:ok, repo_account}

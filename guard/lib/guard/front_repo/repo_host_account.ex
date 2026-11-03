@@ -376,7 +376,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           # Keep the credentials: providers rotate refresh tokens, so losing
           # the new one replays a stale token until the grant dies.
           Logger.warning(
-            "Keeping repo_host_account #{rha.id} revoked: uid is actively held by another " <>
+            "Keeping repo_host_account #{rha.id} revoked: uid is held by another " <>
               "user. Refreshed credentials are still persisted."
           )
 
