@@ -284,6 +284,43 @@ defmodule Guard.OIDC.FederatedIdentitySyncTest do
       assert post_url =~ "kc-new-holder"
       assert decode_json_body(body)["userName"] == "new-holder-login"
     end
+
+    test "a claim with no login pushes an identity without a userName", %{
+      loser: loser,
+      claimer: claimer
+    } do
+      # Keycloak treats userName as optional, so a nil login has to reach the
+      # push rather than being rejected on the way.
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          user_id: claimer.id,
+          repo_host: "github",
+          github_uid: @claimed_uid,
+          login: nil
+        )
+
+      request =
+        FederatedIdentitySyncRequest.enqueue(
+          %RepoHostAccount{
+            repo_host: "github",
+            github_uid: @claimed_uid,
+            user_id: claimer.id,
+            login: nil
+          },
+          [loser.id]
+        )
+
+      assert :ok = FederatedIdentitySync.run_request(request)
+
+      assert_receive {:oidc_delete, loser_url}, 5_000
+      assert loser_url =~ "kc-loser"
+
+      assert_receive {:oidc_post, post_url, body}, 5_000
+      assert post_url =~ "kc-claimer"
+      assert decode_json_body(body)["userName"] == nil
+
+      assert FederatedIdentitySyncRequest.pending_count() == 0
+    end
   end
 
   describe "lease" do

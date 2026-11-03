@@ -62,6 +62,16 @@ defmodule Guard.FrontRepo.FederatedIdentitySyncRequestTest do
       assert Request.due_ids(10) == []
       assert Request.lease(request.id) == nil
     end
+
+    test "a claiming row with no login still enqueues" do
+      # repo_host_accounts.login is nullable, so a legacy row can claim with
+      # no login. A NOT NULL column here raised inside the claim's own
+      # transaction and rolled the claim back.
+      request = Request.enqueue(account(%{login: nil}), [Ecto.UUID.generate()])
+
+      assert request.login == nil
+      assert Request.pending?("github", "55001")
+    end
   end
 
   describe "complete/1" do
