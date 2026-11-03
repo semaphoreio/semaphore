@@ -50,6 +50,34 @@ RSpec.describe Semaphore::RepoHost::Hooks::GithubCache, :aggregate_failures do
     expect(Watchman).to have_received(:increment).with("github_hooks.shared_cache.error", :tags => ["read"])
   end
 
+  it "logs repeated errors once per interval while counting each" do
+    allow(described_class).to receive(:call).and_raise(RedisClient::CannotConnectError)
+    allow(Watchman).to receive(:increment)
+    allow(Rails.logger).to receive(:warn)
+    described_class.instance_variable_set(:@error_logged_at, nil)
+
+    3.times { described_class.read("key") }
+
+    expect(Watchman).to have_received(:increment).with("github_hooks.shared_cache.error", :tags => ["read"]).exactly(3).times
+    expect(Rails.logger).to have_received(:warn).once
+  end
+
+  it "builds one connection pool when threads start together" do
+    pool = described_class.send(:pool)
+    described_class.instance_variable_set(:@pool, nil)
+    allow(RedisClient).to receive(:config).and_wrap_original do |original, **options|
+      sleep(0.01)
+      original.call(**options)
+    end
+
+    pools = Array.new(5) { Thread.new { described_class.send(:pool) } }.map(&:value)
+
+    expect(pools.uniq.size).to eq(1)
+    expect(RedisClient).to have_received(:config).once
+  ensure
+    described_class.instance_variable_set(:@pool, pool)
+  end
+
   it "does nothing when disabled" do
     allow(App).to receive(:github_shared_cache_enabled).and_return(false)
     allow(described_class).to receive(:call)

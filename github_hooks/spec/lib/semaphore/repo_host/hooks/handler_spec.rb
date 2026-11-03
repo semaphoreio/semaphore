@@ -1727,11 +1727,16 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
   end
 
   describe ".update_pr_data merge commit check", :aggregate_failures do
-    let(:project) { instance_double(Project, :repo_owner_and_name => "owner/repo") }
+    let(:project) { build_project }
     let(:repo_host) { double(::RepoHost::Github::Client.new("token")) }
     let(:head_sha) { "d" * 40 }
     let(:merge_sha) { "e" * 40 }
     let(:base_sha) { "f" * 40 }
+
+    def build_project(repo: "owner/repo", organization_id: "org-1", creator_id: "user-1", integration_type: "github_app")
+      instance_double(Project, :repo_owner_and_name => repo, :organization_id => organization_id, :creator_id => creator_id,
+                               :repository => instance_double(Repository, :integration_type => integration_type))
+    end
 
     before do
       allow(::RepoHost::Factory).to receive(:create_from_project).and_return(repo_host)
@@ -1814,7 +1819,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       stub_merge_parents(base_sha, head_sha)
       described_class.update_pr_data(project, 1, nil, false)
 
-      other_project = instance_double(Project, :repo_owner_and_name => "Owner/Repo")
+      other_project = build_project(:repo => "Owner/Repo")
       allow(repo_host).to receive(:git_commit).with("Owner/Repo", merge_sha).and_return({ :parents => [] })
       allow(repo_host).to receive(:commit).with("Owner/Repo", head_sha).and_return({})
       state, = described_class.update_pr_data(other_project, 1, nil, false)
@@ -1833,6 +1838,15 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
 
       expect(states).to eq(%i[skip_ci skip_ci])
       expect(repo_host).to have_received(:commit).once
+    end
+
+    it "does not cache a commit GitHub did not return" do
+      stub_merge_parents(base_sha, head_sha)
+      allow(repo_host).to receive(:commit).with("owner/repo", head_sha).and_return(nil)
+
+      2.times { described_class.update_pr_data(project, 1, nil, false) }
+
+      expect(repo_host).to have_received(:commit).twice
     end
 
     it "treats an unavailable Redis as a miss" do
@@ -1859,7 +1873,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
   end
 
   describe ".update_pr_data shared merge per PR event", :aggregate_failures do
-    let(:project) { instance_double(Project, :repo_owner_and_name => "owner/repo") }
+    let(:project) { build_project }
     let(:repo_host) { double(::RepoHost::Github::Client.new("token")) }
     let(:head_sha) { "d" * 40 }
     let(:merge_sha) { "e" * 40 }
@@ -1867,6 +1881,11 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
     let(:merge_key) { described_class.shared_merge_key(project, 1, head_sha, base_sha) }
     let(:lock_key) { "#{merge_key}:lock" }
     let(:commit) { double(:author => double(:login => "octocat"), :commit => double(:message => "Fix")) }
+
+    def build_project(repo: "owner/repo", organization_id: "org-1", creator_id: "user-1", integration_type: "github_app")
+      instance_double(Project, :repo_owner_and_name => repo, :organization_id => organization_id, :creator_id => creator_id,
+                               :repository => instance_double(Repository, :integration_type => integration_type))
+    end
 
     before do
       allow(::RepoHost::Factory).to receive(:create_from_project).and_return(repo_host)
@@ -1965,6 +1984,71 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       expect(state).to eq(:ok)
       expect(described_class).to have_received(:sleep).once
       expect(described_class::GithubCache.exists?(lock_key)).to be(true)
+    end
+
+    it "lets waiters reschedule when the holder found mergeability unknown" do
+      allow(repo_host).to receive(:pull_request).and_return({ :merge_commit_sha => "", :mergeable => nil })
+      first_state, = resolve
+
+      state, meta, = resolve
+
+      expect([first_state, state]).to eq(%i[mergeable_unknown mergeable_unknown])
+      expect(meta[:rate_limit_remaining]).to eq(5000)
+      expect(repo_host).to have_received(:pull_request).exactly(9).times
+      expect(RedisClient.new(:url => App.redis_sidekiq_url).call("TTL", "github_hooks:v1:#{merge_key}:unknown"))
+        .to be_between(1, described_class::SHARED_MERGE_LOCK_TTL.to_i)
+    end
+
+    it "takes the unknown mergeability a holder reports while waiting" do
+      token = described_class::GithubCache.lock(lock_key, :ttl => 30)
+      allow(described_class).to receive(:sleep) do
+        described_class::GithubCache.write("#{merge_key}:unknown", { "state" => "mergeable_unknown", "rate_limit_remaining" => 42 }, :ttl => 30)
+        described_class::GithubCache.unlock(lock_key, token)
+      end
+
+      state, meta, = resolve
+
+      expect(state).to eq(:mergeable_unknown)
+      expect(meta[:rate_limit_remaining]).to eq(42)
+      expect(repo_host).not_to have_received(:pull_request)
+    end
+
+    it "takes a merge stored just before the holder released the lock" do
+      described_class::GithubCache.lock(lock_key, :ttl => 30)
+      allow(described_class::GithubCache).to receive(:exists?).with(lock_key) do
+        described_class::GithubCache.write(merge_key, { "merge_commit_sha" => "9" * 40 }, :ttl => 60)
+        false
+      end
+
+      state, meta, = resolve
+
+      expect(state).to eq(:ok)
+      expect(meta[:merge_commit_sha]).to eq("9" * 40)
+      expect(repo_host).not_to have_received(:pull_request)
+    end
+
+    it "shares a merge between GitHub App projects of one organization created by different users" do
+      described_class.update_pr_data(project, 1, :webhook_head_sha => head_sha, :webhook_base_sha => base_sha)
+      described_class.update_pr_data(build_project(:creator_id => "user-2"), 1, :webhook_head_sha => head_sha, :webhook_base_sha => base_sha)
+
+      expect(repo_host).to have_received(:pull_request).once
+    end
+
+    it "does not share a merge with a project of another organization" do
+      described_class.update_pr_data(project, 1, :webhook_head_sha => head_sha, :webhook_base_sha => base_sha)
+      described_class.update_pr_data(build_project(:organization_id => "org-2"), 1, :webhook_head_sha => head_sha, :webhook_base_sha => base_sha)
+
+      expect(repo_host).to have_received(:pull_request).twice
+    end
+
+    it "does not share a merge between OAuth projects using different users' tokens" do
+      oauth = build_project(:integration_type => "github_oauth_token")
+      described_class.update_pr_data(oauth, 1, :webhook_head_sha => head_sha, :webhook_base_sha => base_sha)
+      described_class.update_pr_data(build_project(:integration_type => "github_oauth_token", :creator_id => "user-2"), 1,
+                                     :webhook_head_sha => head_sha, :webhook_base_sha => base_sha)
+      described_class.update_pr_data(oauth, 1, :webhook_head_sha => head_sha, :webhook_base_sha => base_sha)
+
+      expect(repo_host).to have_received(:pull_request).twice
     end
 
     it "does not share a merge without a webhook base" do

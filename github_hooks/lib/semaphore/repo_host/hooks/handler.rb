@@ -569,29 +569,32 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     merge_key = shared_merge_key(project, number, webhook_head_sha, webhook_base_sha)
     return resolve_pr_data(repo_host, project, number, commit_sha, allow_skip, poll, webhook_head_sha) unless merge_key
 
-    shared = GithubCache.read(merge_key)
+    shared = read_shared_merge(merge_key)
     unless shared
       lock_token = GithubCache.lock("#{merge_key}:lock", :ttl => SHARED_MERGE_LOCK_TTL)
       shared = await_shared_merge(merge_key) unless lock_token
     end
-
-    if shared
-      Watchman.increment("hook.processing.pr_merge_shared", :tags => ["reused"])
-      return shared_merge_result(shared)
-    end
+    return shared_merge_result(shared) if shared
 
     result = resolve_pr_data(repo_host, project, number, commit_sha, allow_skip, poll, webhook_head_sha)
-    store_shared_merge(merge_key, result) if result.first == :ok && (commit_sha.nil? || commit_sha == webhook_head_sha)
+    store_shared_merge(merge_key, result, commit_sha, webhook_head_sha)
     result
   ensure
     GithubCache.unlock("#{merge_key}:lock", lock_token) if lock_token
   end
 
   # One merge per PR event: every delivery of an event has the same head and base.
+  # Shared only between projects of one organization that use the same GitHub
+  # credentials, so a reused merge never stands in for a project's own access.
   def self.shared_merge_key(project, number, head_sha, base_sha)
     return if head_sha.blank? || base_sha.blank? || !GithubCache.enabled?
 
-    "pr_merge:#{project.repo_owner_and_name.downcase}:#{number}:#{head_sha}:#{base_sha}"
+    credentials = project.repository.integration_type == "github_app" ? "app" : "user-#{project.creator_id}"
+    "pr_merge:#{project.organization_id}:#{credentials}:#{project.repo_owner_and_name.downcase}:#{number}:#{head_sha}:#{base_sha}"
+  end
+
+  def self.read_shared_merge(merge_key)
+    GithubCache.read(merge_key) || GithubCache.read("#{merge_key}:unknown")
   end
 
   # Waits while another worker holds the lock. Nil means resolve it here.
@@ -600,20 +603,35 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
     loop do
       sleep(SHARED_MERGE_WAIT_INTERVAL)
-      shared = GithubCache.read(merge_key)
+      shared = read_shared_merge(merge_key)
       return shared if shared
-      return unless GithubCache.exists?("#{merge_key}:lock")
+      # The holder stores its result before releasing the lock.
+      return read_shared_merge(merge_key) unless GithubCache.exists?("#{merge_key}:lock")
       return if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
     end
   end
 
-  def self.store_shared_merge(merge_key, result)
-    meta = result[1]
-    value = { "merge_commit_sha" => meta[:merge_commit_sha], "commit_author" => meta[:commit_author], "head_sha" => meta[:head_sha] }
-    Watchman.increment("hook.processing.pr_merge_shared", :tags => ["stored"]) if GithubCache.write(merge_key, value, :ttl => SHARED_RESULT_TTL, :only_new => true)
+  # An up-to-date merge is kept for the event. Unknown mergeability is kept only
+  # as long as the lock, so waiters reschedule instead of polling GitHub again.
+  def self.store_shared_merge(merge_key, result, commit_sha, webhook_head_sha)
+    state, meta, = result
+
+    if state == :mergeable_unknown
+      value = { "state" => "mergeable_unknown", "rate_limit_remaining" => meta[:rate_limit_remaining] }
+      GithubCache.write("#{merge_key}:unknown", value, :ttl => SHARED_MERGE_LOCK_TTL)
+    elsif state == :ok && (commit_sha.nil? || commit_sha == webhook_head_sha)
+      value = { "merge_commit_sha" => meta[:merge_commit_sha], "commit_author" => meta[:commit_author], "head_sha" => meta[:head_sha] }
+      Watchman.increment("hook.processing.pr_merge_shared", :tags => ["stored"]) if GithubCache.write(merge_key, value, :ttl => SHARED_RESULT_TTL, :only_new => true)
+    end
   end
 
   def self.shared_merge_result(shared)
+    if shared["state"] == "mergeable_unknown"
+      Watchman.increment("hook.processing.pr_merge_shared", :tags => ["reused_unknown"])
+      return [:mergeable_unknown, { :rate_limit_remaining => shared["rate_limit_remaining"] }, ""]
+    end
+
+    Watchman.increment("hook.processing.pr_merge_shared", :tags => ["reused"])
     merge_commit_sha = shared["merge_commit_sha"]
     meta = {
       :ref => "refs/semaphoreci/#{merge_commit_sha}",
