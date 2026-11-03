@@ -223,6 +223,27 @@ defmodule Ppl.Actions.ListActivityImpl.Test do
            ]
   end
 
+  # ListActivity never uses after_pipeline. Reading it from the full definition
+  # used to raise on an empty list and fail the whole page on an invalid matrix.
+  for {label, after_pipeline} <- [
+        {"empty", []},
+        {"invalid matrix", [%{"build" => %{"jobs" => [%{"name" => "ap", "matrix" => []}]}}]}
+      ] do
+    test "after_pipeline does not affect the listing: #{label}" do
+      blocks = [block("b", [job("a")])]
+      {ok, _} = insert_active_ppl(definition(blocks))
+
+      {other, _} =
+        definition(blocks)
+        |> Map.put("after_pipeline", unquote(Macro.escape(after_pipeline)))
+        |> insert_active_ppl()
+
+      assert {:ok, %{pipelines: result}} = list_activity()
+      assert Enum.map(result, & &1.ppl_id) == [other.ppl_id, ok.ppl_id]
+      assert Enum.all?(result, &match?([%{name: "b", jobs: [%{name: "a"}]}], &1.blocks))
+    end
+  end
+
   test "pipelines from other organizations and finished pipelines are not listed" do
     {ppl, _} = insert_active_ppl(definition([block("b", [job("a")])]))
     {other_org, _} = insert_active_ppl(definition([block("b", [job("a")])]), "other-org")
