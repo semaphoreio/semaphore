@@ -208,6 +208,12 @@ module RepoHost::Github
       handle_octokit_exceptions(exception)
     end
 
+    def git_commit(repo, sha)
+      user_client.git_commit(repo, sha)
+    rescue *GITHUB_EXCEPTION => exception
+      handle_octokit_exceptions(exception)
+    end
+
     def compare(repo, base, head)
       # We only read the first-page envelope of the comparison (`base_commit`).
       # The `commits[]`/`files[]` lists are never used, so route this through a
