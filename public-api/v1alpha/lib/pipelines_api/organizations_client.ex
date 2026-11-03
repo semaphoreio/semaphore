@@ -1,17 +1,28 @@
 defmodule PipelinesAPI.OrganizationsClient do
   @moduledoc """
-  gRPC client for account-level organization creation: Organization.IsValid,
-  Billing.CanSetupOrganization, and Organization.Create.
+  gRPC client for account-level organization operations: Organization.IsValid,
+  Billing.CanSetupOrganization, Organization.Create, and listing the
+  organizations a user belongs to (RBAC.ListAccessibleOrgs +
+  Organization.DescribeMany).
   """
 
   alias InternalApi.Billing.{BillingService, CanSetupOrganizationRequest}
-  alias InternalApi.Organization.{OrganizationService, CreateRequest, Organization}
+
+  alias InternalApi.Organization.{
+    OrganizationService,
+    CreateRequest,
+    DescribeManyRequest,
+    Organization
+  }
+
+  alias InternalApi.RBAC.{RBAC, ListAccessibleOrgsRequest}
   alias PipelinesAPI.Util.{Log, Metrics, ToTuple}
 
   require Logger
 
   defp org_url, do: System.get_env("INTERNAL_API_URL_ORGANIZATION")
   defp billing_url, do: System.get_env("INTERNAL_API_URL_BILLING")
+  defp rbac_url, do: System.get_env("INTERNAL_API_URL_RBAC")
   defp opts, do: [{:timeout, Application.get_env(:pipelines_api, :grpc_timeout)}]
 
   # Organization.IsValid — name/username validation (mirrors validate_organization).
@@ -95,6 +106,50 @@ defmodule PipelinesAPI.OrganizationsClient do
     end)
   end
 
+  # Organization.ListForUser — the organizations the user belongs to. The org
+  # set is resolved from RBAC (membership), keyed off the authenticated user_id,
+  # then hydrated via Organization.DescribeMany. The user_id MUST be the
+  # authenticated caller's own (from x-semaphore-user-id at the handler); this
+  # never lists another user's orgs.
+  @spec list_for_user(String.t()) :: {:ok, [Organization.t()]} | {:error, tuple()}
+  def list_for_user(user_id) do
+    case Wormhole.capture(__MODULE__, :list_for_user_, [user_id],
+           stacktrace: true,
+           skip_log: true
+         ) do
+      {:ok, result} -> result
+      {:error, reason} -> Log.internal_error(reason, "list_for_user")
+    end
+  end
+
+  def list_for_user_(user_id) do
+    Metrics.benchmark("PipelinesAPI.organizations_client", ["list_for_user"], fn ->
+      with {:ok, org_ids} <- accessible_org_ids(user_id) do
+        describe_many(org_ids)
+      end
+    end)
+  end
+
+  # Membership lookup: only the orgs THIS user can access. user_id comes from the
+  # authenticated request, so the result is always scoped to the caller.
+  defp accessible_org_ids(user_id) do
+    {:ok, channel} = GRPC.Stub.connect(rbac_url())
+
+    channel
+    |> RBAC.Stub.list_accessible_orgs(%ListAccessibleOrgsRequest{user_id: user_id}, opts())
+    |> process_accessible_orgs()
+  end
+
+  defp describe_many([]), do: {:ok, []}
+
+  defp describe_many(org_ids) do
+    {:ok, channel} = GRPC.Stub.connect(org_url())
+
+    channel
+    |> OrganizationService.Stub.describe_many(DescribeManyRequest.new(org_ids: org_ids), opts())
+    |> process_describe_many()
+  end
+
   # Response handling
 
   defp process_is_valid({:ok, %{is_valid: true}}), do: :ok
@@ -134,6 +189,22 @@ defmodule PipelinesAPI.OrganizationsClient do
     do: Log.internal_error(message, "create", "Organization")
 
   defp process_create(error), do: Log.internal_error(error, "create", "Organization")
+
+  defp process_accessible_orgs({:ok, %{org_ids: org_ids}}), do: {:ok, org_ids}
+
+  defp process_accessible_orgs({:error, %GRPC.RPCError{message: message}}),
+    do: Log.internal_error(message, "list_accessible_orgs", "RBAC")
+
+  defp process_accessible_orgs(error),
+    do: Log.internal_error(error, "list_accessible_orgs", "RBAC")
+
+  defp process_describe_many({:ok, %{organizations: organizations}}), do: {:ok, organizations}
+
+  defp process_describe_many({:error, %GRPC.RPCError{message: message}}),
+    do: Log.internal_error(message, "describe_many", "Organization")
+
+  defp process_describe_many(error),
+    do: Log.internal_error(error, "describe_many", "Organization")
 
   # Same customer-friendly mapping front uses (Front.Models.OrganizationOnboarding).
   defp format_organization_api_error(message) when is_binary(message) do
