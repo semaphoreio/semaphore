@@ -36,6 +36,30 @@ defmodule RepositoryHub.Github.SyncRepositoryActionTest do
       assert updated_repository.url == "git@github.com:dummy/repository.git"
     end
 
+    test "marks repository as not connected when the user has no integration", %{
+      adapter: adapter,
+      repository: repository
+    } do
+      # guard answers this when the repo_host_account is gone - released by a
+      # claim on its GitHub uid, or never connected. Both mean no connection.
+      error = "Integration 'GITHUB_OAUTH_TOKEN' not found."
+
+      mocks =
+        GithubClientFactory.mocks() ++
+          [
+            {GithubAdapter, [:passthrough], [context: fn _adapter, _repository_id -> {:error, error} end]}
+          ]
+
+      with_mocks(mocks) do
+        assert repository.connected
+
+        assert {:error, ^error} = SyncRepositoryAction.execute(adapter, repository.id)
+
+        assert {:ok, updated_repository} = Model.RepositoryQuery.get_by_id(repository.id)
+        refute updated_repository.connected
+      end
+    end
+
     test "marks repository as not connected on disconnect error", %{adapter: adapter, repository: repository} do
       mocks =
         GithubClientFactory.mocks() ++
