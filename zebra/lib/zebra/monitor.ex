@@ -250,6 +250,7 @@ defmodule Zebra.Monitor do
   def stop_jobs_on_suspended_orgs do
     Job.started()
     |> where([j], j.started_at < from_now(-5, "minute"))
+    |> select([j], struct(j, [:id, :build_id, :started_at, :organization_id]))
     |> LegacyRepo.all()
     |> Enum.each(fn j ->
       Logger.info("Testing #{j.id} #{j.started_at}")
