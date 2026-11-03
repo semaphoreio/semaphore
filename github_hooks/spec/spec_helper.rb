@@ -120,7 +120,6 @@ RSpec.configure do |config|
 
   config.before do |example|
     Rails.cache.clear if Dir.exist?("tmp/cache/")
-    Semaphore::RepoHost::Hooks::Handler::MERGE_PARENTS_CACHE.clear
 
     DatabaseCleaner[:active_record].strategy = if example.metadata[:multithreaded]
                                                  :truncation
