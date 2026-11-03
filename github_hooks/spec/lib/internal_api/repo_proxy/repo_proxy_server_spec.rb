@@ -52,6 +52,18 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
       end
     end
 
+    context "when the hook is a pull request" do
+      it "returns the base commit of the pull request" do
+        payload = File.read(Rails.root.join("fixtures/github_payloads/post_receive_hook_pull_request.json").to_s)
+        hook = FactoryBot.create(:workflow_with_branch, :request => ActionController::Parameters.new("payload" => payload))
+
+        response = server.describe(InternalApi::RepoProxy::DescribeRequest.new(:hook_id => hook.id), call)
+
+        expect(response.hook.git_ref_type).to eq(:PR)
+        expect(response.hook.pr_base_sha).to eq("1ddd006407eda6ea5ca0e0b538ba7d4914c08611")
+      end
+    end
+
     context "when pusher is not present" do
       it "return empty repo_host_username, and empty repo_host_email" do
         @hook = FactoryBot.create(:workflow_with_branch)
@@ -325,7 +337,7 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
     let(:payload_hash) do
       {
         "commit_author" => "dev@example.com",
-        "merge_commit_sha" => "abc123",
+        "commit_sha" => "abc123",
         "semaphore_ref" => "refs/merge"
       }
     end
@@ -363,6 +375,50 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
       expect(repo.branch_name).to eq(branch.name)
       expect(repo.commit_sha).to eq(workflow.commit_sha)
       expect(repo.repository_id).to eq(repository.id)
+    end
+
+    context "when the pull request payload is built from the head commit" do
+      let(:payload_hash) do
+        {
+          "commit_author" => "dev@example.com",
+          "commit_sha" => "head-sha",
+          "semaphore_ref" => "refs/pull/1/head"
+        }
+      end
+
+      before do
+        allow(workflow).to receive(:payload).and_return(instance_double(RepoHost::Github::Payload, pull_request?: true))
+      end
+
+      it "stores the head commit on the workflow" do
+        expect(workflow).to receive(:update).with(
+          commit_author: "dev@example.com",
+          commit_sha: "head-sha",
+          git_ref: "refs/pull/1/head"
+        )
+
+        server.create_blank(req, call)
+      end
+
+      it "does not record the branch as mergeable" do
+        project.update!(pull_request_commit: "head_commit")
+        allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:pr_head_builds, anything).and_return(true)
+        expect(branch).not_to receive(:update).with(pull_request_mergeable: true)
+
+        server.create_blank(req, call)
+      end
+    end
+
+    context "when the project builds merge commits and the payload is a pull request" do
+      before do
+        allow(workflow).to receive(:payload).and_return(instance_double(RepoHost::Github::Payload, pull_request?: true))
+      end
+
+      it "records the branch as mergeable" do
+        expect(branch).to receive(:update).with(pull_request_mergeable: true)
+
+        server.create_blank(req, call)
+      end
     end
 
     context "when pull request is not mergeable" do
