@@ -74,7 +74,7 @@ endif
 
 DOCKER_BUILD_PATH=.
 EX_CATCH_WARRNINGS_FLAG=--warnings-as-errors
-CHECK_DEPS_EXTRA_OPTS?=-w feature_provider,grpc_health_check,tentacat,util,watchman,fun_registry,sentry_grpc,traceman,cacheman,log_tee,spec,proto,sys2app,looper,job_matrix,definition_validator,gofer_client,open_api_spex,when,uuid,esaml,openid_connect,block
+CHECK_DEPS_EXTRA_OPTS?=-w feature_provider,env_var_policy,grpc_health_check,tentacat,util,watchman,fun_registry,sentry_grpc,traceman,cacheman,log_tee,spec,proto,sys2app,looper,job_matrix,definition_validator,gofer_client,open_api_spex,when,uuid,esaml,openid_connect,block
 ROOT_MAKEFILE_PATH := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 SCAN_RESULT_DIR?=out
 SECURITY_TOOLBOX_RUBY_IMAGE?=registry.semaphoreci.com/ruby:3
