@@ -404,6 +404,33 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             expect(Workflow.find(workflow.id).request["payload"]).to eq(original_payload)
           end
 
+          it "keeps the claim across a stale merge commit reschedule while the approved head is unchanged" do
+            workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+            approve_bare
+            allow(App).to receive(:stale_merge_commit_max_retries).and_return(3)
+            stale = { :head_sha => workflow.commit_sha, :merge_parent_shas => ["c" * 40, "b" * 40], :rate_limit_remaining => 5000 }
+            allow(described_class).to receive(:update_pr_data).and_return([:stale_merge_commit, stale, ""])
+
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker).to receive(:perform_in).with(1.minute, workflow.id, anything, anything, 1)
+
+            described_class.run(@workflow, @logger)
+
+            expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_PR_APPROVAL_IN_PROGRESS)
+          end
+
+          it "marks the approval stale when the fork pushed after approval and the merge commit is stale" do
+            workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+            approve_bare
+            stale = { :head_sha => "b" * 40, :merge_parent_shas => ["c" * 40, "b" * 40], :rate_limit_remaining => 5000 }
+            allow(described_class).to receive(:update_pr_data).and_return([:stale_merge_commit, stale, ""])
+
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker).not_to receive(:perform_in)
+
+            described_class.run(@workflow, @logger)
+
+            expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_PR_APPROVAL_STALE)
+          end
+
           it "keeps the claim across a mergeable_unknown reschedule" do
             workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
             approve_bare
@@ -1193,6 +1220,8 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           before do
             allow(repo_host).to receive(:validate_token_presence!)
             allow(repo_host).to receive(:pull_request).and_return(:merge_commit_sha => "foo", :mergeable => true)
+            merge_commit = { :parents => [{ :sha => "c" * 40 }, { :sha => @workflow.payload.pr_head_sha }] }
+            allow(repo_host).to receive(:git_commit).with("renderedtext/plakatt", "foo").and_return(merge_commit)
           end
 
           it "creates ref on github via exactly one create_ref call and no probe" do
@@ -1231,8 +1260,6 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
               .and_raise(::RepoHost::RemoteException::ReferenceAlreadyExists)
             allow(repo_host).to receive(:commit).with("renderedtext/plakatt",
                                                       "97114836a47ff614e70e863df819f908877ee1c9").and_return(RepoHost::Github::Responses::Commit.commit)
-            merge_commit = { :parents => [{ :sha => "base" }, { :sha => @workflow.payload.pr_head_sha }] }
-            allow(repo_host).to receive(:git_commit).with("renderedtext/plakatt", "foo").and_return(merge_commit)
 
             expect(described_class.run(@workflow, @logger)).to be_nil
           end
@@ -1342,27 +1369,37 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           end
         end
 
-        context "and GitHub returns a merge commit that was already referenced" do
-          let(:head_sha) { "3a9bf9d09f1f639e6deff46f95cff1296a87ea1a" } # pr_head_sha of the webhook payload
-          let(:merge_sha) { "654a86776e4d491bb71dee2eb40866e21a3553b7" }
+        context "and the merge commit is checked against the webhook head" do
+          let(:webhook_head) { @workflow.payload.pr_head_sha }
+          let(:merge_sha) { "a" * 40 }
+          let(:other_head) { "b" * 40 }
+          let(:base_sha) { "c" * 40 }
 
           before do
-            allow(App).to receive_messages(:mergeable_unknown_max_retries => 3,
+            allow(App).to receive_messages(:stale_merge_commit_max_retries => 3,
                                            :mergeable_unknown_rate_limit_reserve => 0)
             allow(Watchman).to receive(:increment)
             allow(repo_host).to receive(:validate_token_presence!)
-            allow(repo_host).to receive_messages(:pull_request => { :merge_commit_sha => merge_sha, :mergeable => true, :head => { :sha => head_sha } },
-                                                 :last_response_rate_limit_remaining => 5000)
             allow(repo_host).to receive(:create_ref)
-              .with("renderedtext/plakatt", "refs/semaphoreci/#{merge_sha}", merge_sha)
-              .and_raise(::RepoHost::RemoteException::ReferenceAlreadyExists)
+            allow(repo_host).to receive(:last_response_rate_limit_remaining).and_return(5000)
             allow(repo_host).to receive(:commit).with("renderedtext/plakatt",
                                                       "97114836a47ff614e70e863df819f908877ee1c9").and_return(RepoHost::Github::Responses::Commit.commit)
           end
 
-          it "builds it when the merge commit has the PR head as a parent" do
-            merge_commit = { :parents => [{ :sha => "base" }, { :sha => head_sha }] }
+          def stub_github_pr(repo_host, head:, parents:, merge_sha:)
+            allow(repo_host).to receive(:pull_request).and_return({ :merge_commit_sha => merge_sha, :mergeable => true, :head => { :sha => head } })
+            merge_commit = { :parents => parents.map { |sha| { :sha => sha } } }
             allow(repo_host).to receive(:git_commit).with("renderedtext/plakatt", merge_sha).and_return(merge_commit)
+          end
+
+          def create_later_workflow(commit_sha:, git_ref: "refs/pull/1/merge", branch: nil)
+            later = FactoryBot.create(:workflow, :project => @workflow.project)
+            later.update(:commit_sha => commit_sha, :git_ref => git_ref, :branch_id => branch&.id, :created_at => @workflow.created_at + 1.minute)
+            later
+          end
+
+          it "builds a merge commit that contains the webhook head" do
+            stub_github_pr(repo_host, :head => webhook_head, :parents => [base_sha, webhook_head], :merge_sha => merge_sha)
             expect(described_class).to receive(:launch_pipeline)
 
             described_class.run(@workflow, @logger)
@@ -1370,42 +1407,45 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             expect(@workflow.reload.commit_sha).to eq(merge_sha)
           end
 
-          it "reschedules instead of building a merge commit left over from an earlier head" do
-            merge_commit = { :parents => [{ :sha => "base" }, { :sha => "previous-head" }] }
-            allow(repo_host).to receive(:git_commit).with("renderedtext/plakatt", merge_sha).and_return(merge_commit)
+          it "builds a merge commit that contains the webhook head while GitHub's head lags" do
+            stub_github_pr(repo_host, :head => other_head, :parents => [base_sha, webhook_head], :merge_sha => merge_sha)
+            expect(described_class).to receive(:launch_pipeline)
+
+            described_class.run(@workflow, @logger)
+          end
+
+          it "reschedules a stale merge commit without creating its ref, even when the ref is new" do
+            stub_github_pr(repo_host, :head => webhook_head, :parents => [base_sha, other_head], :merge_sha => merge_sha)
+            expect(repo_host).not_to receive(:create_ref)
             expect(described_class).not_to receive(:launch_pipeline)
             expect(Semaphore::RepoHost::Hooks::Handler::Worker)
-              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
+              .to receive(:perform_in).with(1.minute, @workflow.id, anything, anything, 1)
+            expect(@logger).to receive(:info).with("pr-stale-merge-commit-rescheduled", anything)
 
             described_class.run(@workflow, @logger)
 
             expect(Watchman).to have_received(:increment).with("hook.processing.pr_stale_merge_commit")
-            expect(@workflow.reload.commit_sha).not_to eq(merge_sha)
+            expect(@workflow.reload.state).not_to eq(Workflow::STATE_PR_STALE_MERGE_COMMIT)
           end
 
-          it "treats a merge commit without parents as stale" do
-            allow(repo_host).to receive(:git_commit).with("renderedtext/plakatt", merge_sha).and_return({})
+          it "reschedules after a reset to an ancestor while GitHub still shows the previous head" do
+            create_later_workflow(:commit_sha => webhook_head) # an unrelated later hook must not count
+            stub_github_pr(repo_host, :head => other_head, :parents => [base_sha, other_head], :merge_sha => merge_sha)
             expect(described_class).not_to receive(:launch_pipeline)
             expect(Semaphore::RepoHost::Hooks::Handler::Worker)
-              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
+              .to receive(:perform_in).with(1.minute, @workflow.id, anything, anything, 1)
 
             described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.state).not_to eq(Workflow::STATE_SKIP_SUPERSEDED_PR)
           end
 
-          # GitHub reports a head other than the webhook's, and the reused merge contains it.
-          def stub_other_github_head(repo_host, merge_sha)
-            allow(repo_host).to receive(:pull_request)
-              .and_return({ :merge_commit_sha => merge_sha, :mergeable => true, :head => { :sha => "other-head" } })
-            merge_commit = { :parents => [{ :sha => "base" }, { :sha => "other-head" }] }
-            allow(repo_host).to receive(:git_commit).with("renderedtext/plakatt", merge_sha).and_return(merge_commit)
-          end
-
-          it "skips the hook when a newer push overtook it" do
-            stub_other_github_head(repo_host, merge_sha)
-            allow(repo_host).to receive(:compare).with("renderedtext/plakatt", head_sha, "other-head").and_return({ :status => "ahead" })
+          it "skips a hook superseded by a later hook for GitHub's head" do
+            create_later_workflow(:commit_sha => other_head)
+            stub_github_pr(repo_host, :head => other_head, :parents => [base_sha, other_head], :merge_sha => merge_sha)
             expect(described_class).not_to receive(:launch_pipeline)
             expect(Semaphore::RepoHost::Hooks::Handler::Worker).not_to receive(:perform_in)
-            expect(@logger).to receive(:info).with("pr-superseded")
+            expect(@logger).to receive(:info).with("pr-superseded", anything)
 
             described_class.run(@workflow, @logger)
 
@@ -1414,34 +1454,65 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             expect(Watchman).not_to have_received(:increment).with("hook.processing.pr_stale_merge_commit")
           end
 
-          it "reschedules when GitHub's head and merge commit both predate the webhook head" do
-            stub_other_github_head(repo_host, merge_sha)
-            allow(repo_host).to receive(:compare).with("renderedtext/plakatt", head_sha, "other-head").and_return({ :status => "behind" })
-            expect(described_class).not_to receive(:launch_pipeline)
-            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
-              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
+          it "skips a hook superseded by a later hook that already built the merge commit" do
+            branch = FactoryBot.create(:branch, :project => @workflow.project, :name => @workflow.payload.branch)
+            create_later_workflow(:commit_sha => merge_sha, :git_ref => "refs/semaphoreci/#{merge_sha}", :branch => branch)
+            stub_github_pr(repo_host, :head => other_head, :parents => [base_sha, other_head], :merge_sha => merge_sha)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker).not_to receive(:perform_in)
 
             described_class.run(@workflow, @logger)
 
-            expect(Watchman).to have_received(:increment).with("hook.processing.pr_stale_merge_commit")
+            expect(@workflow.reload.state).to eq(Workflow::STATE_SKIP_SUPERSEDED_PR)
           end
 
-          it "reschedules when the heads diverged, as after a force-push GitHub has not caught up with" do
-            stub_other_github_head(repo_host, merge_sha)
-            allow(repo_host).to receive(:compare).with("renderedtext/plakatt", head_sha, "other-head").and_return({ :status => "diverged" })
-            expect(described_class).not_to receive(:launch_pipeline)
+          it "does not count a later hook for GitHub's head on another pull request" do
+            create_later_workflow(:commit_sha => other_head, :git_ref => "refs/pull/2/merge")
+            stub_github_pr(repo_host, :head => other_head, :parents => [base_sha, other_head], :merge_sha => merge_sha)
             expect(Semaphore::RepoHost::Hooks::Handler::Worker)
-              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
+              .to receive(:perform_in).with(1.minute, @workflow.id, anything, anything, 1)
 
             described_class.run(@workflow, @logger)
           end
 
-          it "reschedules when the heads cannot be compared" do
-            stub_other_github_head(repo_host, merge_sha)
-            allow(repo_host).to receive(:compare).and_raise(::RepoHost::RemoteException::NotFound, "gone")
+          it "does not count an earlier hook for GitHub's head" do
+            earlier = create_later_workflow(:commit_sha => other_head)
+            earlier.update(:created_at => @workflow.created_at - 1.minute)
+            stub_github_pr(repo_host, :head => other_head, :parents => [base_sha, other_head], :merge_sha => merge_sha)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(1.minute, @workflow.id, anything, anything, 1)
+
+            described_class.run(@workflow, @logger)
+          end
+
+          it "gives up with its own state once the stale merge retries are exhausted" do
+            stub_github_pr(repo_host, :head => webhook_head, :parents => [base_sha, other_head], :merge_sha => merge_sha)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker).not_to receive(:perform_in)
+            expect(@logger).to receive(:info).with("pr-stale-merge-commit-giving-up", hash_including(:retries => 3))
+
+            described_class.run(@workflow, @logger, "", "", 3)
+
+            expect(@workflow.reload.state).to eq(Workflow::STATE_PR_STALE_MERGE_COMMIT)
+            expect(Watchman).to have_received(:increment).with("hook.processing.pr_stale_merge_commit_giving_up")
+            expect(Watchman).not_to have_received(:increment).with("hook.processing.pr_mergeable_unknown_giving_up")
+          end
+
+          it "gives up instead of rescheduling when the rate limit is below the reserve" do
+            allow(App).to receive(:mergeable_unknown_rate_limit_reserve).and_return(1000)
+            allow(repo_host).to receive(:last_response_rate_limit_remaining).and_return(999)
+            stub_github_pr(repo_host, :head => webhook_head, :parents => [base_sha, other_head], :merge_sha => merge_sha)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker).not_to receive(:perform_in)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.state).to eq(Workflow::STATE_PR_STALE_MERGE_COMMIT)
+          end
+
+          it "reschedules instead of failing the repository when the merge commit lookup is not found" do
+            allow(repo_host).to receive(:pull_request).and_return({ :merge_commit_sha => merge_sha, :mergeable => true, :head => { :sha => webhook_head } })
+            allow(repo_host).to receive(:git_commit).and_raise(::RepoHost::RemoteException::NotFound, "gone")
             expect(described_class).not_to receive(:launch_pipeline)
             expect(Semaphore::RepoHost::Hooks::Handler::Worker)
-              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
+              .to receive(:perform_in).with(1.minute, @workflow.id, anything, anything, 1)
 
             described_class.run(@workflow, @logger)
 
@@ -1451,29 +1522,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           it "checks against the webhook head even after commit_sha was set to the merge commit" do
             @workflow.update(:commit_sha => merge_sha)
             allow(repo_host).to receive(:commit).with("renderedtext/plakatt", merge_sha).and_return(RepoHost::Github::Responses::Commit.commit)
-            merge_commit = { :parents => [{ :sha => "base" }, { :sha => head_sha }] }
-            allow(repo_host).to receive(:git_commit).with("renderedtext/plakatt", merge_sha).and_return(merge_commit)
-            expect(described_class).to receive(:launch_pipeline)
-
-            described_class.run(@workflow, @logger)
-          end
-
-          it "reschedules instead of failing the repository when the merge commit lookup is not found" do
-            allow(repo_host).to receive(:git_commit).with("renderedtext/plakatt", merge_sha)
-                                                    .and_raise(::RepoHost::RemoteException::NotFound, "gone")
-            expect(described_class).not_to receive(:launch_pipeline)
-            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
-              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
-
-            described_class.run(@workflow, @logger)
-
-            expect(@workflow.reload.state).not_to eq(Workflow::STATE_NOT_FOUND_REPO)
-          end
-
-          it "does not look up the merge commit when the ref is new" do
-            allow(repo_host).to receive(:create_ref)
-              .with("renderedtext/plakatt", "refs/semaphoreci/#{merge_sha}", merge_sha)
-            expect(repo_host).not_to receive(:git_commit).with("renderedtext/plakatt", merge_sha)
+            stub_github_pr(repo_host, :head => webhook_head, :parents => [base_sha, webhook_head], :merge_sha => merge_sha)
             expect(described_class).to receive(:launch_pipeline)
 
             described_class.run(@workflow, @logger)
@@ -1582,20 +1631,20 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
     end
   end
 
-  describe ".update_pr_data with a merge commit that was already referenced", :aggregate_failures do
+  describe ".update_pr_data merge commit check", :aggregate_failures do
     let(:project) { instance_double(Project, :repo_owner_and_name => "owner/repo") }
     let(:repo_host) { double(::RepoHost::Github::Client.new("token")) }
-    let(:head_sha) { "5517b255368df24b92d320dd7adbb0ccc1e01207" }
-    let(:merge_sha) { "654a86776e4d491bb71dee2eb40866e21a3553b7" }
+    let(:head_sha) { "d" * 40 }
+    let(:merge_sha) { "e" * 40 }
+    let(:base_sha) { "f" * 40 }
 
     before do
       allow(::RepoHost::Factory).to receive(:create_from_project).and_return(repo_host)
-      allow(Watchman).to receive(:increment)
       allow(repo_host).to receive(:validate_token_presence!)
       allow(repo_host).to receive_messages(:pull_request => { :merge_commit_sha => merge_sha, :mergeable => true, :head => { :sha => head_sha } },
                                            :last_response_rate_limit_remaining => 5000)
       allow(repo_host).to receive(:commit).with("owner/repo", head_sha).and_return({})
-      allow(repo_host).to receive(:create_ref).and_raise(::RepoHost::RemoteException::ReferenceAlreadyExists)
+      allow(repo_host).to receive(:create_ref)
     end
 
     def stub_merge_parents(*parent_shas)
@@ -1603,17 +1652,19 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       allow(repo_host).to receive(:git_commit).with("owner/repo", merge_sha).and_return({ :parents => parents })
     end
 
-    it "returns :mergeable_unknown for a stale merge when no webhook head is given, as from PrPayload" do
-      stub_merge_parents("base", "previous-head")
+    it "returns :stale_merge_commit without creating the ref when the merge lacks GitHub's head and no webhook head is given, as from PrPayload" do
+      stub_merge_parents(base_sha, "9" * 40)
+      expect(repo_host).not_to receive(:create_ref)
 
       state, meta, = described_class.update_pr_data(project, 1, nil, false)
 
-      expect(state).to eq(:mergeable_unknown)
-      expect(meta[:pr][:merge_commit_sha]).to eq(merge_sha)
+      expect(state).to eq(:stale_merge_commit)
+      expect(meta[:merge_commit_sha]).to eq(merge_sha)
+      expect(meta[:merge_parent_shas]).to eq([base_sha, "9" * 40])
     end
 
     it "returns :ok when the merge contains GitHub's head and no webhook head is given" do
-      stub_merge_parents("base", head_sha)
+      stub_merge_parents(base_sha, head_sha)
 
       state, meta, = described_class.update_pr_data(project, 1, nil, false)
 
@@ -1621,24 +1672,30 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       expect(meta[:merge_commit_sha]).to eq(merge_sha)
     end
 
-    it "returns :superseded for a hook overtaken by a newer push" do
-      stub_merge_parents("base", head_sha)
-      allow(repo_host).to receive(:compare).with("owner/repo", "older-push-head", head_sha).and_return({ :status => "ahead" })
+    it "checks only the webhook head when one is given" do
+      stub_merge_parents(base_sha, "9" * 40)
 
-      state, meta, = described_class.update_pr_data(project, 1, nil, false, :webhook_head_sha => "older-push-head")
+      state, = described_class.update_pr_data(project, 1, nil, false, :webhook_head_sha => "9" * 40)
 
-      expect(state).to eq(:superseded)
-      expect(meta[:head_sha]).to eq(head_sha)
-      expect(Watchman).not_to have_received(:increment).with("hook.processing.pr_stale_merge_commit")
+      expect(state).to eq(:ok)
     end
 
-    it "does not compare heads for a stale merge that contains neither head" do
-      stub_merge_parents("base", "previous-head")
-      expect(repo_host).not_to receive(:compare)
+    it "reads the parents of a merge commit once per SHA" do
+      allow(Rails).to receive(:cache).and_return(ActiveSupport::Cache::MemoryStore.new)
+      stub_merge_parents(base_sha, head_sha)
 
-      state, = described_class.update_pr_data(project, 1, nil, false, :webhook_head_sha => "older-push-head")
+      2.times { described_class.update_pr_data(project, 1, nil, false) }
 
-      expect(state).to eq(:mergeable_unknown)
+      expect(repo_host).to have_received(:git_commit).once
+    end
+
+    it "does not cache a failed lookup" do
+      allow(Rails).to receive(:cache).and_return(ActiveSupport::Cache::MemoryStore.new)
+      allow(repo_host).to receive(:git_commit).and_raise(::RepoHost::RemoteException::NotFound, "gone")
+
+      2.times { described_class.update_pr_data(project, 1, nil, false) }
+
+      expect(repo_host).to have_received(:git_commit).twice
     end
   end
 

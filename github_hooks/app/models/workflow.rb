@@ -17,7 +17,7 @@ class Workflow < ActiveRecord::Base
   STATE_SKIP_PR = "skip_pr"
   STATE_SKIP_FORKED_PR = "skip_forked_pr"
   STATE_SKIP_DRAFT_PR = "skip_draft_pr"
-  # A newer push to the PR was processed first; that push's hook builds it.
+  # A hook received later for the same PR covers GitHub's current head.
   STATE_SKIP_SUPERSEDED_PR = "skip_superseded_pr"
   STATE_SKIP_FILTERED_CONTRIBUTOR = "filtered_contributor"
   STATE_SKIP_TAG = "skip_tag"
@@ -25,6 +25,8 @@ class Workflow < ActiveRecord::Base
   STATE_SKIP_BRANCH = "skip_branch"
   STATE_WHITELIST_BRANCH = "whitelist_branch"
   STATE_PR_NON_MERGEABLE = "pr_non_mergeable"
+  # GitHub kept serving a merge commit without the pushed head past the retry budget.
+  STATE_PR_STALE_MERGE_COMMIT = "pr_stale_merge_commit"
   STATE_PR_NOT_FOUND = "pr_not_found"
   STATE_LAUNCHING = "launching"
   STATE_LAUNCHING_FAILED = "launching_failed"

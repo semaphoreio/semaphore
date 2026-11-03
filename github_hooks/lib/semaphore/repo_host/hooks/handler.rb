@@ -421,9 +421,8 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
           end
 
           return
-        when :superseded
-          logger.info("pr-superseded")
-          workflow.update(:state => Workflow::STATE_SKIP_SUPERSEDED_PR)
+        when :stale_merge_commit
+          handle_stale_merge_commit(workflow, meta, logger, hook_payload, signature, retries, approved_head_sha)
 
           return
         when :skip_ci
@@ -562,58 +561,83 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       return [:skip_ci, { :pr => pr, :mergeable => mergeable }, msg]
     end
 
+    # GitHub can report a PR as mergeable while still serving the test-merge of
+    # an earlier head. Only build a merge commit that contains the pushed head.
+    expected_head_sha = webhook_head_sha.presence || head_sha
+    merge_parent_shas = merge_commit_parent_shas(repo_host, project.repo_owner_and_name, merge_commit_sha)
+    unless merge_parent_shas.include?(expected_head_sha)
+      return [:stale_merge_commit, {
+        :pr => pr,
+        :head_sha => head_sha,
+        :merge_commit_sha => merge_commit_sha,
+        :merge_parent_shas => merge_parent_shas,
+        :rate_limit_remaining => repo_host.last_response_rate_limit_remaining
+      }, msg]
+    end
+
     begin
       ref = "refs/semaphoreci/#{merge_commit_sha}"
-      ref_created = ensure_ref(repo_host, project.repo_owner_and_name, ref, merge_commit_sha)
+      ensure_ref(repo_host, project.repo_owner_and_name, ref, merge_commit_sha)
+
+      [:ok, { :pr => pr, :ref => ref, :merge_commit_sha => merge_commit_sha, :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, msg]
     rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
-      return [:without_reference, { :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, ""]
+      [:without_reference, { :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, ""]
     end
+  end
 
-    reuse = ref_created ? :current : reused_merge_commit_check(repo_host, project.repo_owner_and_name, merge_commit_sha, head_sha, webhook_head_sha)
-    log_fields = "repo=#{project.repo_owner_and_name} pr=#{number} head_sha=#{head_sha} webhook_head_sha=#{webhook_head_sha} merge_commit_sha=#{merge_commit_sha}"
+  # rubocop:disable Metrics/ParameterLists
+  def self.handle_stale_merge_commit(workflow, meta, logger, hook_payload, signature, retries, approved_head_sha)
+    log_fields = {
+      :head_sha => meta[:head_sha],
+      :webhook_head_sha => workflow.payload.pr_head_sha,
+      :merge_commit_sha => meta[:merge_commit_sha]
+    }
 
-    case reuse
-    when :superseded
+    if approved_head_sha.present? && !approved_pr_head_unchanged?(meta, approved_head_sha)
+      logger.info("pr-approval-stale-head", :workflow_id => workflow.id, :approved_head_sha => approved_head_sha, :live_head_sha => meta[:head_sha])
+      Watchman.increment("hooks.pr_approval.stale_head")
+      workflow.update(:state => Workflow::STATE_PR_APPROVAL_STALE)
+    elsif superseded_by_later_hook?(workflow, meta)
       Watchman.increment("hook.processing.pr_superseded")
-      Logman.info("pr-superseded #{log_fields}")
-      return [:superseded, { :pr => pr, :head_sha => head_sha }, msg]
-    when :stale
+      logger.info("pr-superseded", log_fields)
+      workflow.update(:state => Workflow::STATE_SKIP_SUPERSEDED_PR)
+    elsif retries < App.stale_merge_commit_max_retries && !below_rate_limit_reserve?(meta[:rate_limit_remaining])
       Watchman.increment("hook.processing.pr_stale_merge_commit")
-      Logman.info("pr-stale-merge-commit #{log_fields}")
-      return [:mergeable_unknown, { :pr => pr, :rate_limit_remaining => repo_host.last_response_rate_limit_remaining }, msg]
+      sidekiq_job_id = Semaphore::RepoHost::Hooks::Handler::Worker.perform_in(1.minute, workflow.id, hook_payload, signature, retries + 1)
+      logger.info("pr-stale-merge-commit-rescheduled", log_fields.merge(:sidekiq_job_id => sidekiq_job_id))
+    else
+      Watchman.increment("hook.processing.pr_stale_merge_commit")
+      Watchman.increment("hook.processing.pr_stale_merge_commit_giving_up")
+      logger.info("pr-stale-merge-commit-giving-up", log_fields.merge(:retries => retries, :rate_limit_remaining => meta[:rate_limit_remaining]))
+      workflow.update(:state => Workflow::STATE_PR_STALE_MERGE_COMMIT)
     end
+  end
+  # rubocop:enable Metrics/ParameterLists
 
-    [:ok, { :pr => pr, :ref => ref, :merge_commit_sha => merge_commit_sha, :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, msg]
+  # The merge holds GitHub's head, and a hook received after this one saw that
+  # head (or built that merge), so this hook's push is no longer the PR's newest.
+  # Ancestry is not evidence: a reset to an older commit is still the newest push.
+  def self.superseded_by_later_hook?(workflow, meta)
+    head_sha = meta[:head_sha]
+    return false if head_sha.blank? || head_sha == workflow.payload.pr_head_sha
+    return false unless Array(meta[:merge_parent_shas]).include?(head_sha)
+
+    later = Workflow.in_project(workflow.project_id).created_after(workflow.created_at).where.not(:id => workflow.id)
+    branch = find_branch(workflow)
+    same_pr = later.pr_number_in_git_ref(workflow.pull_request_number)
+    same_pr = same_pr.or(later.where(:branch_id => branch.id)) if branch
+
+    same_pr.where(:commit_sha => [head_sha, meta[:merge_commit_sha]]).exists?
   end
 
-  # A reused merge SHA may be GitHub's test-merge of a previous head. GitHub's
-  # PR head can lag too, so the webhook's head must also be a parent.
-  def self.reused_merge_commit_check(repo_host, repo_slug, merge_commit_sha, head_sha, webhook_head_sha)
-    expected_head_shas = [head_sha, webhook_head_sha].select(&:present?).uniq
-    return :current if expected_head_shas.empty?
-
-    parent_shas = merge_commit_parent_shas(repo_host, repo_slug, merge_commit_sha)
-    return :current if (expected_head_shas - parent_shas).empty?
-    return :superseded if parent_shas.include?(head_sha) && newer_head?(repo_host, repo_slug, webhook_head_sha, head_sha)
-
-    :stale
-  end
-
+  # Commit objects never change, so parents are cached by SHA.
   def self.merge_commit_parent_shas(repo_host, repo_slug, merge_commit_sha)
-    parents = repo_host.git_commit(repo_slug, merge_commit_sha)&.[](:parents) || []
-    parents.map { |parent| parent[:sha] }
+    Rails.cache.fetch("github_hooks/merge_commit_parents/#{repo_slug}/#{merge_commit_sha}", :expires_in => 1.day) do
+      parents = repo_host.git_commit(repo_slug, merge_commit_sha)&.[](:parents) || []
+      parents.map { |parent| parent[:sha] }.presence
+    end || []
   rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
     []
-  end
-
-  # Only "ahead" proves GitHub's head was pushed later. "diverged" can also be
-  # a force-push GitHub has not caught up with, which must be retried, not skipped.
-  def self.newer_head?(repo_host, repo_slug, webhook_head_sha, head_sha)
-    return false if webhook_head_sha.blank? || webhook_head_sha == head_sha
-
-    repo_host.compare(repo_slug, webhook_head_sha, head_sha)&.[](:status) == "ahead"
-  rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
-    false
   end
 
   def self.ensure_ref(repo_host, repo_slug, ref, sha)
@@ -625,11 +649,10 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     # Skipping the probe `repo_host.reference(...)` saves one GitHub API
     # request per PR processed. Do not re-introduce a pre-check GET here.
     repo_host.create_ref(repo_slug, ref, sha)
-    true
   rescue ::RepoHost::RemoteException::ReferenceAlreadyExists
     Watchman.increment("github_hooks.ensure_ref.ref_already_exists")
     Logman.info("github_hooks.ensure_ref ref_already_exists repo=#{repo_slug} ref=#{ref} sha=#{sha}")
-    false
+    nil
   end
 
   def self.mark_workflow_with_pr_approval_options(workflow, include_secrets: false, enable_cache: false, approver: nil, approver_uid: nil, approved_head_sha: nil, approved_at: nil, comment_id: nil, logger: nil) # rubocop:disable Metrics/ParameterLists
