@@ -23,9 +23,14 @@ class Semaphore::RepoHost::Hooks::GithubCache
     end
 
     def read(key)
+      read_first(key)
+    end
+
+    # The value of the first of the keys that is set, in one round trip.
+    def read_first(*keys)
       return unless enabled?
 
-      value = call("GET", namespaced(key))
+      value = call("MGET", *keys.map { |key| namespaced(key) }).compact.first
       value && JSON.parse(value)
     rescue StandardError => e
       failed("read", e)
@@ -42,14 +47,16 @@ class Semaphore::RepoHost::Hooks::GithubCache
       false
     end
 
-    # Returns a token to pass to unlock, or nil when the lock is held elsewhere.
+    # Returns a token to pass to unlock, nil when the lock is held elsewhere,
+    # or :error when Redis could not tell.
     def lock(key, ttl:)
-      return unless enabled?
+      return :error unless enabled?
 
       token = SecureRandom.hex(16)
       call("SET", namespaced(key), token, "EX", ttl.to_i, "NX") == "OK" ? token : nil
     rescue StandardError => e
       failed("lock", e)
+      :error
     end
 
     def unlock(key, token)

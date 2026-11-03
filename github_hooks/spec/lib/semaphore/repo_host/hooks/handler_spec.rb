@@ -1849,8 +1849,9 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       expect(repo_host).to have_received(:commit).twice
     end
 
-    it "treats an unavailable Redis as a miss" do
+    it "treats an unavailable Redis as a miss, without waiting for a lock" do
       allow(described_class::GithubCache).to receive(:call).and_raise(RedisClient::CannotConnectError)
+      allow(described_class).to receive(:sleep)
       stub_merge_parents(base_sha, head_sha)
 
       states = Array.new(2) { described_class.update_pr_data(project, 1, nil, false, :webhook_head_sha => head_sha, :webhook_base_sha => base_sha).first }
@@ -1858,6 +1859,15 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       expect(states).to eq(%i[ok ok])
       expect(repo_host).to have_received(:pull_request).twice
       expect(repo_host).to have_received(:git_commit).twice
+      expect(described_class).not_to have_received(:sleep)
+    end
+
+    it "bounds the GitHub requests of the PR path" do
+      stub_merge_parents(base_sha, head_sha)
+
+      described_class.update_pr_data(project, 1, nil, false)
+
+      expect(::RepoHost::Factory).to have_received(:create_from_project).with(project, :request_timeout => described_class::GITHUB_REQUEST_TIMEOUT)
     end
 
     it "does not use Redis when the shared cache is disabled" do
@@ -2049,6 +2059,35 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       described_class.update_pr_data(oauth, 1, :webhook_head_sha => head_sha, :webhook_base_sha => base_sha)
 
       expect(repo_host).to have_received(:pull_request).twice
+    end
+
+    it "lets the next workers fail fast when the holder hit a transient GitHub error" do
+      allow(repo_host).to receive(:pull_request).and_raise(Faraday::TimeoutError)
+
+      expect { resolve }.to raise_error(Faraday::TimeoutError)
+      expect { resolve }.to raise_error(RepoHost::RemoteException::ServiceUnavailable, /Faraday::TimeoutError/)
+      expect(repo_host).to have_received(:pull_request).once
+      expect(described_class::GithubCache.exists?(lock_key)).to be(false)
+      expect(RedisClient.new(:url => App.redis_sidekiq_url).call("TTL", "github_hooks:v1:#{merge_key}:failed"))
+        .to be_between(1, described_class::SHARED_MERGE_LOCK_TTL.to_i)
+    end
+
+    it "fails a waiter when the holder reports a transient GitHub error" do
+      token = described_class::GithubCache.lock(lock_key, :ttl => 30)
+      allow(described_class).to receive(:sleep) do
+        described_class::GithubCache.write("#{merge_key}:failed", { "state" => "failed", "error" => "Octokit::TooManyRequests" }, :ttl => 30)
+        described_class::GithubCache.unlock(lock_key, token)
+      end
+
+      expect { resolve }.to raise_error(RepoHost::RemoteException::ServiceUnavailable)
+      expect(repo_host).not_to have_received(:pull_request)
+    end
+
+    it "does not record a failure for errors a retry cannot get past" do
+      allow(repo_host).to receive(:pull_request).and_raise(RepoHost::RemoteException::Unauthorized, "revoked")
+
+      expect { resolve }.to raise_error(RepoHost::RemoteException::Unauthorized)
+      expect(described_class::GithubCache.read("#{merge_key}:failed")).to be_nil
     end
 
     it "does not share a merge without a webhook base" do

@@ -34,6 +34,9 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   SHARED_MERGE_LOCK_TTL = 30.seconds
   SHARED_MERGE_WAIT = 20.seconds
   SHARED_MERGE_WAIT_INTERVAL = 0.5
+  # Bounds each GitHub request of the PR path, so a lock holder stuck on a slow
+  # GitHub fails well within the lock instead of hanging on default timeouts.
+  GITHUB_REQUEST_TIMEOUT = 10
 
   # How long after a hook another hook for the same PR can supersede it.
   SUPERSEDING_HOOK_WINDOW = 30.minutes
@@ -563,7 +566,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   #
   # rubocop:disable Metrics/ParameterLists
   def self.update_pr_data(project, number, commit_sha = nil, allow_skip = true, poll: true, webhook_head_sha: nil, webhook_base_sha: nil)
-    repo_host = ::RepoHost::Factory.create_from_project(project)
+    repo_host = ::RepoHost::Factory.create_from_project(project, :request_timeout => GITHUB_REQUEST_TIMEOUT)
     repo_host.validate_token_presence!
 
     merge_key = shared_merge_key(project, number, webhook_head_sha, webhook_base_sha)
@@ -572,15 +575,20 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     shared = read_shared_merge(merge_key)
     unless shared
       lock_token = GithubCache.lock("#{merge_key}:lock", :ttl => SHARED_MERGE_LOCK_TTL)
-      shared = await_shared_merge(merge_key) unless lock_token
+      shared = await_shared_merge(merge_key) if lock_token.nil?
     end
     return shared_merge_result(shared) if shared
 
-    result = resolve_pr_data(repo_host, project, number, commit_sha, allow_skip, poll, webhook_head_sha)
+    begin
+      result = resolve_pr_data(repo_host, project, number, commit_sha, allow_skip, poll, webhook_head_sha)
+    rescue *TRANSIENT_ERRORS => e
+      GithubCache.write("#{merge_key}:failed", { "state" => "failed", "error" => e.class.name }, :ttl => SHARED_MERGE_LOCK_TTL)
+      raise
+    end
     store_shared_merge(merge_key, result, commit_sha, webhook_head_sha)
     result
   ensure
-    GithubCache.unlock("#{merge_key}:lock", lock_token) if lock_token
+    GithubCache.unlock("#{merge_key}:lock", lock_token) if lock_token.is_a?(String)
   end
 
   # One merge per PR event: every delivery of an event has the same head and base.
@@ -594,7 +602,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   end
 
   def self.read_shared_merge(merge_key)
-    GithubCache.read(merge_key) || GithubCache.read("#{merge_key}:unknown")
+    GithubCache.read_first(merge_key, "#{merge_key}:unknown", "#{merge_key}:failed")
   end
 
   # Waits while another worker holds the lock. Nil means resolve it here.
@@ -611,8 +619,9 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     end
   end
 
-  # An up-to-date merge is kept for the event. Unknown mergeability is kept only
-  # as long as the lock, so waiters reschedule instead of polling GitHub again.
+  # An up-to-date merge is kept for the event. Unknown mergeability and transient
+  # GitHub failures are kept only as long as the lock, so waiters reschedule or
+  # retry instead of repeating the holder's requests.
   def self.store_shared_merge(merge_key, result, commit_sha, webhook_head_sha)
     state, meta, = result
 
@@ -626,6 +635,11 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   end
 
   def self.shared_merge_result(shared)
+    if shared["state"] == "failed"
+      Watchman.increment("hook.processing.pr_merge_shared", :tags => ["reused_failure"])
+      raise RepoHost::RemoteException::ServiceUnavailable, "GitHub request failed for this pull request event (#{shared["error"]})"
+    end
+
     if shared["state"] == "mergeable_unknown"
       Watchman.increment("hook.processing.pr_merge_shared", :tags => ["reused_unknown"])
       return [:mergeable_unknown, { :rate_limit_remaining => shared["rate_limit_remaining"] }, ""]

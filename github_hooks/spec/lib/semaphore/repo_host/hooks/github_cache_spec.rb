@@ -7,6 +7,14 @@ RSpec.describe Semaphore::RepoHost::Hooks::GithubCache, :aggregate_failures do
     expect(described_class.read("key")).to eq({ "sha" => "abc" })
   end
 
+  it "reads the first of several keys that is set" do
+    described_class.write("second", "b", :ttl => 60)
+    described_class.write("third", "c", :ttl => 60)
+
+    expect(described_class.read_first("first", "second", "third")).to eq("b")
+    expect(described_class.read_first("first", "missing")).to be_nil
+  end
+
   it "misses an unknown key" do
     expect(described_class.read("missing")).to be_nil
   end
@@ -45,7 +53,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::GithubCache, :aggregate_failures do
 
     expect(described_class.read("key")).to be_nil
     expect(described_class.write("key", "value", :ttl => 60)).to be(false)
-    expect(described_class.lock("lock", :ttl => 30)).to be_nil
+    expect(described_class.lock("lock", :ttl => 30)).to eq(:error)
     expect(described_class.exists?("lock")).to be(false)
     expect(Watchman).to have_received(:increment).with("github_hooks.shared_cache.error", :tags => ["read"])
   end
@@ -84,7 +92,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::GithubCache, :aggregate_failures do
 
     expect(described_class.write("key", "value", :ttl => 60)).to be(false)
     expect(described_class.read("key")).to be_nil
-    expect(described_class.lock("lock", :ttl => 30)).to be_nil
+    expect(described_class.lock("lock", :ttl => 30)).to eq(:error)
     expect(described_class).not_to have_received(:call)
   end
 end

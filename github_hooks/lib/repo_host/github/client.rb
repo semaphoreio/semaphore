@@ -26,8 +26,9 @@ module RepoHost::Github
 
     Octokit.default_media_type = "application/vnd.github.moondragon+json"
 
-    def initialize(token = nil)
+    def initialize(token = nil, request_timeout: nil)
       @token = token
+      @request_timeout = request_timeout
     end
 
     def rate_limit_remaining
@@ -314,8 +315,11 @@ module RepoHost::Github
     end
 
     def user_client
-      @user_client ||= Octokit::Client.new(:access_token => @token,
-                                           :auto_paginate => AUTO_PAGINATE)
+      @user_client ||= begin
+        options = { :access_token => @token, :auto_paginate => AUTO_PAGINATE }
+        options[:connection_options] = { :request => { :open_timeout => @request_timeout, :timeout => @request_timeout } } if @request_timeout
+        Octokit::Client.new(options)
+      end
     end
 
     # Like `user_client`, but with auto-pagination disabled. For calls that only
