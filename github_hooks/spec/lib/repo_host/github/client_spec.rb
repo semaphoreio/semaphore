@@ -300,6 +300,36 @@ RSpec.describe RepoHost::Github::Client do
     end
   end
 
+  describe "#git_commit" do
+    it "fetches the commit through the git data API" do
+      allow_any_instance_of(Octokit::Client).to receive(:git_commit).with("owner/repo", "abc").and_return(:git_commit)
+
+      expect(@client.git_commit("owner/repo", "abc")).to eq(:git_commit)
+    end
+
+    it "translates a missing commit into RepoHost::RemoteException::NotFound" do
+      allow_any_instance_of(Octokit::Client).to receive(:git_commit).and_raise(Octokit::NotFound)
+
+      expect do
+        @client.git_commit("owner/repo", "missing")
+      end.to raise_error(RepoHost::RemoteException::NotFound)
+    end
+  end
+
+  describe "request timeout" do
+    it "bounds each request when a timeout is given" do
+      connection_options = RepoHost::Github::Client.new("token", :request_timeout => 10).send(:user_client).connection_options
+
+      expect(connection_options[:request]).to include(:open_timeout => 10, :timeout => 10)
+    end
+
+    it "keeps Octokit's defaults otherwise" do
+      connection_options = RepoHost::Github::Client.new("token").send(:user_client).connection_options
+
+      expect(connection_options.dig(:request, :timeout)).to be_nil
+    end
+  end
+
   describe "#token_valid?" do
     before { @client = RepoHost::Github::Client.new("token") }
 
