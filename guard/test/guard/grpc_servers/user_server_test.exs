@@ -1443,6 +1443,30 @@ defmodule Guard.GrpcServers.UserServerTest do
              } == response
     end
 
+    test "get_repository_token reports a released link in the shape repository_hub disconnects on",
+         %{grpc_channel: channel} do
+      # A claim deletes the losing rows, so the user can have no link at all.
+      # repository_hub's GithubAdapter.SyncRepositoryAction disconnect_error?/1
+      # string-matches this reply to mark the repository not-connected; if the
+      # message changes here, it silently stays connected with a dead token.
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _} = Support.Members.insert_user(id: user.id, email: user.email, name: user.name)
+
+      request =
+        User.GetRepositoryTokenRequest.new(
+          user_id: user.id,
+          integration_type:
+            InternalApi.RepositoryIntegrator.IntegrationType.value(:GITHUB_OAUTH_TOKEN)
+        )
+
+      {:error, response} = channel |> Stub.get_repository_token(request)
+
+      assert %GRPC.RPCError{
+               status: GRPC.Status.not_found(),
+               message: "Integration 'GITHUB_OAUTH_TOKEN' not found."
+             } == response
+    end
+
     test "get_repository_token should return a valid github repository token",
          %{grpc_channel: channel, user: user} do
       Tesla.Mock.mock_global(fn
@@ -1602,6 +1626,77 @@ defmodule Guard.GrpcServers.UserServerTest do
                  uid: "184065"
                }
              } == response
+    end
+
+    test "refresh_repository_provider keeps the link revoked when the uid is actively held by another user",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      {:ok, _} = Guard.FrontRepo.RepoHostAccount.update_revoke_status(rha, true)
+
+      {:ok, _} =
+        Support.Members.insert_repo_host_account(
+          github_uid: rha.github_uid,
+          login: "current-holder",
+          name: "Current Holder",
+          permission_scope: "user:email"
+        )
+
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          json(%{"valid" => "valid"})
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => "radwo", "name" => "radwo"})
+      end)
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:GITHUB)
+        )
+
+      # A valid token must not resurrect the revoked link while another user
+      # actively holds the uid — and the RPC must not fail over it.
+      assert {:ok, _response} = channel |> Stub.refresh_repository_provider(request)
+
+      {:ok, reloaded} = Guard.FrontRepo.RepoHostAccount.get_for_github_user(user.id)
+      assert reloaded.revoked == true
+    end
+
+    test "refresh_repository_provider returns not_found when a claim deleted the link mid-request",
+         %{grpc_channel: channel, user: user, repo_host_account: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          json(%{"valid" => "valid"})
+
+        %{method: :get, url: "https://api.github.com/user/184065"} ->
+          json(%{"id" => 184_065, "login" => "radwo", "name" => "radwo"})
+      end)
+
+      {:ok, _} = Guard.FrontRepo.RepoHostAccount.update_revoke_status(rha, true)
+
+      :meck.new(Guard.FrontRepo, [:passthrough])
+      on_exit(fn -> :meck.unload() end)
+
+      :meck.expect(Guard.FrontRepo, :update, fn changeset ->
+        Ecto.Adapters.SQL.query!(
+          Guard.FrontRepo,
+          "DELETE FROM repo_host_accounts WHERE id::text = $1",
+          [rha.id]
+        )
+
+        :meck.passthrough([changeset])
+      end)
+
+      request =
+        User.RefreshRepositoryProviderRequest.new(
+          user_id: user.id,
+          type: User.RepositoryProvider.Type.value(:GITHUB)
+        )
+
+      not_found = GRPC.Status.not_found()
+
+      assert {:error, %GRPC.RPCError{status: ^not_found}} =
+               channel |> Stub.refresh_repository_provider(request)
     end
 
     test "refresh_repository_provider syncs the github login when it changed upstream",
