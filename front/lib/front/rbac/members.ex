@@ -82,11 +82,8 @@ defmodule Front.RBAC.Members do
   def filter_projects(projects, org_id, user_id) do
     case list_accessible_projects(org_id, user_id) do
       {:ok, accessible_project_ids} ->
-        Enum.filter(projects, fn project ->
-          Enum.any?(accessible_project_ids, fn id ->
-            id == project.id
-          end)
-        end)
+        accessible = MapSet.new(accessible_project_ids)
+        Enum.filter(projects, fn project -> MapSet.member?(accessible, project.id) end)
 
       _e ->
         []
