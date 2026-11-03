@@ -4,6 +4,7 @@ defmodule Front.ActivityMonitor.Repo.Test do
   alias Front.ActivityMonitor.Repo
 
   setup do
+    Cachex.clear(Repo.cache_name())
     Support.Stubs.init()
     Support.Stubs.build_shared_factories()
   end

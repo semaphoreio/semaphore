@@ -206,6 +206,27 @@ defmodule Front.ActivityMonitor do
     end
   end
 
+  @doc """
+  Activity with no items, used to render the pages when the activity data
+  could not be loaded. The browser keeps polling and fills it in later.
+  """
+  @spec empty(String.t()) :: Activity.t()
+  def empty(org_id) do
+    struct!(Activity,
+      org_name: "",
+      org_path: "/organization",
+      default_priority: 50,
+      increase_quota_link: "/increase_quota",
+      agent_stats: ActivityMonitor.AgentStats.load(org_id),
+      items:
+        struct!(Items,
+          lobby: struct!(Lobby, non_visible_pipelines_count: 0, items: []),
+          waiting: struct!(Waiting, non_visible_job_count: 0, items: []),
+          running: struct!(Running, non_visible_job_count: 0, items: [])
+        )
+    )
+  end
+
   def item_type_pipeline, do: "Pipeline"
   def item_type_debug, do: "Debug Session"
 
@@ -219,12 +240,14 @@ defmodule Front.ActivityMonitor do
       |> Enum.map(fn debug -> to_pipeline_like_object(debug) end)
       |> Enum.concat(data.active_pipelines)
 
-    accessible_project_ids = Enum.map(data.accessable_projects, fn p -> p.id end)
+    accessible_project_ids = MapSet.new(data.accessable_projects, fn p -> p.id end)
+
+    lookups = index_lookups(data)
 
     struct!(Items,
-      lobby: create_lobby(all_items, data, accessible_project_ids),
-      waiting: create_waiting(all_items, data, accessible_project_ids),
-      running: create_running(all_items, data, accessible_project_ids)
+      lobby: create_lobby(all_items, lookups, accessible_project_ids),
+      waiting: create_waiting(all_items, lookups, accessible_project_ids),
+      running: create_running(all_items, lookups, accessible_project_ids)
     )
   end
 
@@ -248,62 +271,60 @@ defmodule Front.ActivityMonitor do
     }
   end
 
-  def create_lobby(all_items, data, accessible_project_ids) do
+  def create_lobby(all_items, lookups, accessible_project_ids) do
     {visible, non_visible} =
       all_items
       |> Enum.filter(fn pipeline -> pipeline.state == :QUEUING end)
       |> Enum.split_with(fn i ->
-        Enum.member?(accessible_project_ids, i.project_id)
+        MapSet.member?(accessible_project_ids, i.project_id)
       end)
 
     non_visible_pipelines_count = length(non_visible)
 
     struct!(Lobby,
       non_visible_pipelines_count: non_visible_pipelines_count,
-      items: transform_into_items(visible, data)
+      items: transform_into_items(visible, lookups)
     )
   end
 
-  def create_waiting(all_items, data, accessible_project_ids) do
+  def create_waiting(all_items, lookups, accessible_project_ids) do
     {visible, non_visible} =
       all_items
       |> Enum.reject(fn pipeline ->
         pipeline.state == :QUEUING or all_jobs_stated?(pipeline.blocks)
       end)
       |> Enum.split_with(fn i ->
-        Enum.member?(accessible_project_ids, i.project_id)
+        MapSet.member?(accessible_project_ids, i.project_id)
       end)
 
     non_visible_job_count =
       non_visible
-      |> transform_into_items(data)
-      |> Enum.map(fn i -> i.job_stats.waiting.job_count end)
+      |> Enum.map(fn i -> calc_stats(i.blocks).waiting.job_count end)
       |> Enum.sum()
 
     struct!(Waiting,
       non_visible_job_count: non_visible_job_count,
-      items: transform_into_items(visible, data)
+      items: transform_into_items(visible, lookups)
     )
   end
 
-  def create_running(all_items, data, accessible_project_ids) do
+  def create_running(all_items, lookups, accessible_project_ids) do
     {visible, non_visible} =
       all_items
       |> Enum.reject(fn pipeline -> pipeline.state == :QUEUING end)
       |> Enum.filter(fn pipeline -> all_jobs_stated?(pipeline.blocks) end)
       |> Enum.split_with(fn i ->
-        Enum.member?(accessible_project_ids, i.project_id)
+        MapSet.member?(accessible_project_ids, i.project_id)
       end)
 
     non_visible_job_count =
       non_visible
-      |> transform_into_items(data)
-      |> Enum.map(fn i -> i.job_stats.running.job_count end)
+      |> Enum.map(fn i -> calc_stats(i.blocks).running.job_count end)
       |> Enum.sum()
 
     struct!(Running,
       non_visible_job_count: non_visible_job_count,
-      items: transform_into_items(visible, data)
+      items: transform_into_items(visible, lookups)
     )
   end
 
@@ -348,11 +369,24 @@ defmodule Front.ActivityMonitor do
     end
   end
 
-  defp transform_into_items(entities, data) do
+  # Projects and users are looked up once per item, so index them by id
+  # instead of scanning the lists. The first entry wins, as Enum.find did.
+  defp index_lookups(data) do
+    %{
+      projects_by_id: index_first_by(data.accessable_projects, & &1.id),
+      users_by_id: index_first_by(data.users, & &1.id)
+    }
+  end
+
+  defp index_first_by(entries, key_fun) do
+    Enum.reduce(entries, %{}, fn entry, acc -> Map.put_new(acc, key_fun.(entry), entry) end)
+  end
+
+  defp transform_into_items(entities, lookups) do
     entities
     |> Enum.map(fn entity ->
-      project = get_project(data.accessable_projects, entity.project_id)
-      user = get_user(data.users, entity, entity.requester_id, entity.promoter_id)
+      project = get_project(lookups.projects_by_id, entity.project_id)
+      user = get_user(lookups.users_by_id, entity, entity.requester_id, entity.promoter_id)
 
       transform_into_item(user, project, entity)
     end)
@@ -424,9 +458,8 @@ defmodule Front.ActivityMonitor do
     Regex.split(~r/\r|\n|\r\n/, String.trim(commit_message)) |> Enum.at(0)
   end
 
-  defp get_project(projects, project_id) do
-    default = %{name: "hidden"}
-    projects |> Enum.find(default, fn %{id: id} -> id == project_id end)
+  defp get_project(projects_by_id, project_id) do
+    Map.get(projects_by_id, project_id, %{name: "hidden"})
   end
 
   defp get_user(_users, pipeline, "", promoter_id)
@@ -439,11 +472,11 @@ defmodule Front.ActivityMonitor do
 
   defp get_user(users, _pipeline, requester_id, promoter_id)
        when promoter_id in ["", "Pipeline Done request"] do
-    users |> Enum.find(fn %{id: id} -> id == requester_id end)
+    Map.get(users, requester_id)
   end
 
   defp get_user(users, _pipeline, _requester_id, promoter_id) do
-    users |> Enum.find(fn %{id: id} -> id == promoter_id end)
+    Map.get(users, promoter_id)
   end
 
   defp calc_stats(blocks) do

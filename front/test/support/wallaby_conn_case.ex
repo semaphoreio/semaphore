@@ -46,6 +46,7 @@ defmodule FrontWeb.WallabyCase do
   setup _tags do
     Cachex.clear(:front_cache)
     Cachex.clear(:auth_cache)
+    Cachex.clear(Front.ActivityMonitor.Repo.cache_name())
     Cachex.clear!(:feature_provider_cache)
     Cacheman.clear(:front)
     Support.Stubs.init()
