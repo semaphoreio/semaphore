@@ -59,7 +59,8 @@ defmodule Secrethub.Mixfile do
       ### linting
       {:credo, "~> 1.6.5", only: [:dev, :test]},
       {:mock, "~> 0.3.0", only: :test},
-      {:feature_provider, path: "../feature_provider"}
+      {:feature_provider, path: "../feature_provider"},
+      {:env_var_policy, path: "../env_var_policy"}
     ]
   end
 
