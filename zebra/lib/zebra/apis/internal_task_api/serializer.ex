@@ -4,28 +4,29 @@ defmodule Zebra.Apis.InternalTaskApi.Serializer do
   alias Zebra.LegacyRepo, as: Repo
   alias Zebra.Models.Job
 
+  @job_fields [
+    :id,
+    :build_id,
+    :aasm_state,
+    :result,
+    :name,
+    :index,
+    :priority,
+    :original_job_id,
+    :created_at,
+    :enqueued_at,
+    :scheduled_at,
+    :started_at,
+    :finished_at
+  ]
+
   @spec serialize(Zebra.Models.Task.t()) :: InternalApi.Task.Task.t()
   def serialize(task) do
-    import Ecto.Query
+    serialize(task, load_jobs([task.id]))
+  end
 
-    jobs =
-      Job
-      |> where([j], j.build_id == ^task.id)
-      |> select([j], [
-        :id,
-        :aasm_state,
-        :result,
-        :name,
-        :index,
-        :priority,
-        :original_job_id,
-        :created_at,
-        :enqueued_at,
-        :scheduled_at,
-        :started_at,
-        :finished_at
-      ])
-      |> Repo.all()
+  defp serialize(task, jobs_by_task) do
+    jobs = Map.get(jobs_by_task, task.id, [])
 
     [
       id: task.id,
@@ -46,6 +47,19 @@ defmodule Zebra.Apis.InternalTaskApi.Serializer do
     |> InternalApi.Task.Task.new()
   end
 
+  # One query for the jobs of all given tasks, grouped by task id.
+  defp load_jobs([]), do: %{}
+
+  defp load_jobs(task_ids) do
+    import Ecto.Query
+
+    Job
+    |> where([j], j.build_id in ^task_ids)
+    |> select([j], struct(j, @job_fields))
+    |> Repo.all()
+    |> Enum.group_by(& &1.build_id)
+  end
+
   def task_finished_at(task) do
     if Zebra.Models.Task.finished?(task) do
       task.updated_at
@@ -56,7 +70,9 @@ defmodule Zebra.Apis.InternalTaskApi.Serializer do
 
   @spec serialize_many([Zebra.Models.Task.t()]) :: [InternalApi.Task.Task.t()]
   def serialize_many(tasks) do
-    Enum.map(tasks, fn t -> serialize(t) end)
+    jobs_by_task = tasks |> Enum.map(& &1.id) |> Enum.uniq() |> load_jobs()
+
+    Enum.map(tasks, fn t -> serialize(t, jobs_by_task) end)
   end
 
   @spec serialize_job(Zebra.Models.Job.t()) :: InternalApi.Task.Task.Job.t()

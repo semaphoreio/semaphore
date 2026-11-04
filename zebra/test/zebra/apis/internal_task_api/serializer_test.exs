@@ -126,4 +126,41 @@ defmodule Zebra.Apis.InternalTaskApi.SerializerTest do
       assert job.original_job_id == original_id
     end
   end
+
+  describe ".serialize_many" do
+    test "matches serialize/1 per task and loads jobs with one query" do
+      {:ok, t1} = Factories.Task.create_with_jobs()
+      {:ok, t2} = Factories.Task.create_with_jobs()
+      {:ok, empty} = Factories.Task.create()
+
+      tasks = [t1, empty, t2]
+      expected = Enum.map(tasks, &Serializer.serialize/1)
+
+      handler = "count-job-queries-#{inspect(self())}"
+      test_pid = self()
+
+      :telemetry.attach(
+        handler,
+        [:zebra, :legacy_repo, :query],
+        fn _, _, meta, _ -> if meta.source == "jobs", do: send(test_pid, :jobs_query) end,
+        nil
+      )
+
+      reply = Serializer.serialize_many(tasks)
+      :telemetry.detach(handler)
+
+      assert Enum.map(reply, &sort_jobs/1) == Enum.map(expected, &sort_jobs/1)
+      assert Enum.at(reply, 1).jobs == []
+      assert length(Enum.at(reply, 0).jobs) == 2
+
+      assert_received :jobs_query
+      refute_received :jobs_query
+    end
+
+    test "no tasks => no query" do
+      assert Serializer.serialize_many([]) == []
+    end
+  end
+
+  defp sort_jobs(task), do: %{task | jobs: Enum.sort_by(task.jobs, & &1.id)}
 end
