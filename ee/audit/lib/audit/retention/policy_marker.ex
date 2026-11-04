@@ -32,7 +32,8 @@ defmodule Audit.Retention.PolicyMarker do
   rather than honored: a too-short window (or a future/misconfigured cutoff)
   still deletes everything older than the floor instead of silently dropping
   the event, but audit logs younger than the floor are never expired. Clamps
-  are surfaced via the `retention.policy.cutoff_clamped` metric.
+  are surfaced via the `retention.policy.cutoff_clamped` metric. The deleter
+  checks the same floor, so raising it also keeps events marked under the old one.
 
   ## Cleanup of existing organizations (upstream dependency)
 
@@ -51,8 +52,6 @@ defmodule Audit.Retention.PolicyMarker do
   alias InternalApi.Usage.OrganizationPolicyApply
   alias Audit.Retention
   alias Audit.Retention.Queries
-
-  @default_min_retention_days 400
 
   use Tackle.Consumer,
     url: Application.get_env(:audit, :amqp_url),
@@ -172,9 +171,7 @@ defmodule Audit.Retention.PolicyMarker do
       |> DateTime.from_unix!(:nanosecond)
       |> DateTime.truncate(:second)
 
-    days = min_retention_days()
-    now = DateTime.utc_now() |> DateTime.truncate(:second)
-    floor = DateTime.add(now, -days * 86_400, :second)
+    floor = Retention.floor()
 
     # The floor is a hard minimum retention. A cutoff newer than it (a window
     # shorter than the floor, or a future/misconfigured date) is clamped back to
@@ -191,18 +188,4 @@ defmodule Audit.Retention.PolicyMarker do
 
   defp parse_cutoff(invalid),
     do: {:invalid, "invalid cutoff_date format: #{inspect(invalid)}"}
-
-  # The 400-day policy is a *hard* floor: configuration may only make retention
-  # more conservative (a larger value), never weaken it. Any value below the
-  # policy — including a misconfigured 1 or a non-integer — falls back to the
-  # 400-day default, so production cannot be tricked into deleting recent audit
-  # logs by lowering this knob.
-  defp min_retention_days do
-    config = Application.get_env(:audit, __MODULE__, [])
-
-    case Keyword.get(config, :min_retention_days, @default_min_retention_days) do
-      days when is_integer(days) and days >= @default_min_retention_days -> days
-      _ -> @default_min_retention_days
-    end
-  end
 end

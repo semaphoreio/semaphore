@@ -8,4 +8,8 @@ defmodule Audit.Cache do
   def expire(key, ttl) do
     Cachex.expire(Cache, key, ttl)
   end
+
+  def delete(key) do
+    Cachex.del(Cache, key)
+  end
 end

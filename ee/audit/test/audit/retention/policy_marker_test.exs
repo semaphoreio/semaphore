@@ -202,18 +202,18 @@ defmodule Audit.Retention.PolicyMarkerTest do
   end
 
   defp with_min_retention_days(days, fun) do
-    original_config = Application.get_env(:audit, PolicyMarker, [])
+    original_config = Application.get_env(:audit, Audit.Retention, [])
 
     Application.put_env(
       :audit,
-      PolicyMarker,
+      Audit.Retention,
       Keyword.put(original_config, :min_retention_days, days)
     )
 
     try do
       fun.()
     after
-      Application.put_env(:audit, PolicyMarker, original_config)
+      Application.put_env(:audit, Audit.Retention, original_config)
     end
   end
 

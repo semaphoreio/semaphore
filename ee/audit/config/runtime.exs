@@ -52,9 +52,11 @@ end
 
 # `min` is 400: the retention floor can only be raised (stricter), never set
 # below the system-wide 400-day policy. Lower values warn and fall back to 400.
-config :audit, Audit.Retention.PolicyMarker,
-  enabled: System.get_env("RETENTION_CONSUMER_ENABLED", "false") == "true",
+config :audit, Audit.Retention,
   min_retention_days: retention_int.("RETENTION_MIN_RETENTION_DAYS", 400, 400)
+
+config :audit, Audit.Retention.PolicyMarker,
+  enabled: System.get_env("RETENTION_CONSUMER_ENABLED", "false") == "true"
 
 config :audit, Audit.Retention.Queries,
   grace_period_days: retention_int.("RETENTION_GRACE_PERIOD_DAYS", 15, 7),

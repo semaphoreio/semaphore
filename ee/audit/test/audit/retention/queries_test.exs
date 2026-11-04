@@ -115,51 +115,76 @@ defmodule Audit.Retention.QueriesTest do
     end
   end
 
-  describe "delete_expired_batch/2" do
+  describe "delete_expired_batch/3" do
     test "deletes only expired events up to batch size" do
       now = DateTime.utc_now() |> DateTime.truncate(:second)
+      floor = DateTime.add(now, -400 * 86_400, :second)
+      old = DateTime.add(now, -500 * 86_400, :second)
 
-      expired_1 = RetentionFixtures.insert_event(%{expires_at: DateTime.add(now, -600, :second)})
-      expired_2 = RetentionFixtures.insert_event(%{expires_at: DateTime.add(now, -300, :second)})
-      _future = RetentionFixtures.insert_event(%{expires_at: DateTime.add(now, 300, :second)})
-      _no_expiry = RetentionFixtures.insert_event(%{expires_at: nil})
+      expired_1 =
+        RetentionFixtures.insert_event(%{
+          timestamp: old,
+          expires_at: DateTime.add(now, -600, :second)
+        })
 
-      assert {:ok, %{deleted: 1, unmarked: 0}} = Queries.delete_expired_batch(1, fn _ -> true end)
+      expired_2 =
+        RetentionFixtures.insert_event(%{
+          timestamp: old,
+          expires_at: DateTime.add(now, -300, :second)
+        })
+
+      _future =
+        RetentionFixtures.insert_event(%{
+          timestamp: old,
+          expires_at: DateTime.add(now, 300, :second)
+        })
+
+      _no_expiry = RetentionFixtures.insert_event(%{timestamp: old, expires_at: nil})
+
+      assert {:ok, %{deleted: 1, unmarked: 0}} =
+               Queries.delete_expired_batch(1, fn _ -> true end, floor)
 
       remaining_ids = from(e in Event, select: e.id) |> Repo.all()
       refute expired_1.id in remaining_ids
       assert expired_2.id in remaining_ids
 
-      assert {:ok, %{deleted: 1, unmarked: 0}} = Queries.delete_expired_batch(1, fn _ -> true end)
+      assert {:ok, %{deleted: 1, unmarked: 0}} =
+               Queries.delete_expired_batch(1, fn _ -> true end, floor)
+
       remaining_ids = from(e in Event, select: e.id) |> Repo.all()
       refute expired_2.id in remaining_ids
     end
 
     test "unmarks instead of deleting expired events of disabled orgs" do
       now = DateTime.utc_now() |> DateTime.truncate(:second)
+      floor = DateTime.add(now, -400 * 86_400, :second)
+      old = DateTime.add(now, -500 * 86_400, :second)
       enabled_org = Ecto.UUID.generate()
       disabled_org = Ecto.UUID.generate()
 
       enabled_expired =
         RetentionFixtures.insert_event(%{
           org_id: enabled_org,
+          timestamp: old,
           expires_at: DateTime.add(now, -600, :second)
         })
 
       disabled_expired =
         RetentionFixtures.insert_event(%{
           org_id: disabled_org,
+          timestamp: old,
           expires_at: DateTime.add(now, -300, :second)
         })
 
       disabled_not_due =
         RetentionFixtures.insert_event(%{
           org_id: disabled_org,
+          timestamp: old,
           expires_at: DateTime.add(now, 300, :second)
         })
 
       assert {:ok, %{deleted: 1, unmarked: 1}} =
-               Queries.delete_expired_batch(10, &(&1 == enabled_org))
+               Queries.delete_expired_batch(10, &(&1 == enabled_org), floor)
 
       assert is_nil(Repo.get(Event, enabled_expired.id))
       assert is_nil(get_event(disabled_expired.id).expires_at)
