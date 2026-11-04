@@ -42,5 +42,6 @@ defmodule Front.Clients.Projecthub do
   defp grpc_send(error = {:error, _}, _, _), do: error
 
   defp grpc_send({:ok, channel}, method, request),
-    do: apply(Stub, method, [channel, request])
+    do: apply(Stub, method, [channel, request]),
+    after: Front.GrpcChannel.release(channel)
 end

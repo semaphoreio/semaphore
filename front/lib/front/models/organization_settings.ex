@@ -43,7 +43,8 @@ defmodule Front.Models.OrganizationSettings do
   end
 
   defp grpc_send(channel, func, request),
-    do: func.(channel, request)
+    do: func.(channel, request),
+    after: Front.GrpcChannel.release(channel)
 
   defp from_api(settings) do
     Map.new(settings, &{&1.key, &1.value})

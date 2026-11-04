@@ -437,7 +437,8 @@ defmodule Front.Models.PreFlightChecks do
   end
 
   defp grpc_send(channel, func, request),
-    do: func.(channel, request)
+    do: func.(channel, request),
+    after: Front.GrpcChannel.release(channel)
 
   #
   # Watchman callbacks

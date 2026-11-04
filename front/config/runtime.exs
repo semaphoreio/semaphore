@@ -36,7 +36,11 @@ config :watchman,
 # Reused gRPC connections per endpoint. GRPC_CHANNEL_POOL_SIZE=0 falls back to
 # one connection per call.
 config :front, Front.GrpcChannel,
-  pool_size: String.to_integer(System.get_env("GRPC_CHANNEL_POOL_SIZE") || "4")
+  pool_size:
+    (case Integer.parse(System.get_env("GRPC_CHANNEL_POOL_SIZE") || "4") do
+       {size, ""} when size >= 0 -> size
+       _ -> 4
+     end)
 
 config :front, amqp_url: System.get_env("AMQP_URL") || "amqp://127.0.0.1:5672"
 config :front, cache_reactor_env: System.get_env("REACTOR_ENV")

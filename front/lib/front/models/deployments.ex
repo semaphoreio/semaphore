@@ -113,7 +113,8 @@ defmodule Front.Models.Deployments do
     end
 
     defp do_grpc_send(channel, request),
-      do: request_to_func(request).(channel, request, timeout: @grpc_timeout)
+      do: request_to_func(request).(channel, request, timeout: @grpc_timeout),
+      after: Front.GrpcChannel.release(channel)
 
     defp request_to_func(%API.ListRequest{}), do: &API.DeploymentTargets.Stub.list/3
     defp request_to_func(%API.DescribeRequest{}), do: &API.DeploymentTargets.Stub.describe/3
@@ -302,5 +303,6 @@ defmodule Front.Models.Deployments do
   end
 
   defp grpc_send(channel, func, request),
-    do: func.(channel, request)
+    do: func.(channel, request),
+    after: Front.GrpcChannel.release(channel)
 end

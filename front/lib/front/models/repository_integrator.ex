@@ -61,7 +61,11 @@ defmodule Front.Models.RepositoryIntegrator do
              Application.fetch_env!(:front, :repository_integrator_grpc_endpoint)
            ) do
         {:ok, channel} ->
-          send_refresh(channel, req)
+          try do
+            send_refresh(channel, req)
+          after
+            Front.GrpcChannel.release(channel)
+          end
 
         {:error, reason} ->
           Logger.error(
