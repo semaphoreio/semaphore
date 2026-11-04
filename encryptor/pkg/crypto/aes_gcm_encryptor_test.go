@@ -1,6 +1,8 @@
 package crypto
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"testing"
 
@@ -32,6 +34,44 @@ func Test__AESGCMEncryptor(t *testing.T) {
 		plaintext, err := encryptor.Decrypt(cyphertext, assocData)
 		require.NoError(t, err)
 		require.Equal(t, data, plaintext)
+	})
+
+	t.Run("decryption fails with truncated ciphertext", func(t *testing.T) {
+		key := make([]byte, 32)
+		encryptor, err := NewAESGCMEncryptor(key)
+		require.NoError(t, err)
+
+		block, err := aes.NewCipher(key)
+		require.NoError(t, err)
+		gcm, err := cipher.NewGCM(block)
+		require.NoError(t, err)
+		nonceSize := gcm.NonceSize()
+
+		assocData := []byte("aaaa")
+		cyphertext, err := encryptor.Encrypt([]byte("testing encryption"), assocData)
+		require.NoError(t, err)
+
+		testCases := []struct {
+			name       string
+			cyphertext []byte
+		}{
+			{"nil", nil},
+			{"empty", []byte{}},
+			{"short nonce", make([]byte, nonceSize/2)},
+			{"nonce missing last byte", cyphertext[: nonceSize-1 : nonceSize-1]},
+			{"nonce only", cyphertext[:nonceSize]},
+			{"truncated authentication tag", cyphertext[:nonceSize+gcm.Overhead()-1]},
+			{"missing last byte", cyphertext[:len(cyphertext)-1]},
+		}
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				require.NotPanics(t, func() {
+					plaintext, err := encryptor.Decrypt(tc.cyphertext, assocData)
+					require.Error(t, err)
+					require.Nil(t, plaintext)
+				})
+			})
+		}
 	})
 
 	t.Run("decryption fails with wrong key", func(t *testing.T) {
