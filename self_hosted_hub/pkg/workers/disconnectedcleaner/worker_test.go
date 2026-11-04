@@ -50,6 +50,9 @@ func Test__DeletingDisconnectedAgents(t *testing.T) {
 		assertAgentExists(t, agent1.ID.String())
 		assertAgentExists(t, agent2.ID.String())
 		assertAgentDoesntExists(t, agent3.ID.String())
+
+		// Disconnecting decremented the count, deleting disconnected agents does not.
+		assertAgentCountMatches(t)
 	})
 }
 
@@ -73,4 +76,13 @@ func assertAgentDoesntExists(t *testing.T, id string) {
 
 	require.NotNil(t, err)
 	require.Equal(t, err.Error(), "record not found")
+}
+
+func assertAgentCountMatches(t *testing.T) {
+	counted, err := models.CountAgentsInOrganization(orgID.String())
+	require.NoError(t, err)
+
+	stored, err := models.RegisteredAgentCount(orgID)
+	require.NoError(t, err)
+	require.Equal(t, counted, stored)
 }

@@ -90,7 +90,7 @@ func connect() *gorm.DB {
 
 func TruncateTables() {
 	err := Conn().Exec(`
-	  truncate table occupation_requests, agents, agent_types;
+	  truncate table occupation_requests, agents, agent_types, agent_counts;
 	`).Error
 
 	if err != nil {

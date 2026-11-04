@@ -37,7 +37,39 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
 COMMENT ON EXTENSION "uuid-ossp" IS 'generate universally unique identifiers (UUIDs)';
 
 
+--
+-- Name: agent_counts_track(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.agent_counts_track() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF TG_OP IN ('UPDATE', 'DELETE') AND OLD.state = 'registered' THEN
+    UPDATE agent_counts SET registered = registered - 1 WHERE organization_id = OLD.organization_id;
+  END IF;
+
+  IF TG_OP IN ('INSERT', 'UPDATE') AND NEW.state = 'registered' THEN
+    INSERT INTO agent_counts (organization_id, registered) VALUES (NEW.organization_id, 1)
+    ON CONFLICT (organization_id) DO UPDATE SET registered = agent_counts.registered + 1;
+  END IF;
+
+  RETURN NULL;
+END;
+$$;
+
+
 SET default_tablespace = '';
+
+--
+-- Name: agent_counts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_counts (
+    organization_id uuid NOT NULL,
+    registered integer DEFAULT 0 NOT NULL
+);
+
 
 --
 -- Name: agent_types; Type: TABLE; Schema: public; Owner: -
@@ -113,6 +145,14 @@ CREATE TABLE public.schema_migrations (
     version bigint NOT NULL,
     dirty boolean NOT NULL
 );
+
+
+--
+-- Name: agent_counts agent_counts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_counts
+    ADD CONSTRAINT agent_counts_pkey PRIMARY KEY (organization_id);
 
 
 --
@@ -197,6 +237,20 @@ CREATE INDEX uix_occupation_req_org_type ON public.agents USING btree (organizat
 
 
 --
+-- Name: agents agent_counts_on_insert_or_delete; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER agent_counts_on_insert_or_delete AFTER INSERT OR DELETE ON public.agents FOR EACH ROW EXECUTE PROCEDURE public.agent_counts_track();
+
+
+--
+-- Name: agents agent_counts_on_update; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER agent_counts_on_update AFTER UPDATE OF state, organization_id ON public.agents FOR EACH ROW WHEN (((old.state IS DISTINCT FROM new.state) OR (old.organization_id IS DISTINCT FROM new.organization_id))) EXECUTE PROCEDURE public.agent_counts_track();
+
+
+--
 -- Name: agents agents_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -239,7 +293,7 @@ SET row_security = off;
 --
 
 COPY public.schema_migrations (version, dirty) FROM stdin;
-20261103150000	f
+20261104120000	f
 \.
 
 

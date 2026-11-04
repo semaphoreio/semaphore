@@ -87,6 +87,14 @@ func Test__DeletingStuckAgents(t *testing.T) {
 
 		assertAgentDoesntExists(t, agent.ID.String())
 	})
+
+	t.Run("deleted agents are removed from the organization agent count", func(t *testing.T) {
+		// 3 agents survived the subtests above
+		assertAgentCountMatches(t)
+		count, err := models.RegisteredAgentCount(orgID)
+		require.NoError(t, err)
+		require.Equal(t, 3, count)
+	})
 }
 
 func createAgentType(t *testing.T, name string) *models.AgentType {
@@ -126,4 +134,13 @@ func assertAgentDoesntExists(t *testing.T, id string) {
 
 	require.NotNil(t, err)
 	require.Equal(t, err.Error(), "record not found")
+}
+
+func assertAgentCountMatches(t *testing.T) {
+	counted, err := models.CountAgentsInOrganization(orgID.String())
+	require.NoError(t, err)
+
+	stored, err := models.RegisteredAgentCount(orgID)
+	require.NoError(t, err)
+	require.Equal(t, counted, stored)
 }

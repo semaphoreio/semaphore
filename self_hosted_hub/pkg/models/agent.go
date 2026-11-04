@@ -79,9 +79,34 @@ func RegisterAgent(orgID uuid.UUID, agentTypeName string, name string, metadata 
 }
 
 func RegisterAgentInTransaction(tx *gorm.DB, orgID uuid.UUID, agentTypeName, name string, job *uuid.UUID, metadata AgentMetadata) (*Agent, string, error) {
-	token, err := securetoken.Create()
+	a, token, created, err := CreateAgentInTransaction(tx, orgID, agentTypeName, name, metadata)
 	if err != nil {
 		return nil, "", err
+	}
+
+	// If job is passed, we also occupy the agent in the same transaction.
+	// An agent found through a registration retry is returned as is.
+	if job != nil && created {
+		err = tx.Transaction(func(tx2 *gorm.DB) error {
+			_, err := OccupyAgentInTransaction(tx2, a, job)
+			return err
+		})
+
+		if err != nil {
+			return nil, "", err
+		}
+	}
+
+	return a, token, nil
+}
+
+// CreateAgentInTransaction inserts a new registered agent.
+// If an agent with the same name already exists, it falls back to registerAgentRetry(),
+// and the returned boolean is false, since no new agent was created.
+func CreateAgentInTransaction(tx *gorm.DB, orgID uuid.UUID, agentTypeName, name string, metadata AgentMetadata) (*Agent, string, bool, error) {
+	token, err := securetoken.Create()
+	if err != nil {
+		return nil, "", false, err
 	}
 
 	a := Agent{
@@ -102,25 +127,14 @@ func RegisterAgentInTransaction(tx *gorm.DB, orgID uuid.UUID, agentTypeName, nam
 
 	if err != nil {
 		if isAgentNameNotUnique(err) {
-			return registerAgentRetry(tx, orgID, agentTypeName, name)
+			existing, existingToken, err := registerAgentRetry(tx, orgID, agentTypeName, name)
+			return existing, existingToken, false, err
 		}
 
-		return nil, "", err
+		return nil, "", false, err
 	}
 
-	// If job is passed, we also occupy the agent in the same transaction
-	if job != nil {
-		err = tx.Transaction(func(tx2 *gorm.DB) error {
-			_, err := OccupyAgentInTransaction(tx2, &a, job)
-			return err
-		})
-
-		if err != nil {
-			return nil, "", err
-		}
-	}
-
-	return &a, token.Token, nil
+	return &a, token.Token, true, nil
 }
 
 // This method is used to implement agent registration idempotency.
