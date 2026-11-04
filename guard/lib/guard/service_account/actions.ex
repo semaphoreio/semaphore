@@ -74,6 +74,24 @@ defmodule Guard.ServiceAccount.Actions do
   end
 
   @doc """
+  Move a service account to another owner.
+
+  The new owner has to be a person who is an active member of the same organization.
+  """
+  @spec set_owner(String.t(), String.t(), String.t()) :: {:ok, map()} | {:error, atom()}
+  def set_owner(service_account_id, org_id, owner_id) do
+    ServiceAccount.set_owner(service_account_id, org_id, owner_id)
+  end
+
+  @doc """
+  Give up ownership of a service account, which only its owner can do.
+  """
+  @spec release_owner(String.t(), String.t(), String.t()) :: {:ok, map()} | {:error, atom()}
+  def release_owner(service_account_id, org_id, requester_id) do
+    ServiceAccount.release_owner(service_account_id, org_id, requester_id)
+  end
+
+  @doc """
   Deactivate a service account by setting the user's deactivated flag to true.
 
   This marks the user as deactivated rather than physically deleting records,
@@ -132,11 +150,13 @@ defmodule Guard.ServiceAccount.Actions do
   Regenerate the API token for a service account.
 
   Generates a new authentication token and invalidates the old one.
-  Returns the new plain text token.
+  Returns the new plain text token. `requester_id` names the member asking, which is
+  what decides whether the account keeps its owner.
   """
-  @spec regenerate_token(String.t(), String.t()) :: {:ok, String.t()} | {:error, atom()}
-  def regenerate_token(service_account_id, org_id) do
-    case ServiceAccount.regenerate_token(service_account_id, org_id) do
+  @spec regenerate_token(String.t(), String.t(), String.t()) ::
+          {:ok, String.t()} | {:error, atom()}
+  def regenerate_token(service_account_id, org_id, requester_id) do
+    case ServiceAccount.regenerate_token(service_account_id, org_id, requester_id) do
       {:ok, new_token} ->
         {:ok, new_token}
 

@@ -273,6 +273,45 @@ defmodule Guard.Store.ServiceAccountTest do
       end
     end
 
+    test "makes the creator its owner, and records that an owner was decided" do
+      with_mocks([
+        {Guard.Api.Organization, [:passthrough],
+         [fetch: fn _ -> %InternalApi.Organization.Organization{org_username: "test-org"} end]},
+        {Guard.FrontRepo.User, [:passthrough],
+         [reset_auth_token: fn _ -> {:ok, "plain-token"} end]}
+      ]) do
+        params = ServiceAccountFactory.build_params_with_creator()
+
+        {:ok, result} = ServiceAccount.create(params)
+
+        # Without an owner the account cannot add projects, so a new one starts with the
+        # member who made it rather than waiting for the backfill to notice.
+        record = FrontRepo.get!(Guard.FrontRepo.ServiceAccount, result.service_account.id)
+        assert record.owner_id == params.creator_id
+        refute is_nil(record.owner_set_at)
+      end
+    end
+
+    test "leaves an account whose creator cannot own it without an owner" do
+      with_mocks([
+        {Guard.Api.Organization, [:passthrough],
+         [fetch: fn _ -> %InternalApi.Organization.Organization{org_username: "test-org"} end]},
+        {Guard.FrontRepo.User, [:passthrough],
+         [reset_auth_token: fn _ -> {:ok, "plain-token"} end]}
+      ]) do
+        params = ServiceAccountFactory.build_params_with_creator(creator_is_member: false)
+
+        {:ok, result} = ServiceAccount.create(params)
+
+        # An owner that could never hold is worse than none: it reads as an owner on the
+        # people page, and the backfill passes over an account that was already decided.
+        record = FrontRepo.get!(Guard.FrontRepo.ServiceAccount, result.service_account.id)
+        assert is_nil(record.owner_id)
+        assert record.creator_id == params.creator_id
+        refute is_nil(record.owner_set_at)
+      end
+    end
+
     test "creates user with correct service account fields" do
       with_mocks([
         {Guard.Api.Organization, [:passthrough],
@@ -594,13 +633,13 @@ defmodule Guard.Store.ServiceAccountTest do
     end
   end
 
-  describe "regenerate_token/2" do
+  describe "regenerate_token/3" do
     test "regenerates token successfully" do
       with_mock Guard.FrontRepo.User, [:passthrough],
         reset_auth_token: fn _ -> {:ok, "new-token"} end do
         {:ok, %{service_account: sa, user: user}} = ServiceAccountFactory.insert()
 
-        {:ok, new_token} = ServiceAccount.regenerate_token(sa.id, user.org_id)
+        {:ok, new_token} = ServiceAccount.regenerate_token(sa.id, user.org_id, sa.creator_id)
 
         assert new_token == "new-token"
       end
@@ -610,20 +649,23 @@ defmodule Guard.Store.ServiceAccountTest do
       non_existent_id = Ecto.UUID.generate()
       org_id = Ecto.UUID.generate()
 
-      assert {:error, :not_found} = ServiceAccount.regenerate_token(non_existent_id, org_id)
+      assert {:error, :not_found} =
+               ServiceAccount.regenerate_token(non_existent_id, org_id, Ecto.UUID.generate())
     end
 
     test "returns not_found when service account belongs to a different org" do
       {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
       other_org_id = Ecto.UUID.generate()
 
-      assert {:error, :not_found} = ServiceAccount.regenerate_token(sa.id, other_org_id)
+      assert {:error, :not_found} =
+               ServiceAccount.regenerate_token(sa.id, other_org_id, sa.creator_id)
     end
 
     test "returns error for invalid UUID" do
       org_id = Ecto.UUID.generate()
 
-      assert {:error, :invalid_id} = ServiceAccount.regenerate_token("invalid-uuid", org_id)
+      assert {:error, :invalid_id} =
+               ServiceAccount.regenerate_token("invalid-uuid", org_id, Ecto.UUID.generate())
     end
 
     test "handles token generation failure" do
@@ -631,7 +673,8 @@ defmodule Guard.Store.ServiceAccountTest do
         reset_auth_token: fn _ -> {:error, :token_error} end do
         {:ok, %{service_account: sa, user: user}} = ServiceAccountFactory.insert()
 
-        {:error, :token_error} = ServiceAccount.regenerate_token(sa.id, user.org_id)
+        {:error, :token_error} =
+          ServiceAccount.regenerate_token(sa.id, user.org_id, sa.creator_id)
       end
     end
 
@@ -644,8 +687,261 @@ defmodule Guard.Store.ServiceAccountTest do
          [reset_auth_token: fn _ -> {:ok, "new-token"} end]},
         {FrontRepo, [:passthrough], [update: fn _ -> {:error, %Ecto.Changeset{}} end]}
       ]) do
-        assert {:error, []} = ServiceAccount.regenerate_token(sa.id, user.org_id)
+        assert {:error, []} = ServiceAccount.regenerate_token(sa.id, user.org_id, sa.creator_id)
       end
     end
+  end
+
+  describe "regenerate_token/3 and the owner" do
+    setup do: account_owned_by_a_member()
+
+    test "keeps the owner when the owner asks for the token", ctx do
+      with_mock Guard.FrontRepo.User, [:passthrough],
+        reset_auth_token: fn _ -> {:ok, "new-token"} end do
+        assert {:ok, "new-token"} =
+                 ServiceAccount.regenerate_token(
+                   ctx.service_account.id,
+                   ctx.org_id,
+                   ctx.owner.id
+                 )
+
+        assert {:ok, %{owner_id: owner_id, owner_active: true}} =
+                 ServiceAccount.find(ctx.service_account.id, ctx.org_id)
+
+        assert owner_id == ctx.owner.id
+      end
+    end
+
+    test "gives up the owner when anybody else asks for the token", ctx do
+      with_mock Guard.FrontRepo.User, [:passthrough],
+        reset_auth_token: fn _ -> {:ok, "new-token"} end do
+        {:ok, other} = Support.Factories.FrontUser.insert()
+        Support.Factories.OrgMembership.insert(other.id, ctx.org_id)
+
+        assert {:ok, "new-token"} =
+                 ServiceAccount.regenerate_token(ctx.service_account.id, ctx.org_id, other.id)
+
+        # The token is now held by somebody the owner did not hand it to, so the account
+        # stops using the owner's access until a member takes it on.
+        assert {:ok, %{owner_id: nil, owner_active: false}} =
+                 ServiceAccount.find(ctx.service_account.id, ctx.org_id)
+      end
+    end
+
+    test "gives up the owner when the caller names nobody", ctx do
+      with_mock Guard.FrontRepo.User, [:passthrough],
+        reset_auth_token: fn _ -> {:ok, "new-token"} end do
+        assert {:ok, "new-token"} =
+                 ServiceAccount.regenerate_token(ctx.service_account.id, ctx.org_id, "")
+
+        assert {:ok, %{owner_id: nil}} = ServiceAccount.find(ctx.service_account.id, ctx.org_id)
+      end
+    end
+
+    test "gives up an owner taken on while the token was being written", ctx do
+      {:ok, taker} = Support.Factories.FrontUser.insert()
+      {:ok, other} = Support.Factories.FrontUser.insert()
+      Support.Factories.OrgMembership.insert(taker.id, ctx.org_id)
+      Support.Factories.OrgMembership.insert(other.id, ctx.org_id)
+
+      # Take the account on between the read and the write. Who holds the new token is
+      # settled against the row as it is written, so a member who took the account on
+      # meanwhile never lends their access to a token they did not ask for.
+      with_mock Guard.FrontRepo.User, [:passthrough],
+        reset_auth_token: fn _ ->
+          FrontRepo.get!(FrontRepo.ServiceAccount, ctx.service_account.id)
+          |> FrontRepo.ServiceAccount.owner_changeset(%{owner_id: taker.id})
+          |> FrontRepo.update!()
+
+          {:ok, "new-token"}
+        end do
+        assert {:ok, "new-token"} =
+                 ServiceAccount.regenerate_token(ctx.service_account.id, ctx.org_id, other.id)
+      end
+
+      assert {:ok, %{owner_id: nil}} = ServiceAccount.find(ctx.service_account.id, ctx.org_id)
+    end
+
+    test "records a decision on an account that never had an owner" do
+      org_id = Ecto.UUID.generate()
+      {:ok, creator} = Support.Factories.FrontUser.insert()
+      {:ok, other} = Support.Factories.FrontUser.insert()
+      Support.Factories.OrgMembership.insert(creator.id, org_id)
+      Support.Factories.OrgMembership.insert(other.id, org_id)
+
+      {:ok, %{service_account: service_account}} =
+        ServiceAccountFactory.insert(org_id: org_id, creator_id: creator.id)
+
+      with_mock Guard.FrontRepo.User, [:passthrough],
+        reset_auth_token: fn _ -> {:ok, "new-token"} end do
+        assert {:ok, "new-token"} =
+                 ServiceAccount.regenerate_token(service_account.id, org_id, other.id)
+      end
+
+      # With no decision on record the pass would hand the account to its creator, and
+      # the creator's access would then stand behind a token somebody else asked for.
+      assert 0 = ServiceAccount.backfill_owners()
+      assert {:ok, %{owner_id: nil}} = ServiceAccount.find(service_account.id, org_id)
+    end
+  end
+
+  describe "set_owner/3" do
+    setup do
+      org_id = Ecto.UUID.generate()
+      {:ok, creator} = Support.Factories.FrontUser.insert()
+      Support.Factories.OrgMembership.insert(creator.id, org_id)
+
+      {:ok, %{service_account: service_account}} =
+        ServiceAccountFactory.insert(org_id: org_id, creator_id: creator.id, owner_id: creator.id)
+
+      [org_id: org_id, creator: creator, service_account: service_account]
+    end
+
+    test "moves the account to another member", ctx do
+      {:ok, next_owner} = Support.Factories.FrontUser.insert()
+      Support.Factories.OrgMembership.insert(next_owner.id, ctx.org_id)
+
+      assert {:ok, %{owner_id: owner_id, owner_active: true}} =
+               ServiceAccount.set_owner(ctx.service_account.id, ctx.org_id, next_owner.id)
+
+      assert owner_id == next_owner.id
+    end
+
+    test "keeps the creator on record after the move", ctx do
+      {:ok, next_owner} = Support.Factories.FrontUser.insert()
+      Support.Factories.OrgMembership.insert(next_owner.id, ctx.org_id)
+
+      {:ok, moved} = ServiceAccount.set_owner(ctx.service_account.id, ctx.org_id, next_owner.id)
+
+      assert moved.creator_id == ctx.creator.id
+    end
+
+    test "refuses someone who is not a member of the organization", ctx do
+      {:ok, outsider} = Support.Factories.FrontUser.insert()
+
+      assert {:error, :invalid_owner} =
+               ServiceAccount.set_owner(ctx.service_account.id, ctx.org_id, outsider.id)
+
+      assert {:ok, %{owner_id: owner_id}} =
+               ServiceAccount.find(ctx.service_account.id, ctx.org_id)
+
+      assert owner_id == ctx.creator.id
+    end
+
+    test "refuses another service account", ctx do
+      {:ok, %{service_account: other}} = ServiceAccountFactory.insert(org_id: ctx.org_id)
+      Support.Factories.OrgMembership.insert(other.id, ctx.org_id, type: "service_account")
+
+      assert {:error, :invalid_owner} =
+               ServiceAccount.set_owner(ctx.service_account.id, ctx.org_id, other.id)
+    end
+
+    test "refuses to move an account that is not in the given organization", ctx do
+      {:ok, next_owner} = Support.Factories.FrontUser.insert()
+      other_org_id = Ecto.UUID.generate()
+      Support.Factories.OrgMembership.insert(next_owner.id, other_org_id)
+
+      assert {:error, :not_found} =
+               ServiceAccount.set_owner(ctx.service_account.id, other_org_id, next_owner.id)
+
+      assert {:ok, %{owner_id: owner_id}} =
+               ServiceAccount.find(ctx.service_account.id, ctx.org_id)
+
+      assert owner_id == ctx.creator.id
+    end
+
+    test "refuses an id that is not a uuid", ctx do
+      assert {:error, :invalid_id} =
+               ServiceAccount.set_owner("not-a-uuid", ctx.org_id, ctx.creator.id)
+    end
+
+    test "reports an account that does not exist", ctx do
+      {:ok, next_owner} = Support.Factories.FrontUser.insert()
+      Support.Factories.OrgMembership.insert(next_owner.id, ctx.org_id)
+
+      assert {:error, :not_found} =
+               ServiceAccount.set_owner(Ecto.UUID.generate(), ctx.org_id, next_owner.id)
+    end
+  end
+
+  describe "release_owner/3" do
+    setup do: account_owned_by_a_member()
+
+    test "leaves the account without an owner", ctx do
+      assert {:ok, %{owner_id: nil, owner_active: false}} =
+               ServiceAccount.release_owner(ctx.service_account.id, ctx.org_id, ctx.owner.id)
+    end
+
+    test "refuses anyone who is not the owner", ctx do
+      {:ok, other} = Support.Factories.FrontUser.insert()
+      Support.Factories.OrgMembership.insert(other.id, ctx.org_id)
+
+      assert {:error, :not_the_owner} =
+               ServiceAccount.release_owner(ctx.service_account.id, ctx.org_id, other.id)
+
+      assert {:ok, %{owner_id: owner_id}} =
+               ServiceAccount.find(ctx.service_account.id, ctx.org_id)
+
+      assert owner_id == ctx.owner.id
+    end
+
+    test "the backfill does not give a released account back to its creator", ctx do
+      {:ok, _} = ServiceAccount.release_owner(ctx.service_account.id, ctx.org_id, ctx.owner.id)
+
+      assert Guard.ServiceAccount.OwnerBackfill.process() == :ok
+
+      assert {:ok, %{owner_id: nil}} = ServiceAccount.find(ctx.service_account.id, ctx.org_id)
+    end
+
+    test "a member can take on a released account", ctx do
+      {:ok, _} = ServiceAccount.release_owner(ctx.service_account.id, ctx.org_id, ctx.owner.id)
+      {:ok, next_owner} = Support.Factories.FrontUser.insert()
+      Support.Factories.OrgMembership.insert(next_owner.id, ctx.org_id)
+
+      assert {:ok, %{owner_id: owner_id, owner_active: true}} =
+               ServiceAccount.set_owner(ctx.service_account.id, ctx.org_id, next_owner.id)
+
+      assert owner_id == next_owner.id
+    end
+
+    test "reports an account that does not exist", ctx do
+      assert {:error, :not_found} =
+               ServiceAccount.release_owner(Ecto.UUID.generate(), ctx.org_id, ctx.owner.id)
+    end
+
+    test "leaves an account taken on between reading it and giving it up", ctx do
+      {:ok, taker} = Support.Factories.FrontUser.insert()
+      Support.Factories.OrgMembership.insert(taker.id, ctx.org_id)
+
+      # Stand in for a member taking the account on after the owner's give-up read the
+      # row: the write has to find the row as it is, not as the read left it.
+      with_mock Guard.ServiceAccount.Owners,
+        active_ids: fn _ids, _org_id ->
+          FrontRepo.get!(FrontRepo.ServiceAccount, ctx.service_account.id)
+          |> FrontRepo.ServiceAccount.owner_changeset(%{owner_id: taker.id})
+          |> FrontRepo.update!()
+
+          MapSet.new([ctx.owner.id])
+        end do
+        assert {:error, :not_the_owner} =
+                 ServiceAccount.release_owner(ctx.service_account.id, ctx.org_id, ctx.owner.id)
+      end
+
+      assert {:ok, %{owner_id: owner_id}} =
+               ServiceAccount.find(ctx.service_account.id, ctx.org_id)
+
+      assert owner_id == taker.id
+    end
+  end
+
+  defp account_owned_by_a_member do
+    org_id = Ecto.UUID.generate()
+    {:ok, owner} = Support.Factories.FrontUser.insert()
+    Support.Factories.OrgMembership.insert(owner.id, org_id)
+
+    {:ok, %{service_account: service_account}} =
+      ServiceAccountFactory.insert(org_id: org_id, creator_id: owner.id, owner_id: owner.id)
+
+    [org_id: org_id, owner: owner, service_account: service_account]
   end
 end
