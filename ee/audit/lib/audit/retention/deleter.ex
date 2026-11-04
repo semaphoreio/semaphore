@@ -9,13 +9,15 @@ defmodule Audit.Retention.Deleter do
   interval. This lets it clear a backlog (e.g. the initial 400-day sweep)
   instead of being capped at `batch_size / idle_interval` rows per second.
 
-  ## Feature flag (per-organization)
+  ## Feature flag and retention floor
 
-  The `:audit_logs_retention` feature of each organization in a batch is checked
-  again before deleting. Expired events of an organization with the feature off
-  are unmarked instead of deleted, so turning the feature off also stops deletion
-  of events marked earlier (once the feature cache picks up the change). If it is
-  turned back on, the next policy event marks them again with a new grace period.
+  Before deleting, the `:audit_logs_retention` feature of each organization in a
+  batch is checked again, and so is the retention floor (`Audit.Retention.floor/0`).
+  Expired events of an organization with the feature off, or younger than the
+  floor, are unmarked instead of deleted. So turning the feature off stops
+  deletion of events marked earlier once the feature change event arrives, and
+  raising the floor keeps events marked under the old one. The next policy event
+  marks them again with a new grace period if they are still due.
 
   ## Configuration
 
@@ -86,7 +88,7 @@ defmodule Audit.Retention.Deleter do
   end
 
   defp delete_batch(batch_size) do
-    case Queries.delete_expired_batch(batch_size, &Retention.enabled?/1) do
+    case Queries.delete_expired_batch(batch_size, &Retention.enabled?/1, Retention.floor()) do
       {:ok, %{deleted: deleted, unmarked: unmarked}} ->
         report(deleted, unmarked)
         deleted + unmarked
@@ -105,8 +107,11 @@ defmodule Audit.Retention.Deleter do
     end
 
     if unmarked > 0 do
-      Watchman.submit({"retention.delete.feature_disabled", []}, unmarked, :count)
-      Logger.info("[Retention] unmarked=#{unmarked}: audit_logs_retention feature disabled")
+      Watchman.submit({"retention.delete.unmarked", []}, unmarked, :count)
+
+      Logger.info(
+        "[Retention] unmarked=#{unmarked}: feature disabled or younger than the retention floor"
+      )
     end
   end
 

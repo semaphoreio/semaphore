@@ -4,8 +4,11 @@ defmodule Audit.Retention.DeleterTest do
   import Ecto.Query
 
   alias Audit.Event
+  alias Audit.FeatureProviderInvalidatorWorker
+  alias Audit.Retention
   alias Audit.Retention.Deleter
   alias Audit.Retention.PolicyMarker
+  alias InternalApi.Feature.OrganizationFeaturesChanged
   alias Support.RetentionFixtures
 
   test "deletes only expired events for org that received retention policy event" do
@@ -52,13 +55,7 @@ defmodule Audit.Retention.DeleterTest do
 
     force_expiration(old_event_with_policy.id)
 
-    {:noreply, _state} =
-      Deleter.handle_info(:tick, %{
-        batch_size: 100,
-        idle_interval_ms: 60_000,
-        drain_interval_ms: 1_000,
-        backlog_tick: 0
-      })
+    tick()
 
     refute event_exists?(old_event_with_policy.id)
     assert event_exists?(new_event_with_policy.id)
@@ -69,30 +66,52 @@ defmodule Audit.Retention.DeleterTest do
   test "keeps and unmarks already marked events once the feature is turned off" do
     stub_retention_feature(false)
 
-    past = DateTime.utc_now() |> DateTime.add(-60, :second) |> DateTime.truncate(:second)
-    marked_event = RetentionFixtures.insert_event(%{expires_at: past})
+    marked_event = insert_expired_event(500)
 
-    {:noreply, _state} =
-      Deleter.handle_info(:tick, %{
-        batch_size: 100,
-        idle_interval_ms: 60_000,
-        drain_interval_ms: 1_000,
-        backlog_tick: 0
-      })
+    tick()
 
     assert event_exists?(marked_event.id)
     assert_unmarked(marked_event.id)
   end
 
+  test "stops deleting once the organization's feature change event arrives" do
+    marked_event = insert_expired_event(500)
+    org_id = marked_event.org_id
+
+    stub_retention_feature(true)
+    assert Retention.enabled?(org_id)
+
+    stub_retention_feature(false)
+    organization_features_changed(org_id)
+
+    tick()
+
+    assert event_exists?(marked_event.id)
+    assert_unmarked(marked_event.id)
+  end
+
+  test "keeps expired events younger than a raised retention floor" do
+    stub_retention_feature(true)
+    put_min_retention_days(800)
+
+    # Both were marked under the 400-day floor.
+    within_floor = insert_expired_event(500)
+    beyond_floor = insert_expired_event(900)
+
+    tick()
+
+    assert event_exists?(within_floor.id)
+    assert_unmarked(within_floor.id)
+    refute event_exists?(beyond_floor.id)
+  end
+
   test "drains quickly after a full batch and backs off once caught up" do
     stub_retention_feature(true)
 
-    past = DateTime.utc_now() |> DateTime.add(-60, :second) |> DateTime.truncate(:second)
-
     # handle_info schedules :tick to the caller; here that is the test process,
     # so we can observe which cadence it picks via the timer.
-    RetentionFixtures.insert_event(%{expires_at: past})
-    RetentionFixtures.insert_event(%{expires_at: past})
+    insert_expired_event(500)
+    insert_expired_event(500)
 
     # batch_size 1 with 2 expired rows -> first tick deletes a full batch ->
     # short drain interval -> :tick arrives well within the window.
@@ -117,6 +136,40 @@ defmodule Audit.Retention.DeleterTest do
 
     {:noreply, _} = Deleter.handle_info(:tick, idle_state)
     refute_receive :tick, 300
+  end
+
+  defp tick do
+    {:noreply, _state} =
+      Deleter.handle_info(:tick, %{
+        batch_size: 100,
+        idle_interval_ms: 60_000,
+        drain_interval_ms: 1_000,
+        backlog_tick: 0
+      })
+  end
+
+  # An event `age_days` old whose grace period ended a minute ago.
+  defp insert_expired_event(age_days) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    RetentionFixtures.insert_event(%{
+      timestamp: DateTime.add(now, -age_days * 86_400, :second),
+      expires_at: DateTime.add(now, -60, :second)
+    })
+  end
+
+  defp organization_features_changed(org_id) do
+    [org_id: org_id]
+    |> OrganizationFeaturesChanged.new()
+    |> OrganizationFeaturesChanged.encode()
+    |> FeatureProviderInvalidatorWorker.organization_features_changed()
+  end
+
+  defp put_min_retention_days(days) do
+    original_config = Application.get_env(:audit, Retention, [])
+    config = Keyword.put(original_config, :min_retention_days, days)
+    Application.put_env(:audit, Retention, config)
+    on_exit(fn -> Application.put_env(:audit, Retention, original_config) end)
   end
 
   defp assert_marked(event_id) do
