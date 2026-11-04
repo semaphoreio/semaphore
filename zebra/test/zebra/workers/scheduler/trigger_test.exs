@@ -15,7 +15,9 @@ defmodule Zebra.Workers.Scheduler.TriggerTest do
     blocking = Keyword.get(opts, :blocking, false)
     outcomes = Keyword.get(opts, :outcomes, fn _org, _mode -> :done end)
 
-    run = fn org_id, {mode, _timeout} ->
+    run = fn org_id, attempt ->
+      mode = if attempt == 0, do: :try, else: {:retry, attempt}
+
       send(test, {:pass_started, org_id, mode, self(), System.monotonic_time(:millisecond)})
 
       if blocking do
@@ -38,7 +40,8 @@ defmodule Zebra.Workers.Scheduler.TriggerTest do
         task_supervisor: sup,
         delay: @delay,
         max_concurrency: Keyword.get(opts, :max_concurrency, 3),
-        lock_wait_timeout: 1_000
+        lock_retries: Keyword.get(opts, :lock_retries, 2),
+        lock_retry_delay: @delay
       )
 
     pid
@@ -138,33 +141,43 @@ defmodule Zebra.Workers.Scheduler.TriggerTest do
     assert last_pass - second_request >= @delay
   end
 
-  test "losing the lock => one retry that waits for the lock" do
+  test "losing the lock => retried after the retry delay until the pass runs" do
     pid =
       start_trigger(
         outcomes: fn
           _org, :try -> :skipped
-          _org, :wait -> :done
+          _org, {:retry, 1} -> :done
         end
       )
 
     request(pid, "org-1")
 
-    assert [{"org-1", :try, _}, {"org-1", :wait, _}] = passes()
+    assert [{"org-1", :try, first}, {"org-1", {:retry, 1}, second}] = passes()
+    assert second - first >= @delay
     assert wait_idle(pid) == :ok
   end
 
-  test "giving up on the lock wait => no endless retries" do
-    pid =
-      start_trigger(
-        outcomes: fn
-          _org, :try -> :skipped
-          _org, :wait -> :lock_timeout
-        end
-      )
+  test "losing the lock every time => gives up after lock_retries, no endless retries" do
+    pid = start_trigger(outcomes: fn _org, _mode -> :skipped end)
 
     request(pid, "org-1")
 
-    assert [{"org-1", :try, _}, {"org-1", :wait, _}] = passes()
+    assert [{"org-1", :try, _}, {"org-1", {:retry, 1}, _}, {"org-1", {:retry, 2}, _}] =
+             passes(10 * @delay)
+
+    assert wait_idle(pid) == :ok
+  end
+
+  test "a request while retrying the lock leads to one fresh pass after giving up" do
+    pid = start_trigger(outcomes: fn _org, _mode -> :skipped end, lock_retries: 1)
+
+    request(pid, "org-1")
+    assert_receive {:pass_started, "org-1", :try, _, _}, 1_000
+    request(pid, "org-1")
+
+    assert [{"org-1", {:retry, 1}, _}, {"org-1", :try, _}, {"org-1", {:retry, 1}, _}] =
+             passes(10 * @delay)
+
     assert wait_idle(pid) == :ok
   end
 

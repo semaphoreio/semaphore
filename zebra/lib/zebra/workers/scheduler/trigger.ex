@@ -14,9 +14,10 @@ defmodule Zebra.Workers.Scheduler.Trigger do
       therefore followed by a pass that starts at least `delay` after it, and
       a burst of requests costs at most two passes.
     - A pass that loses the advisory lock (another node or the periodic tick
-      holds it) is retried once, waiting for the lock to be released, instead
-      of being dropped until the next tick. The wait is bounded by
-      `lock_wait_timeout`.
+      holds it) is retried up to `lock_retries` times, `lock_retry_delay`
+      milliseconds apart, instead of being dropped until the next tick. Each
+      retry is a non-blocking try, so no pool connection is held open while
+      waiting for another pass to release the lock.
     - At most `max_concurrency` passes run at once in this node, so a burst
       of requests across many organizations can't take every connection of
       the pool. Organizations over the limit wait in a FIFO queue.
@@ -30,14 +31,16 @@ defmodule Zebra.Workers.Scheduler.Trigger do
 
   @default_delay 100
   @default_max_concurrency 3
-  @default_lock_wait_timeout 2_000
+  @default_lock_retries 4
+  @default_lock_retry_delay 250
 
   defstruct [
     :run,
     :task_supervisor,
     :delay,
     :max_concurrency,
-    :lock_wait_timeout,
+    :lock_retries,
+    :lock_retry_delay,
     orgs: %{},
     tasks: %{},
     queue: :queue.new()
@@ -94,11 +97,13 @@ defmodule Zebra.Workers.Scheduler.Trigger do
           :max_concurrency,
           config(:async_max_concurrency, @default_max_concurrency)
         ),
-      lock_wait_timeout:
+      lock_retries:
+        Keyword.get(opts, :lock_retries, config(:lock_retries, @default_lock_retries)),
+      lock_retry_delay:
         Keyword.get(
           opts,
-          :lock_wait_timeout,
-          config(:lock_wait_timeout, @default_lock_wait_timeout)
+          :lock_retry_delay,
+          config(:lock_retry_delay, @default_lock_retry_delay)
         )
     }
 
@@ -175,12 +180,12 @@ defmodule Zebra.Workers.Scheduler.Trigger do
 
   defp wait_then_start(state, org_id) do
     Process.send_after(self(), {:ready, org_id}, state.delay)
-    put_org(state, org_id, %{phase: :waiting, dirty: false})
+    put_org(state, org_id, %{phase: :waiting, dirty: false, attempt: 0})
   end
 
   defp start_or_queue(state, org_id) do
     if map_size(state.tasks) < state.max_concurrency do
-      start(state, org_id, :try)
+      start(state, org_id)
     else
       org = Map.fetch!(state.orgs, org_id)
 
@@ -190,20 +195,19 @@ defmodule Zebra.Workers.Scheduler.Trigger do
     end
   end
 
-  defp start(state, org_id, mode) do
+  defp start(state, org_id) do
     run = state.run
-    timeout = state.lock_wait_timeout
+    org = Map.fetch!(state.orgs, org_id)
+    attempt = org.attempt
 
     task =
       Task.Supervisor.async_nolink(state.task_supervisor, fn ->
-        run.(org_id, {mode, timeout})
+        run.(org_id, attempt)
       end)
-
-    org = Map.fetch!(state.orgs, org_id)
 
     state
     |> put_org(org_id, %{org | phase: :running})
-    |> Map.update!(:tasks, &Map.put(&1, task.ref, {org_id, mode}))
+    |> Map.update!(:tasks, &Map.put(&1, task.ref, org_id))
   end
 
   defp finished(state, ref, outcome) do
@@ -211,30 +215,35 @@ defmodule Zebra.Workers.Scheduler.Trigger do
       {nil, _} ->
         state
 
-      {{org_id, mode}, tasks} ->
+      {org_id, tasks} ->
         state = %{state | tasks: tasks}
 
-        state =
-          if outcome == :skipped and mode == :try do
-            #
-            # Someone else holds the lock and their pass may have read the
-            # jobs before ours were committed. Run once more, after they are
-            # done.
-            #
-            Watchman.increment("scheduler.trigger.lock_skipped")
-            start(state, org_id, :wait)
-          else
-            if outcome == :lock_timeout do
-              Watchman.increment("scheduler.trigger.lock_wait_timeout")
-              Logger.info("[#{org_id}] Gave up waiting for the scheduling lock")
-            end
-
-            after_pass(state, org_id)
-          end
-
-        start_queued(state)
+        state
+        |> after_outcome(org_id, outcome)
+        |> start_queued()
     end
   end
+
+  defp after_outcome(state, org_id, :skipped) do
+    org = Map.fetch!(state.orgs, org_id)
+
+    if org.attempt < state.lock_retries do
+      #
+      # Someone else holds the lock and their pass may have read the jobs
+      # before ours were committed. Try again shortly, without holding a
+      # connection while we wait.
+      #
+      Watchman.increment("scheduler.trigger.lock_skipped")
+      Process.send_after(self(), {:ready, org_id}, state.lock_retry_delay)
+      put_org(state, org_id, %{org | phase: :waiting, attempt: org.attempt + 1})
+    else
+      Watchman.increment("scheduler.trigger.lock_retries_exhausted")
+      Logger.info("[#{org_id}] Gave up retrying the scheduling lock")
+      after_pass(state, org_id)
+    end
+  end
+
+  defp after_outcome(state, org_id, _outcome), do: after_pass(state, org_id)
 
   defp after_pass(state, org_id) do
     org = Map.fetch!(state.orgs, org_id)
@@ -249,7 +258,7 @@ defmodule Zebra.Workers.Scheduler.Trigger do
   defp start_queued(state) do
     if map_size(state.tasks) < state.max_concurrency do
       case :queue.out(state.queue) do
-        {{:value, org_id}, queue} -> start_queued(start(%{state | queue: queue}, org_id, :try))
+        {{:value, org_id}, queue} -> start_queued(start(%{state | queue: queue}, org_id))
         {:empty, _} -> state
       end
     else
@@ -259,13 +268,10 @@ defmodule Zebra.Workers.Scheduler.Trigger do
 
   defp put_org(state, org_id, org), do: %{state | orgs: Map.put(state.orgs, org_id, org)}
 
-  defp default_run(org_id, {mode, timeout}) do
-    lock_mode = if mode == :wait, do: {:wait, timeout}, else: :try
-
-    case Zebra.Workers.Scheduler.lock_and_process(org_id, lock_mode) do
+  defp default_run(org_id, _attempt) do
+    case Zebra.Workers.Scheduler.lock_and_process(org_id, :try) do
       {:ok, {:lock_obtained, _}} -> :done
       {:ok, {:lock_skipped, _}} -> :skipped
-      {:error, :lock_timeout} -> :lock_timeout
       other -> other
     end
   end
