@@ -168,6 +168,44 @@ defmodule Zebra.Workers.Scheduler.TriggerTest do
     assert wait_idle(pid) == :ok
   end
 
+  test "with the default settings, lock retries cover more than 2 seconds" do
+    test = self()
+
+    run = fn org_id, attempt ->
+      send(test, {:attempt, org_id, attempt, System.monotonic_time(:millisecond)})
+      :skipped
+    end
+
+    {:ok, sup} = Task.Supervisor.start_link()
+
+    {:ok, pid} =
+      Trigger.start_link(
+        name: :"trigger_#{System.unique_integer([:positive])}",
+        run: run,
+        task_supervisor: sup,
+        delay: @delay
+      )
+
+    Trigger.request("org-1", pid)
+
+    attempts = collect_attempts([])
+    {_, first} = hd(attempts)
+    {last_attempt, last} = List.last(attempts)
+
+    assert Enum.map(attempts, &elem(&1, 0)) == Enum.to_list(0..9)
+    assert last_attempt == 9
+    assert last - first > 2_000
+    assert Trigger.await_idle(pid, 1_000) == :ok
+  end
+
+  defp collect_attempts(acc) do
+    receive do
+      {:attempt, "org-1", attempt, at} -> collect_attempts([{attempt, at} | acc])
+    after
+      1_000 -> Enum.reverse(acc)
+    end
+  end
+
   test "a request while retrying the lock leads to one fresh pass after giving up" do
     pid = start_trigger(outcomes: fn _org, _mode -> :skipped end, lock_retries: 1)
 

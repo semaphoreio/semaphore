@@ -15,9 +15,10 @@ defmodule Zebra.Workers.Scheduler.Trigger do
       a burst of requests costs at most two passes.
     - A pass that loses the advisory lock (another node or the periodic tick
       holds it) is retried up to `lock_retries` times, `lock_retry_delay`
-      milliseconds apart, instead of being dropped until the next tick. Each
-      retry is a non-blocking try, so no pool connection is held open while
-      waiting for another pass to release the lock.
+      milliseconds apart plus up to half of that as jitter, instead of being
+      dropped until the next tick. With the defaults the retries cover more
+      than 2 seconds. Each retry is a non-blocking try, so no pool connection
+      is held open while waiting for another pass to release the lock.
     - At most `max_concurrency` passes run at once in this node, so a burst
       of requests across many organizations can't take every connection of
       the pool. Organizations over the limit wait in a FIFO queue.
@@ -31,7 +32,7 @@ defmodule Zebra.Workers.Scheduler.Trigger do
 
   @default_delay 100
   @default_max_concurrency 3
-  @default_lock_retries 4
+  @default_lock_retries 9
   @default_lock_retry_delay 250
 
   defstruct [
@@ -234,16 +235,24 @@ defmodule Zebra.Workers.Scheduler.Trigger do
       # connection while we wait.
       #
       Watchman.increment("scheduler.trigger.lock_skipped")
-      Process.send_after(self(), {:ready, org_id}, state.lock_retry_delay)
+      Process.send_after(self(), {:ready, org_id}, retry_delay(state))
       put_org(state, org_id, %{org | phase: :waiting, attempt: org.attempt + 1})
     else
       Watchman.increment("scheduler.trigger.lock_retries_exhausted")
+      # previous name of this event, kept so existing alerts keep firing
+      Watchman.increment("scheduler.trigger.lock_wait_timeout")
       Logger.info("[#{org_id}] Gave up retrying the scheduling lock")
       after_pass(state, org_id)
     end
   end
 
   defp after_outcome(state, org_id, _outcome), do: after_pass(state, org_id)
+
+  # Jitter keeps passes of several nodes from retrying in lockstep.
+  defp retry_delay(%{lock_retry_delay: delay}) when delay >= 2,
+    do: delay + :rand.uniform(div(delay, 2))
+
+  defp retry_delay(%{lock_retry_delay: delay}), do: delay
 
   defp after_pass(state, org_id) do
     org = Map.fetch!(state.orgs, org_id)

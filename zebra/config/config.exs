@@ -30,7 +30,7 @@ config :zebra, Zebra.Workers.Scheduler,
   # requests from job transitions, see Zebra.Workers.Scheduler.Trigger
   async_delay: 100,
   async_max_concurrency: 3,
-  lock_retries: 4,
+  lock_retries: 9,
   lock_retry_delay: 250
 
 config :zebra, domain: "semaphore.#{Atom.to_string(config_env())}"
