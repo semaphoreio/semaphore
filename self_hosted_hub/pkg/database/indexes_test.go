@@ -26,5 +26,14 @@ func Test__AgentsIndexes(t *testing.T) {
 		for _, part := range parts {
 			assert.Contains(t, def, part)
 		}
+
+		// pg_indexes also lists INVALID indexes, left by an interrupted concurrent build.
+		var valid bool
+		err = Conn().Raw(
+			"SELECT indisvalid FROM pg_index WHERE indexrelid = to_regclass(?)", "public."+name,
+		).Row().Scan(&valid)
+
+		require.NoError(t, err)
+		assert.True(t, valid, "index %s is not valid", name)
 	}
 }
