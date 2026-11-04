@@ -66,7 +66,7 @@ defmodule Gofer.Grpc.DeploymentTargets.Server do
       end
 
     status =
-      case Guardian.verify(deployment, object, triggerer) do
+      case Guardian.verify(deployment, object, triggerer, fresh?: true) do
         {:ok, _metadata} -> :ACCESS_GRANTED
         {:error, {reason, _metadata}} -> reason
       end

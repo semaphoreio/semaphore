@@ -219,6 +219,33 @@ defmodule Gofer.Grpc.DeploymentTargets.ServerTest do
                  )
                )
     end
+
+    test "role-based access follows RBAC once the short-lived result expires", ctx do
+      role_user_id = UUID.uuid4()
+      role = {ctx.organization_id, ctx.project_id, role_user_id, ctx.role_id}
+      Support.Stubs.RBAC.set_role(role)
+      on_exit(fn -> Support.Stubs.RBAC.remove_role(role) end)
+      Process.sleep(50)
+
+      request =
+        API.VerifyRequest.new(
+          target_id: ctx.prod.id,
+          triggerer: role_user_id,
+          git_ref_type: :BRANCH,
+          git_ref_label: "master"
+        )
+
+      assert {:ok, %API.VerifyResponse{status: :ACCESS_GRANTED}} = send(request)
+
+      Support.Stubs.RBAC.remove_role(role)
+      Process.sleep(50)
+
+      key = {:fresh, "#{ctx.organization_id}/#{ctx.project_id}/#{role_user_id}", [ctx.role_id]}
+      {:ok, {fetched_at, assignments}} = Cachex.get(:rbac_roles, key)
+      Cachex.put(:rbac_roles, key, {fetched_at - 10_000, assignments})
+
+      assert {:ok, %API.VerifyResponse{status: :BANNED_SUBJECT}} = send(request)
+    end
   end
 
   describe "rpc History(HistoryRequest) returns (HistoryResponse)" do
