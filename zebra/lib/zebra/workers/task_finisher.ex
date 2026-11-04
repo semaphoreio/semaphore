@@ -73,6 +73,10 @@ defmodule Zebra.Workers.TaskFinisher do
     end
   end
 
+  # Relies on index_jobs_on_build_id_unfinished (created by the github_hooks
+  # migration 20261104120000). Without a valid index this probe falls back to
+  # a much slower plan, so after deploying check that pg_index.indisvalid is
+  # true for it; if not, drop it concurrently and re-run the migration.
   defp unfinished_jobs?(task_id) do
     Job
     |> where([j], j.build_id == ^task_id)
