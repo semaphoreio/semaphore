@@ -208,6 +208,44 @@ defmodule Support.Factories.Job do
     LegacyRepo.insert(changeset)
   end
 
+  @doc """
+  Inserts `count` jobs with insert_all, for tests that need thousands of rows.
+  `params` override the defaults for every row. Returns the inserted ids.
+  """
+  def insert_many(count, state, params \\ %{}) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    defaults = %{
+      organization_id: @org_id,
+      project_id: @project_id,
+      build_id: @build_id,
+      index: 0,
+      machine_type: "e1-standard-2",
+      machine_os_image: "ubuntu1804",
+      name: "RSpec 1/3",
+      spec: Job.encode_spec(spec()),
+      aasm_state: Atom.to_string(state),
+      created_at: now,
+      updated_at: now,
+      enqueued_at: now,
+      scheduled_at: now,
+      started_at: now
+    }
+
+    rows =
+      Enum.map(1..count, fn index ->
+        defaults
+        |> Map.merge(params)
+        |> Map.merge(%{id: Ecto.UUID.generate(), index: index})
+      end)
+
+    rows
+    |> Enum.chunk_every(2_000)
+    |> Enum.each(fn chunk -> {_, nil} = LegacyRepo.insert_all(Job, chunk) end)
+
+    Enum.map(rows, & &1.id)
+  end
+
   def inject_request(job) do
     changeset =
       Job.changeset(job, %{

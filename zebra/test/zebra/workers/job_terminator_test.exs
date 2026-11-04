@@ -49,4 +49,35 @@ defmodule Zebra.Workers.JobTerminatorTest do
     assert job2.aasm_state == "started"
     assert job2.result == nil
   end
+
+  describe "with more expired jobs than one tick handles" do
+    test "each tick stops at most batch_size jobs and the next tick continues" do
+      batch_size = Zebra.Workers.JobTerminator.batch_size()
+
+      two_days_ago =
+        DateTime.utc_now() |> DateTime.add(-2 * 86_400, :second) |> DateTime.truncate(:second)
+
+      expired =
+        Support.Factories.Job.insert_many(batch_size + 1, :started, %{
+          started_at: two_days_ago,
+          execution_time_limit: 60
+        })
+
+      [running] = Support.Factories.Job.insert_many(1, :started, %{execution_time_limit: 3_600})
+
+      assert {:ok, {:ok, ^batch_size}} = Zebra.Workers.JobTerminator.tick()
+      assert stop_request_count() == batch_size
+
+      assert {:ok, {:ok, 1}} = Zebra.Workers.JobTerminator.tick()
+      assert stop_request_count() == batch_size + 1
+
+      assert {:ok, {:ok, 0}} = Zebra.Workers.JobTerminator.tick()
+
+      assert {:error, :not_found} = Zebra.Models.JobStopRequest.find_by_job_id(running)
+      assert {:ok, _} = Zebra.Models.JobStopRequest.find_by_job_id(List.last(expired))
+    end
+  end
+
+  defp stop_request_count,
+    do: Zebra.LegacyRepo.aggregate(Zebra.Models.JobStopRequest, :count)
 end

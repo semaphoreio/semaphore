@@ -76,4 +76,25 @@ defmodule Zebra.Workers.WaitingJobTerminatorTest do
     assert Zebra.Models.Job.started?(job3)
     refute Zebra.Models.Job.stopped?(job3)
   end
+
+  test "each tick stops at most batch_size jobs and the next tick continues" do
+    batch_size = Zebra.Workers.WaitingJobTerminator.batch_size()
+
+    two_days_ago =
+      DateTime.utc_now() |> DateTime.add(-2 * 86_400, :second) |> DateTime.truncate(:second)
+
+    Support.Factories.Job.insert_many(batch_size, :"waiting-for-agent", %{
+      scheduled_at: two_days_ago
+    })
+
+    Support.Factories.Job.insert_many(1, :scheduled, %{scheduled_at: two_days_ago})
+    [fresh] = Support.Factories.Job.insert_many(1, :"waiting-for-agent")
+
+    assert {:ok, {:ok, ^batch_size}} = Zebra.Workers.WaitingJobTerminator.tick()
+    assert {:ok, {:ok, 1}} = Zebra.Workers.WaitingJobTerminator.tick()
+    assert {:ok, {:ok, 0}} = Zebra.Workers.WaitingJobTerminator.tick()
+
+    assert Zebra.LegacyRepo.aggregate(Zebra.Models.JobStopRequest, :count) == batch_size + 1
+    assert {:error, :not_found} = Zebra.Models.JobStopRequest.find_by_job_id(fresh)
+  end
 end

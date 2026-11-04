@@ -21,10 +21,10 @@ defmodule Zebra.Workers.JobStopper do
 
   def request_stop_for_all_jobs_in_task_async(task) do
     task_job_tuples =
-      Repo.preload(task, [:jobs]).jobs
-      |> Enum.map(fn j ->
-        {task.id, j.id}
-      end)
+      Job
+      |> where([j], j.build_id == ^task.id)
+      |> select([j], {j.build_id, j.id})
+      |> Repo.all()
 
     {:ok, _} = Zebra.Models.JobStopRequest.bulk_create(task_job_tuples)
 

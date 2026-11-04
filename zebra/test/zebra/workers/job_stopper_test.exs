@@ -54,6 +54,24 @@ defmodule Zebra.Workers.JobStopperTest do
       assert request_ids == job_ids
     end
 
+    test "it requests a stop for every job of a task above the bind parameter limit" do
+      {:ok, task} = Support.Factories.Task.create()
+      other_task_job = Support.Factories.Job.insert_many(1, :pending)
+
+      job_ids = Support.Factories.Job.insert_many(10_923, :pending, %{build_id: task.id})
+
+      assert :ok = Zebra.Workers.JobStopper.request_stop_for_all_jobs_in_task_async(task)
+
+      request_job_ids =
+        Zebra.Models.JobStopRequest
+        |> where([r], r.build_id == ^task.id)
+        |> select([r], r.job_id)
+        |> Zebra.LegacyRepo.all()
+
+      assert Enum.sort(request_job_ids) == Enum.sort(job_ids)
+      assert {:error, :not_found} = Zebra.Models.JobStopRequest.find_by_job_id(hd(other_task_job))
+    end
+
     test "it is idempotent" do
       {:ok, task} = Support.Factories.Task.create()
 

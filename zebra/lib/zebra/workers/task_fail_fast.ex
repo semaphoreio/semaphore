@@ -22,6 +22,12 @@ defmodule Zebra.Workers.TaskFailFast do
   TaskFinisher.
   """
 
+  # Upper bound of jobs handled per tick and strategy. A task with more jobs
+  # is stopped over several ticks (one per second).
+  @batch_size 5_000
+
+  def batch_size, do: @batch_size
+
   def start_link do
     {:ok, spawn_link(&loop/0)}
   end
@@ -83,7 +89,8 @@ defmodule Zebra.Workers.TaskFailFast do
           """,
           ^strategy
         ),
-      select: {j.build_id, j.id}
+      select: {j.build_id, j.id},
+      limit: @batch_size
     )
   end
 

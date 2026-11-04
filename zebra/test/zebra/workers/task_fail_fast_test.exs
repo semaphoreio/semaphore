@@ -252,4 +252,20 @@ defmodule Zebra.Workers.TaskFailFastTest do
       assert {:error, :not_found} = JobStopRequest.find_by_job_id(job5.id)
     end
   end
+
+  describe ".process with more jobs than one tick handles" do
+    test "each tick stops at most batch_size jobs and the next tick continues" do
+      batch_size = Zebra.Workers.TaskFailFast.batch_size()
+
+      {:ok, task} = Support.Factories.Task.create(%{fail_fast_strategy: "stop"})
+
+      {:ok, _} = Support.Factories.Job.create(:finished, %{build_id: task.id, result: "failed"})
+
+      Support.Factories.Job.insert_many(batch_size + 1, :pending, %{build_id: task.id})
+
+      assert {:ok, {:ok, ^batch_size}} = Zebra.Workers.TaskFailFast.process("stop")
+      assert {:ok, {:ok, 1}} = Zebra.Workers.TaskFailFast.process("stop")
+      assert {:ok, {:ok, 0}} = Zebra.Workers.TaskFailFast.process("stop")
+    end
+  end
 end

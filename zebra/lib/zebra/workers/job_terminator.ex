@@ -12,6 +12,12 @@ defmodule Zebra.Workers.JobTerminator do
   # default time limit is 24hours
   @default_time_limit 60 * 60 * 24
 
+  # Upper bound of jobs handled per tick, so a large backlog of expired jobs
+  # is drained over several ticks instead of in one huge transaction.
+  @batch_size 5_000
+
+  def batch_size, do: @batch_size
+
   def start_link do
     {:ok, spawn_link(&loop/0)}
   end
@@ -29,7 +35,7 @@ defmodule Zebra.Workers.JobTerminator do
       Zebra.LegacyRepo.transaction(fn ->
         ids = query() |> Zebra.LegacyRepo.all()
 
-        Logger.info("Terminating #{inspect(ids)}")
+        Logger.info("Terminating #{length(ids)} jobs: #{inspect(ids)}")
 
         Zebra.Models.JobStopRequest.bulk_create(ids)
       end)
@@ -58,7 +64,8 @@ defmodule Zebra.Workers.JobTerminator do
           j.execution_time_limit,
           @default_time_limit
         ) < fragment("extract(epoch from now())"),
-      select: {j.build_id, j.id}
+      select: {j.build_id, j.id},
+      limit: @batch_size
     )
   end
 end
