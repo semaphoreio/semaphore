@@ -9,6 +9,14 @@ defmodule Audit.Retention.Deleter do
   interval. This lets it clear a backlog (e.g. the initial 400-day sweep)
   instead of being capped at `batch_size / idle_interval` rows per second.
 
+  ## Feature flag (per-organization)
+
+  The `:audit_logs_retention` feature of each organization in a batch is checked
+  again before deleting. Expired events of an organization with the feature off
+  are unmarked instead of deleted, so turning the feature off also stops deletion
+  of events marked earlier (once the feature cache picks up the change). If it is
+  turned back on, the next policy event marks them again with a new grace period.
+
   ## Configuration
 
   Via application config (typically set from env vars in runtime.exs):
@@ -33,6 +41,7 @@ defmodule Audit.Retention.Deleter do
 
   require Logger
 
+  alias Audit.Retention
   alias Audit.Retention.Queries
 
   @default_batch_size 100
@@ -60,16 +69,16 @@ defmodule Audit.Retention.Deleter do
 
   @impl true
   def handle_info(:tick, state) do
-    deleted = delete_batch(state.batch_size)
+    processed = delete_batch(state.batch_size)
     state = maybe_submit_backlog(state)
-    schedule(next_interval(deleted, state))
+    schedule(next_interval(processed, state))
     {:noreply, state}
   end
 
   # A full batch means the table likely still holds expired rows, so keep
   # draining quickly; anything less means we have caught up for now.
-  defp next_interval(deleted, state) do
-    if deleted >= state.batch_size do
+  defp next_interval(processed, state) do
+    if processed >= state.batch_size do
       state.drain_interval_ms
     else
       state.idle_interval_ms
@@ -77,19 +86,27 @@ defmodule Audit.Retention.Deleter do
   end
 
   defp delete_batch(batch_size) do
-    case Queries.delete_expired_batch(batch_size) do
-      {:ok, 0} ->
-        0
-
-      {:ok, count} ->
-        Watchman.submit({"retention.deleted", []}, count, :count)
-        Logger.info("[Retention] deleted=#{count}")
-        count
+    case Queries.delete_expired_batch(batch_size, &Retention.enabled?/1) do
+      {:ok, %{deleted: deleted, unmarked: unmarked}} ->
+        report(deleted, unmarked)
+        deleted + unmarked
 
       {:error, reason} ->
         Watchman.increment("retention.delete.error")
         Logger.error("[Retention] delete error: #{inspect(reason)}")
         0
+    end
+  end
+
+  defp report(deleted, unmarked) do
+    if deleted > 0 do
+      Watchman.submit({"retention.deleted", []}, deleted, :count)
+      Logger.info("[Retention] deleted=#{deleted}")
+    end
+
+    if unmarked > 0 do
+      Watchman.submit({"retention.delete.feature_disabled", []}, unmarked, :count)
+      Logger.info("[Retention] unmarked=#{unmarked}: audit_logs_retention feature disabled")
     end
   end
 

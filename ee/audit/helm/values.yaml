@@ -12,6 +12,7 @@ api:
     minRetentionDays: 400
     gracePeriodDays: 15
     applierBatchSize: 1000
+    applierTimeLimitSec: 900
     # Staged rollout: let the marker run and observe retention.marked /
     # retention.backlog for at least one grace period, then enable deletion.
     deleterEnabled: false
