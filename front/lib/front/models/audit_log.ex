@@ -221,7 +221,7 @@ defmodule Front.Models.AuditLog do
   defp grpc_call(func, request) do
     endpoint = Application.fetch_env!(:front, :audit_grpc_endpoint)
 
-    with {:ok, channel} <- GRPC.Stub.connect(endpoint),
+    with {:ok, channel} <- Front.GrpcChannel.connect(endpoint),
          {:ok, response} <- func.(channel, request) do
       Util.Proto.to_map(response)
     else

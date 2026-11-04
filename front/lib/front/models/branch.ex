@@ -89,7 +89,7 @@ defmodule Front.Models.Branch do
         )
 
       {:ok, channel} =
-        GRPC.Stub.connect(Application.fetch_env!(:front, :branch_api_grpc_endpoint))
+        Front.GrpcChannel.connect(Application.fetch_env!(:front, :branch_api_grpc_endpoint))
 
       {:ok, response} =
         InternalApi.Branch.BranchService.Stub.describe(channel, req, timeout: 30_000)
@@ -109,7 +109,7 @@ defmodule Front.Models.Branch do
       req = InternalApi.Branch.DescribeRequest.new(branch_id: branch_id)
 
       {:ok, channel} =
-        GRPC.Stub.connect(Application.fetch_env!(:front, :branch_api_grpc_endpoint))
+        Front.GrpcChannel.connect(Application.fetch_env!(:front, :branch_api_grpc_endpoint))
 
       {:ok, response} =
         InternalApi.Branch.BranchService.Stub.describe(channel, req, timeout: 30_000)

@@ -4,7 +4,8 @@ defmodule Front.Models.Task do
 
   def describe_many(ids) do
     Watchman.benchmark("task.find_many.duration", fn ->
-      {:ok, channel} = GRPC.Stub.connect(Application.fetch_env!(:front, :task_grpc_endpoint))
+      {:ok, channel} =
+        Front.GrpcChannel.connect(Application.fetch_env!(:front, :task_grpc_endpoint))
 
       request = InternalApi.Task.DescribeManyRequest.new(task_ids: ids)
 

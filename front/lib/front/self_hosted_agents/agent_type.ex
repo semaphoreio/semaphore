@@ -202,6 +202,6 @@ defmodule Front.SelfHostedAgents.AgentType do
   defp channel do
     endpoint = Application.fetch_env!(:front, :self_hosted_agents_grpc_endpoint)
 
-    GRPC.Stub.connect(endpoint)
+    Front.GrpcChannel.connect(endpoint)
   end
 end

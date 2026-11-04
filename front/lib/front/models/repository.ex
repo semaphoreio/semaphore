@@ -16,7 +16,7 @@ defmodule Front.Models.Repository do
       )
 
     {:ok, channel} =
-      GRPC.Stub.connect(Application.fetch_env!(:front, :repositoryhub_grpc_endpoint))
+      Front.GrpcChannel.connect(Application.fetch_env!(:front, :repositoryhub_grpc_endpoint))
 
     case InternalApi.Repository.RepositoryService.Stub.list_accessible_repositories(
            channel,

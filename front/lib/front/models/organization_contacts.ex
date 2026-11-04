@@ -88,7 +88,7 @@ defmodule Front.Models.OrganizationContacts do
     alias InternalApi.Organization.OrganizationService.Stub
 
     endpoint = Application.fetch_env!(:front, :organization_api_grpc_endpoint)
-    {:ok, channel} = GRPC.Stub.connect(endpoint)
+    {:ok, channel} = Front.GrpcChannel.connect(endpoint)
     req = FetchOrganizationContactsRequest.new(org_id: org_id)
 
     Stub.fetch_organization_contacts(channel, req)
@@ -99,7 +99,7 @@ defmodule Front.Models.OrganizationContacts do
     alias InternalApi.Organization.OrganizationService.Stub
 
     endpoint = Application.fetch_env!(:front, :organization_api_grpc_endpoint)
-    {:ok, channel} = GRPC.Stub.connect(endpoint)
+    {:ok, channel} = Front.GrpcChannel.connect(endpoint)
 
     req =
       ModifyOrganizationContactRequest.new(

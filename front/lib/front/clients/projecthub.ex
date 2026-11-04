@@ -36,11 +36,11 @@ defmodule Front.Clients.Projecthub do
   def regenerate_webhook_secret(request),
     do: Proto.deep_new!(RegenerateWebhookSecretRequest, request) |> regenerate_webhook_secret()
 
-  defp connect, do: GRPC.Stub.connect(Application.fetch_env!(:front, :projecthub_grpc_endpoint))
+  defp connect,
+    do: Front.GrpcChannel.connect(Application.fetch_env!(:front, :projecthub_grpc_endpoint))
 
   defp grpc_send(error = {:error, _}, _, _), do: error
 
   defp grpc_send({:ok, channel}, method, request),
-    do: apply(Stub, method, [channel, request]),
-    after: GRPC.Stub.disconnect(channel)
+    do: apply(Stub, method, [channel, request])
 end

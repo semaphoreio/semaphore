@@ -8,7 +8,7 @@ defmodule JobPage.Api.Loghub do
       req =
         InternalApi.Loghub.GetLogEventsRequest.new(job_id: job_id, starting_line: starting_line)
 
-      {:ok, channel} = GRPC.Stub.connect(GrpcConfig.endpoint(:loghub_api_grpc_endpoint))
+      {:ok, channel} = Front.GrpcChannel.connect(GrpcConfig.endpoint(:loghub_api_grpc_endpoint))
 
       config = Application.get_env(:front, JobPage.Api.Loghub, [])
       timeout = Keyword.get(config, :timeout, 30_000)

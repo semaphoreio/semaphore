@@ -282,7 +282,7 @@ defmodule FrontWeb.WorkflowController do
     Logger.debug(fn -> "Received rebuild request for workflow #{conn.assigns.workflow.id}" end)
 
     {:ok, channel} =
-      GRPC.Stub.connect(Application.fetch_env!(:front, :workflow_api_grpc_endpoint))
+      Front.GrpcChannel.connect(Application.fetch_env!(:front, :workflow_api_grpc_endpoint))
 
     request = %RescheduleRequest{
       wf_id: conn.assigns.workflow.id,

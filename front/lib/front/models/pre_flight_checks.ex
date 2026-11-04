@@ -428,7 +428,7 @@ defmodule Front.Models.PreFlightChecks do
   defp grpc_call(func, request) do
     endpoint = Application.fetch_env!(:front, :pre_flight_checks_grpc_endpoint)
 
-    with {:ok, channel} <- GRPC.Stub.connect(endpoint),
+    with {:ok, channel} <- Front.GrpcChannel.connect(endpoint),
          {:ok, response} <- grpc_send(channel, func, request) do
       Util.Proto.to_map(response)
     else
@@ -437,8 +437,7 @@ defmodule Front.Models.PreFlightChecks do
   end
 
   defp grpc_send(channel, func, request),
-    do: func.(channel, request),
-    after: GRPC.Stub.disconnect(channel)
+    do: func.(channel, request)
 
   #
   # Watchman callbacks

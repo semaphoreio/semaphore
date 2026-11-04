@@ -13,7 +13,7 @@ defmodule Front.Models.Notification do
 
   def find(notification_id, user_id, org_id) do
     Watchman.benchmark("notifications.get_notification_request.duration", fn ->
-      {:ok, channel} = GRPC.Stub.connect(api_endpoint())
+      {:ok, channel} = Front.GrpcChannel.connect(api_endpoint())
 
       request = %PublicApi.GetNotificationRequest{
         notification_id_or_name: notification_id
@@ -31,7 +31,7 @@ defmodule Front.Models.Notification do
 
   def list(user_id, org_id) do
     Watchman.benchmark("notifications.list_notifications_request.duration", fn ->
-      {:ok, channel} = GRPC.Stub.connect(api_endpoint())
+      {:ok, channel} = Front.GrpcChannel.connect(api_endpoint())
 
       request = %PublicApi.ListNotificationsRequest{
         page_size: @notifications_page_size,
@@ -60,7 +60,7 @@ defmodule Front.Models.Notification do
     Watchman.benchmark("notifications.create_notification_request.duration", fn ->
       notification = construct_notification(notification_data, user_id)
 
-      {:ok, channel} = GRPC.Stub.connect(api_endpoint())
+      {:ok, channel} = Front.GrpcChannel.connect(api_endpoint())
 
       metadata = %{
         "x-semaphore-org-id" => org_id,
@@ -74,7 +74,7 @@ defmodule Front.Models.Notification do
 
   def delete(id, user_id, org_id, _metadata \\ nil) do
     Watchman.benchmark("notifications.delete_notification_request.duration", fn ->
-      {:ok, channel} = GRPC.Stub.connect(api_endpoint())
+      {:ok, channel} = Front.GrpcChannel.connect(api_endpoint())
 
       req = PublicApi.DeleteNotificationRequest.new(notification_id_or_name: id)
 
@@ -92,7 +92,7 @@ defmodule Front.Models.Notification do
     Watchman.benchmark("notifications.update_notification_request.duration", fn ->
       notification = construct_notification(notification_data, user_id)
 
-      {:ok, channel} = GRPC.Stub.connect(api_endpoint())
+      {:ok, channel} = Front.GrpcChannel.connect(api_endpoint())
 
       metadata = %{
         "x-semaphore-org-id" => org_id,

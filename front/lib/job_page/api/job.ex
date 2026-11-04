@@ -5,7 +5,7 @@ defmodule JobPage.Api.Job do
     Watchman.benchmark("fetch_job.duration", fn ->
       req = InternalApi.ServerFarm.Job.DescribeRequest.new(job_id: job_id)
 
-      {:ok, channel} = GRPC.Stub.connect(GrpcConfig.endpoint(:job_api_grpc_endpoint))
+      {:ok, channel} = Front.GrpcChannel.connect(GrpcConfig.endpoint(:job_api_grpc_endpoint))
 
       {:ok, response} =
         InternalApi.ServerFarm.Job.JobService.Stub.describe(channel, req,

@@ -4,7 +4,7 @@ defmodule Front.Clients.Workflow do
 
   def channel do
     endpoint = Application.fetch_env!(:front, :workflow_api_grpc_endpoint)
-    endpoint |> GRPC.Stub.connect()
+    endpoint |> Front.GrpcChannel.connect()
   end
 
   def timeout do

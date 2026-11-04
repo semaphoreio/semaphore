@@ -162,7 +162,8 @@ defmodule Front.Auth do
     Logger.debug("Refresh Request")
     Logger.debug(inspect(req))
 
-    {:ok, channel} = GRPC.Stub.connect(Application.fetch_env!(:front, :rbac_grpc_endpoint))
+    {:ok, channel} =
+      Front.GrpcChannel.connect(Application.fetch_env!(:front, :rbac_grpc_endpoint))
 
     {:ok, res} = InternalApi.RBAC.RBAC.Stub.refresh_collaborators(channel, req, timeout: 30_000)
 

@@ -5,7 +5,8 @@ defmodule JobPage.Api.Organization do
     Watchman.benchmark("fetch_organization.duration", fn ->
       req = InternalApi.Organization.DescribeRequest.new(org_id: organization_id)
 
-      {:ok, channel} = GRPC.Stub.connect(GrpcConfig.endpoint(:organization_api_grpc_endpoint))
+      {:ok, channel} =
+        Front.GrpcChannel.connect(GrpcConfig.endpoint(:organization_api_grpc_endpoint))
 
       {:ok, response} =
         InternalApi.Organization.OrganizationService.Stub.describe(

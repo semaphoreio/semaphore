@@ -11,7 +11,8 @@ defmodule Front.Models.Member do
           inviter_id: requester_id
         )
 
-      {:ok, channel} = GRPC.Stub.connect(Application.fetch_env!(:front, :guard_grpc_endpoint))
+      {:ok, channel} =
+        Front.GrpcChannel.connect(Application.fetch_env!(:front, :guard_grpc_endpoint))
 
       case InternalApi.Guard.Guard.Stub.create_member(channel, req) do
         {:ok, res} ->
@@ -32,7 +33,8 @@ defmodule Front.Models.Member do
           user_id: user_id
         )
 
-      {:ok, channel} = GRPC.Stub.connect(Application.fetch_env!(:front, :guard_grpc_endpoint))
+      {:ok, channel} =
+        Front.GrpcChannel.connect(Application.fetch_env!(:front, :guard_grpc_endpoint))
 
       case InternalApi.Guard.Guard.Stub.reset_password(channel, req) do
         {:ok, res} ->
@@ -54,7 +56,8 @@ defmodule Front.Models.Member do
           email: email
         )
 
-      {:ok, channel} = GRPC.Stub.connect(Application.fetch_env!(:front, :guard_grpc_endpoint))
+      {:ok, channel} =
+        Front.GrpcChannel.connect(Application.fetch_env!(:front, :guard_grpc_endpoint))
 
       case InternalApi.Guard.Guard.Stub.change_email(channel, req) do
         {:ok, res} ->
@@ -71,7 +74,8 @@ defmodule Front.Models.Member do
     Watchman.benchmark("fetch_org_invitations.duration", fn ->
       req = InternalApi.Guard.InvitationsRequest.new(org_id: org_id)
 
-      {:ok, channel} = GRPC.Stub.connect(Application.fetch_env!(:front, :guard_grpc_endpoint))
+      {:ok, channel} =
+        Front.GrpcChannel.connect(Application.fetch_env!(:front, :guard_grpc_endpoint))
 
       Logger.info("Invitations Request: #{inspect(req)}")
 
@@ -97,7 +101,8 @@ defmodule Front.Models.Member do
           project_id: project_id
         )
 
-      {:ok, channel} = GRPC.Stub.connect(Application.fetch_env!(:front, :guard_grpc_endpoint))
+      {:ok, channel} =
+        Front.GrpcChannel.connect(Application.fetch_env!(:front, :guard_grpc_endpoint))
 
       Logger.info("Collaborators Request: #{inspect(req)}")
 
@@ -137,7 +142,7 @@ defmodule Front.Models.Member do
             end)
         )
 
-      {:ok, channel} = GRPC.Stub.connect(guard_api_endpoint())
+      {:ok, channel} = Front.GrpcChannel.connect(guard_api_endpoint())
 
       case InternalApi.Guard.Guard.Stub.invite_collaborators(channel, req) do
         {:ok, res} ->
@@ -163,7 +168,7 @@ defmodule Front.Models.Member do
         |> Enum.into(%{})
         |> InternalApi.Organization.DeleteMemberRequest.new()
 
-      {:ok, channel} = GRPC.Stub.connect(organization_api_endpoint())
+      {:ok, channel} = Front.GrpcChannel.connect(organization_api_endpoint())
 
       {:ok, res} =
         InternalApi.Organization.OrganizationService.Stub.delete_member(

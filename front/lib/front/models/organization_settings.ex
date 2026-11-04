@@ -34,7 +34,7 @@ defmodule Front.Models.OrganizationSettings do
   defp grpc_call(func, request) do
     endpoint = Application.fetch_env!(:front, :organization_api_grpc_endpoint)
 
-    with {:ok, channel} <- GRPC.Stub.connect(endpoint),
+    with {:ok, channel} <- Front.GrpcChannel.connect(endpoint),
          {:ok, response} <- grpc_send(channel, func, request) do
       {:ok, from_api(response.settings)}
     else
@@ -43,8 +43,7 @@ defmodule Front.Models.OrganizationSettings do
   end
 
   defp grpc_send(channel, func, request),
-    do: func.(channel, request),
-    after: GRPC.Stub.disconnect(channel)
+    do: func.(channel, request)
 
   defp from_api(settings) do
     Map.new(settings, &{&1.key, &1.value})

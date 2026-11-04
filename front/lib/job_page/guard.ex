@@ -24,7 +24,7 @@ defmodule JobPage.Guard do
     Logger.info("Filter request")
     Logger.info(inspect(req))
 
-    {:ok, channel} = GRPC.Stub.connect(GrpcConfig.endpoint(:guard_grpc_endpoint))
+    {:ok, channel} = Front.GrpcChannel.connect(GrpcConfig.endpoint(:guard_grpc_endpoint))
 
     {:ok, res} =
       InternalApi.Guard.Guard.Stub.filter(channel, req, metadata: metadata, timeout: 30_000)

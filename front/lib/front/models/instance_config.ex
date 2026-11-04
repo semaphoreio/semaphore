@@ -78,7 +78,9 @@ defmodule Front.Models.InstanceConfig do
   end
 
   defp channel do
-    {:ok, ch} = GRPC.Stub.connect(Application.fetch_env!(:front, :instance_config_grpc_endpoint))
+    {:ok, ch} =
+      Front.GrpcChannel.connect(Application.fetch_env!(:front, :instance_config_grpc_endpoint))
+
     ch
   end
 end

@@ -115,6 +115,6 @@ defmodule Front.Clients.License do
   @spec connect() :: {:ok, GRPC.Channel.t()} | {:error, any()}
   def connect do
     Application.fetch_env!(:front, :license_grpc_endpoint)
-    |> GRPC.Stub.connect()
+    |> Front.GrpcChannel.connect()
   end
 end

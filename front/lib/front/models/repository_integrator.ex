@@ -18,7 +18,9 @@ defmodule Front.Models.RepositoryIntegrator do
         )
 
       {:ok, channel} =
-        GRPC.Stub.connect(Application.fetch_env!(:front, :repository_integrator_grpc_endpoint))
+        Front.GrpcChannel.connect(
+          Application.fetch_env!(:front, :repository_integrator_grpc_endpoint)
+        )
 
       case InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Stub.get_token(
              channel,
@@ -55,13 +57,11 @@ defmodule Front.Models.RepositoryIntegrator do
           organization: organization
         )
 
-      case GRPC.Stub.connect(Application.fetch_env!(:front, :repository_integrator_grpc_endpoint)) do
+      case Front.GrpcChannel.connect(
+             Application.fetch_env!(:front, :repository_integrator_grpc_endpoint)
+           ) do
         {:ok, channel} ->
-          try do
-            send_refresh(channel, req)
-          after
-            GRPC.Stub.disconnect(channel)
-          end
+          send_refresh(channel, req)
 
         {:error, reason} ->
           Logger.error(

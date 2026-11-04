@@ -5,7 +5,7 @@ defmodule JobPage.Api.Branch do
     Watchman.benchmark("fetch_branch.duration", fn ->
       req = InternalApi.Branch.DescribeRequest.new(branch_id: branch_id)
 
-      {:ok, channel} = GRPC.Stub.connect(GrpcConfig.endpoint(:branch_api_grpc_endpoint))
+      {:ok, channel} = Front.GrpcChannel.connect(GrpcConfig.endpoint(:branch_api_grpc_endpoint))
 
       {:ok, response} =
         InternalApi.Branch.BranchService.Stub.describe(channel, req,

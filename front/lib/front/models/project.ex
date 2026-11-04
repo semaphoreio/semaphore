@@ -274,7 +274,8 @@ defmodule Front.Models.Project do
         path: path
       )
 
-    {:ok, ch} = GRPC.Stub.connect(Application.fetch_env!(:front, :repositoryhub_grpc_endpoint))
+    {:ok, ch} =
+      Front.GrpcChannel.connect(Application.fetch_env!(:front, :repositoryhub_grpc_endpoint))
 
     case Stub.get_file(ch, req, options()) do
       {:ok, _} ->
@@ -628,7 +629,9 @@ defmodule Front.Models.Project do
         InternalApi.RepositoryIntegrator.GithubInstallationInfoRequest.new(project_id: project_id)
 
       {:ok, channel} =
-        GRPC.Stub.connect(Application.fetch_env!(:front, :repository_integrator_grpc_endpoint))
+        Front.GrpcChannel.connect(
+          Application.fetch_env!(:front, :repository_integrator_grpc_endpoint)
+        )
 
       case InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Stub.github_installation_info(
              channel,
@@ -656,7 +659,9 @@ defmodule Front.Models.Project do
       req = InternalApi.RepositoryIntegrator.CheckTokenRequest.new(project_id: project_id)
 
       {:ok, channel} =
-        GRPC.Stub.connect(Application.fetch_env!(:front, :repository_integrator_grpc_endpoint))
+        Front.GrpcChannel.connect(
+          Application.fetch_env!(:front, :repository_integrator_grpc_endpoint)
+        )
 
       case InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Stub.check_token(
              channel,
@@ -974,7 +979,8 @@ defmodule Front.Models.Project do
 
   defp channel do
     Watchman.benchmark("projecthub.connect.duration", fn ->
-      {:ok, ch} = GRPC.Stub.connect(Application.fetch_env!(:front, :projecthub_grpc_endpoint))
+      {:ok, ch} =
+        Front.GrpcChannel.connect(Application.fetch_env!(:front, :projecthub_grpc_endpoint))
 
       ch
     end)

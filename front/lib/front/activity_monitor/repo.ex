@@ -154,7 +154,7 @@ defmodule Front.ActivityMonitor.Repo do
 
     Watchman.benchmark("activity_monitor.describe_organization", fn ->
       url = Application.fetch_env!(:front, :organization_api_grpc_endpoint)
-      {:ok, channel} = GRPC.Stub.connect(url)
+      {:ok, channel} = Front.GrpcChannel.connect(url)
 
       request = DescribeRequest.new(org_id: org_id, include_quotas: true)
 
@@ -187,7 +187,7 @@ defmodule Front.ActivityMonitor.Repo do
       req = InternalApi.Projecthub.RequestMeta.new(org_id: org_id)
       pagination = InternalApi.Projecthub.PaginationRequest.new(page: 1, page_size: 300)
       url = Application.fetch_env!(:front, :projecthub_grpc_endpoint)
-      {:ok, channel} = GRPC.Stub.connect(url)
+      {:ok, channel} = Front.GrpcChannel.connect(url)
 
       list_request =
         InternalApi.Projecthub.ListRequest.new(
@@ -305,7 +305,7 @@ defmodule Front.ActivityMonitor.Repo do
 
     Watchman.benchmark("activity_monitor.list_pipeline_activity", fn ->
       url = Application.fetch_env!(:front, :pipeline_api_grpc_endpoint)
-      {:ok, channel} = GRPC.Stub.connect(url)
+      {:ok, channel} = Front.GrpcChannel.connect(url)
 
       options = [timeout: 30_000, metadata: tracing_headers]
 
@@ -341,7 +341,7 @@ defmodule Front.ActivityMonitor.Repo do
 
     Watchman.benchmark("activity_monitor.list_debug_sessions", fn ->
       url = Application.fetch_env!(:front, :job_api_grpc_endpoint)
-      {:ok, channel} = GRPC.Stub.connect(url)
+      {:ok, channel} = Front.GrpcChannel.connect(url)
 
       options = [timeout: 30_000, metadata: tracing_headers]
 
@@ -400,7 +400,7 @@ defmodule Front.ActivityMonitor.Repo do
 
     Watchman.benchmark("activity_monitor.list_pipeline_activity", fn ->
       url = Application.fetch_env!(:front, :pipeline_api_grpc_endpoint)
-      {:ok, channel} = GRPC.Stub.connect(url)
+      {:ok, channel} = Front.GrpcChannel.connect(url)
 
       request = DescribeManyRequest.new(ppl_ids: debugged_ppl_ids)
 
@@ -453,7 +453,7 @@ defmodule Front.ActivityMonitor.Repo do
 
     Watchman.benchmark("activity_monitor.list_active_jobs", fn ->
       url = Application.fetch_env!(:front, :job_api_grpc_endpoint)
-      {:ok, channel} = GRPC.Stub.connect(url)
+      {:ok, channel} = Front.GrpcChannel.connect(url)
 
       options = [timeout: 30_000, metadata: tracing_headers]
 
@@ -593,7 +593,7 @@ defmodule Front.ActivityMonitor.Repo do
 
     Watchman.benchmark("activity_monitor.stop_job", fn ->
       url = Application.fetch_env!(:front, :job_api_grpc_endpoint)
-      {:ok, channel} = GRPC.Stub.connect(url)
+      {:ok, channel} = Front.GrpcChannel.connect(url)
 
       options = [timeout: 30_000, metadata: %{}]
 

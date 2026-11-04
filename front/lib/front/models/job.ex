@@ -38,7 +38,7 @@ defmodule Front.Models.Job do
   def source_job_id(%__MODULE__{original_job_id: original, id: id}), do: presence(original) || id
 
   def find(id, tracing_headers \\ nil) do
-    with {:ok, channel} <- GRPC.Stub.connect(internal_endpoint()),
+    with {:ok, channel} <- Front.GrpcChannel.connect(internal_endpoint()),
          request <- DescribeRequest.new(job_id: id),
          {:ok, response} <-
            Stub.describe(channel, request, metadata: tracing_headers, timeout: 30_000) do
@@ -55,7 +55,7 @@ defmodule Front.Models.Job do
   end
 
   def generate_token(id, duration \\ 3_600, tracing_headers \\ nil) do
-    with {:ok, channel} <- GRPC.Stub.connect(loghub2_endpoint()),
+    with {:ok, channel} <- Front.GrpcChannel.connect(loghub2_endpoint()),
          request <-
            GenerateTokenRequest.new(job_id: id, type: TokenType.value(:PULL), duration: duration),
          {:ok, response} <-
@@ -70,7 +70,7 @@ defmodule Front.Models.Job do
 
   def stop(job_id, user_id) do
     Watchman.benchmark("jobs.stop_request.duration", fn ->
-      {:ok, channel} = GRPC.Stub.connect(internal_endpoint())
+      {:ok, channel} = Front.GrpcChannel.connect(internal_endpoint())
 
       request = StopRequest.new(job_id: job_id, requester_id: user_id)
 
@@ -80,7 +80,7 @@ defmodule Front.Models.Job do
 
   def can_debug?(job_id, user_id) do
     Watchman.benchmark("jobs.can_debug.duration", fn ->
-      {:ok, channel} = GRPC.Stub.connect(internal_endpoint())
+      {:ok, channel} = Front.GrpcChannel.connect(internal_endpoint())
 
       request = CanDebugRequest.new(job_id: job_id, user_id: user_id)
 
@@ -97,7 +97,7 @@ defmodule Front.Models.Job do
 
   def can_attach?(job_id, user_id) do
     Watchman.benchmark("jobs.can_attach.duration", fn ->
-      {:ok, channel} = GRPC.Stub.connect(internal_endpoint())
+      {:ok, channel} = Front.GrpcChannel.connect(internal_endpoint())
 
       request = CanAttachRequest.new(job_id: job_id, user_id: user_id)
 
@@ -125,7 +125,7 @@ defmodule Front.Models.Job do
           job_spec: job_spec
         )
 
-      with {:ok, channel} <- GRPC.Stub.connect(internal_endpoint()),
+      with {:ok, channel} <- Front.GrpcChannel.connect(internal_endpoint()),
            {:ok, response} <- Stub.create(channel, request, timeout: 30_000) do
         if response.status.code == InternalApi.ResponseStatus.Code.value(:OK) do
           {:ok, construct(response.job)}

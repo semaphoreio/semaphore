@@ -89,7 +89,7 @@ defmodule Front.Clients.Feature do
 
   defp channel do
     Application.fetch_env!(:front, :feature_grpc_endpoint)
-    |> GRPC.Stub.connect()
+    |> Front.GrpcChannel.connect()
   end
 
   defp timeout do

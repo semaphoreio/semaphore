@@ -56,7 +56,7 @@ defmodule Front.Models.Repohub do
   end
 
   defp channel do
-    {:ok, ch} = GRPC.Stub.connect(api_endpoint())
+    {:ok, ch} = Front.GrpcChannel.connect(api_endpoint())
 
     ch
   end

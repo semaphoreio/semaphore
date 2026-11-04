@@ -357,7 +357,7 @@ defmodule Front.Clients.Billing do
   defp channel do
     if Front.saas?() do
       Application.fetch_env!(:front, :billing_api_grpc_endpoint)
-      |> GRPC.Stub.connect()
+      |> Front.GrpcChannel.connect()
     else
       {:error, "Billing service is running only on saas instance"}
     end

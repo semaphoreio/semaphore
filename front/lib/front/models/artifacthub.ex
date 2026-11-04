@@ -26,7 +26,7 @@ defmodule Front.Models.Artifacthub do
                artifact_id: store_id,
                include_retention_policy: include_retention_policy
              ),
-           {:ok, ch} <- GRPC.Stub.connect(api_endpoint()) do
+           {:ok, ch} <- Front.GrpcChannel.connect(api_endpoint()) do
         {:ok, _res} = Stub.describe(ch, request, timeout: 30_000)
       end
     end)
@@ -40,7 +40,7 @@ defmodule Front.Models.Artifacthub do
     Watchman.benchmark("artifacthub.update_retention_policy.duration", fn ->
       with {:ok, store_id} <- get_artifact_store_id(project_id),
            request <- Request.new(artifact_id: store_id, retention_policy: policy),
-           {:ok, ch} <- GRPC.Stub.connect(api_endpoint()) do
+           {:ok, ch} <- Front.GrpcChannel.connect(api_endpoint()) do
         {:ok, _res} = Stub.update_retention_policy(ch, request, timeout: 30_000)
       end
     end)
@@ -50,7 +50,7 @@ defmodule Front.Models.Artifacthub do
     Watchman.benchmark("artifacthub.list_request.duration", fn ->
       with req_path <- Resource.request_path(source_kind, source_id, path),
            {:ok, store_id} <- get_artifact_store_id(project_id),
-           {:ok, channel} <- GRPC.Stub.connect(api_endpoint()),
+           {:ok, channel} <- Front.GrpcChannel.connect(api_endpoint()),
            request <-
              ListRequest.new(
                artifact_id: store_id,
@@ -77,7 +77,7 @@ defmodule Front.Models.Artifacthub do
     Watchman.benchmark("artifacthub.delete_request.duration", fn ->
       with req_path <- Resource.request_path(source_kind, source_id, path),
            {:ok, store_id} <- get_artifact_store_id(project_id),
-           {:ok, channel} <- GRPC.Stub.connect(api_endpoint()),
+           {:ok, channel} <- Front.GrpcChannel.connect(api_endpoint()),
            request <- DeleteRequest.new(artifact_id: store_id, path: req_path),
            {:ok, _response} <- Stub.delete_path(channel, request, timeout: 30_000) do
         {:ok, :path_deleted}
@@ -109,7 +109,7 @@ defmodule Front.Models.Artifacthub do
   def signed_url_with_store_id(store_id, source_kind, source_id, relative_path, method \\ "GET") do
     Watchman.benchmark("artifacthub.get_signed_url_request.duration", fn ->
       with req_path <- Resource.request_path(source_kind, source_id, relative_path),
-           {:ok, channel} <- GRPC.Stub.connect(api_endpoint()),
+           {:ok, channel} <- Front.GrpcChannel.connect(api_endpoint()),
            request <-
              GetSignedURLRequest.new(artifact_id: store_id, path: req_path, method: method),
            {:ok, response} <- Stub.get_signed_url(channel, request, timeout: 30_000) do

@@ -5,7 +5,7 @@ defmodule Front.Clients.Pipeline do
   def channel do
     endpoint = Application.fetch_env!(:front, :pipeline_api_grpc_endpoint)
 
-    {:ok, channel} = endpoint |> GRPC.Stub.connect()
+    {:ok, channel} = endpoint |> Front.GrpcChannel.connect()
     channel
   end
 

@@ -353,7 +353,7 @@ defmodule Front.Models.User do
       req = InternalApi.User.CheckGithubTokenRequest.new(user_id: user_id)
 
       {:ok, channel} =
-        GRPC.Stub.connect(Application.fetch_env!(:front, :guard_user_grpc_endpoint))
+        Front.GrpcChannel.connect(Application.fetch_env!(:front, :guard_user_grpc_endpoint))
 
       case Stub.check_github_token(channel, req, metadata: metadata, timeout: 30_000) do
         {:ok, res} ->
@@ -530,5 +530,6 @@ defmodule Front.Models.User do
     end
   end
 
-  def channel, do: GRPC.Stub.connect(Application.fetch_env!(:front, :guard_user_grpc_endpoint))
+  def channel,
+    do: Front.GrpcChannel.connect(Application.fetch_env!(:front, :guard_user_grpc_endpoint))
 end

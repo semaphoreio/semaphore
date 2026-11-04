@@ -457,7 +457,7 @@ defmodule Front.Models.Secret do
   defp channel do
     endpoint = Application.fetch_env!(:front, :secrets_api_grpc_endpoint)
 
-    case GRPC.Stub.connect(endpoint) do
+    case Front.GrpcChannel.connect(endpoint) do
       {:ok, channel} -> channel
       # raise error ?
       _ -> nil

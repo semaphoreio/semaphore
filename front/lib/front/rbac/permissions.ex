@@ -136,7 +136,7 @@ defmodule Front.RBAC.Permissions do
 
   defmodule PermissionPatrolClient do
     def channel do
-      {:ok, ch} = GRPC.Stub.connect(api_endpoint())
+      {:ok, ch} = Front.GrpcChannel.connect(api_endpoint())
       ch
     end
 
@@ -151,7 +151,7 @@ defmodule Front.RBAC.Permissions do
 
   defmodule RBACClient do
     def channel do
-      {:ok, ch} = GRPC.Stub.connect(api_endpoint())
+      {:ok, ch} = Front.GrpcChannel.connect(api_endpoint())
       ch
     end
 

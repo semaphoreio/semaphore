@@ -6,7 +6,7 @@ defmodule Front.Clients.Branch do
   def channel do
     endpoint = Application.fetch_env!(:front, :branch_api_grpc_endpoint)
 
-    {:ok, channel} = endpoint |> GRPC.Stub.connect()
+    {:ok, channel} = endpoint |> Front.GrpcChannel.connect()
     channel
   end
 

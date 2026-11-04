@@ -800,7 +800,7 @@ defmodule Front.Models.SchedulerTest do
     end
 
     test "when the connection can't be made, it returns an error" do
-      with_mock GRPC.Stub, connect: fn _ -> {:error, "failed"} end do
+      with_mock Front.GrpcChannel, connect: fn _ -> {:error, "failed"} end do
         assert Subject.persist(@form_data, @context_data) ==
                  {:error, :grpc_req_failed}
       end

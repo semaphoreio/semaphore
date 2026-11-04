@@ -214,7 +214,7 @@ defmodule Front.Models.Scheduler do
     {page, page_size, query} = {page_args[:page], page_args[:page_size], page_args[:query]}
     request = ListRequest.new(project_id: id, page: page, page_size: page_size, query: query)
 
-    with {:ok, channel} <- GRPC.Stub.connect(api_endpoint()),
+    with {:ok, channel} <- Front.GrpcChannel.connect(api_endpoint()),
          {:ok, response = %ListResponse{status: %Status{code: 0}}} <-
            Stub.list(channel, request, options(metadata)),
          {:ok, periodics} <- add_triggers_info(response.periodics, channel, metadata) do
@@ -271,7 +271,7 @@ defmodule Front.Models.Scheduler do
   end
 
   def pause(id, user_id, metadata \\ nil) do
-    with {:ok, channel} <- GRPC.Stub.connect(api_endpoint()),
+    with {:ok, channel} <- Front.GrpcChannel.connect(api_endpoint()),
          request <- PauseRequest.new(id: id, requester: user_id),
          {:ok, _response = %PauseResponse{status: %Status{code: 0, message: msg}}} <-
            Stub.pause(channel, request, options(metadata)) do
@@ -292,7 +292,7 @@ defmodule Front.Models.Scheduler do
   end
 
   def unpause(id, user_id, metadata \\ nil) do
-    with {:ok, channel} <- GRPC.Stub.connect(api_endpoint()),
+    with {:ok, channel} <- Front.GrpcChannel.connect(api_endpoint()),
          request <- UnpauseRequest.new(id: id, requester: user_id),
          {:ok, _response = %UnpauseResponse{status: %Status{code: 0, message: msg}}} <-
            Stub.unpause(channel, request, options(metadata)) do
@@ -320,7 +320,7 @@ defmodule Front.Models.Scheduler do
       |> Map.delete(:reference_type)
       |> Map.delete(:reference_name)
 
-    with {:ok, channel} <- GRPC.Stub.connect(api_endpoint()),
+    with {:ok, channel} <- Front.GrpcChannel.connect(api_endpoint()),
          request <- Util.Proto.deep_new!(RunNowRequest, run_now_params),
          :ok <-
            Logger.info("run_now_params: #{inspect(run_now_params)}, request: #{inspect(request)}"),
@@ -357,7 +357,7 @@ defmodule Front.Models.Scheduler do
   end
 
   def find(id, metadata \\ nil) do
-    with {:ok, channel} <- GRPC.Stub.connect(api_endpoint()),
+    with {:ok, channel} <- Front.GrpcChannel.connect(api_endpoint()),
          request <- DescribeRequest.new(id: id),
          {:ok, response = %DescribeResponse{status: %Status{code: 0}}} <-
            Stub.describe(channel, request, options(metadata)),
@@ -387,7 +387,7 @@ defmodule Front.Models.Scheduler do
         filters: Keyword.get(params, :filters, %{})
       })
 
-    with {:ok, channel} <- GRPC.Stub.connect(api_endpoint()),
+    with {:ok, channel} <- Front.GrpcChannel.connect(api_endpoint()),
          {:ok, response = %HistoryResponse{status: %Status{code: 0}}} <-
            Stub.history(channel, request, options(metadata)) do
       {:ok, HistoryPage.construct(response)}
@@ -409,7 +409,7 @@ defmodule Front.Models.Scheduler do
   def latest_trigger(id, metadata \\ nil) do
     request = LatestTriggersRequest.new(periodic_ids: [id])
 
-    with {:ok, channel} <- GRPC.Stub.connect(api_endpoint()),
+    with {:ok, channel} <- Front.GrpcChannel.connect(api_endpoint()),
          {:ok, response = %LatestTriggersResponse{status: %Status{code: 0}}} <-
            Stub.latest_triggers(channel, request, options(metadata)) do
       case response.triggers do
@@ -454,7 +454,7 @@ defmodule Front.Models.Scheduler do
       |> Map.put(:skip_manual_run_notifications, all_data[:skip_manual_run_notifications] == true)
 
     with true <- changeset.valid?,
-         {:ok, channel} <- GRPC.Stub.connect(api_endpoint()),
+         {:ok, channel} <- Front.GrpcChannel.connect(api_endpoint()),
          {:ok, request} <- Util.Proto.deep_new(PersistRequest, grpc_data),
          {:ok, %PersistResponse{status: %Status{code: 0}, periodic: periodic}} <-
            Stub.persist(channel, request, options(metadata)) do
@@ -478,7 +478,7 @@ defmodule Front.Models.Scheduler do
   end
 
   def destroy(id, user_id, metadata \\ nil) do
-    with {:ok, channel} <- GRPC.Stub.connect(api_endpoint()),
+    with {:ok, channel} <- Front.GrpcChannel.connect(api_endpoint()),
          request <- DeleteRequest.new(id: id, requester: user_id),
          {:ok, _response = %DeleteResponse{status: %Status{code: 0}}} <-
            Stub.delete(channel, request, options(metadata)) do

@@ -403,7 +403,7 @@ defmodule Front.Clients.Superjerry do
 
   defp channel do
     Application.fetch_env!(:front, :superjerry_grpc_endpoint)
-    |> GRPC.Stub.connect()
+    |> Front.GrpcChannel.connect()
   end
 
   defp timeout do

@@ -59,7 +59,7 @@ defmodule Front.Models.Organization do
     req = InternalApi.Organization.DescribeRequest.new(org_id: id)
 
     endpoint = Application.fetch_env!(:front, :organization_api_grpc_endpoint)
-    {:ok, channel} = GRPC.Stub.connect(endpoint)
+    {:ok, channel} = Front.GrpcChannel.connect(endpoint)
 
     {:ok, res} = Stub.describe(channel, req, timeout: 30_000)
 
@@ -114,7 +114,7 @@ defmodule Front.Models.Organization do
         )
 
       {:ok, channel} =
-        GRPC.Stub.connect(Application.fetch_env!(:front, :organization_api_grpc_endpoint))
+        Front.GrpcChannel.connect(Application.fetch_env!(:front, :organization_api_grpc_endpoint))
 
       {:ok, res} =
         InternalApi.Organization.OrganizationService.Stub.create(channel, req,
@@ -146,7 +146,9 @@ defmodule Front.Models.Organization do
         )
 
       with {:ok, channel} <-
-             GRPC.Stub.connect(Application.fetch_env!(:front, :organization_api_grpc_endpoint)),
+             Front.GrpcChannel.connect(
+               Application.fetch_env!(:front, :organization_api_grpc_endpoint)
+             ),
            {:ok, res} <- Stub.update(channel, req, metadata: metadata, timeout: 30_000) do
         {:ok, construct(res.organization)}
       else
@@ -176,7 +178,7 @@ defmodule Front.Models.Organization do
       req = InternalApi.Organization.DescribeManyRequest.new(org_ids: org_ids)
 
       {:ok, channel} =
-        GRPC.Stub.connect(Application.fetch_env!(:front, :organization_api_grpc_endpoint))
+        Front.GrpcChannel.connect(Application.fetch_env!(:front, :organization_api_grpc_endpoint))
 
       case InternalApi.Organization.OrganizationService.Stub.describe_many(channel, req,
              timeout: 30_000
@@ -268,7 +270,7 @@ defmodule Front.Models.Organization do
         :organization_api_grpc_endpoint
       )
 
-    {:ok, channel} = GRPC.Stub.connect(organization_api_endpoint)
+    {:ok, channel} = Front.GrpcChannel.connect(organization_api_endpoint)
 
     channel
   end

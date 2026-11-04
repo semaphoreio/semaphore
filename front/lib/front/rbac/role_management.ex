@@ -288,7 +288,7 @@ defmodule Front.RBAC.RoleManagement do
   defp sort_roles(roles, _), do: roles
 
   defp channel do
-    {:ok, ch} = GRPC.Stub.connect(api_endpoint())
+    {:ok, ch} = Front.GrpcChannel.connect(api_endpoint())
     ch
   end
 

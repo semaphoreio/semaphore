@@ -24,7 +24,7 @@ defmodule Front.Audit.UI do
   def start_csv_stream(org_id) do
     endpoint = Application.fetch_env!(:front, :audit_grpc_endpoint)
 
-    with {:ok, channel} <- GRPC.Stub.connect(endpoint),
+    with {:ok, channel} <- Front.GrpcChannel.connect(endpoint),
          {:ok, response} <- fetch_page(channel, org_id, "") do
       {:ok, channel, response}
     end
@@ -138,7 +138,7 @@ defmodule Front.Audit.UI do
         direction: direction(direction)
       )
 
-    {:ok, channel} = GRPC.Stub.connect(endpoint)
+    {:ok, channel} = Front.GrpcChannel.connect(endpoint)
     {:ok, res} = InternalApi.Audit.AuditService.Stub.paginated_list(channel, request)
 
     {EventsDecorator.decorate(res.events), res.next_page_token, res.previous_page_token}
@@ -155,7 +155,7 @@ defmodule Front.Audit.UI do
         direction: direction(direction)
       )
 
-    {:ok, channel} = GRPC.Stub.connect(endpoint)
+    {:ok, channel} = Front.GrpcChannel.connect(endpoint)
     {:ok, res} = InternalApi.Audit.AuditService.Stub.list_stream_logs(channel, request)
 
     %{logs: res.stream_logs, next_page: res.next_page_token, prev_page: res.previous_page_token}

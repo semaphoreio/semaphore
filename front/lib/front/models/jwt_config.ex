@@ -20,7 +20,7 @@ defmodule Front.Models.JWTConfig do
   Get OIDC Token configuration for a project or organization.
   """
   def get(org_id, project_id, _opts \\ []) do
-    with {:ok, channel} <- GRPC.Stub.connect(endpoint()) do
+    with {:ok, channel} <- Front.GrpcChannel.connect(endpoint()) do
       case InternalApi.Secrethub.SecretService.Stub.get_jwt_config(
              channel,
              %GetJWTConfigRequest{
@@ -47,7 +47,7 @@ defmodule Front.Models.JWTConfig do
   Update OIDC Token configuration for a project or organization.
   """
   def update(org_id, project_id, is_active, claims, _opts \\ []) do
-    with {:ok, channel} <- GRPC.Stub.connect(endpoint()) do
+    with {:ok, channel} <- Front.GrpcChannel.connect(endpoint()) do
       case InternalApi.Secrethub.SecretService.Stub.update_jwt_config(
              channel,
              %UpdateJWTConfigRequest{

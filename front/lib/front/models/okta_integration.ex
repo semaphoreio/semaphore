@@ -52,7 +52,7 @@ defmodule Front.Models.OktaIntegration do
     okta_endpoint = Application.fetch_env!(:front, :okta_grpc_endpoint)
     req = InternalApi.Okta.ListUsersRequest.new(org_id: org_id)
 
-    with {:ok, channel} <- GRPC.Stub.connect(okta_endpoint) do
+    with {:ok, channel} <- Front.GrpcChannel.connect(okta_endpoint) do
       case InternalApi.Okta.Okta.Stub.list_users(channel, req) do
         {:ok, response} ->
           {:ok, response.user_ids}
@@ -97,7 +97,7 @@ defmodule Front.Models.OktaIntegration do
 
     req = GenerateScimTokenRequest.new(integration_id: integration_id)
 
-    with {:ok, channel} <- GRPC.Stub.connect(endpoint),
+    with {:ok, channel} <- Front.GrpcChannel.connect(endpoint),
          {:ok, response} <- Stub.generate_scim_token(channel, req) do
       {:ok, response.token}
     end
@@ -110,7 +110,7 @@ defmodule Front.Models.OktaIntegration do
     endpoint = Application.fetch_env!(:front, :okta_grpc_endpoint)
     req = DestroyRequest.new(integration_id: integration_id, user_id: user_id)
 
-    with {:ok, channel} <- GRPC.Stub.connect(endpoint),
+    with {:ok, channel} <- Front.GrpcChannel.connect(endpoint),
          {:ok, _response} <- Stub.destroy(channel, req) do
       :ok
     end
@@ -130,7 +130,7 @@ defmodule Front.Models.OktaIntegration do
     endpoint = Application.fetch_env!(:front, :okta_grpc_endpoint)
     req = InternalApi.Okta.DescribeMappingRequest.new(org_id: org_id)
 
-    with {:ok, channel} <- GRPC.Stub.connect(endpoint) do
+    with {:ok, channel} <- Front.GrpcChannel.connect(endpoint) do
       case InternalApi.Okta.Okta.Stub.describe_mapping(channel, req) do
         {:ok, response} ->
           {:ok,
@@ -186,7 +186,7 @@ defmodule Front.Models.OktaIntegration do
         role_mapping: role_mappings
       )
 
-    with {:ok, channel} <- GRPC.Stub.connect(endpoint) do
+    with {:ok, channel} <- Front.GrpcChannel.connect(endpoint) do
       case InternalApi.Okta.Okta.Stub.set_up_mapping(channel, req) do
         {:ok, _response} ->
           :ok
@@ -329,7 +329,7 @@ defmodule Front.Models.OktaIntegration do
         session_expiration_minutes: model.session_expiration_minutes
       )
 
-    with {:ok, channel} <- GRPC.Stub.connect(endpoint) do
+    with {:ok, channel} <- Front.GrpcChannel.connect(endpoint) do
       case InternalApi.Okta.Okta.Stub.set_up(channel, req) do
         {:ok, response} ->
           {:ok,
@@ -351,7 +351,7 @@ defmodule Front.Models.OktaIntegration do
 
     req = InternalApi.Okta.ListRequest.new(org_id: org_id)
 
-    with {:ok, channel} <- GRPC.Stub.connect(endpoint) do
+    with {:ok, channel} <- Front.GrpcChannel.connect(endpoint) do
       case InternalApi.Okta.Okta.Stub.list(channel, req) do
         {:ok, response} ->
           integrations =

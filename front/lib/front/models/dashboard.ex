@@ -67,7 +67,7 @@ defmodule Front.Models.Dashboard do
   end
 
   defp channel do
-    case GRPC.Stub.connect(Application.fetch_env!(:front, :dashboard_api_grpc_endpoint)) do
+    case Front.GrpcChannel.connect(Application.fetch_env!(:front, :dashboard_api_grpc_endpoint)) do
       {:ok, channel} -> channel
       # raise error ?
       _ -> nil

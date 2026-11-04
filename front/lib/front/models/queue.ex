@@ -68,7 +68,7 @@ defmodule Front.Models.Queue do
   defp channel do
     endpoint = Application.fetch_env!(:front, :pipeline_api_grpc_endpoint)
 
-    {:ok, ch} = GRPC.Stub.connect(endpoint)
+    {:ok, ch} = Front.GrpcChannel.connect(endpoint)
 
     ch
   end

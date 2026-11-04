@@ -5,7 +5,7 @@ defmodule JobPage.Api.RepoProxy do
     Watchman.benchmark("fetch_commit.duration", fn ->
       req = InternalApi.RepoProxy.DescribeRequest.new(hook_id: hook_id)
 
-      {:ok, channel} = GRPC.Stub.connect(GrpcConfig.endpoint(:repo_proxy_grpc_endpoint))
+      {:ok, channel} = Front.GrpcChannel.connect(GrpcConfig.endpoint(:repo_proxy_grpc_endpoint))
 
       {:ok, response} =
         InternalApi.RepoProxy.RepoProxyService.Stub.describe(channel, req,

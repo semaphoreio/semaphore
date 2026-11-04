@@ -184,14 +184,14 @@ defmodule Front.Models.RepoProxy do
   defp channel(integration_type \\ "github_oauth_token")
   # should be used only temporarly for create hook action
   defp channel(integration_type) when integration_type in [:BITBUCKET, :GITLAB, :GIT] do
-    case GRPC.Stub.connect(Application.fetch_env!(:front, :hooks_grpc_endpoint)) do
+    case Front.GrpcChannel.connect(Application.fetch_env!(:front, :hooks_grpc_endpoint)) do
       {:ok, channel} -> channel
       _ -> nil
     end
   end
 
   defp channel(_) do
-    case GRPC.Stub.connect(Application.fetch_env!(:front, :repo_proxy_grpc_endpoint)) do
+    case Front.GrpcChannel.connect(Application.fetch_env!(:front, :repo_proxy_grpc_endpoint)) do
       {:ok, channel} -> channel
       # raise error ?
       _ -> nil

@@ -16,7 +16,7 @@ defmodule Front.Clients.WorkflowTest do
     test "returns an error when grpc connection times out" do
       request = ListKeysetRequest.new()
 
-      with_mock GRPC.Stub, [:passthrough],
+      with_mock Front.GrpcChannel, [:passthrough],
         connect: fn _ -> {:error, "Error when opening connection: :timeout"} end do
         assert {:error, "Error when opening connection: :timeout"} = Workflow.list_keyset(request)
       end

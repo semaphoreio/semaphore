@@ -1,6 +1,6 @@
 defmodule Front.RBAC.Client do
   def channel do
-    {:ok, ch} = GRPC.Stub.connect(api_endpoint())
+    {:ok, ch} = Front.GrpcChannel.connect(api_endpoint())
     ch
   end
 

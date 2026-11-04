@@ -66,7 +66,7 @@ defmodule Front.RBAC.Members do
 
     endpoint = Application.fetch_env!(:front, :rbac_grpc_endpoint)
 
-    with {:ok, channel} <- GRPC.Stub.connect(endpoint),
+    with {:ok, channel} <- Front.GrpcChannel.connect(endpoint),
          {:ok, response} <- Stub.list_accessible_projects(channel, request, timeout: 30_000) do
       {:ok, response.project_ids}
     else

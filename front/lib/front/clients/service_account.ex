@@ -172,7 +172,7 @@ defmodule Front.Clients.ServiceAccount do
 
   defp channel do
     Application.fetch_env!(:front, :service_account_grpc_endpoint)
-    |> GRPC.Stub.connect()
+    |> Front.GrpcChannel.connect()
   end
 
   defp timeout do

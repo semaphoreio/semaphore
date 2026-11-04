@@ -18,6 +18,7 @@ defmodule Front.Application do
 
     base_children = [
       {Phoenix.PubSub, [name: Front.PubSub, adapter: Phoenix.PubSub.PG2]},
+      Front.GrpcChannel,
       FrontWeb.Endpoint,
       {Task.Supervisor, [name: Front.TaskSupervisor]},
       Front.Tracing.Store,
