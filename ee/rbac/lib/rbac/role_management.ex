@@ -131,41 +131,100 @@ defmodule Rbac.RoleManagement do
   """
   @spec has_role(RBI, String.t()) :: true | false
   def has_role(rbi, role_id) do
-    case verify_input_for_new_role(rbi.user_id, rbi.org_id, rbi.project_id, role_id) do
-      {:ok, nil} ->
-        user_to_subject_bindings = Queries.user_to_subject_bindings_query(rbi.user_id)
-        role_inheritance_tree = Queries.role_inheritance_and_mappings_query(rbi.org_id)
+    [result] = has_roles([{rbi, role_id}])
+    result
+  end
 
-        project_where_clause =
-          if valid_uuid?(rbi.project_id) do
-            &where(&1, [srb], srb.project_id == ^rbi.project_id or is_nil(srb.project_id))
-          else
-            &add_where_for_project(&1, rbi.project_id)
-          end
+  @doc """
+    Batch version of `has_role/2`. Takes a list of `{rbi, role_id}` pairs and returns a list of
+    booleans in the same order, each one equal to what `has_role/2` returns for that pair.
 
-        SubjectRoleBinding
-        |> join(:inner, [srb], u in subquery(user_to_subject_bindings),
-          on: u.subject_id == srb.subject_id
-        )
-        |> join(:inner, [srb], rit in subquery(role_inheritance_tree),
-          on: rit.inheriting_role_id == srb.role_id
-        )
-        |> add_where_for_org(rbi.org_id)
-        |> project_where_clause.()
-        |> where(
-          [_, _, rit],
-          rit.inherited_role_id == ^role_id or rit.mapped_proj_role_id == ^role_id
-        )
-        |> Rbac.Repo.exists?()
+    Instead of one role-tree query per pair, the roles a subject holds within an organization are
+    loaded once per distinct (subject, organization) and every pair is matched against them.
+  """
+  @spec has_roles([{RBI, String.t()}]) :: [boolean()]
+  def has_roles(rbi_role_pairs) do
+    verified =
+      Enum.map(rbi_role_pairs, fn {rbi, role_id} ->
+        {rbi, role_id,
+         verify_input_for_new_role(rbi.user_id, rbi.org_id, rbi.project_id, role_id)}
+      end)
 
-      {:error, error_msg} ->
+    held_roles =
+      verified
+      |> Enum.filter(fn {_rbi, _role_id, result} -> result == {:ok, nil} end)
+      |> Enum.group_by(fn {rbi, _, _} -> {rbi.user_id, rbi.org_id} end, fn {_, role_id, _} ->
+        role_id
+      end)
+      |> Map.new(fn {{user_id, org_id}, role_ids} ->
+        {{user_id, org_id}, held_roles(user_id, org_id, Enum.uniq(role_ids))}
+      end)
+
+    Enum.map(verified, fn
+      {rbi, role_id, {:ok, nil}} ->
+        held_roles
+        |> Map.fetch!({rbi.user_id, rbi.org_id})
+        |> holds_role?(rbi.project_id, role_id)
+
+      {_rbi, _role_id, {:error, error_msg}} ->
         Logger.warning(
           "[Role Management] Invalid input passed to has_role function. #{error_msg}"
         )
 
         false
-    end
+    end)
   end
+
+  # The bindings of the subject (and its groups) within the organization through which it holds
+  # any of the given roles, directly, by inheritance or by an org to project role mapping.
+  defp held_roles(user_id, org_id, role_ids) do
+    user_to_subject_bindings = Queries.user_to_subject_bindings_query(user_id)
+    role_inheritance_tree = Queries.role_inheritance_and_mappings_query(org_id)
+
+    SubjectRoleBinding
+    |> join(:inner, [srb], u in subquery(user_to_subject_bindings),
+      on: u.subject_id == srb.subject_id
+    )
+    |> join(:inner, [srb], rit in subquery(role_inheritance_tree),
+      on: rit.inheriting_role_id == srb.role_id
+    )
+    |> add_where_for_org(org_id)
+    |> where(
+      [_, _, rit],
+      rit.inherited_role_id in ^role_ids or rit.mapped_proj_role_id in ^role_ids
+    )
+    |> select([srb, _, rit], %{
+      project_id: srb.project_id,
+      inherited_role_id: rit.inherited_role_id,
+      mapped_proj_role_id: rit.mapped_proj_role_id
+    })
+    |> distinct(true)
+    |> Rbac.Repo.all()
+  end
+
+  defp holds_role?(held_roles, project_id, role_id) do
+    role_id = String.downcase(role_id)
+    project_id = normalize_project_id(project_id)
+
+    Enum.any?(held_roles, fn held ->
+      project_matches?(held.project_id, project_id) and
+        role_id in [held.inherited_role_id, held.mapped_proj_role_id]
+    end)
+  end
+
+  defp normalize_project_id(project_id) when is_binary(project_id),
+    do: String.downcase(project_id)
+
+  defp normalize_project_id(project_id), do: project_id
+
+  # Same filters has_role/2 always applied in SQL: a project id also matches org level
+  # bindings, :is_nil / :is_not_nil select org or project level bindings, nil matches all.
+  defp project_matches?(_binding_project_id, nil), do: true
+  defp project_matches?(binding_project_id, :is_nil), do: is_nil(binding_project_id)
+  defp project_matches?(binding_project_id, :is_not_nil), do: not is_nil(binding_project_id)
+
+  defp project_matches?(binding_project_id, project_id),
+    do: is_nil(binding_project_id) or binding_project_id == project_id
 
   @doc """
     Checks whether user has any role within the given org, thus being a part of it.

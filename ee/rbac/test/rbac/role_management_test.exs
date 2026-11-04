@@ -89,6 +89,227 @@ defmodule Rbac.RoleManagement.Test do
     end
   end
 
+  describe "has_roles/1" do
+    @project2_id "8f1d2c3b-4a5e-4f60-9a7b-1c2d3e4f5a6b"
+
+    setup do
+      {:ok, org_admin} = Rbac.Repo.RbacRole.get_role_by_name("Admin", "org_scope", @org_id)
+      {:ok, org_member} = Rbac.Repo.RbacRole.get_role_by_name("Member", "org_scope", @org_id)
+      {:ok, org_owner} = Rbac.Repo.RbacRole.get_role_by_name("Owner", "org_scope", @org_id)
+      {:ok, reader} = Rbac.Repo.RbacRole.get_role_by_name("Reader", "project_scope", @org_id)
+
+      {:ok, contributor} =
+        Rbac.Repo.RbacRole.get_role_by_name("Contributor", "project_scope", @org_id)
+
+      {:ok,
+       org_admin: org_admin.id,
+       org_member: org_member.id,
+       org_owner: org_owner.id,
+       reader: reader.id,
+       contributor: contributor.id}
+    end
+
+    test "empty list returns empty list" do
+      assert RoleManagement.has_roles([]) == []
+    end
+
+    test "returns results in input order, including duplicates and unknown roles", ctx do
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
+      {:ok, rbi} = RBI.new(user_id: @user_id, org_id: @org_id)
+
+      assert RoleManagement.has_roles([
+               {rbi, ctx.org_admin},
+               {rbi, ctx.org_member},
+               {rbi, Ecto.UUID.generate()},
+               {rbi, ctx.org_admin},
+               {rbi, ""}
+             ]) == [true, false, false, true, false]
+    end
+
+    test "each subject and organization is resolved against its own bindings", ctx do
+      Support.Rbac.create_org_roles(@org2_id)
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
+      Support.Rbac.assign_org_role_by_name(@org_id, @user2_id, "Member")
+      Support.Rbac.assign_org_role_by_name(@org2_id, @user2_id, "Admin")
+      {:ok, org2_admin} = Rbac.Repo.RbacRole.get_role_by_name("Admin", "org_scope", @org2_id)
+
+      {:ok, u1_org1} = RBI.new(user_id: @user_id, org_id: @org_id)
+      {:ok, u2_org1} = RBI.new(user_id: @user2_id, org_id: @org_id)
+      {:ok, u1_org2} = RBI.new(user_id: @user_id, org_id: @org2_id)
+      {:ok, u2_org2} = RBI.new(user_id: @user2_id, org_id: @org2_id)
+
+      assert RoleManagement.has_roles([
+               {u1_org1, ctx.org_admin},
+               {u1_org1, ctx.org_member},
+               {u2_org1, ctx.org_member},
+               {u2_org1, ctx.org_admin},
+               {u1_org2, org2_admin.id},
+               {u2_org2, org2_admin.id},
+               {u2_org2, ctx.org_admin}
+             ]) == [true, false, true, false, false, true, false]
+    end
+
+    test "pairs without a user or organization are false", ctx do
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
+      {:ok, no_user} = RBI.new(org_id: @org_id)
+      {:ok, no_org} = RBI.new(user_id: @user_id)
+      {:ok, rbi} = RBI.new(user_id: @user_id, org_id: @org_id)
+
+      assert RoleManagement.has_roles([
+               {no_user, ctx.org_admin},
+               {no_org, ctx.org_admin},
+               {rbi, ctx.org_admin}
+             ]) == [false, false, true]
+    end
+
+    test "matches inheritance, org to project mappings, groups and project scoping", ctx do
+      Support.Factories.RoleInheritance.insert(
+        inheriting_role_id: ctx.org_owner,
+        inherited_role_id: ctx.org_member
+      )
+
+      Support.Factories.OrgRoleToProjRoleMappings.insert(
+        org_role_id: ctx.org_owner,
+        proj_role_id: ctx.contributor
+      )
+
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Owner")
+      Support.Rbac.assign_org_role_by_name(@org_id, @user2_id, "Member")
+      Support.Rbac.assign_project_role_by_name(@org_id, @user2_id, @project_id, "Reader")
+
+      {:ok, group} = Support.Factories.Group.insert(org_id: @org_id)
+      Support.Factories.UserGroupBinding.insert(user_id: @user2_id, group_id: group.id)
+
+      Support.Factories.SubjectRoleBinding.insert(
+        role_id: ctx.org_admin,
+        org_id: @org_id,
+        subject_id: group.id
+      )
+
+      rbis =
+        for user <- [@user_id, @user2_id],
+            project <- [nil, :is_nil, :is_not_nil, @project_id, @project2_id] do
+          {:ok, rbi} = RBI.new(user_id: user, org_id: @org_id, project_id: project)
+          rbi
+        end
+
+      roles = [ctx.org_owner, ctx.org_member, ctx.org_admin, ctx.reader, ctx.contributor]
+      pairs = for rbi <- rbis, role <- roles, do: {rbi, role}
+
+      expected = Enum.map(pairs, fn {rbi, role} -> reference_has_role(rbi, role) end)
+
+      assert RoleManagement.has_roles(pairs) == expected
+      assert Enum.any?(expected) and not Enum.all?(expected)
+
+      {:ok, u1_project} = RBI.new(user_id: @user_id, org_id: @org_id, project_id: @project_id)
+      {:ok, u2_project2} = RBI.new(user_id: @user2_id, org_id: @org_id, project_id: @project2_id)
+
+      assert RoleManagement.has_roles([
+               {u1_project, ctx.contributor},
+               {u1_project, ctx.reader},
+               {u2_project2, ctx.reader}
+             ]) == [true, false, false]
+    end
+
+    test "ids are compared case-insensitively", ctx do
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Member")
+      Support.Rbac.assign_project_role_by_name(@org_id, @user_id, @project_id, "Reader")
+
+      {:ok, rbi} =
+        RBI.new(
+          user_id: String.upcase(@user_id),
+          org_id: String.upcase(@org_id),
+          project_id: String.upcase(@project_id)
+        )
+
+      assert RoleManagement.has_roles([{rbi, String.upcase(ctx.reader)}]) ==
+               [true]
+    end
+
+    test "runs one role query per subject and organization", ctx do
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
+      {:ok, rbi} = RBI.new(user_id: @user_id, org_id: @org_id)
+      {:ok, rbi2} = RBI.new(user_id: @user2_id, org_id: @org_id)
+
+      pairs =
+        for rbi <- [rbi, rbi2],
+            role <- [ctx.org_admin, ctx.org_member, ctx.org_owner],
+            do: {rbi, role}
+
+      handler = "has-roles-query-count-#{inspect(self())}"
+      test_pid = self()
+
+      :telemetry.attach(
+        handler,
+        [:rbac, :repo, :query],
+        fn _event, _measurements, metadata, _config ->
+          if metadata.query =~ "role_inheritance_tree", do: send(test_pid, :role_query)
+        end,
+        nil
+      )
+
+      on_exit(fn -> :telemetry.detach(handler) end)
+
+      assert RoleManagement.has_roles(pairs) == [true, false, false, false, false, false]
+      :telemetry.detach(handler)
+
+      assert count_messages(:role_query) == 2
+    end
+  end
+
+  defp count_messages(message, count \\ 0) do
+    receive do
+      ^message -> count_messages(message, count + 1)
+    after
+      0 -> count
+    end
+  end
+
+  # The single-pair query has_role/2 ran before batching, kept as an independent oracle.
+  defp reference_has_role(rbi, role_id) do
+    not is_nil(rbi.user_id) and not is_nil(rbi.org_id) and reference_scope_ok?(rbi, role_id) and
+      rbi |> reference_query(role_id) |> Rbac.Repo.exists?()
+  end
+
+  defp reference_query(rbi, role_id) do
+    alias Rbac.Repo.{Queries, SubjectRoleBinding}
+
+    user_to_subject_bindings = Queries.user_to_subject_bindings_query(rbi.user_id)
+    role_inheritance_tree = Queries.role_inheritance_and_mappings_query(rbi.org_id)
+
+    SubjectRoleBinding
+    |> join(:inner, [srb], u in subquery(user_to_subject_bindings),
+      on: u.subject_id == srb.subject_id
+    )
+    |> join(:inner, [srb], rit in subquery(role_inheritance_tree),
+      on: rit.inheriting_role_id == srb.role_id
+    )
+    |> where([srb], srb.org_id == ^rbi.org_id)
+    |> where(
+      [_, _, rit],
+      rit.inherited_role_id == ^role_id or rit.mapped_proj_role_id == ^role_id
+    )
+    |> reference_project_filter(rbi.project_id)
+  end
+
+  defp reference_project_filter(query, nil), do: query
+  defp reference_project_filter(query, :is_nil), do: where(query, [srb], is_nil(srb.project_id))
+
+  defp reference_project_filter(query, :is_not_nil),
+    do: where(query, [srb], not is_nil(srb.project_id))
+
+  defp reference_project_filter(query, id),
+    do: where(query, [srb], srb.project_id == ^id or is_nil(srb.project_id))
+
+  # has_role/2 rejects a project scoped role without a project, and an org scoped role with one.
+  defp reference_scope_ok?(rbi, role_id) do
+    case Rbac.Repo.RbacRole.get_role_by_id(role_id, rbi.org_id) do
+      nil -> false
+      %{scope: %{scope_name: "project_scope"}} -> not is_nil(rbi.project_id)
+      _ -> rbi.project_id in [nil, :is_nil]
+    end
+  end
+
   describe "user_part_of_org/2" do
     test "user does have a role within the org" do
       Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")

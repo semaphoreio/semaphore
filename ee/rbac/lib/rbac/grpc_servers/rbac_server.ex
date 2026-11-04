@@ -221,7 +221,7 @@ defmodule Rbac.GrpcServers.RbacServer do
 
   def subjects_have_roles(%RBAC.SubjectsHaveRolesRequest{role_assignments: assignments}, _stream) do
     Watchman.benchmark("subjects_have_roles.duration", fn ->
-      has_roles =
+      pairs =
         Enum.map(assignments, fn assignment ->
           validate_subjects_have_roles_arguments(assignment)
 
@@ -233,9 +233,16 @@ defmodule Rbac.GrpcServers.RbacServer do
                 if(assignment.project_id == "", do: :is_nil, else: assignment.project_id)
             )
 
+          {rbi, assignment.role_id}
+        end)
+
+      has_roles =
+        assignments
+        |> Enum.zip(Rbac.RoleManagement.has_roles(pairs))
+        |> Enum.map(fn {assignment, has_role} ->
           %RBAC.SubjectsHaveRolesResponse.HasRole{
             role_assignment: assignment,
-            has_role: Rbac.RoleManagement.has_role(rbi, assignment.role_id)
+            has_role: has_role
           }
         end)
 

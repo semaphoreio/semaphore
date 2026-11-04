@@ -1103,6 +1103,50 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       {:error, grpc_error} = state.grpc_channel |> Stub.subjects_have_roles(req)
       assert grpc_error.message =~ "Project does not belong to the organization"
     end
+
+    test "many assignments in one request keep their order", state do
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
+      {:ok, admin} = Rbac.Repo.RbacRole.get_role_by_name("Admin", "org_scope", @org_id)
+      {:ok, member} = Rbac.Repo.RbacRole.get_role_by_name("Member", "org_scope", @org_id)
+
+      req = %Request{
+        role_assignments: [
+          gen_role_assignment(admin.id, @user_id, @org_id),
+          gen_role_assignment(member.id, @user_id, @org_id),
+          gen_role_assignment(admin.id, UUID.generate(), @org_id),
+          gen_role_assignment(admin.id, @user_id, @org_id)
+        ]
+      }
+
+      {:ok, response} = state.grpc_channel |> Stub.subjects_have_roles(req)
+
+      assert Enum.map(response.has_roles, & &1.has_role) == [true, false, false, true]
+
+      assert Enum.map(response.has_roles, & &1.role_assignment.role_id) ==
+               Enum.map(req.role_assignments, & &1.role_id)
+    end
+
+    test "a role reached through inheritance is granted in a batch", state do
+      {:ok, admin} = Rbac.Repo.RbacRole.get_role_by_name("Admin", "org_scope", @org_id)
+      {:ok, member} = Rbac.Repo.RbacRole.get_role_by_name("Member", "org_scope", @org_id)
+
+      Support.Factories.RoleInheritance.insert(
+        inheriting_role_id: admin.id,
+        inherited_role_id: member.id
+      )
+
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
+
+      req = %Request{
+        role_assignments: [
+          gen_role_assignment(admin.id, @user_id, @org_id),
+          gen_role_assignment(member.id, @user_id, @org_id)
+        ]
+      }
+
+      {:ok, response} = state.grpc_channel |> Stub.subjects_have_roles(req)
+      assert Enum.map(response.has_roles, & &1.has_role) == [true, true]
+    end
   end
 
   describe "list_accessible_orgs" do
