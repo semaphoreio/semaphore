@@ -64,6 +64,13 @@ defmodule Zebra.Models.JobStopRequest do
     changeset(%__MODULE__{}, record) |> Zebra.LegacyRepo.insert()
   end
 
+  # Each row binds 6 parameters (id, build_id, job_id, state, created_at,
+  # updated_at) and Postgres caps a statement at 65,535 parameters, so a single
+  # insert_all fails above 10,922 rows. Insert in chunks well below that.
+  @bulk_create_chunk_size 5_000
+
+  def bulk_create_chunk_size, do: @bulk_create_chunk_size
+
   @doc """
   Input: list of {task_id, job_id} tuples.
 
@@ -71,38 +78,41 @@ defmodule Zebra.Models.JobStopRequest do
 
   In case of duplicate entries, the error is ignored.
 
+  Any number of tuples is accepted: they are inserted in chunks inside one
+  transaction, so either all of them are inserted or none are.
+
   Returns {:ok, inserted_records_count}
   """
   def bulk_create([]), do: {:ok, 0}
 
   def bulk_create(task_job_id_tuples) do
-    records =
-      Enum.map(task_job_id_tuples, fn {task_id, job_id} ->
-        build_record(task_id, job_id)
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    Zebra.LegacyRepo.transaction(fn ->
+      task_job_id_tuples
+      |> Stream.map(fn {task_id, job_id} -> build_record(task_id, job_id, now) end)
+      |> Stream.chunk_every(@bulk_create_chunk_size)
+      |> Enum.reduce(0, fn records, total ->
+        {inserted_count, nil} =
+          Zebra.LegacyRepo.insert_all(__MODULE__, records, on_conflict: :nothing)
+
+        total + inserted_count
       end)
-
-    {inserted_count, nil} =
-      Zebra.LegacyRepo.insert_all(
-        __MODULE__,
-        records,
-        on_conflict: :nothing
-      )
-
-    {:ok, inserted_count}
+    end)
   end
 
   defp build_record(task_id, job_id) do
-    now = DateTime.utc_now() |> DateTime.truncate(:second)
+    build_record(task_id, job_id, DateTime.utc_now() |> DateTime.truncate(:second))
+  end
 
-    params = %{
+  defp build_record(task_id, job_id, now) do
+    %{
       state: state_pending(),
       created_at: now,
       updated_at: now,
       job_id: job_id,
       build_id: task_id
     }
-
-    params
   end
 
   def update(req, params \\ %{}) do
