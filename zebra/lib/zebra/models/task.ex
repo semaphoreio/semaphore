@@ -132,12 +132,9 @@ defmodule Zebra.Models.Task do
   end
 
   def finished_at(task) do
-    Zebra.LegacyRepo.preload(task, [:jobs])
-    |> Map.get(:jobs)
-    |> Enum.map(fn job -> job.finished_at |> DateTime.to_unix() end)
-    |> Enum.max()
-    |> DateTime.from_unix()
-    |> elem(1)
+    Zebra.Models.Job
+    |> Q.where([j], j.build_id == ^task.id)
+    |> Zebra.LegacyRepo.aggregate(:max, :finished_at)
   end
 
   #

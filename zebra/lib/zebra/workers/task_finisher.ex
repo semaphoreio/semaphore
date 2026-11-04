@@ -49,68 +49,88 @@ defmodule Zebra.Workers.TaskFinisher do
 
   def process(task) do
     Watchman.benchmark("task_finisher.process.duration", fn ->
-      jobs =
-        Zebra.Models.Job
-        |> where([j], j.build_id == ^task.id)
-        |> select([j], [:aasm_state, :result, :finished_at])
-        |> Repo.all()
+      # Runs after every job finish. While the task still has unfinished jobs
+      # this is a single index probe, so the cost of a finish does not grow
+      # with the number of jobs in the task.
+      unless unfinished_jobs?(task.id) do
+        summary = job_summary(task.id)
 
-      states = Enum.map(jobs, fn j -> j.aasm_state end)
-      results = Enum.map(jobs, fn j -> j.result end)
+        log(task.id, "Processing task, job summary #{inspect(summary)}")
 
-      log(task.id, "Processing task, results #{inspect(results)}, states #{inspect(states)}")
-
-      if Enum.all?(states, fn s -> s == Job.state_finished() end) do
-        case calculate_task_result(results, task) do
-          {:ok, result} ->
-            finish(task, jobs, result)
-            publish(task)
-
-          {:error, message} ->
-            log(task.id, message)
-        end
+        if summary.unfinished == 0, do: finish_with_result(task, summary)
       end
     end)
   end
 
-  def finish(task, jobs, result) do
+  defp finish_with_result(task, summary) do
+    case calculate_task_result(summary, task) do
+      {:ok, result} ->
+        finish(task, summary.last_finished_at, result)
+        publish(task)
+
+      {:error, message} ->
+        log(task.id, message)
+    end
+  end
+
+  defp unfinished_jobs?(task_id) do
+    Job
+    |> where([j], j.build_id == ^task_id)
+    |> where([j], j.aasm_state != "finished")
+    |> Repo.exists?()
+  end
+
+  @doc """
+  Counts the jobs of a task by state and result in one aggregate query.
+  """
+  def job_summary(task_id) do
+    Job
+    |> where([j], j.build_id == ^task_id)
+    |> select([j], %{
+      total: count(j.id),
+      unfinished: filter(count(j.id), j.aasm_state != "finished"),
+      passed: filter(count(j.id), j.result == "passed"),
+      failed: filter(count(j.id), j.result == "failed"),
+      stopped: filter(count(j.id), j.result == "stopped"),
+      last_finished_at: max(j.finished_at)
+    })
+    |> Repo.one()
+  end
+
+  def finish(task, last_job_finished_at, result) do
     {:ok, task} = Zebra.Models.Task.update(task, %{result: result})
 
-    last_job_finished_at =
-      jobs
-      |> Enum.map(fn j -> j.finished_at end)
-      |> Enum.max_by(fn t ->
-        Zebra.Time.datetime_to_ms(t)
-      end)
-      |> clamp_to_task_creation(task)
-
-    Zebra.Metrics.submit_datetime_diff(
-      "task.finishing.duration",
-      task.updated_at,
-      last_job_finished_at
-    )
+    if last_job_finished_at do
+      Zebra.Metrics.submit_datetime_diff(
+        "task.finishing.duration",
+        task.updated_at,
+        clamp_to_task_creation(last_job_finished_at, task)
+      )
+    end
 
     log(task.id, "marked as finished")
   end
 
-  def calculate_task_result(job_results, task) do
+  @doc """
+  Input: a job summary (see job_summary/1) of a task whose jobs are all finished.
+  """
+  def calculate_task_result(summary, task) do
     cond do
       # If fail_fast:stop is active and there's a failure, show as failed
-      task.fail_fast_strategy == "stop" &&
-          Enum.any?(job_results, fn r -> r == Job.result_failed() end) ->
+      task.fail_fast_strategy == "stop" && summary.failed > 0 ->
         {:ok, "failed"}
 
-      Enum.any?(job_results, fn r -> r == Job.result_stopped() end) ->
+      summary.stopped > 0 ->
         {:ok, "stopped"}
 
-      Enum.any?(job_results, fn r -> r == Job.result_failed() end) ->
+      summary.failed > 0 ->
         {:ok, "failed"}
 
-      Enum.all?(job_results, fn r -> r == Job.result_passed() end) ->
+      summary.passed == summary.total ->
         {:ok, "passed"}
 
       true ->
-        {:error, "can't calculate result from #{inspect(job_results)}"}
+        {:error, "can't calculate result from #{inspect(summary)}"}
     end
   end
 
@@ -118,24 +138,26 @@ defmodule Zebra.Workers.TaskFinisher do
     Logger.info("[FINISHER][task_id: #{task_id}] #{message}")
   end
 
+  # A task is finishable when every job has a final result. The first
+  # NOT EXISTS is answered from the unfinished-jobs partial index, so running
+  # tasks are discarded after one index probe; the second keeps the old
+  # requirement that every job has a passed, failed or stopped result.
   @finishable_tasks_query """
     select
-      running.id
+      b.id
     from
-      (
-        select
-          b.id,
-          (select count(*) from jobs where build_id = b.id)                        as total_jobs,
-          (select count(*) from jobs where build_id = b.id and result = 'passed')  as passed_jobs,
-          (select count(*) from jobs where build_id = b.id and result = 'failed')  as failed_jobs,
-          (select count(*) from jobs where build_id = b.id and result = 'stopped') as stopped_jobs
-        from
-          builds as b
-        where
-          b.result IS NULL
-      ) as running
+      builds as b
     where
-      running.total_jobs = running.passed_jobs + running.failed_jobs + running.stopped_jobs
+      b.result is null
+      and not exists (
+        select 1 from jobs as j
+        where j.build_id = b.id and j.aasm_state <> 'finished'
+      )
+      and not exists (
+        select 1 from jobs as j
+        where j.build_id = b.id
+          and (j.result is null or j.result not in ('passed', 'failed', 'stopped'))
+      )
   """
 
   def finishable_task_ids do

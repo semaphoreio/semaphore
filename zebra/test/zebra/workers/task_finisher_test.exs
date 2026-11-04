@@ -57,40 +57,129 @@ defmodule Zebra.Workers.TaskFinisherTest do
     end
   end
 
+  describe ".process with unfinished jobs" do
+    test "it leaves the task open until the last job finishes" do
+      {:ok, task} = Support.Factories.Task.create()
+
+      {:ok, _} = Support.Factories.Job.create(:finished, %{build_id: task.id, result: "passed"})
+      {:ok, running} = Support.Factories.Job.create(:started, %{build_id: task.id})
+
+      W.process(task)
+      assert {:ok, %{result: nil}} = Zebra.Models.Task.find(task.id)
+
+      {:ok, _} = Zebra.Models.Job.update(running, %{aasm_state: "finished", result: "failed"})
+
+      W.process(task)
+      assert {:ok, %{result: "failed"}} = Zebra.Models.Task.find(task.id)
+    end
+  end
+
+  describe ".job_summary" do
+    test "it counts jobs by state and result and returns the last finish time" do
+      {:ok, task} = Support.Factories.Task.create()
+      {:ok, other_task} = Support.Factories.Task.create()
+
+      for {result, at} <- [{"passed", 100}, {"failed", 300}, {"stopped", 200}, {"passed", 50}] do
+        {:ok, _} =
+          Support.Factories.Job.create(:finished, %{
+            build_id: task.id,
+            result: result,
+            finished_at: DateTime.from_unix!(at)
+          })
+      end
+
+      {:ok, _} = Support.Factories.Job.create(:started, %{build_id: task.id})
+
+      {:ok, _} =
+        Support.Factories.Job.create(:finished, %{build_id: other_task.id, result: "failed"})
+
+      assert W.job_summary(task.id) == %{
+               total: 5,
+               unfinished: 1,
+               passed: 2,
+               failed: 1,
+               stopped: 1,
+               last_finished_at: DateTime.from_unix!(300)
+             }
+    end
+
+    test "a task without jobs has an empty summary" do
+      {:ok, task} = Support.Factories.Task.create()
+
+      assert W.job_summary(task.id) == %{
+               total: 0,
+               unfinished: 0,
+               passed: 0,
+               failed: 0,
+               stopped: 0,
+               last_finished_at: nil
+             }
+    end
+  end
+
+  describe ".finishable_task_ids" do
+    test "it returns only open tasks whose jobs are all finished with a result" do
+      done = create_task_with_finished_jobs()
+
+      {:ok, running} = Support.Factories.Task.create()
+
+      {:ok, _} =
+        Support.Factories.Job.create(:finished, %{build_id: running.id, result: "passed"})
+
+      {:ok, _} = Support.Factories.Job.create(:started, %{build_id: running.id})
+
+      {:ok, no_result} = Support.Factories.Task.create()
+      {:ok, _} = Support.Factories.Job.create(:finished, %{build_id: no_result.id, result: nil})
+
+      {:ok, already_finished} = Support.Factories.Task.create(%{result: "passed"})
+
+      {:ok, _} =
+        Support.Factories.Job.create(:finished, %{build_id: already_finished.id, result: "passed"})
+
+      assert W.finishable_task_ids() == [done.id]
+    end
+  end
+
   describe ".calculate_task_result" do
+    test "when a job has no result => returns an error" do
+      {:ok, task} = Support.Factories.Task.create()
+
+      assert {:error, _} = W.calculate_task_result(summary(["passed", nil]), task)
+    end
+
     test "when any of the jobs are stopped => result is stopped" do
       results = ["passed", "failed", "stopped"]
       {:ok, task} = Support.Factories.Task.create()
 
-      assert {:ok, "stopped"} = W.calculate_task_result(results, task)
+      assert {:ok, "stopped"} = W.calculate_task_result(summary(results), task)
     end
 
     test "when any of the jobs are failed => result is failed" do
       results = ["passed", "failed", "passed"]
       {:ok, task} = Support.Factories.Task.create()
 
-      assert {:ok, "failed"} = W.calculate_task_result(results, task)
+      assert {:ok, "failed"} = W.calculate_task_result(summary(results), task)
     end
 
     test "when all of the jobs are passed => result is passed" do
       results = ["passed", "passed", "passed"]
       {:ok, task} = Support.Factories.Task.create()
 
-      assert {:ok, "passed"} = W.calculate_task_result(results, task)
+      assert {:ok, "passed"} = W.calculate_task_result(summary(results), task)
     end
 
     test "when fail_fast:stop is active and jobs are stopped due to failure => result is failed" do
       results = ["passed", "failed", "stopped", "stopped"]
       {:ok, task} = Support.Factories.Task.create(%{fail_fast_strategy: "stop"})
 
-      assert {:ok, "failed"} = W.calculate_task_result(results, task)
+      assert {:ok, "failed"} = W.calculate_task_result(summary(results), task)
     end
 
     test "when fail_fast:stop is active but no jobs failed => result is stopped" do
       results = ["passed", "stopped", "stopped"]
       {:ok, task} = Support.Factories.Task.create(%{fail_fast_strategy: "stop"})
 
-      assert {:ok, "stopped"} = W.calculate_task_result(results, task)
+      assert {:ok, "stopped"} = W.calculate_task_result(summary(results), task)
     end
 
     test "when fail_fast:cancel is active and jobs are stopped due to failure => result is stopped" do
@@ -98,7 +187,7 @@ defmodule Zebra.Workers.TaskFinisherTest do
       {:ok, task} = Support.Factories.Task.create(%{fail_fast_strategy: "cancel"})
 
       # With cancel strategy, we don't override the normal logic
-      assert {:ok, "stopped"} = W.calculate_task_result(results, task)
+      assert {:ok, "stopped"} = W.calculate_task_result(summary(results), task)
     end
   end
 
@@ -209,5 +298,16 @@ defmodule Zebra.Workers.TaskFinisherTest do
       })
 
     task
+  end
+
+  defp summary(results) do
+    %{
+      total: length(results),
+      unfinished: 0,
+      passed: Enum.count(results, &(&1 == "passed")),
+      failed: Enum.count(results, &(&1 == "failed")),
+      stopped: Enum.count(results, &(&1 == "stopped")),
+      last_finished_at: nil
+    }
   end
 end
