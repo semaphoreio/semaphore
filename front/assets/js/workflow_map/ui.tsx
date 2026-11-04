@@ -59,7 +59,7 @@ export const JobRow = ({ job }: { job: Job, }) => {
   const body = (
     <>
       <StatusIcon status={job.status} size={14}/>
-      <span className="wf-map-job-name">
+      <span className="wf-map-job-name" title={job.name}>
         <Highlight text={job.name}/>
       </span>
       {job.reused ? <span className="wf-map-time">reused</span> : <Duration start={job.startedAt} end={job.finishedAt} running={job.status === `running`}/>}
@@ -97,7 +97,7 @@ export const BlockCard = ({ block, onHeaderClick }: { block: Block, onHeaderClic
     <div className={`wf-map-block ${h.active && !h.blocks.has(block) ? `dim` : ``} ${focused ? `focused` : ``}`}>
       <button className="wf-map-block-head" onClick={onHeaderClick} data-tippy-content="Collapse block">
         <StatusIcon status={st}/>
-        <span className="wf-map-block-name">
+        <span className="wf-map-block-name" title={block.name}>
           <Highlight text={block.name}/>
         </span>
       </button>
@@ -109,8 +109,10 @@ export const BlockCard = ({ block, onHeaderClick }: { block: Block, onHeaderClic
 };
 
 export const PipelineTitle = ({ p }: { p: Pipeline, }) => (
-  <span className="wf-map-title">
-    <Highlight text={p.name}/>
+  <span className="wf-map-title" title={p.name}>
+    <span className="wf-map-title-name">
+      <Highlight text={p.name}/>
+    </span>
     {p.attempt > 1 && <span className="wf-map-attempt">#{p.attempt}</span>}
   </span>
 );

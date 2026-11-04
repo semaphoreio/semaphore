@@ -214,7 +214,7 @@ const BlockNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
         <button className={`wf-map-summary ${f && (f.id === b.id || f.id.startsWith(`${b.id}#`)) ? `focused` : ``}`} onClick={flip}>
           <span className="wf-map-summary-name">
             <StatusIcon status={st}/>
-            <span>
+            <span className="wf-map-block-name" title={b.name}>
               <Highlight text={b.name}/>
             </span>
           </span>
