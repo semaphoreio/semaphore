@@ -66,7 +66,27 @@ defmodule Audit.Retention.DeleterTest do
     assert event_exists?(new_event_without_policy.id)
   end
 
+  test "keeps and unmarks already marked events once the feature is turned off" do
+    stub_retention_feature(false)
+
+    past = DateTime.utc_now() |> DateTime.add(-60, :second) |> DateTime.truncate(:second)
+    marked_event = RetentionFixtures.insert_event(%{expires_at: past})
+
+    {:noreply, _state} =
+      Deleter.handle_info(:tick, %{
+        batch_size: 100,
+        idle_interval_ms: 60_000,
+        drain_interval_ms: 1_000,
+        backlog_tick: 0
+      })
+
+    assert event_exists?(marked_event.id)
+    assert_unmarked(marked_event.id)
+  end
+
   test "drains quickly after a full batch and backs off once caught up" do
+    stub_retention_feature(true)
+
     past = DateTime.utc_now() |> DateTime.add(-60, :second) |> DateTime.truncate(:second)
 
     # handle_info schedules :tick to the caller; here that is the test process,

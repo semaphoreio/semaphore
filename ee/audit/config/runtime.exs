@@ -58,7 +58,8 @@ config :audit, Audit.Retention.PolicyMarker,
 
 config :audit, Audit.Retention.Queries,
   grace_period_days: retention_int.("RETENTION_GRACE_PERIOD_DAYS", 15, 7),
-  batch_size: retention_int.("RETENTION_APPLIER_BATCH_SIZE", 1_000, 1)
+  batch_size: retention_int.("RETENTION_APPLIER_BATCH_SIZE", 1_000, 1),
+  time_limit_sec: retention_int.("RETENTION_APPLIER_TIME_LIMIT_SEC", 900, 0)
 
 config :audit, Audit.Retention.Deleter,
   enabled: System.get_env("RETENTION_DELETER_ENABLED", "false") == "true",

@@ -37,7 +37,7 @@ defmodule Audit.Retention.QueriesTest do
 
       set_expires_at(newer_event.id, future_expiry)
 
-      {marked, unmarked} = Queries.mark_expiring(org_id, cutoff)
+      {marked, unmarked, :done} = Queries.mark_expiring(org_id, cutoff)
 
       assert marked == 1
       assert unmarked == 1
@@ -64,10 +64,36 @@ defmodule Audit.Retention.QueriesTest do
           timestamp: DateTime.add(cutoff, -86_400, :second)
         })
 
-      {marked, 0} = Queries.mark_expiring(org_id, cutoff)
+      {marked, 0, :done} = Queries.mark_expiring(org_id, cutoff)
       assert marked == 1
 
       assert_expires_in_about_days(get_event(event.id).expires_at, 30)
+    end
+
+    test "stops at the time limit and the next call continues" do
+      original_config = Application.get_env(:audit, Audit.Retention.Queries, [])
+      Application.put_env(:audit, Audit.Retention.Queries, batch_size: 1, time_limit_sec: 0)
+
+      on_exit(fn ->
+        Application.put_env(:audit, Audit.Retention.Queries, original_config)
+      end)
+
+      org_id = Ecto.UUID.generate()
+      cutoff = DateTime.from_unix!(1_735_603_200)
+
+      events =
+        for days <- [3, 2] do
+          RetentionFixtures.insert_event(%{
+            org_id: org_id,
+            timestamp: DateTime.add(cutoff, -days * 86_400, :second)
+          })
+        end
+
+      assert {1, 0, :time_limit} = Queries.mark_expiring(org_id, cutoff)
+      assert {1, 0, :time_limit} = Queries.mark_expiring(org_id, cutoff)
+      assert {0, 0, :done} = Queries.mark_expiring(org_id, cutoff)
+
+      for event <- events, do: refute(is_nil(get_event(event.id).expires_at))
     end
 
     test "marks unstreamed events older than cutoff" do
@@ -81,7 +107,7 @@ defmodule Audit.Retention.QueriesTest do
           streamed: false
         })
 
-      {marked, unmarked} = Queries.mark_expiring(org_id, cutoff)
+      {marked, unmarked, :done} = Queries.mark_expiring(org_id, cutoff)
 
       assert marked == 1
       assert unmarked == 0
@@ -89,7 +115,7 @@ defmodule Audit.Retention.QueriesTest do
     end
   end
 
-  describe "delete_expired_batch/1" do
+  describe "delete_expired_batch/2" do
     test "deletes only expired events up to batch size" do
       now = DateTime.utc_now() |> DateTime.truncate(:second)
 
@@ -98,15 +124,46 @@ defmodule Audit.Retention.QueriesTest do
       _future = RetentionFixtures.insert_event(%{expires_at: DateTime.add(now, 300, :second)})
       _no_expiry = RetentionFixtures.insert_event(%{expires_at: nil})
 
-      assert {:ok, 1} = Queries.delete_expired_batch(1)
+      assert {:ok, %{deleted: 1, unmarked: 0}} = Queries.delete_expired_batch(1, fn _ -> true end)
 
       remaining_ids = from(e in Event, select: e.id) |> Repo.all()
       refute expired_1.id in remaining_ids
       assert expired_2.id in remaining_ids
 
-      assert {:ok, 1} = Queries.delete_expired_batch(1)
+      assert {:ok, %{deleted: 1, unmarked: 0}} = Queries.delete_expired_batch(1, fn _ -> true end)
       remaining_ids = from(e in Event, select: e.id) |> Repo.all()
       refute expired_2.id in remaining_ids
+    end
+
+    test "unmarks instead of deleting expired events of disabled orgs" do
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      enabled_org = Ecto.UUID.generate()
+      disabled_org = Ecto.UUID.generate()
+
+      enabled_expired =
+        RetentionFixtures.insert_event(%{
+          org_id: enabled_org,
+          expires_at: DateTime.add(now, -600, :second)
+        })
+
+      disabled_expired =
+        RetentionFixtures.insert_event(%{
+          org_id: disabled_org,
+          expires_at: DateTime.add(now, -300, :second)
+        })
+
+      disabled_not_due =
+        RetentionFixtures.insert_event(%{
+          org_id: disabled_org,
+          expires_at: DateTime.add(now, 300, :second)
+        })
+
+      assert {:ok, %{deleted: 1, unmarked: 1}} =
+               Queries.delete_expired_batch(10, &(&1 == enabled_org))
+
+      assert is_nil(Repo.get(Event, enabled_expired.id))
+      assert is_nil(get_event(disabled_expired.id).expires_at)
+      refute is_nil(get_event(disabled_not_due.id).expires_at)
     end
   end
 
