@@ -156,6 +156,25 @@ defmodule Ppl.Actions.ListActivityImpl.Test do
     assert Enum.map(pipeline.blocks, & &1.state) == [:RUNNING, :INITIALIZING, :INITIALIZING]
   end
 
+  test "wide pipeline keeps block order and each block gets its own jobs" do
+    blocks =
+      for i <- 1..150 do
+        deps = if i == 1, do: [], else: ["block #{i - 1}"]
+        block("block #{i}", [job("job #{i}", %{"parallelism" => rem(i, 3) + 1})], %{}, deps)
+      end
+
+    {ppl, definition} = insert_active_ppl(definition(blocks))
+    set_block_state(ppl.ppl_id, 7, "running")
+
+    assert {:ok, %{pipelines: [pipeline]}} = list_activity()
+    assert length(pipeline.blocks) == 150
+    assert_same_jobs(pipeline, definition)
+    assert_same_blocks(pipeline, definition)
+
+    assert Enum.map(pipeline.blocks, & &1.name) == Enum.map(1..150, &"block #{&1}")
+    assert pipeline.blocks |> Enum.at(7) |> Map.get(:jobs) |> Enum.map(& &1.status) |> Enum.uniq() == ["scheduled"]
+  end
+
   test "pipeline without a definition is listed with no blocks" do
     {with_def, definition} = insert_active_ppl(definition([block("b", [job("a")], %{}, [])]))
     {without_def, _} = insert_active_ppl(definition([block("b", [job("a")])]))

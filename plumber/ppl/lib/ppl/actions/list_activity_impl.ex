@@ -189,12 +189,21 @@ defmodule Ppl.Actions.ListActivityImpl do
     end
 
     defp merge_with_block_details(topology_blocks, ppl_blocks) do
+      topology_by_name = index_by_name(topology_blocks)
+
       Enum.map(ppl_blocks, fn block ->
-        topology_blocks
-        |> Enum.find(fn %{name: name} -> name == block.name end)
+        topology_by_name
+        |> Map.get(block.name)
         |> Map.merge(block)
         |> format_jobs()
       end)
+    end
+
+    # Name lookup in a map instead of a list scan per block keeps the merge
+    # linear in the number of blocks. Block names are unique per pipeline
+    # (pipeline_blocks has a unique index on ppl_id and name).
+    defp index_by_name(topology_blocks) do
+      Map.new(topology_blocks, fn topology = %{name: name} -> {name, topology} end)
     end
 
     defp format_jobs(block = %{jobs: jobs, state: state}) do

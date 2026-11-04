@@ -67,12 +67,16 @@ defmodule Ppl.Actions.DescribeTopologyImpl do
            deps        <- block["dependencies"],
            topology    <- %{name: block_name, jobs: jobs, dependencies: deps}
       do
-        {:cont, {:ok, acc ++ [topology]}}
+        {:cont, {:ok, [topology | acc]}}
       else
         error = {:error, _} -> {:halt, error}
         error -> {:halt, {:error, error}}
       end
     end)
+    |> case do
+      {:ok, reversed} -> {:ok, Enum.reverse(reversed)}
+      error -> error
+    end
   end
 
   defp jobs(block = %{"build" => build}) do
