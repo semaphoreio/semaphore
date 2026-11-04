@@ -429,17 +429,39 @@ defmodule Front.Models.Project do
 
   def list(org_id, user_id, _page \\ 1, _metadata \\ nil, _trace_id \\ "") do
     Watchman.benchmark("list_projects.duration", fn ->
-      {projects, total_pages} = list_(org_id, user_id)
-
-      readable_projects = projects |> Front.RBAC.Members.filter_projects(org_id, user_id)
-
-      {readable_projects, total_pages}
+      # The RBAC lookup does not depend on the project pages, run it alongside.
+      Front.RBAC.Members.filter_projects_while(fn -> list_(org_id, user_id) end, org_id, user_id)
     end)
   end
 
-  def list_(org_id, user_id, page \\ 1, projects \\ []) do
+  @list_page_size 300
+  @list_max_concurrency 4
+
+  # Page 1 tells how many pages there are; the rest are fetched concurrently,
+  # keeping projecthub order.
+  def list_(org_id, _user_id) do
+    {first_page, total_pages} = list_page(org_id, 1)
+
+    other_pages =
+      if total_pages > 1 do
+        2..total_pages
+        |> Task.async_stream(fn page -> list_page(org_id, page) |> elem(0) end,
+          max_concurrency: @list_max_concurrency,
+          timeout: :infinity
+        )
+        |> Enum.flat_map(fn {:ok, projects} -> projects end)
+      else
+        []
+      end
+
+    {first_page ++ other_pages, total_pages}
+  end
+
+  defp list_page(org_id, page) do
     req = InternalApi.Projecthub.RequestMeta.new(org_id: org_id)
-    pagination = InternalApi.Projecthub.PaginationRequest.new(page: page, page_size: 300)
+
+    pagination =
+      InternalApi.Projecthub.PaginationRequest.new(page: page, page_size: @list_page_size)
 
     list_request =
       InternalApi.Projecthub.ListRequest.new(
@@ -454,15 +476,7 @@ defmodule Front.Models.Project do
         options()
       )
 
-    more_projects = construct_list(res.projects)
-
-    total_pages = res.pagination.total_pages
-
-    if page < total_pages do
-      list_(org_id, user_id, page + 1, projects ++ more_projects)
-    else
-      {projects ++ more_projects, total_pages}
-    end
+    {construct_list(res.projects), res.pagination.total_pages}
   end
 
   def list_all(org_id) do

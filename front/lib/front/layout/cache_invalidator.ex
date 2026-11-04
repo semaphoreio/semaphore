@@ -286,8 +286,7 @@ defmodule Front.Layout.CacheInvalidator do
   def invalidate_cache_for_organization_members(org_id) do
     case Members.list_org_members(org_id, page_size: @max_page_size) do
       {:ok, {members, _total_pages}} ->
-        members
-        |> Enum.each(fn member -> invalidate_layout(member.id, org_id) end)
+        invalidate_layouts(members, org_id)
 
       _ ->
         :ok
@@ -297,12 +296,19 @@ defmodule Front.Layout.CacheInvalidator do
   def invalidate_cache_for_project_members(project_id, org_id) do
     case Members.list_project_members(org_id, project_id, page_size: @max_page_size) do
       {:ok, {members, _total_pages}} ->
-        members
-        |> Enum.each(fn member -> invalidate_layout(member.id, org_id) end)
+        invalidate_layouts(members, org_id)
 
       _ ->
         :ok
     end
+  end
+
+  defp invalidate_layouts(members, organization_id) do
+    members
+    |> Enum.map(fn member ->
+      struct!(Layout.Model.LoadParams, user_id: member.id, organization_id: organization_id)
+    end)
+    |> Layout.Model.invalidate_many()
   end
 
   def invalidate_layout(user_id, organization_id) do

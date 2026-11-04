@@ -335,7 +335,7 @@ defmodule Front.Layout.CacheInvalidatorTest do
          [
            list_project_members: fn _, _ -> {:ok, {members, nil}} end,
            list_project_members: fn _, _, _ -> {:ok, {members, nil}} end,
-           filter_projects: fn _, _, _ -> [] end,
+           filter_projects_while: fn fetch, _, _ -> {[], fetch.() |> elem(1)} end,
            list_accessible_orgs: fn _ -> {:ok, [organization.id]} end
          ]}
       ] do

@@ -332,6 +332,79 @@ defmodule Front.Models.ProjectTest do
 
       assert Project.list("78114608-be8a-465a-b9cd-81970fb802c7", "123777") == {[], 3}
     end
+
+    test "walks every page once, keeps projecthub order and filters by access" do
+      {:ok, requested} = Agent.start_link(fn -> [] end)
+
+      GrpcMock.stub(ProjecthubMock, :list, fn req, _ ->
+        page = req.pagination.page
+        Agent.update(requested, &[page | &1])
+
+        projects =
+          for i <- 1..2,
+              do: Support.Factories.listed_project(name: "p#{page}-#{i}", id: "p#{page}-#{i}")
+
+        InternalApi.Projecthub.ListResponse.new(
+          metadata: Support.Factories.response_meta(),
+          projects: projects,
+          pagination: InternalApi.Projecthub.PaginationResponse.new(total_pages: 5)
+        )
+      end)
+
+      GrpcMock.stub(
+        RBACMock,
+        :list_accessible_projects,
+        InternalApi.RBAC.ListAccessibleProjectsResponse.new(
+          project_ids: ["p5-2", "p1-1", "p3-2", "unknown"]
+        )
+      )
+
+      {projects, total_pages} = Project.list("org", "user")
+
+      assert total_pages == 5
+      assert Enum.map(projects, & &1.id) == ["p1-1", "p3-2", "p5-2"]
+      assert Agent.get(requested, &Enum.sort/1) == [1, 2, 3, 4, 5]
+    end
+
+    test "when the RBAC call fails => it returns empty project list" do
+      project_list_response =
+        InternalApi.Projecthub.ListResponse.new(
+          metadata: Support.Factories.response_meta(),
+          projects: [Support.Factories.listed_project()],
+          pagination: InternalApi.Projecthub.PaginationResponse.new(total_pages: 1)
+        )
+
+      GrpcMock.stub(ProjecthubMock, :list, project_list_response)
+
+      GrpcMock.stub(RBACMock, :list_accessible_projects, fn _, _ ->
+        raise GRPC.RPCError, status: :unavailable, message: "down"
+      end)
+
+      assert Project.list("org", "user") == {[], 1}
+    end
+
+    test "with no projects => it makes a single projecthub call" do
+      {:ok, calls} = Agent.start_link(fn -> 0 end)
+
+      GrpcMock.stub(ProjecthubMock, :list, fn _, _ ->
+        Agent.update(calls, &(&1 + 1))
+
+        InternalApi.Projecthub.ListResponse.new(
+          metadata: Support.Factories.response_meta(),
+          projects: [],
+          pagination: InternalApi.Projecthub.PaginationResponse.new(total_pages: 0)
+        )
+      end)
+
+      GrpcMock.stub(
+        RBACMock,
+        :list_accessible_projects,
+        InternalApi.RBAC.ListAccessibleProjectsResponse.new(project_ids: [])
+      )
+
+      assert Project.list("org", "user") == {[], 0}
+      assert Agent.get(calls, & &1) == 1
+    end
   end
 
   describe ".list_by_owner" do

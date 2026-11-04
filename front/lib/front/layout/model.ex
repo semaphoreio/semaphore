@@ -81,8 +81,7 @@ defmodule Front.Layout.Model do
 
   @spec refresh(LoadParams.t()) :: {:ok, t(), atom()}
   def refresh(params) do
-    params |> invalidate()
-
+    # The put below overwrites the entry, no need to delete it first.
     {:ok, data, _} = load_from_api(params)
     Cacheman.put(:front, cache_key(params), encode(data))
 
@@ -92,15 +91,23 @@ defmodule Front.Layout.Model do
   end
 
   @spec invalidate(LoadParams.t()) :: :ok
-  def invalidate(params) do
-    cache_key = params |> cache_key()
+  def invalidate(params), do: invalidate_many([params])
 
-    if Cacheman.exists?(:front, cache_key) do
-      {:ok, _} = Cacheman.delete(:front, cache_key)
-      Logger.info("[LAYOUT MODEL] Invalidated #{cache_key}")
-    else
-      Logger.info("[LAYOUT MODEL] Invalidate #{cache_key} skipped because cache key is not found")
-    end
+  @invalidate_batch_size 500
+
+  @doc """
+  Drops the cached model of every given user/organization pair, one cache
+  round trip per #{@invalidate_batch_size} keys. Deleting a missing key is a no-op.
+  """
+  @spec invalidate_many([LoadParams.t()]) :: :ok
+  def invalidate_many(params_list) do
+    params_list
+    |> Enum.map(&cache_key/1)
+    |> Enum.chunk_every(@invalidate_batch_size)
+    |> Enum.each(fn keys ->
+      {:ok, deleted} = Cacheman.delete(:front, keys)
+      Logger.info("[LAYOUT MODEL] Invalidated #{deleted} of #{length(keys)} keys")
+    end)
   end
 
   @spec load_from_api(LoadParams.t()) :: {:ok, t(), atom()}

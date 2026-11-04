@@ -80,15 +80,31 @@ defmodule Front.RBAC.Members do
   end
 
   def filter_projects(projects, org_id, user_id) do
-    case list_accessible_projects(org_id, user_id) do
-      {:ok, accessible_project_ids} ->
-        accessible = MapSet.new(accessible_project_ids)
-        Enum.filter(projects, fn project -> MapSet.member?(accessible, project.id) end)
-
-      _e ->
-        []
-    end
+    filter_accessible(projects, list_accessible_projects(org_id, user_id))
   end
+
+  @doc """
+  Like `filter_projects/3`, but runs the RBAC lookup while `fetch_projects`
+  loads the projects. `fetch_projects` returns `{projects, extra}`; the
+  result is `{readable_projects, extra}`.
+  """
+  def filter_projects_while(fetch_projects, org_id, user_id) do
+    accessible = Task.async(fn -> list_accessible_projects(org_id, user_id) end)
+    {projects, extra} = fetch_projects.()
+
+    {filter_accessible(projects, Task.await(accessible, :infinity)), extra}
+  end
+
+  @doc """
+  Keeps the projects whose id is in a `list_accessible_projects/2` result.
+  An error result keeps nothing.
+  """
+  def filter_accessible(projects, {:ok, accessible_project_ids}) do
+    accessible = MapSet.new(accessible_project_ids)
+    Enum.filter(projects, fn project -> MapSet.member?(accessible, project.id) end)
+  end
+
+  def filter_accessible(_projects, _error), do: []
 
   defp list_members(org_id, project_id, opts) do
     Watchman.benchmark("list_members.duration", fn ->
