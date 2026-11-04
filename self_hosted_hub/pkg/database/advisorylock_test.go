@@ -64,7 +64,7 @@ func Test__WithBlockingAdvisoryLockWithTimeout(t *testing.T) {
 		return nil
 	})
 
-	if assert.Error(t, err) {
-		assert.Equal(t, err.Error(), "context deadline exceeded")
-	}
+	// With a single pooled connection, the deadline hits while waiting for the connection,
+	// otherwise, while waiting for the lock. The driver wraps the error in the second case.
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
 }

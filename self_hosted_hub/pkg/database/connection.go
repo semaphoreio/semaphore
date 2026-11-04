@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	uuid "github.com/google/uuid"
@@ -24,11 +25,14 @@ type Config struct {
 }
 
 var dbInstance *gorm.DB
+var dbInstanceOnce sync.Once
 
+// Conn returns a session on the process-wide connection pool.
+// The pool is created once, even if the first calls happen concurrently.
 func Conn() *gorm.DB {
-	if dbInstance == nil {
+	dbInstanceOnce.Do(func() {
 		dbInstance = connect()
-	}
+	})
 
 	return dbInstance.Session(&gorm.Session{})
 }

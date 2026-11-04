@@ -19,6 +19,8 @@ services:
       DB_USERNAME: "postgres"
       APPLICATION_NAME: "self-hosted-hub"
       DB_PASSWORD: "the-cake-is-a-lie"
+      # Above 1, so concurrency tests run their requests in parallel.
+      DB_POOL_SIZE: "10"
       RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672"
 
     links:
