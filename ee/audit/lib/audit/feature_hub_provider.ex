@@ -17,6 +17,10 @@ defmodule Audit.FeatureHubProvider do
     ttl = Keyword.get(opts, :ttl, :timer.minutes(15))
     cache_key = cache_key(org_id, "list_organization_features")
 
+    # A reload is requested when the organization's features have changed,
+    # so it must not be answered from this cache.
+    if Keyword.get(opts, :reload, false), do: Audit.Cache.delete(cache_key)
+
     Audit.Cache.fetch(cache_key, fn ->
       do_list_features(org_id)
       |> case do

@@ -156,8 +156,9 @@ defmodule Audit.Retention.Queries do
 
   @doc """
   Takes up to `limit` events where `expires_at` has passed. Deletes those of
-  organizations for which `enabled?` returns true, and unmarks the others so they
-  leave the deletion queue instead of blocking it.
+  organizations for which `enabled?` returns true with a `timestamp` before
+  `floor`, and unmarks the others so they leave the deletion queue instead of
+  blocking it.
 
   `enabled?` is called once per organization while the batch is locked, so it
   must be cheap (feature lookups are cached).
@@ -167,20 +168,22 @@ defmodule Audit.Retention.Queries do
 
   Returns `{:ok, %{deleted: deleted_count, unmarked: unmarked_count}}`.
   """
-  @spec delete_expired_batch(pos_integer(), (String.t() -> boolean())) ::
+  @spec delete_expired_batch(pos_integer(), (String.t() -> boolean()), DateTime.t()) ::
           {:ok, %{deleted: non_neg_integer(), unmarked: non_neg_integer()}} | {:error, term()}
-  def delete_expired_batch(limit, enabled?) do
+  def delete_expired_batch(limit, enabled?, floor) do
     Repo.transaction(fn ->
       expired = fetch_expired(limit)
 
       enabled_org_ids =
         expired
-        |> Enum.map(fn {_id, org_id} -> org_id end)
+        |> Enum.map(fn {_id, org_id, _timestamp} -> org_id end)
         |> Enum.uniq()
         |> Enum.filter(enabled?)
 
       {to_delete, to_unmark} =
-        Enum.split_with(expired, fn {_id, org_id} -> org_id in enabled_org_ids end)
+        Enum.split_with(expired, fn {_id, org_id, timestamp} ->
+          org_id in enabled_org_ids and DateTime.compare(timestamp, floor) == :lt
+        end)
 
       %{deleted: delete_by_ids(ids(to_delete)), unmarked: unmark_by_ids(ids(to_unmark))}
     end)
@@ -194,14 +197,14 @@ defmodule Audit.Retention.Queries do
     from(e in Event,
       where: not is_nil(e.expires_at) and e.expires_at <= ^now,
       order_by: [asc: e.expires_at],
-      select: {e.id, e.org_id},
+      select: {e.id, e.org_id, e.timestamp},
       limit: ^limit,
       lock: "FOR UPDATE SKIP LOCKED"
     )
     |> Repo.all()
   end
 
-  defp ids(events), do: Enum.map(events, fn {id, _org_id} -> id end)
+  defp ids(events), do: Enum.map(events, fn {id, _org_id, _timestamp} -> id end)
 
   defp delete_by_ids([]), do: 0
 
