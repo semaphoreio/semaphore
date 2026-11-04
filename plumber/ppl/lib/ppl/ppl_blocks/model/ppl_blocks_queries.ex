@@ -176,6 +176,19 @@ defmodule Ppl.PplBlocks.Model.PplBlocksQueries do
   end
 
   @doc """
+  Returns {block_index, state} of the pipeline's blocks that are in one of the
+  given states
+  """
+  def indexes_in_states(ppl_id, states) do
+    PplBlocks
+    |> where(ppl_id: ^ppl_id)
+    |> where([pb], pb.state in ^states)
+    |> order_by([pb], asc: pb.block_index)
+    |> select([pb], {pb.block_index, pb.state})
+    |> Repo.all()
+  end
+
+  @doc """
   Get all blocks for a given pipeline
   """
   def get_all_by_id(id) do

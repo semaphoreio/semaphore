@@ -76,41 +76,60 @@ defmodule Ppl.Ppls.STMHandler.Common do
   defp to_str(term), do: inspect(term)
 
   @doc """
-  Used to trigger all PplBlock loopers for blocks of given pipeline when they
+  Used to trigger PplBlock loopers for blocks of given pipeline when they
   are to be run or terminated
   """
   def trigger_ppl_block_loopers(data) do
+    case exit_ppl_id(data) do
+      nil -> :nothing
 
-    ppl_id = data |> Map.get(:exit_transition, %{}) |> Map.get(:ppl_id)
+      ppl_id ->
+        trigger_active_block_loopers(ppl_id)
 
-    case PplRequestsQueries.get_by_id(ppl_id) do
-
-     {:ok, ppl_req} ->
-
-       0..(ppl_req.block_count - 1)
-       |> Enum.each(fn index ->
-         trigger_loopers(ppl_id, index)
-       end)
-
-       # waiting state has different 'enter_scheduling' query so predicate
-       # would not work, instead all ready blocks of pipeline are scheduled
-       PplBlocksWaitingState.execute_now_for_pipeline(ppl_id)
-
-      _ -> :nothing
+        # waiting state has different 'enter_scheduling' query so predicate
+        # would not work, instead all ready blocks of pipeline are scheduled
+        PplBlocksWaitingState.execute_now_for_pipeline(ppl_id)
     end
   end
 
-  defp trigger_loopers(ppl_id, index) do
-    import Ecto.Query
+  @doc """
+  Called when one block of the pipeline is done. Only a block that did not pass
+  can make its initializing or running siblings change state (fast failing), so
+  a passed block wakes none of them. Waiting blocks are woken separately by
+  PplBlocks.STMHandler.Common.notify_ppl_when_done/1.
+  """
+  def trigger_ppl_block_loopers_on_block_done(%{user_exit_function: %{result: "passed"}}),
+    do: :nothing
 
+  def trigger_ppl_block_loopers_on_block_done(data) do
+    case exit_ppl_id(data) do
+      nil -> :nothing
+      ppl_id -> trigger_active_block_loopers(ppl_id)
+    end
+  end
+
+  # Wakes the looper of every block that is in a state one of them handles,
+  # instead of both loopers for every block index of the pipeline. A wake-up is
+  # only a hint, the periodic scan of each looper still picks up the rest.
+  defp trigger_active_block_loopers(ppl_id) do
+    ppl_id
+    |> PplBlocksQueries.indexes_in_states(["initializing", "running"])
+    |> Enum.each(fn {index, state} -> trigger_looper(state, ppl_id, index) end)
+  end
+
+  defp trigger_looper(state, ppl_id, index) do
     query_fun =
       fn query ->
         query |> where(ppl_id: ^ppl_id) |> where(block_index: ^index)
       end
 
-    query_fun |> PplBlocksInitializingState.execute_now_with_predicate()
-    query_fun |> PplBlocksRunningState.execute_now_with_predicate()
+    case state do
+      "initializing" -> PplBlocksInitializingState.execute_now_with_predicate(query_fun)
+      "running" -> PplBlocksRunningState.execute_now_with_predicate(query_fun)
+    end
   end
+
+  defp exit_ppl_id(data), do: data |> Map.get(:exit_transition, %{}) |> Map.get(:ppl_id)
 
   @doc """
   Terminate pipeline and all of it's blocks

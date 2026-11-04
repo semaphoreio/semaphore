@@ -100,7 +100,7 @@ defmodule Ppl.PplBlocks.STMHandler.RunningState do
 #######################
 
   def epilogue_handler({:ok, data = %{user_exit_function: %{state: "done"}}}) do
-    PplsCommon.trigger_ppl_block_loopers(data)
+    PplsCommon.trigger_ppl_block_loopers_on_block_done(data)
     Common.notify_ppl_when_done(data)
     Common.send_metrics(data, __MODULE__)
     data |> Map.get(:user_exit_function) |> Common.send_state_watch_metric()
