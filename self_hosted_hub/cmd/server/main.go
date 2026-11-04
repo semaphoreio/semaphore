@@ -14,6 +14,7 @@ import (
 	publicapi "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/publicapi"
 	quotas "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/quotas"
 	agentcleaner "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/workers/agentcleaner"
+	agentcountreconciler "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/workers/agentcountreconciler"
 	"github.com/semaphoreio/semaphore/self_hosted_hub/pkg/workers/agentcounter"
 	disconnected_cleaner "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/workers/disconnectedcleaner"
 	"github.com/semaphoreio/semaphore/self_hosted_hub/pkg/workers/metrics"
@@ -84,6 +85,11 @@ func startAgentCleaner() {
 func startDisconnectedAgentCleaner() {
 	log.Println("Starting Disconnected Agent Cleaner")
 	disconnected_cleaner.Start()
+}
+
+func startAgentCountReconciler() {
+	log.Println("Starting Agent Count Reconciler")
+	agentcountreconciler.Start()
 }
 
 func startMetricsCollector() {
@@ -171,6 +177,7 @@ func main() {
 	if os.Getenv("START_AGENT_CLEANER") == "yes" {
 		go startAgentCleaner()
 		go startDisconnectedAgentCleaner()
+		go startAgentCountReconciler()
 	}
 
 	if os.Getenv("START_METRICS_COLLECTOR") == "yes" {
