@@ -737,6 +737,50 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
            }
   end
 
+  describe "job.initializing.duration metric" do
+    test "cloud job => tagged with cloud and its machine type" do
+      {:ok, task} = Support.Factories.Task.create()
+
+      {:ok, job} =
+        Support.Factories.Job.create(:pending, %{
+          spec: @job_spec,
+          build_id: task.id,
+          machine_type: "e1-standard-2"
+        })
+
+      with_mock Watchman, [:passthrough], submit: fn _, _, _ -> nil end do
+        {:ok, _} = Worker.process(job)
+
+        assert_called(
+          Watchman.submit(
+            {"job.initializing.duration", ["cloud", "e1-standard-2"]},
+            :_,
+            :timing
+          )
+        )
+      end
+    end
+
+    test "self-hosted job => tagged with self_hosted only" do
+      {:ok, task} = Support.Factories.Task.create()
+
+      {:ok, job} =
+        Support.Factories.Job.create(:pending, %{
+          spec: @job_spec,
+          build_id: task.id,
+          machine_type: "s1-test-1"
+        })
+
+      with_mock Watchman, [:passthrough], submit: fn _, _, _ -> nil end do
+        {:ok, _} = Worker.process(job)
+
+        assert_called(
+          Watchman.submit({"job.initializing.duration", ["self_hosted"]}, :_, :timing)
+        )
+      end
+    end
+  end
+
   describe "self-hosted" do
     test "when pending self-hosted job with spec exists => creates job req" do
       {:ok, task} = Support.Factories.Task.create()
