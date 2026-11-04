@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { computed, signal } from "@preact/signals";
 import { BaseEdge, Background, Controls, Edge, EdgeLabelRenderer, EdgeProps, Handle, MiniMap, Node, NodeProps, Panel, Position, ReactFlow, ReactFlowProvider, useReactFlow, useStore } from "@xyflow/react";
-import { Pipeline, STATUS_LABEL, Status, Workflow, blockStatus, countJobs, pipelineJobs } from "./model";
+import { Pipeline, Workflow, blockStatus, pipelineJobs } from "./model";
 import { focus, hits, layoutError, popover, rerunPipeline, selected, stopPipeline, togglePopover, workflow } from "./store";
 import { MapLayout, Point, layoutMap, promotionLabel } from "./layout";
 import { PromoteButton } from "./promote";
 import { Chips, Search, Stepper } from "./toolbar";
-import { BlockCard, Counts, Duration, Highlight, PipelineTitle, StatusBar, StatusIcon } from "./ui";
+import { BlockCard, BlockSummary, Counts, Duration, PipelineTitle, StatusBar, StatusIcon } from "./ui";
 
 const CARD = { w: 300, h: 72 };
 const BLOCK = { w: 230, h: 74 };
@@ -187,14 +187,7 @@ const PipelineNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
 const BlockNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
   const b = workflow.value?.blocks.get(data.id);
   const h = hits.value;
-  const f = focus.value;
   if (!b) return null;
-  const st = blockStatus(b);
-  const c = countJobs(b.jobs);
-  const summary = [
-    `${b.jobs.length} ${b.jobs.length === 1 ? `job` : `jobs`}`,
-    ...([`failed`, `running`, `queued`, `stopped`] as Status[]).filter((s) => c[s]).map((s) => `${c[s]} ${STATUS_LABEL[s].toLowerCase()}`),
-  ].join(` · `);
   const flip = () => {
     aim({ id: b.id, how: `center` });
     toggle(openBlocks, b.id);
@@ -211,16 +204,7 @@ const BlockNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
       {openBlocks.value.has(b.id) ? (
         <BlockCard block={b} onHeaderClick={flip}/>
       ) : (
-        <button className={`wf-map-summary ${f && (f.id === b.id || f.id.startsWith(`${b.id}#`)) ? `focused` : ``}`} onClick={flip}>
-          <span className="wf-map-summary-name">
-            <StatusIcon status={st}/>
-            <span className="wf-map-block-name" title={b.name}>
-              <Highlight text={b.name}/>
-            </span>
-          </span>
-          <StatusBar jobs={b.jobs}/>
-          <span className="wf-map-summary-meta">{summary}</span>
-        </button>
+        <BlockSummary block={b} onClick={flip}/>
       )}
       <Handle type="source" position={Position.Right} isConnectable={false}/>
     </div>

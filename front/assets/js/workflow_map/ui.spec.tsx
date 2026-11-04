@@ -4,7 +4,7 @@ import { render } from "preact";
 import { act } from "preact/test-utils";
 
 import { Block, Job, Pipeline } from "./model";
-import { BlockCard, PipelineTitle } from "./ui";
+import { BlockCard, BlockSummary, PipelineTitle } from "./ui";
 
 describe(`names the map may shorten`, () => {
   let root: HTMLElement;
@@ -38,5 +38,15 @@ describe(`names the map may shorten`, () => {
 
     expect(root.querySelector(`.wf-map-block-name`).getAttribute(`title`)).to.equal(block.name);
     expect(root.querySelector(`.wf-map-job-name`).getAttribute(`title`)).to.equal(job.name);
+  });
+
+  test(`a collapsed block carries the full name on the part that shortens`, async () => {
+    const block = { id: `b`, name: `a very long block name`, deps: [], jobs: [] } as Block;
+
+    await act(() => render(<BlockSummary block={block} onClick={() => undefined}/>, root));
+
+    const name = root.querySelector(`.wf-map-summary-name .wf-map-block-name`);
+    expect(name.getAttribute(`title`)).to.equal(block.name);
+    expect(name.textContent).to.equal(block.name);
   });
 });

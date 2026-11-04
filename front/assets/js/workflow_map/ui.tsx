@@ -88,6 +88,27 @@ export const StatusBar = ({ jobs }: { jobs: Job[], }) => {
   );
 };
 
+export const BlockSummary = ({ block, onClick }: { block: Block, onClick: () => void, }) => {
+  const f = focus.value;
+  const c = countJobs(block.jobs);
+  const summary = [
+    `${block.jobs.length} ${block.jobs.length === 1 ? `job` : `jobs`}`,
+    ...([`failed`, `running`, `queued`, `stopped`] as Status[]).filter((s) => c[s]).map((s) => `${c[s]} ${STATUS_LABEL[s].toLowerCase()}`),
+  ].join(` · `);
+  return (
+    <button className={`wf-map-summary ${f && (f.id === block.id || f.id.startsWith(`${block.id}#`)) ? `focused` : ``}`} onClick={onClick}>
+      <span className="wf-map-summary-name">
+        <StatusIcon status={blockStatus(block)}/>
+        <span className="wf-map-block-name" title={block.name}>
+          <Highlight text={block.name}/>
+        </span>
+      </span>
+      <StatusBar jobs={block.jobs}/>
+      <span className="wf-map-summary-meta">{summary}</span>
+    </button>
+  );
+};
+
 export const BlockCard = ({ block, onHeaderClick }: { block: Block, onHeaderClick?: () => void, }) => {
   const h = hits.value;
   const f = focus.value;
