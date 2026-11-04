@@ -66,10 +66,13 @@ defmodule Front.RBAC.Members do
 
     endpoint = Application.fetch_env!(:front, :rbac_grpc_endpoint)
 
-    with {:ok, channel} <- Front.GrpcChannel.connect(endpoint),
-         {:ok, response} <- Stub.list_accessible_projects(channel, request, timeout: 30_000) do
-      {:ok, response.project_ids}
-    else
+    case Front.GrpcChannel.call(
+           endpoint,
+           &Stub.list_accessible_projects(&1, request, timeout: 30_000)
+         ) do
+      {:ok, response} ->
+        {:ok, response.project_ids}
+
       e ->
         Logger.error(
           "Error listing accessible projects for org=#{org_id}, user=#{user_id}: #{inspect(e)}"

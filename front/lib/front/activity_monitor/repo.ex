@@ -305,8 +305,6 @@ defmodule Front.ActivityMonitor.Repo do
 
     Watchman.benchmark("activity_monitor.list_pipeline_activity", fn ->
       url = Application.fetch_env!(:front, :pipeline_api_grpc_endpoint)
-      {:ok, channel} = Front.GrpcChannel.connect(url)
-
       options = [timeout: 30_000, metadata: tracing_headers]
 
       list_all_pages(fn page_token ->
@@ -319,7 +317,11 @@ defmodule Front.ActivityMonitor.Repo do
             organization_id: org_id
           )
 
-        case PipelineService.Stub.list_activity(channel, request, options) do
+        # Connect per page: a pooled channel must not be held across pages.
+        case Front.GrpcChannel.call(
+               url,
+               &PipelineService.Stub.list_activity(&1, request, options)
+             ) do
           {:ok, response} ->
             page = Proto.to_map!(response, transformations: tf_map())
             pipelines = Map.get(page, :pipelines, [])
@@ -341,8 +343,6 @@ defmodule Front.ActivityMonitor.Repo do
 
     Watchman.benchmark("activity_monitor.list_debug_sessions", fn ->
       url = Application.fetch_env!(:front, :job_api_grpc_endpoint)
-      {:ok, channel} = Front.GrpcChannel.connect(url)
-
       options = [timeout: 30_000, metadata: tracing_headers]
 
       list_all_pages(fn page_token ->
@@ -357,7 +357,11 @@ defmodule Front.ActivityMonitor.Repo do
           }
           |> Proto.deep_new!(ListDebugSessionsRequest)
 
-        case JobService.Stub.list_debug_sessions(channel, request, options) do
+        # Connect per page: a pooled channel must not be held across pages.
+        case Front.GrpcChannel.call(
+               url,
+               &JobService.Stub.list_debug_sessions(&1, request, options)
+             ) do
           {:ok, response} ->
             response
             |> Proto.to_map!(transformations: tf_map())
@@ -453,8 +457,6 @@ defmodule Front.ActivityMonitor.Repo do
 
     Watchman.benchmark("activity_monitor.list_active_jobs", fn ->
       url = Application.fetch_env!(:front, :job_api_grpc_endpoint)
-      {:ok, channel} = Front.GrpcChannel.connect(url)
-
       options = [timeout: 30_000, metadata: tracing_headers]
 
       list_all_pages(fn page_token ->
@@ -470,7 +472,8 @@ defmodule Front.ActivityMonitor.Repo do
           }
           |> Proto.deep_new!(ListRequest)
 
-        case JobService.Stub.list(channel, request, options) do
+        # Connect per page: a pooled channel must not be held across pages.
+        case Front.GrpcChannel.call(url, &JobService.Stub.list(&1, request, options)) do
           {:ok, response} ->
             response
             |> Proto.to_map!(transformations: tf_map())

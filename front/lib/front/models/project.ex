@@ -469,11 +469,12 @@ defmodule Front.Models.Project do
         pagination: pagination
       )
 
+    endpoint = Application.fetch_env!(:front, :projecthub_grpc_endpoint)
+
     {:ok, res} =
-      InternalApi.Projecthub.ProjectService.Stub.list(
-        channel(),
-        list_request,
-        options()
+      Front.GrpcChannel.call(
+        endpoint,
+        &InternalApi.Projecthub.ProjectService.Stub.list(&1, list_request, options())
       )
 
     {construct_list(res.projects), res.pagination.total_pages}

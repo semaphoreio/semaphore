@@ -126,6 +126,58 @@ defmodule Front.Audit.UI.Test do
     assert Enum.at(lines, 2) =~ "Secret,Removed,Web"
   end
 
+  test "GET /audit/csv keeps streaming when the pooled connection is replaced mid-export", %{
+    conn: conn,
+    org_id: org_id
+  } do
+    original = Application.get_env(:front, Front.GrpcChannel, [])
+    on_exit(fn -> Application.put_env(:front, Front.GrpcChannel, original) end)
+    Application.put_env(:front, Front.GrpcChannel, pool_size: 1, max_age_ms: 0, close_grace_ms: 0)
+
+    insert_event(org_id, operation: Operation.value(:Added), medium: Medium.value(:API))
+
+    insert_event(org_id,
+      operation: Operation.value(:Removed),
+      medium: Medium.value(:Web),
+      timestamp: Google.Protobuf.Timestamp.new(seconds: 1_522_754_000)
+    )
+
+    endpoint = Application.fetch_env!(:front, :audit_grpc_endpoint)
+    {:ok, counter} = Agent.start_link(fn -> 0 end)
+
+    GrpcMock.stub(AuditMock, :paginated_list, fn _req, _ ->
+      [first, second | _] =
+        DB.all(:audit_events) |> Enum.map(&Support.Stubs.AuditLog.Grpc.serialize_event/1)
+
+      case Agent.get_and_update(counter, fn n -> {n, n + 1} end) do
+        0 ->
+          # Another caller replaces the connection page 1 is using; it gets
+          # closed as soon as page 1 is answered.
+          Task.async(fn -> Front.GrpcChannel.connect(endpoint) end) |> Task.await()
+
+          InternalApi.Audit.PaginatedListResponse.new(
+            events: [first],
+            next_page_token: "page-2",
+            previous_page_token: ""
+          )
+
+        _ ->
+          InternalApi.Audit.PaginatedListResponse.new(
+            events: [second],
+            next_page_token: "",
+            previous_page_token: ""
+          )
+      end
+    end)
+
+    conn = get(conn, "/audit/csv")
+
+    assert conn.status == 200
+    lines = conn.resp_body |> String.split("\r\n", trim: true)
+    assert length(lines) == 3
+    assert Enum.at(lines, 2) =~ "Secret,Removed,Web"
+  end
+
   test "GET /audit/csv returns 502 when first page fails", %{conn: conn} do
     GrpcMock.stub(AuditMock, :paginated_list, fn _req, _ ->
       raise GRPC.RPCError, status: GRPC.Status.unavailable(), message: "audit unavailable"

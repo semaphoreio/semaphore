@@ -24,19 +24,20 @@ defmodule Front.Audit.UI do
   def start_csv_stream(org_id) do
     endpoint = Application.fetch_env!(:front, :audit_grpc_endpoint)
 
-    with {:ok, channel} <- Front.GrpcChannel.connect(endpoint),
-         {:ok, response} <- fetch_page(channel, org_id, "") do
-      {:ok, channel, response}
+    with {:ok, response} <- fetch_page(endpoint, org_id, "") do
+      {:ok, endpoint, response}
     end
   end
 
-  def stream_csv(conn, channel, first_page, org_id) do
+  # The export can run for minutes, so every page takes a channel of its own
+  # instead of holding one pooled channel for the whole stream.
+  def stream_csv(conn, endpoint, first_page, org_id) do
     header_row = [@csv_headers] |> CSV.encode() |> Enum.to_list()
 
     with {:ok, conn} <- send_chunks(conn, header_row),
          {:ok, conn} <- send_page_rows(conn, first_page) do
       if continue?(first_page) do
-        stream_csv_pages(conn, channel, org_id, first_page.next_page_token)
+        stream_csv_pages(conn, endpoint, org_id, first_page.next_page_token)
       else
         conn
       end
@@ -47,8 +48,8 @@ defmodule Front.Audit.UI do
     end
   end
 
-  defp stream_csv_pages(conn, channel, org_id, page_token) do
-    case fetch_page(channel, org_id, page_token) do
+  defp stream_csv_pages(conn, endpoint, org_id, page_token) do
+    case fetch_page(endpoint, org_id, page_token) do
       {:ok, response} ->
         if response.next_page_token == page_token do
           Logger.error(
@@ -61,7 +62,7 @@ defmodule Front.Audit.UI do
         case send_page_rows(conn, response) do
           {:ok, conn} ->
             if continue?(response) do
-              stream_csv_pages(conn, channel, org_id, response.next_page_token)
+              stream_csv_pages(conn, endpoint, org_id, response.next_page_token)
             else
               conn
             end
@@ -77,7 +78,7 @@ defmodule Front.Audit.UI do
     end
   end
 
-  defp fetch_page(channel, org_id, page_token) do
+  defp fetch_page(endpoint, org_id, page_token) do
     request =
       InternalApi.Audit.PaginatedListRequest.new(
         org_id: org_id,
@@ -86,7 +87,10 @@ defmodule Front.Audit.UI do
         direction: Direction.value(:NEXT)
       )
 
-    InternalApi.Audit.AuditService.Stub.paginated_list(channel, request)
+    Front.GrpcChannel.call(
+      endpoint,
+      &InternalApi.Audit.AuditService.Stub.paginated_list(&1, request)
+    )
   end
 
   defp send_page_rows(conn, response) do
