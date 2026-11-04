@@ -255,20 +255,16 @@ func (s *Server) Register(w http.ResponseWriter, r *http.Request) {
 		IPAddress:               r.RemoteAddr, // populated by handlers.ProxyHeaders middleware
 	}
 
-	// The organization quota is looked up before taking the lock below.
-	// It does not depend on the agents table, so there's no need to hold
-	// the organization-wide lock while fetching it.
+	// The organization quota is looked up before the registration transaction starts.
+	// It may call the feature service, and it does not depend on the agents table.
 	var agent *models.Agent
 	var agentToken string
 	orgQuota, err := s.findQuotaForNewAgent(r.Context(), agentType.OrganizationID.String())
 	if err == nil {
-		// We use a blocking advisory lock here because counting the current number of agents
-		// and inserting a new one is not an atomic operation.
-		// If we don't use a lock, and multiple agents register around
-		// the same time, we can end up allowing the organization to go beyond its quota.
-		// The blocking advisory lock makes it atomic, and guarantees that this issue doesn't happen.
-		// We use the request's context to cancel the operation if the lock isn't grabbed on time.
-		err = database.WithBlockingAdvisoryLock(r.Context(), agentType.OrganizationID.String(), func(tx *gorm.DB) error {
+		// The agent is inserted and checked against the quota in one transaction.
+		// See registerAgent() for how this stays atomic without an organization-wide lock.
+		// We use the request's context to cancel the operation if it takes too long.
+		err = database.Conn().WithContext(r.Context()).Transaction(func(tx *gorm.DB) error {
 			a, t, err := s.registerAgent(r.Context(), tx, agentType, orgQuota, agentName, info.JobID, metadata)
 			if err != nil {
 				return err
@@ -330,22 +326,37 @@ func (s *Server) parseJobID(job string) (*uuid.UUID, error) {
 	return &jobID, nil
 }
 
+// registerAgent inserts the agent first, and checks the organization quota after.
+//
+// The insert fires a trigger that increments the organization's row in agent_counts,
+// which locks that row until the transaction ends. Concurrent registrations
+// for the same organization wait on that row lock, so the count read right after
+// the insert is exact, and includes this agent. If it is above the quota,
+// returning an error rolls back the insert and the increment.
+//
+// The row lock is only held between the insert and the commit,
+// and registrations for other organizations are never blocked.
 func (s *Server) registerAgent(ctx context.Context, tx *gorm.DB, agentType *models.AgentType, orgQuota *quotas.OrganizationQuota, agentName, job string, metadata models.AgentMetadata) (*models.Agent, string, error) {
-	err := checkAgentCountForNewAgent(ctx, tx, agentType.OrganizationID.String(), orgQuota)
+	agent, token, created, err := models.CreateAgentInTransaction(
+		tx,
+		agentType.OrganizationID,
+		agentType.Name,
+		agentName,
+		metadata,
+	)
+
+	if err != nil {
+		return nil, "", err
+	}
+
+	err = checkAgentCountForNewAgent(ctx, tx, agentType.OrganizationID, orgQuota, created)
 	if err != nil {
 		return nil, "", err
 	}
 
 	// No job is requested on registration.
 	if job == "" {
-		return models.RegisterAgentInTransaction(
-			tx,
-			agentType.OrganizationID,
-			agentType.Name,
-			agentName,
-			nil,
-			metadata,
-		)
+		return agent, token, nil
 	}
 
 	jobID, err := s.parseJobID(job)
@@ -357,19 +368,27 @@ func (s *Server) registerAgent(ctx context.Context, tx *gorm.DB, agentType *mode
 		return nil, "", ErrOccupationRequestNotFound
 	}
 
-	return models.RegisterAgentInTransaction(
-		tx,
-		agentType.OrganizationID,
-		agentType.Name,
-		agentName,
-		jobID,
-		metadata,
-	)
+	// An agent found through a registration retry was already handled
+	// by the first registration request, so it is not occupied again.
+	if !created {
+		return agent, token, nil
+	}
+
+	err = tx.Transaction(func(tx2 *gorm.DB) error {
+		_, err := models.OccupyAgentInTransaction(tx2, agent, jobID)
+		return err
+	})
+
+	if err != nil {
+		return nil, "", err
+	}
+
+	return agent, token, nil
 }
 
-// findQuotaForNewAgent must be called outside of the organization advisory lock.
-// It may call the feature service, and holding the lock while doing so
-// would serialize every registration for the organization behind that call.
+// findQuotaForNewAgent must be called before the registration transaction starts.
+// It may call the feature service, and holding the organization's agent count row lock
+// while doing so would serialize every registration for the organization behind that call.
 func (s *Server) findQuotaForNewAgent(ctx context.Context, orgID string) (*quotas.OrganizationQuota, error) {
 	orgQuota, err := s.quotaClient.GetQuotaWithContext(ctx, orgID)
 
@@ -388,13 +407,18 @@ func (s *Server) findQuotaForNewAgent(ctx context.Context, orgID string) (*quota
 	return orgQuota, nil
 }
 
-// checkAgentCountForNewAgent must be called while holding the organization advisory lock,
-// so that counting the current agents and inserting the new one is atomic.
-func checkAgentCountForNewAgent(ctx context.Context, tx *gorm.DB, orgID string, orgQuota *quotas.OrganizationQuota) error {
-	currentCount, err := models.CountAgentsInOrganizationInTransaction(ctx, tx, orgID)
+// checkAgentCountForNewAgent must be called after the agent is inserted, in the same transaction.
+// The count then includes the new agent, so the count before it is one less.
+// If no agent was created (a registration retry), the count is used as is.
+func checkAgentCountForNewAgent(ctx context.Context, tx *gorm.DB, orgID uuid.UUID, orgQuota *quotas.OrganizationQuota, created bool) error {
+	currentCount, err := models.RegisteredAgentCountInTransaction(ctx, tx, orgID)
 	if err != nil {
 		log.Errorf("Error finding current agent count for organization %s: %v", orgID, err)
 		return fmt.Errorf("unknown agent count for organization")
+	}
+
+	if created {
+		currentCount--
 	}
 
 	// self-hosted feature is enabled,

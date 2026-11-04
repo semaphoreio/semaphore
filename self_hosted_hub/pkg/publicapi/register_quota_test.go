@@ -88,7 +88,57 @@ func Test__RegisterQuotaLookup(t *testing.T) {
 		requireRegisteredAgents(t, orgID, 3)
 	})
 
-	t.Run("quota is looked up before taking the lock, and agent count is checked while holding it", func(t *testing.T) {
+	t.Run("registration retry at the quota is still rejected", func(t *testing.T) {
+		orgID := uuid.New()
+		_, token, err := models.CreateAgentType(orgID, &testRequesterID, "s1-quota-retry")
+		require.NoError(t, err)
+
+		server := newServerWithFeatureProvider(t, &stubFeatureProvider{quantity: 1})
+		res := runOn(server, orgID, "POST", "/register", token, registerRequest("quota-retry-1"))
+		require.Equal(t, http.StatusCreated, res.Code)
+
+		res = runOn(server, orgID, "POST", "/register", token, registerRequest("quota-retry-1"))
+		require.Equal(t, http.StatusUnprocessableEntity, res.Code)
+		requireRegisteredAgents(t, orgID, 1)
+	})
+
+	t.Run("registration retry below the quota returns the same agent", func(t *testing.T) {
+		orgID := uuid.New()
+		_, token, err := models.CreateAgentType(orgID, &testRequesterID, "s1-quota-retry-ok")
+		require.NoError(t, err)
+
+		server := newServerWithFeatureProvider(t, &stubFeatureProvider{quantity: 2})
+		res := runOn(server, orgID, "POST", "/register", token, registerRequest("quota-retry-ok-1"))
+		require.Equal(t, http.StatusCreated, res.Code)
+
+		res = runOn(server, orgID, "POST", "/register", token, registerRequest("quota-retry-ok-1"))
+		require.Equal(t, http.StatusCreated, res.Code)
+		requireRegisteredAgents(t, orgID, 1)
+	})
+
+	t.Run("disconnected agents free their quota slot", func(t *testing.T) {
+		orgID := uuid.New()
+		_, token, err := models.CreateAgentTypeWithSettings(orgID, &testRequesterID, "s1-quota-free", models.AgentNameSettings{NameAssignmentOrigin: models.NameAssignmentOriginFromAgent, ReleaseNameAfter: 60})
+		require.NoError(t, err)
+
+		server := newServerWithFeatureProvider(t, &stubFeatureProvider{quantity: 1})
+		res := runOn(server, orgID, "POST", "/register", token, registerRequest("quota-free-1"))
+		require.Equal(t, http.StatusCreated, res.Code)
+
+		res = runOn(server, orgID, "POST", "/register", token, registerRequest("quota-free-2"))
+		require.Equal(t, http.StatusUnprocessableEntity, res.Code)
+
+		agent, err := models.FindAgentByName(orgID.String(), "quota-free-1")
+		require.NoError(t, err)
+		require.NoError(t, agent.Disconnect())
+		requireRegisteredAgents(t, orgID, 0)
+
+		res = runOn(server, orgID, "POST", "/register", token, registerRequest("quota-free-2"))
+		require.Equal(t, http.StatusCreated, res.Code)
+		requireRegisteredAgents(t, orgID, 1)
+	})
+
+	t.Run("quota is looked up before the registration waits, and the count is checked after it", func(t *testing.T) {
 		orgID := uuid.New()
 		agentType, token, err := models.CreateAgentType(orgID, &testRequesterID, "s1-quota-lock")
 		require.NoError(t, err)
@@ -96,41 +146,41 @@ func Test__RegisterQuotaLookup(t *testing.T) {
 		provider := &stubFeatureProvider{quantity: 1, calls: make(chan struct{}, 1)}
 		server := newServerWithFeatureProvider(t, provider)
 
-		// Another session holds the organization register lock.
-		lockTx := openExternalConnection(t).Begin()
-		require.NoError(t, lockTx.Error)
-		require.NoError(t, lockTx.Exec("SELECT pg_advisory_xact_lock(hashtext(?))", orgID.String()).Error)
+		// Another session is registering an agent for the same organization,
+		// and holds the organization's agent count row until it commits.
+		otherTx := openExternalConnection(t).Begin()
+		require.NoError(t, otherTx.Error)
+		require.NoError(t, otherTx.Exec(
+			"INSERT INTO agents (organization_id, agent_type_name, name, token_hash, state) VALUES (?, ?, ?, ?, ?)",
+			orgID.String(), agentType.Name, "quota-lock-0", "not-a-real-hash", models.AgentStateRegistered,
+		).Error)
 
 		done := make(chan *httptest.ResponseRecorder, 1)
 		go func() {
 			done <- runOn(server, orgID, "POST", "/register", token, registerRequest("quota-lock-1"))
 		}()
 
-		// The quota is fetched even though the lock is held elsewhere.
+		// The quota is fetched even though the other registration is in flight.
 		select {
 		case <-provider.calls:
 		case <-time.After(5 * time.Second):
-			lockTx.Rollback()
+			otherTx.Rollback()
 			<-done
-			t.Fatal("quota was not looked up while the register lock was held by another session")
+			t.Fatal("quota was not looked up while another registration was in flight")
 		}
 
-		// The registration itself still waits for the lock.
+		// The registration itself waits for the other one to finish.
 		select {
 		case <-done:
-			lockTx.Rollback()
-			t.Fatal("registration finished while the register lock was held by another session")
+			otherTx.Rollback()
+			t.Fatal("registration finished while another registration for the organization was in flight")
 		case <-time.After(300 * time.Millisecond):
 		}
 
-		// While holding the lock, the other session takes the last available slot.
-		require.NoError(t, lockTx.Exec(
-			"INSERT INTO agents (organization_id, agent_type_name, name, token_hash, state) VALUES (?, ?, ?, ?, ?)",
-			orgID.String(), agentType.Name, "quota-lock-0", "not-a-real-hash", models.AgentStateRegistered,
-		).Error)
-		require.NoError(t, lockTx.Commit().Error)
+		// The other registration takes the last available slot.
+		require.NoError(t, otherTx.Commit().Error)
 
-		// The agent count is checked after the lock is acquired, so the slot taken above is seen.
+		// The agent count is checked after the wait, so the slot taken above is seen.
 		select {
 		case res := <-done:
 			require.Equal(t, http.StatusUnprocessableEntity, res.Code)
@@ -138,7 +188,41 @@ func Test__RegisterQuotaLookup(t *testing.T) {
 			require.NoError(t, err)
 			require.Contains(t, string(body), ErrQuotaReached.Error())
 		case <-time.After(10 * time.Second):
-			t.Fatal("registration did not finish after the register lock was released")
+			t.Fatal("registration did not finish after the other registration committed")
+		}
+
+		requireRegisteredAgents(t, orgID, 1)
+	})
+
+	t.Run("registrations for other organizations do not wait", func(t *testing.T) {
+		busyOrgID := uuid.New()
+		busyType, _, err := models.CreateAgentType(busyOrgID, &testRequesterID, "s1-quota-busy")
+		require.NoError(t, err)
+
+		orgID := uuid.New()
+		_, token, err := models.CreateAgentType(orgID, &testRequesterID, "s1-quota-free-org")
+		require.NoError(t, err)
+
+		server := newServerWithFeatureProvider(t, &stubFeatureProvider{quantity: 5})
+
+		otherTx := openExternalConnection(t).Begin()
+		require.NoError(t, otherTx.Error)
+		defer otherTx.Rollback()
+		require.NoError(t, otherTx.Exec(
+			"INSERT INTO agents (organization_id, agent_type_name, name, token_hash, state) VALUES (?, ?, ?, ?, ?)",
+			busyOrgID.String(), busyType.Name, "quota-busy-0", "not-a-real-hash", models.AgentStateRegistered,
+		).Error)
+
+		done := make(chan *httptest.ResponseRecorder, 1)
+		go func() {
+			done <- runOn(server, orgID, "POST", "/register", token, registerRequest("quota-free-org-1"))
+		}()
+
+		select {
+		case res := <-done:
+			require.Equal(t, http.StatusCreated, res.Code)
+		case <-time.After(5 * time.Second):
+			t.Fatal("registration waited for a registration in another organization")
 		}
 
 		requireRegisteredAgents(t, orgID, 1)
@@ -191,7 +275,7 @@ func newServerWithFeatureProvider(t *testing.T, provider feature.Provider) *Serv
 }
 
 // A connection that does not share the application's connection pool,
-// used to hold the register lock from a different database session.
+// used to hold locks from a different database session.
 func openExternalConnection(t *testing.T) *gorm.DB {
 	dsn := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
@@ -215,7 +299,13 @@ func openExternalConnection(t *testing.T) *gorm.DB {
 }
 
 func requireRegisteredAgents(t *testing.T, orgID uuid.UUID, expected int) {
+	t.Helper()
+
 	count, err := models.CountAgentsInOrganization(orgID.String())
 	require.NoError(t, err)
-	require.Equal(t, expected, count)
+	require.Equal(t, expected, count, "agents in the table")
+
+	stored, err := models.RegisteredAgentCount(orgID)
+	require.NoError(t, err)
+	require.Equal(t, expected, stored, "stored agent count")
 }
