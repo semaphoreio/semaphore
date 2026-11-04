@@ -89,7 +89,11 @@ defmodule Rbac.ComputePermissions do
 
   defp gen_complete_query(%{user_id: user_id, org_id: org_id, project_id: project_id}) do
     user_to_subject_bindings = Queries.user_to_subject_bindings_query(user_id)
-    role_inheritance_tree = Queries.role_inheritance_and_mappings_query()
+
+    role_inheritance_tree =
+      Queries.role_inheritance_and_mappings_query(
+        seed_role_ids(user_id, org_id, project_id, user_to_subject_bindings)
+      )
 
     user_to_permission_bindings =
       user_permission_bindings_query(
@@ -148,6 +152,29 @@ defmodule Rbac.ComputePermissions do
   ###
   ### Helper functions
   ###
+
+  # The recursive role tree only needs to be built for roles that the outer query can join
+  # against, i.e. roles bound by the same user/org/project filters. Seeding it with exactly
+  # those bindings keeps the result identical while avoiding a walk over every role in the
+  # system for each recompute. With no filter at all (compute_all_permissions/1) every role
+  # is needed, so the tree stays unscoped.
+  defp seed_role_ids(nil, nil, nil, _user_to_subject_bindings), do: nil
+
+  defp seed_role_ids(user_id, org_id, project_id, user_to_subject_bindings) do
+    SubjectRoleBinding
+    |> maybe_join_subjects(user_id, user_to_subject_bindings)
+    |> add_where_clause_for_specific_org(org_id)
+    |> add_where_clause_for_specific_project(project_id)
+    |> select([srb], srb.role_id)
+  end
+
+  defp maybe_join_subjects(query, nil, _user_to_subject_bindings), do: query
+
+  defp maybe_join_subjects(query, _user_id, user_to_subject_bindings) do
+    join(query, :inner, [srb], u in subquery(user_to_subject_bindings),
+      on: u.subject_id == srb.subject_id
+    )
+  end
 
   defp validate_role_binding_identification(role_binding_identification) do
     with nil <- role_binding_identification[:user_id],

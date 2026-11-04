@@ -188,6 +188,144 @@ defmodule Rbac.ComputePermissions.Test do
     end
   end
 
+  describe "compute_permissions/1 with a scoped role tree" do
+    @org2_id "0b3c5a8e-6c55-4a5e-9d8f-0f6b4f0f2b11"
+    @project2_id "5d6a4f8c-2b7e-4d2a-8c3b-7a1e9f0c4d22"
+
+    setup test_setup do
+      # role1 -> role2 (inheritance), role2 maps to project role role3
+      Support.Factories.RoleInheritance.insert(
+        inheriting_role_id: test_setup.role1.id,
+        inherited_role_id: test_setup.role2.id
+      )
+
+      Support.Factories.OrgRoleToProjRoleMappings.insert(
+        org_role_id: test_setup.role2.id,
+        proj_role_id: test_setup.role3.id
+      )
+
+      {:ok, group} = Support.Factories.Group.insert()
+      Support.Factories.UserGroupBinding.insert(user_id: @user_id, group_id: group.id)
+
+      bindings = [
+        [role_id: test_setup.role1.id, org_id: @org1_id, subject_id: @user_id],
+        [role_id: test_setup.role4.id, org_id: @org1_id, subject_id: @user2_id],
+        [
+          role_id: test_setup.role4.id,
+          org_id: @org1_id,
+          project_id: @project_id,
+          subject_id: group.id
+        ],
+        [
+          role_id: test_setup.role3.id,
+          org_id: @org1_id,
+          project_id: @project_id,
+          subject_id: @user2_id
+        ],
+        [role_id: test_setup.role4.id, org_id: @org2_id, subject_id: @user_id],
+        [
+          role_id: test_setup.role1.id,
+          org_id: @org2_id,
+          project_id: @project2_id,
+          subject_id: @user2_id
+        ]
+      ]
+
+      Enum.each(bindings, &Support.Factories.SubjectRoleBinding.insert/1)
+
+      {:ok, group: group}
+    end
+
+    test "matches the unscoped computation for every kind of filter", _ctx do
+      all = compute_all()
+
+      rbis = [
+        [org_id: @org1_id],
+        [org_id: @org2_id],
+        [user_id: @user_id],
+        [user_id: @user2_id],
+        [user_id: @user_id, org_id: @org1_id],
+        [user_id: @user2_id, org_id: @org2_id],
+        [org_id: @org1_id, project_id: @project_id],
+        [org_id: @org2_id, project_id: @project2_id],
+        [user_id: @user2_id, org_id: @org1_id, project_id: @project_id],
+        [org_id: @org1_id, project_id: :is_nil],
+        [org_id: @org1_id, project_id: :is_not_nil]
+      ]
+
+      for params <- rbis do
+        {:ok, rbi} = RBI.new(params)
+        {:ok, scoped} = ComputePermissions.compute_permissions(rbi)
+
+        expected = Enum.filter(all, &row_matches?(&1, params))
+
+        assert expected != [], "fixture produced no rows for #{inspect(params)}"
+
+        assert compare_permission_lists(scoped, expected),
+               "scoped result differs for #{inspect(params)}: " <>
+                 "#{inspect(scoped)} vs #{inspect(expected)}"
+      end
+    end
+
+    test "group recompute covers its members like the unscoped computation", ctx do
+      expected = Enum.filter(compute_all(), &(&1.user_id == @user_id))
+
+      {:ok, rbi} = RBI.new(user_id: ctx.group.id)
+      {:ok, scoped} = ComputePermissions.compute_permissions(rbi)
+
+      assert expected != []
+      assert compare_permission_lists(scoped, expected)
+    end
+
+    test "org recompute includes inherited and mapped permissions", test_setup do
+      {:ok, rbi} = RBI.new(org_id: @org1_id, project_id: :is_nil)
+      {:ok, rows} = ComputePermissions.compute_permissions(rbi)
+
+      user_row = Enum.find(rows, &(&1.user_id == @user_id))
+
+      assert user_row.permission_names |> String.split(",") |> Enum.sort() ==
+               Enum.sort([
+                 test_setup.permission1.name,
+                 test_setup.permission2.name,
+                 test_setup.permission3.name
+               ])
+    end
+
+    test "org recompute does not leak bindings from another organization", test_setup do
+      {:ok, rbi} = RBI.new(org_id: @org1_id)
+      {:ok, rows} = ComputePermissions.compute_permissions(rbi)
+
+      assert Enum.all?(rows, &(&1.org_id == @org1_id))
+
+      user_row = Enum.find(rows, &(&1.user_id == @user_id and &1.project_id == "*"))
+      refute test_setup.permission4.name in String.split(user_row.permission_names, ",")
+    end
+
+    test "user without bindings in the org gets nothing", _ctx do
+      {:ok, rbi} = RBI.new(user_id: @user_id, org_id: Ecto.UUID.generate())
+      assert {:ok, []} = ComputePermissions.compute_permissions(rbi)
+    end
+  end
+
+  defp compute_all do
+    {:ok, rows} =
+      Rbac.Repo.transaction(fn ->
+        ComputePermissions.compute_all_permissions() |> Enum.to_list()
+      end)
+
+    rows
+  end
+
+  defp row_matches?(row, params) do
+    Enum.all?(params, fn
+      {:user_id, user_id} -> row.user_id == user_id
+      {:org_id, org_id} -> row.org_id == org_id
+      {:project_id, :is_nil} -> row.project_id == "*"
+      {:project_id, :is_not_nil} -> row.project_id != "*"
+      {:project_id, project_id} -> row.project_id == project_id
+    end)
+  end
+
   # Gets 2 lists of values:
   #
   # list1 - list of rows returned by any function for calculatiog user permissions, where each row is a list in itself
@@ -205,8 +343,8 @@ defmodule Rbac.ComputePermissions.Test do
       true ->
         comparisons =
           Enum.zip(
-            Enum.sort_by(list1, fn i -> i.permission_names end),
-            Enum.sort_by(list1, fn i -> i.permission_names end)
+            Enum.sort_by(list1, &{&1.user_id, &1.org_id, &1.project_id}),
+            Enum.sort_by(list2, &{&1.user_id, &1.org_id, &1.project_id})
           )
           |> Enum.map(fn {list1_map, list2_map} ->
             Map.equal?(

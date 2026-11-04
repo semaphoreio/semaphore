@@ -78,12 +78,17 @@ defmodule Rbac.Repo.Queries do
 
       Based on this, we would be able to deduce that anyone with role 1 has all the permissions
       given by the roles 1,4,7 and 3
+
+      The tree can be scoped with either an organization id (only that organization's roles
+      are seeded) or an Ecto query selecting role ids (only those roles are seeded). Scoping
+      never changes the rows produced for a seeded role, it only skips building rows for roles
+      the caller will not join against. `nil` builds the tree for every role.
   """
-  def role_inheritance_and_mappings_query(org_id \\ nil) do
+  def role_inheritance_and_mappings_query(org_id_or_seed_role_ids \\ nil) do
     role_inheritance_recursive = role_inheritance_query_recursive_step()
 
     inheritance_query =
-      role_inheritance_query_initial_step(org_id)
+      role_inheritance_query_initial_step(org_id_or_seed_role_ids)
       |> union_all(^role_inheritance_recursive)
 
     recursive_ctes(inheritance_query, true)
@@ -95,7 +100,7 @@ defmodule Rbac.Repo.Queries do
   # to any project level role, and if so , to which one (this will be true only in case of some
   # organization level roles). When org_id is given, the tree is seeded only with that
   # organization's roles instead of materializing it for the whole roles table.
-  defp role_inheritance_query_initial_step(org_id) do
+  defp role_inheritance_query_initial_step(scope) do
     RbacRole
     |> join(:left, [r], orm in OrgRoleToProjRoleMapping, on: r.id == orm.org_role_id)
     |> select([r, orm], %{
@@ -105,10 +110,14 @@ defmodule Rbac.Repo.Queries do
       scope_id: r.scope_id,
       depth: 0
     })
-    |> maybe_scope_roles_to_org(org_id)
+    |> maybe_scope_roles_to_org(scope)
   end
 
   defp maybe_scope_roles_to_org(query, nil), do: query
+
+  defp maybe_scope_roles_to_org(query, %Ecto.Query{} = seed_role_ids),
+    do: where(query, [r], r.id in subquery(seed_role_ids))
+
   defp maybe_scope_roles_to_org(query, org_id), do: where(query, [r], r.org_id == ^org_id)
 
   # When the initial set of roles is created based on the query above, now we can use that set (refered to here
