@@ -14,6 +14,8 @@ defmodule Audit.Retention.Queries do
   @min_grace_period_days 7
   @default_batch_size 1_000
   @min_batch_size 1
+  # Well below the broker's delivery acknowledgement timeout (30 minutes by default).
+  @default_time_limit_sec 900
   @expired_count_cap 100_000
 
   # --- Marking / Unmarking ---
@@ -21,23 +23,33 @@ defmodule Audit.Retention.Queries do
   @doc """
   Applies retention policy for `org_id` with given `cutoff` date.
 
-  - Events with `timestamp` before `cutoff` are marked with `expires_at = now + grace_period`
   - Events with `timestamp` on or after `cutoff` have their `expires_at` cleared
+  - Events with `timestamp` before `cutoff` are marked with `expires_at = now + grace_period`
 
-  Returns `{marked_count, unmarked_count}`.
+  Unmarking runs first. Each step stops once the time limit has passed, after at
+  least one batch, and the next policy event for the organization continues where
+  this one stopped.
+
+  Returns `{marked_count, unmarked_count, status}`, where `status` is `:time_limit`
+  if the time limit stopped the work and `:done` otherwise.
   """
-  @spec mark_expiring(String.t(), DateTime.t()) :: {non_neg_integer(), non_neg_integer()}
+  @spec mark_expiring(String.t(), DateTime.t()) ::
+          {non_neg_integer(), non_neg_integer(), :done | :time_limit}
   def mark_expiring(org_id, cutoff) do
     expires_at = compute_expires_at()
     batch_size = batch_size()
+    deadline = System.monotonic_time(:millisecond) + time_limit_sec() * 1_000
 
-    marked_count = batch_mark(org_id, cutoff, expires_at, batch_size, 0)
-    unmarked_count = batch_unmark(org_id, cutoff, batch_size, 0)
+    {unmarked_count, unmark_status} = batch_unmark(org_id, cutoff, batch_size, deadline, 0)
 
-    {marked_count, unmarked_count}
+    {marked_count, mark_status} = batch_mark(org_id, cutoff, expires_at, batch_size, deadline, 0)
+
+    status = if :time_limit in [unmark_status, mark_status], do: :time_limit, else: :done
+
+    {marked_count, unmarked_count, status}
   end
 
-  defp batch_mark(org_id, cutoff, expires_at, batch_size, acc) do
+  defp batch_mark(org_id, cutoff, expires_at, batch_size, deadline, acc) do
     # `order_by: timestamp` lets the planner walk the
     # (org_id, timestamp) WHERE expires_at IS NULL partial index instead of
     # scanning the org's full retention window on every policy event.
@@ -56,13 +68,14 @@ defmodule Audit.Retention.Queries do
 
     Watchman.submit({"retention.marked", []}, count, :count)
 
-    case count do
-      0 -> acc
-      n -> batch_mark(org_id, cutoff, expires_at, batch_size, acc + n)
+    cond do
+      count == 0 -> {acc, :done}
+      past?(deadline) -> {acc + count, :time_limit}
+      true -> batch_mark(org_id, cutoff, expires_at, batch_size, deadline, acc + count)
     end
   end
 
-  defp batch_unmark(org_id, cutoff, batch_size, acc) do
+  defp batch_unmark(org_id, cutoff, batch_size, deadline, acc) do
     # Mirrors batch_mark: ordering + the
     # (org_id, timestamp) WHERE expires_at IS NOT NULL partial index keep this
     # an index scan even when no rows match.
@@ -81,11 +94,14 @@ defmodule Audit.Retention.Queries do
 
     Watchman.submit({"retention.unmarked", []}, count, :count)
 
-    case count do
-      0 -> acc
-      n -> batch_unmark(org_id, cutoff, batch_size, acc + n)
+    cond do
+      count == 0 -> {acc, :done}
+      past?(deadline) -> {acc + count, :time_limit}
+      true -> batch_unmark(org_id, cutoff, batch_size, deadline, acc + count)
     end
   end
+
+  defp past?(deadline), do: System.monotonic_time(:millisecond) >= deadline
 
   defp compute_expires_at do
     grace_period_seconds = grace_period_days() * 24 * 60 * 60
@@ -121,38 +137,71 @@ defmodule Audit.Retention.Queries do
     end
   end
 
+  defp time_limit_sec do
+    config = Application.get_env(:audit, __MODULE__, [])
+    value = Keyword.get(config, :time_limit_sec, @default_time_limit_sec)
+
+    if is_integer(value) and value >= 0 do
+      value
+    else
+      Logger.warning(
+        "[Retention] invalid time_limit_sec=#{inspect(value)} for #{inspect(__MODULE__)}, using #{@default_time_limit_sec}"
+      )
+
+      @default_time_limit_sec
+    end
+  end
+
   # --- Deletion ---
 
   @doc """
-  Deletes up to `limit` events where `expires_at` has passed.
+  Takes up to `limit` events where `expires_at` has passed. Deletes those of
+  organizations for which `enabled?` returns true, and unmarks the others so they
+  leave the deletion queue instead of blocking it.
+
+  `enabled?` is called once per organization while the batch is locked, so it
+  must be cheap (feature lookups are cached).
 
   Uses FOR UPDATE SKIP LOCKED to prevent concurrent workers from
   processing the same records.
 
-  Returns `{:ok, count}`.
+  Returns `{:ok, %{deleted: deleted_count, unmarked: unmarked_count}}`.
   """
-  @spec delete_expired_batch(pos_integer()) :: {:ok, non_neg_integer()} | {:error, term()}
-  def delete_expired_batch(limit) do
+  @spec delete_expired_batch(pos_integer(), (String.t() -> boolean())) ::
+          {:ok, %{deleted: non_neg_integer(), unmarked: non_neg_integer()}} | {:error, term()}
+  def delete_expired_batch(limit, enabled?) do
     Repo.transaction(fn ->
-      ids = fetch_expired_ids(limit)
-      delete_by_ids(ids)
+      expired = fetch_expired(limit)
+
+      enabled_org_ids =
+        expired
+        |> Enum.map(fn {_id, org_id} -> org_id end)
+        |> Enum.uniq()
+        |> Enum.filter(enabled?)
+
+      {to_delete, to_unmark} =
+        Enum.split_with(expired, fn {_id, org_id} -> org_id in enabled_org_ids end)
+
+      %{deleted: delete_by_ids(ids(to_delete)), unmarked: unmark_by_ids(ids(to_unmark))}
     end)
   rescue
     e in [Postgrex.Error, DBConnection.ConnectionError] -> {:error, e}
   end
 
-  defp fetch_expired_ids(limit) do
+  defp fetch_expired(limit) do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 
     from(e in Event,
       where: not is_nil(e.expires_at) and e.expires_at <= ^now,
       order_by: [asc: e.expires_at],
-      select: e.id,
+      select: {e.id, e.org_id},
       limit: ^limit,
       lock: "FOR UPDATE SKIP LOCKED"
     )
     |> Repo.all()
   end
+
+  defp ids(events), do: Enum.map(events, fn {id, _org_id} -> id end)
 
   defp delete_by_ids([]), do: 0
 
@@ -160,6 +209,16 @@ defmodule Audit.Retention.Queries do
     {count, _} =
       from(e in Event, where: e.id in ^ids)
       |> Repo.delete_all()
+
+    count
+  end
+
+  defp unmark_by_ids([]), do: 0
+
+  defp unmark_by_ids(ids) do
+    {count, _} =
+      from(e in Event, where: e.id in ^ids)
+      |> Repo.update_all(set: [expires_at: nil])
 
     count
   end

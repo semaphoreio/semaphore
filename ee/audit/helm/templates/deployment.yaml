@@ -82,6 +82,8 @@ spec:
               value: {{ .Values.api.retention.gracePeriodDays | quote }}
             - name: RETENTION_APPLIER_BATCH_SIZE
               value: {{ .Values.api.retention.applierBatchSize | quote }}
+            - name: RETENTION_APPLIER_TIME_LIMIT_SEC
+              value: {{ .Values.api.retention.applierTimeLimitSec | quote }}
             - name: RETENTION_DELETER_ENABLED
               value: {{ .Values.api.retention.deleterEnabled | quote }}
             - name: RETENTION_DELETER_SLEEP_PERIOD_SEC

@@ -5,8 +5,12 @@ defmodule Audit.Retention.PolicyMarker do
   Listens to the same `usage.apply_organization_policy` AMQP event that
   Zebra and Plumber consume. On each message it:
 
-  1. Marks events with `timestamp < cutoff_date` → sets `expires_at = now + grace_period`
-  2. Unmarks events with `timestamp >= cutoff_date` → clears `expires_at`
+  1. Unmarks events with `timestamp >= cutoff_date` → clears `expires_at`
+  2. Marks events with `timestamp < cutoff_date` → sets `expires_at = now + grace_period`
+
+  Both steps stop once `RETENTION_APPLIER_TIME_LIMIT_SEC` (default 900) has passed,
+  so a large backlog cannot keep the message unacknowledged past the broker's
+  timeout. The organization's next policy event continues where this one stopped.
 
   ## Feature flag (per-organization)
 
@@ -17,6 +21,8 @@ defmodule Audit.Retention.PolicyMarker do
   failure never marks audit logs for deletion. This is orthogonal to the
   service-level `RETENTION_CONSUMER_ENABLED` switch (which decides whether the
   consumer runs at all); the flag decides which organizations it acts on.
+  `Audit.Retention.Deleter` checks the flag again before deleting, so turning it
+  off also stops deletion of events that are already marked.
 
   ## Retention floor
 
@@ -43,10 +49,10 @@ defmodule Audit.Retention.PolicyMarker do
 
   alias Google.Protobuf.Timestamp
   alias InternalApi.Usage.OrganizationPolicyApply
+  alias Audit.Retention
   alias Audit.Retention.Queries
 
   @default_min_retention_days 400
-  @feature_flag :audit_logs_retention
 
   use Tackle.Consumer,
     url: Application.get_env(:audit, :amqp_url),
@@ -70,17 +76,17 @@ defmodule Audit.Retention.PolicyMarker do
 
       {:disabled, org_id} ->
         Watchman.increment("retention.policy.feature_disabled")
-        Logger.debug("[Retention] Skipping org=#{org_id}: #{@feature_flag} feature disabled")
+        Logger.debug("[Retention] Skipping org=#{org_id}: audit_logs_retention feature disabled")
         :ok
     end
   end
 
   # Per-org guard: retention is only applied to organizations that have the
-  # `:audit_logs_retention` feature enabled. `feature_enabled?/2` is fail-closed
+  # `:audit_logs_retention` feature enabled. `Retention.enabled?/1` is fail-closed
   # (returns false on a Feature service error), so a lookup failure skips the org
   # rather than risking deletion of its audit logs.
   defp check_feature_enabled(org_id) do
-    if FeatureProvider.feature_enabled?(@feature_flag, param: org_id) do
+    if Retention.enabled?(org_id) do
       :ok
     else
       {:disabled, org_id}
@@ -107,10 +113,12 @@ defmodule Audit.Retention.PolicyMarker do
 
   @spec apply_policy(String.t(), DateTime.t()) :: :ok | no_return()
   defp apply_policy(org_id, cutoff) do
-    {marked, unmarked} = Queries.mark_expiring(org_id, cutoff)
+    {marked, unmarked, status} = Queries.mark_expiring(org_id, cutoff)
+
+    if status == :time_limit, do: Watchman.increment("retention.policy.time_limit")
 
     Logger.info(
-      "[Retention] org=#{org_id} cutoff=#{cutoff} marked=#{marked} unmarked=#{unmarked}"
+      "[Retention] org=#{org_id} cutoff=#{cutoff} marked=#{marked} unmarked=#{unmarked} status=#{status}"
     )
 
     :ok
