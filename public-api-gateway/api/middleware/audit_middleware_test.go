@@ -216,6 +216,46 @@ func TestDetectRemoteAddress(t *testing.T) {
 		}
 	})
 
+	t.Run("Should detect IP from single-entry X-Forwarded-For", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/", nil)
+		req.Header.Set("X-Forwarded-For", "10.0.0.1")
+
+		ip := detectRemoteAddress(req)
+		if ip != "10.0.0.1" {
+			t.Errorf("Expected IP 10.0.0.1, got %s", ip)
+		}
+	})
+
+	t.Run("Should detect first IP from multi-hop X-Forwarded-For", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/", nil)
+		req.Header.Set("X-Forwarded-For", "10.0.0.1, 192.168.1.1, 172.16.0.5")
+
+		ip := detectRemoteAddress(req)
+		if ip != "10.0.0.1" {
+			t.Errorf("Expected IP 10.0.0.1, got %s", ip)
+		}
+	})
+
+	t.Run("Should skip leading empty X-Forwarded-For entries", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/", nil)
+		req.Header.Set("X-Forwarded-For", "  , 10.0.0.1, 192.168.1.1")
+
+		ip := detectRemoteAddress(req)
+		if ip != "10.0.0.1" {
+			t.Errorf("Expected IP 10.0.0.1, got %s", ip)
+		}
+	})
+
+	t.Run("Should skip comma-only X-Forwarded-For entries", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/", nil)
+		req.Header.Set("X-Forwarded-For", ",,,10.0.0.1")
+
+		ip := detectRemoteAddress(req)
+		if ip != "10.0.0.1" {
+			t.Errorf("Expected IP 10.0.0.1, got %s", ip)
+		}
+	})
+
 	t.Run("Should detect IP from X-Real-IP", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/", nil)
 		req.Header.Set("X-Real-IP", "192.168.1.1")
@@ -226,13 +266,23 @@ func TestDetectRemoteAddress(t *testing.T) {
 		}
 	})
 
-	t.Run("Should fall back to RemoteAddr", func(t *testing.T) {
+	t.Run("Should fall back to RemoteAddr host when host:port is provided", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/", nil)
 		req.RemoteAddr = "127.0.0.1:1234"
 
 		ip := detectRemoteAddress(req)
-		if ip != "127.0.0.1:1234" {
-			t.Errorf("Expected IP 127.0.0.1:1234, got %s", ip)
+		if ip != "127.0.0.1" {
+			t.Errorf("Expected IP 127.0.0.1, got %s", ip)
+		}
+	})
+
+	t.Run("Should return raw RemoteAddr when it is not host:port", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/", nil)
+		req.RemoteAddr = "not-a-host-port"
+
+		ip := detectRemoteAddress(req)
+		if ip != "not-a-host-port" {
+			t.Errorf("Expected IP not-a-host-port, got %s", ip)
 		}
 	})
 }
