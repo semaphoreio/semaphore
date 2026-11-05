@@ -300,13 +300,23 @@ defmodule RepositoryHub.GithubConnector do
       events: GithubClient.Webhook.events()
     }
 
-    GithubClient.find_webhook(params, token: token)
-    |> unwrap(fn existing ->
-      GithubClient.remove_webhook(Map.put(params, :webhook_id, existing.id), token: token)
-    end)
+    with {:ok, stale} <- GithubClient.find_webhook(params, token: token),
+         {:error, reason} <- GithubClient.remove_webhook(Map.put(params, :webhook_id, stale.id), token: token) do
+      log_removal_failure(
+        "webhook",
+        %{label: "stale", owner: git_repository.owner, repo: git_repository.repo},
+        reason
+      )
 
-    params
-    |> Map.put(:secret, secret)
-    |> GithubClient.create_webhook(token: token)
+      fail_with(
+        :precondition,
+        "Couldn't remove webhook #{stale.id} from #{git_repository.owner}/#{git_repository.repo}. Remove it on GitHub and try again."
+      )
+    else
+      _ ->
+        params
+        |> Map.put(:secret, secret)
+        |> GithubClient.create_webhook(token: token)
+    end
   end
 end

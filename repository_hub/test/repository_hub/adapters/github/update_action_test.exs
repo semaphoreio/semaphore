@@ -532,6 +532,55 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
                RepositoryHub.Model.Repositories.hook_signature_valid?(updated_repository, payload, signature)
     end
 
+    test "names the webhook and creates nothing when removing a stale webhook on the target fails", %{
+      github_app_adapter: adapter
+    } do
+      repository =
+        RepositoryModelFactory.githubapp_repo(
+          owner: "old-org",
+          url: "git@github.com:old-org/repository.git",
+          remote_id: "999"
+        )
+
+      DeployKeysModelFactory.create_deploy_key(project_id: repository.project_id, repository_id: repository.id)
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:new-org/repository.git",
+          user_id: "requester-user-id"
+        )
+
+      :meck.expect(GithubClient, :find_webhook, fn _params, _opts ->
+        {:ok, %{id: "stale-hook-id", url: "example.com/hooks/github", has_secret?: false}}
+      end)
+
+      :meck.expect(GithubClient, :remove_webhook, fn _params, _opts ->
+        {:error, %{status: GRPC.Status.failed_precondition(), message: "Removing webhook failed."}}
+      end)
+
+      with_mocks [
+        {RepositoryIntegratorClient, [:passthrough],
+         get_token: fn
+           _integration_type, "old-org/repository", _remote_id -> {:ok, "old-tok"}
+           _integration_type, "new-org/repository", _remote_id -> {:ok, "new-tok"}
+         end},
+        {Watchman, [:passthrough], []}
+      ] do
+        assert {:error, %{message: message}} = UpdateAction.execute(adapter, request)
+        assert message =~ "webhook stale-hook-id"
+        assert message =~ "new-org/repository"
+        assert_called(Watchman.increment({"github_app.update_url.stale_webhook_removal_failed", []}))
+      end
+
+      {:ok, unchanged_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert unchanged_repository.url == repository.url
+      assert unchanged_repository.hook_id == repository.hook_id
+
+      assert_not_called(GithubClient.create_webhook(:_, :_))
+      assert_not_called(GithubClient.create_deploy_key(:_, :_))
+    end
+
     test "completes the move even when removing the old webhook and deploy key fails", %{
       github_app_adapter: adapter
     } do
