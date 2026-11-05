@@ -384,6 +384,96 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       assert_not_called(GithubClient.remove_deploy_key(%{repo_owner: "new-org"}, :_))
     end
 
+    test "keeps the created webhook and key when the commit landed but cannot be confirmed", %{
+      github_app_adapter: adapter
+    } do
+      repository =
+        RepositoryModelFactory.githubapp_repo(
+          owner: "old-org",
+          url: "git@github.com:old-org/repository.git",
+          remote_id: "999"
+        )
+
+      DeployKeysModelFactory.create_deploy_key(project_id: repository.project_id, repository_id: repository.id)
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:new-org/repository.git",
+          user_id: "requester-user-id"
+        )
+
+      with_mocks [
+        {RepositoryIntegratorClient, [:passthrough],
+         get_token: fn
+           _integration_type, "old-org/repository", _remote_id -> {:ok, "old-tok"}
+           _integration_type, "new-org/repository", _remote_id -> {:ok, "new-tok"}
+         end},
+        {RepositoryHub.Model.RepositoryQuery, [:passthrough], []},
+        {Watchman, [:passthrough], []},
+        {RepositoryHub.Repo, [:passthrough],
+         transaction: fn %Ecto.Multi{} = multi ->
+           :meck.passthrough([multi])
+           fail_repository_read_back()
+           raise DBConnection.ConnectionError, "connection closed"
+         end}
+      ] do
+        assert_raise DBConnection.ConnectionError, fn -> UpdateAction.execute(adapter, request) end
+        assert_called(Watchman.increment({"github_app.update_url.unclear_commit", []}))
+      end
+
+      [{:ok, created_webhook}] =
+        for {_pid, {GithubClient, :create_webhook, _args}, result} <- :meck.history(GithubClient), do: result
+
+      {:ok, updated_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert updated_repository.hook_id == created_webhook.id
+
+      assert_not_called(GithubClient.remove_webhook(:_, :_))
+      assert_not_called(GithubClient.remove_deploy_key(:_, :_))
+    end
+
+    test "keeps the created webhook and key when the commit did not land but that cannot be confirmed", %{
+      github_app_adapter: adapter
+    } do
+      repository =
+        RepositoryModelFactory.githubapp_repo(
+          owner: "old-org",
+          url: "git@github.com:old-org/repository.git",
+          remote_id: "999"
+        )
+
+      DeployKeysModelFactory.create_deploy_key(project_id: repository.project_id, repository_id: repository.id)
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:new-org/repository.git",
+          user_id: "requester-user-id"
+        )
+
+      with_mocks [
+        {RepositoryIntegratorClient, [:passthrough],
+         get_token: fn
+           _integration_type, "old-org/repository", _remote_id -> {:ok, "old-tok"}
+           _integration_type, "new-org/repository", _remote_id -> {:ok, "new-tok"}
+         end},
+        {RepositoryHub.Model.RepositoryQuery, [:passthrough], []},
+        {RepositoryHub.Repo, [:passthrough],
+         transaction: fn %Ecto.Multi{} ->
+           fail_repository_read_back()
+           raise DBConnection.ConnectionError, "connection closed"
+         end}
+      ] do
+        assert_raise DBConnection.ConnectionError, fn -> UpdateAction.execute(adapter, request) end
+      end
+
+      {:ok, unchanged_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert unchanged_repository.hook_id == repository.hook_id
+
+      assert_not_called(GithubClient.remove_webhook(:_, :_))
+      assert_not_called(GithubClient.remove_deploy_key(:_, :_))
+    end
+
     test "rotates the webhook secret when an orphan webhook already exists on the target", %{
       github_app_adapter: adapter
     } do
@@ -983,6 +1073,10 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
         assert_one_deploy_key_after_overlapping_url_changes(adapter, repository, pool)
       end)
     end
+  end
+
+  defp fail_repository_read_back do
+    :meck.expect(RepositoryHub.Model.RepositoryQuery, :get_by_id, fn _id -> {:error, "connection closed"} end)
   end
 
   defp with_real_connections(test_body) do

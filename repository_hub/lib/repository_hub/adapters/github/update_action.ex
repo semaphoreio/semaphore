@@ -66,8 +66,12 @@ defimpl RepositoryHub.Server.UpdateAction, for: RepositoryHub.GithubAdapter do
         {:ok, repository} ->
           wrap(Model.Repositories.to_grpc_model(repository))
 
-        _ ->
+        {:error, :not_committed} ->
           GithubConnector.remove_github_resources(change.created)
+          reraise error, __STACKTRACE__
+
+        _ ->
+          Watchman.increment({"github_app.update_url.unclear_commit", []})
           reraise error, __STACKTRACE__
       end
   end
