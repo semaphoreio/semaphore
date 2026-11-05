@@ -155,7 +155,7 @@ The `endpoint` property holds the URL to which Semaphore will send the notificat
 
 ### action {#action-in-webhook}
 
-Defines the HTTP method to use for sending the notification.
+Defines the HTTP method to use for sending the notification: `POST`, `PUT` or `PATCH`.
 
 This property is optional and defaults to `POST`.
 
