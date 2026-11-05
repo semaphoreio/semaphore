@@ -40,6 +40,10 @@ func respondWith422(w http.ResponseWriter) {
 	respond(w, http.StatusUnprocessableEntity)
 }
 
+func respondWith429(w http.ResponseWriter) {
+	respond(w, http.StatusTooManyRequests)
+}
+
 func respondWith500(w http.ResponseWriter) {
 	respond(w, http.StatusInternalServerError)
 }
