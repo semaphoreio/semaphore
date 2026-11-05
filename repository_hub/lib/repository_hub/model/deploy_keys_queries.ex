@@ -88,4 +88,14 @@ defmodule RepositoryHub.Model.DeployKeyQuery do
   catch
     a, b -> {:error, [a, b]}
   end
+
+  @doc """
+  Deletes every key of the given project
+  """
+  def delete_by_project_id(project_id) do
+    DeployKeys
+    |> where(project_id: ^project_id)
+    |> Repo.delete_all()
+    |> wrap()
+  end
 end
