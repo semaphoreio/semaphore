@@ -223,12 +223,10 @@ defmodule RepositoryHub.GithubConnector do
 
   defp replace_deploy_key(%{new_deploy_key: nil}), do: wrap(nil)
 
-  defp replace_deploy_key(%{old_resources: %{deploy_key: %{id: old_id}}} = change) do
-    Model.DeployKeyQuery.delete(old_id)
-    |> unwrap(fn _ -> Model.DeployKeyQuery.insert(change.new_deploy_key) end)
+  defp replace_deploy_key(%{new_deploy_key: new_deploy_key}) do
+    Model.DeployKeyQuery.delete_by_project_id(new_deploy_key.project_id)
+    |> unwrap(fn _ -> Model.DeployKeyQuery.insert(new_deploy_key) end)
   end
-
-  defp replace_deploy_key(change), do: Model.DeployKeyQuery.insert(change.new_deploy_key)
 
   defp capture_old_resources(connector) do
     old_deploy_key =

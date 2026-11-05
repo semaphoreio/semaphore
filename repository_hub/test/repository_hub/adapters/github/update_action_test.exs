@@ -909,6 +909,82 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
     end
   end
 
+  describe "Github UpdateAction overlapping url changes" do
+    test "leaves one deploy key when the project has none", %{github_app_adapter: adapter} do
+      with_real_connections(fn pool ->
+        repository = RepositoryModelFactory.githubapp_repo()
+
+        assert_one_deploy_key_after_overlapping_url_changes(adapter, repository, pool)
+      end)
+    end
+
+    test "leaves one deploy key when the project has one", %{github_app_adapter: adapter} do
+      with_real_connections(fn pool ->
+        repository = RepositoryModelFactory.githubapp_repo()
+        DeployKeysModelFactory.create_deploy_key(project_id: repository.project_id, repository_id: repository.id)
+
+        assert_one_deploy_key_after_overlapping_url_changes(adapter, repository, pool)
+      end)
+    end
+  end
+
+  defp with_real_connections(test_body) do
+    {:ok, pool} = Repo.start_link(name: nil, pool: DBConnection.ConnectionPool, pool_size: 2)
+    Repo.put_dynamic_repo(pool)
+
+    try do
+      test_body.(pool)
+    after
+      Repo.delete_all(RepositoryHub.Model.DeployKeys)
+      Repo.delete_all(RepositoryHub.Model.Repositories)
+      Repo.put_dynamic_repo(Repo)
+      Supervisor.stop(pool)
+    end
+  end
+
+  defp assert_one_deploy_key_after_overlapping_url_changes(adapter, repository, pool) do
+    test_process = self()
+
+    :meck.expect(GithubClient, :create_deploy_key, fn _params, _opts ->
+      send(test_process, {:creating_deploy_key, self()})
+
+      receive do
+        :continue -> {:ok, %{id: System.unique_integer([:positive])}}
+      end
+    end)
+
+    with_mock RepositoryHub.Model.DeployKeys, [:passthrough],
+      generate_private_public_key_pair: fn -> {"private-key", "public-key"} end do
+      requests =
+        for name <- ["repository-2", "repository-3"] do
+          Task.async(fn ->
+            Repo.put_dynamic_repo(pool)
+
+            request =
+              InternalApiFactory.update_request(
+                repository_id: repository.id,
+                url: "git@github.com:dummy/#{name}.git",
+                user_id: "requester-user-id"
+              )
+
+            UpdateAction.execute(adapter, request)
+          end)
+        end
+
+      assert_receive {:creating_deploy_key, first_request}, 5_000
+      assert_receive {:creating_deploy_key, second_request}, 5_000
+      send(first_request, :continue)
+      send(second_request, :continue)
+
+      assert [%UpdateResponse{}, %UpdateResponse{}] = Task.await_many(requests)
+    end
+
+    assert [_deploy_key] =
+             Repo.all(from(key in RepositoryHub.Model.DeployKeys, where: key.project_id == ^repository.project_id))
+
+    assert {:ok, _} = RepositoryHub.Model.DeployKeyQuery.get_by_repository_id(repository.id)
+  end
+
   defp assert_old_resources_kept_and_created_resources_removed(repository, deploy_key) do
     {:ok, unchanged_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
     assert unchanged_repository.url == "git@github.com:old-org/repository.git"
