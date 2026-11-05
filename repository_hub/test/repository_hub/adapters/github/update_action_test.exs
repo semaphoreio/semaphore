@@ -1056,15 +1056,75 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       assert_not_called(GithubClient.create_webhook(:_, :_))
     end
 
-    test "saves a service account's settings when the url differs only in letter case", %{
+    for {requester, user_id} <- [
+          {"a person", "requester-user-id"},
+          {"a service account", "service-account-user-id"}
+        ] do
+      test "stores GitHub's owner, name and url when #{requester} saves a url that differs only in letter case", %{
+        github_app_adapter: adapter
+      } do
+        repository =
+          RepositoryModelFactory.githubapp_repo(
+            owner: "OldCase",
+            url: "git@github.com:OldCase/repository.git",
+            remote_id: "12345"
+          )
+
+        github_reports("12345", "oldcase", "repository")
+
+        request =
+          InternalApiFactory.update_request(
+            repository_id: repository.id,
+            url: "git@github.com:OLDCASE/Repository.git",
+            pipeline_file: ".semaphore/semaphore-2.yml",
+            user_id: unquote(user_id)
+          )
+
+        with_mock RepositoryIntegratorClient, [:passthrough], [] do
+          :meck.expect(
+            RepositoryIntegratorClient,
+            :get_token,
+            [:_, :_, :_],
+            :meck.seq([{:ok, "tok"}, {:error, "token lookup failed"}])
+          )
+
+          assert %UpdateResponse{repository: response_repository} = UpdateAction.execute(adapter, request)
+          assert response_repository.url == "git@github.com:oldcase/repository.git"
+          assert_called_exactly(RepositoryIntegratorClient.get_token(:_, :_, :_), 1)
+        end
+
+        {:ok, updated_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+        assert updated_repository.pipeline_file == ".semaphore/semaphore-2.yml"
+        assert updated_repository.owner == "oldcase"
+        assert updated_repository.name == "repository"
+        assert updated_repository.url == "git@github.com:oldcase/repository.git"
+        assert updated_repository.hook_id == repository.hook_id
+
+        assert_called(GithubClient.find_repository(:_, token: "tok"))
+        assert_not_called(UserClient.describe(:_))
+        assert_not_called(GithubClient.create_webhook(:_, :_))
+        assert_not_called(GithubClient.create_deploy_key(:_, :_))
+        assert_not_called(GithubClient.remove_webhook(:_, :_))
+        assert_not_called(GithubClient.remove_deploy_key(:_, :_))
+      end
+    end
+
+    test "saves the settings and keeps the url when GitHub reports another repository under that name", %{
       github_app_adapter: adapter
     } do
-      repository = RepositoryModelFactory.githubapp_repo()
+      repository =
+        RepositoryModelFactory.githubapp_repo(
+          owner: "OldCase",
+          url: "git@github.com:OldCase/repository.git",
+          remote_id: "999"
+        )
+
+      github_reports("12345", "oldcase", "repository")
 
       request =
         InternalApiFactory.update_request(
           repository_id: repository.id,
-          url: "git@github.com:Dummy/Repository.git",
+          url: "git@github.com:oldcase/repository.git",
           pipeline_file: ".semaphore/semaphore-2.yml",
           user_id: "service-account-user-id"
         )
@@ -1073,10 +1133,45 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
 
       {:ok, updated_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
       assert updated_repository.pipeline_file == ".semaphore/semaphore-2.yml"
-      assert updated_repository.url == repository.url
+      assert updated_repository.owner == "OldCase"
+      assert updated_repository.url == "git@github.com:OldCase/repository.git"
+      assert updated_repository.remote_id == "999"
 
-      assert_not_called(GithubClient.find_repository(:_, :_))
-      assert_not_called(UserClient.describe(:_))
+      assert_called(GithubClient.find_repository(:_, :_))
+    end
+
+    for {failure, lookup} <- [
+          {"answers with an error", quote(do: fn _params, _opts -> {:error, "lookup failed"} end)},
+          {"raises", quote(do: fn _params, _opts -> raise "connection closed" end)}
+        ] do
+      test "saves the settings and keeps the url when the lookup of a case-only url #{failure}", %{
+        github_app_adapter: adapter
+      } do
+        repository =
+          RepositoryModelFactory.githubapp_repo(
+            owner: "OldCase",
+            url: "git@github.com:OldCase/repository.git",
+            remote_id: "12345"
+          )
+
+        :meck.expect(GithubClient, :find_repository, unquote(lookup))
+
+        request =
+          InternalApiFactory.update_request(
+            repository_id: repository.id,
+            url: "git@github.com:oldcase/repository.git",
+            pipeline_file: ".semaphore/semaphore-2.yml",
+            user_id: "service-account-user-id"
+          )
+
+        assert %UpdateResponse{} = UpdateAction.execute(adapter, request)
+
+        {:ok, updated_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+        assert updated_repository.pipeline_file == ".semaphore/semaphore-2.yml"
+        assert updated_repository.url == "git@github.com:OldCase/repository.git"
+
+        assert_called(GithubClient.find_repository(:_, :_))
+      end
     end
 
     test "stores the owner and name GitHub reports, not the letter case of the requested url", %{
@@ -1178,6 +1273,21 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
         assert_one_deploy_key_after_overlapping_url_changes(adapter, repository, pool)
       end)
     end
+  end
+
+  defp github_reports(id, owner, name) do
+    :meck.expect(GithubClient, :find_repository, fn params, opts ->
+      {:ok, github_repository} = GithubClientFactory.find_repository_mock(params, opts)
+
+      {:ok,
+       %{
+         github_repository
+         | id: id,
+           owner: owner,
+           name: name,
+           ssh_url: "git@github.com:#{owner}/#{name}.git"
+       }}
+    end)
   end
 
   defp fail_repository_read_back do

@@ -38,7 +38,7 @@ defmodule RepositoryHub.GithubConnector do
     |> Model.GitRepository.equal?(url)
     |> unwrap(fn
       true ->
-        wrap(unchanged(connector))
+        wrap(recased(connector, url))
 
       false ->
         connector.git_repository
@@ -144,6 +144,28 @@ defmodule RepositoryHub.GithubConnector do
       _ ->
         fail_with(:precondition, "Admin permissions are required on the repository to add the project to Semaphore")
     end)
+  end
+
+  defp recased(connector, url) do
+    with {:ok, requested} <- Model.GitRepository.from_github(url),
+         true <- requested.ssh_git_url != connector.git_repository.ssh_git_url,
+         {:ok, github_repository} when github_repository.id == connector.repository.remote_id <-
+           GithubClient.find_repository(%{repo_owner: requested.owner, repo_name: requested.repo},
+             token: connector.token
+           ) do
+      %{
+        unchanged(connector)
+        | repository_changes: %{
+            name: github_repository.name,
+            owner: github_repository.owner,
+            url: github_repository.ssh_url
+          }
+      }
+    else
+      _ -> unchanged(connector)
+    end
+  rescue
+    _ -> unchanged(connector)
   end
 
   defp unchanged(connector) do
