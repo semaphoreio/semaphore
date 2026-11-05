@@ -31,7 +31,7 @@ export class Component {
   }
 
   getResults() {
-    return _.sortBy(this.model.results, function(r) { return r.name.toLocaleLowerCase(); });
+    return this.model.orderedResults()
   }
 
   getSelectedIndex() {
@@ -43,7 +43,9 @@ export class Component {
     let node = nodes[nodes.length - 1]
     const selectedResultElement = node.querySelector(`[aria-selected="true"] a`)
 
-    window.location = selectedResultElement.href
+    if (selectedResultElement) {
+      window.location = selectedResultElement.href
+    }
   }
 
   onlySelectionChanged() {
@@ -81,8 +83,15 @@ export class Component {
     let nodes = document.querySelectorAll(this.outputDivSelector)
     let node = nodes[nodes.length - 1]
 
-    let currentlySelected = node.querySelector(`li[aria-selected="true"]`).removeAttribute("aria-selected")
-    node.querySelectorAll(`li`)[this.model.selectedIndex].setAttribute("aria-selected", true)
+    let currentlySelected = node.querySelector(`li[aria-selected="true"]`)
+    if (currentlySelected) {
+      currentlySelected.removeAttribute("aria-selected")
+    }
+
+    let nextSelected = node.querySelectorAll(`li`)[this.model.selectedIndex]
+    if (nextSelected) {
+      nextSelected.setAttribute("aria-selected", true)
+    }
   }
 
   handleFilterInput() {
