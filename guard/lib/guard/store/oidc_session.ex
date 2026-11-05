@@ -84,4 +84,26 @@ defmodule Guard.Store.OIDCSession do
   def expired?(%Guard.Repo.OIDCSession{expires_at: expires_at}) do
     DateTime.compare(expires_at, DateTime.utc_now()) == :lt
   end
+
+  @doc """
+  Whether a session may be treated as an authenticated identity WITHOUT
+  refreshing it: it must be unexpired and still hold its refresh token.
+
+  A nil `refresh_token_enc` is how session revocation is recorded
+  (`remove_refresh_token/1`), used for the strongest "signed out everywhere" /
+  refresh-resolved-to-a-different-user paths that null the refresh token without
+  moving `expires_at`. Callers that consume a session as identity but do NOT
+  perform the OIDC refresh (e.g. the MCP OAuth authorize flow) MUST gate on this
+  so a revoked-but-not-yet-expired session cannot be used.
+
+  This mirrors the accept-path rejections in
+  `Guard.GrpcServers.AuthServer.process_session/3` for a non-expired session
+  (session missing / `refresh_token_enc: nil`); keep the two in sync.
+  """
+  @spec valid_for_auth?(Guard.Repo.OIDCSession.t()) :: boolean()
+  def valid_for_auth?(%Guard.Repo.OIDCSession{refresh_token_enc: nil}), do: false
+
+  def valid_for_auth?(%Guard.Repo.OIDCSession{} = session) do
+    not expired?(session)
+  end
 end
