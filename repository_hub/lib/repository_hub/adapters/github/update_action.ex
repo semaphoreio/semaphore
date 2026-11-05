@@ -18,11 +18,8 @@ defimpl RepositoryHub.Server.UpdateAction, for: RepositoryHub.GithubAdapter do
   @impl true
   def execute(adapter, request) do
     with {:ok, adapter_context} <- GithubAdapter.context(adapter, request.repository_id),
-         {:ok, target_git_repository} <- Model.GitRepository.from_github(request.url),
-         {:ok, target_token} <-
-           GithubAdapter.token(adapter, adapter_context.project.metadata.owner_id, target_git_repository),
          {:ok, connector} <- GithubConnector.setup(adapter_context.repository.id, adapter_context.github_token),
-         {:ok, change} <- GithubConnector.prepare_url_change(connector, request.url, target_token, request.user_id) do
+         {:ok, change} <- GithubConnector.prepare_url_change(connector, adapter, request.url, request.user_id) do
       Multi.new()
       |> Multi.run(:repository, fn _repo, _context ->
         GithubConnector.apply_url_change(change)

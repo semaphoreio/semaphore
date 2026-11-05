@@ -33,7 +33,7 @@ defmodule RepositoryHub.GithubConnector do
     end)
   end
 
-  def prepare_url_change(connector, url, target_token, user_id) do
+  def prepare_url_change(connector, adapter, url, user_id) do
     connector.git_repository
     |> Model.GitRepository.equal?(url)
     |> unwrap(fn
@@ -52,27 +52,32 @@ defmodule RepositoryHub.GithubConnector do
 
           false ->
             UserClient.describe(user_id)
-            |> unwrap(&change_url_as_requester(connector, url, target_token, &1))
+            |> unwrap(&change_url_as_requester(connector, adapter, url, &1))
         end)
     end)
   end
 
-  defp change_url_as_requester(_connector, _url, _target_token, %{user: %{creation_source: :SERVICE_ACCOUNT}}) do
+  defp change_url_as_requester(_connector, _adapter, _url, %{user: %{creation_source: :SERVICE_ACCOUNT}}) do
     fail_with(:precondition, "Service accounts can't change the repository URL.")
   end
 
-  defp change_url_as_requester(connector, url, target_token, requester) do
+  defp change_url_as_requester(connector, adapter, url, requester) do
     github_app? = connector.repository.integration_type == "github_app"
-    fallback? = github_app? and target_token == ""
-    token = if fallback?, do: connector.token, else: target_token
 
     {permission, denied_message} =
       if github_app?,
         do: {"push", "Write permissions are required on the repository to change the project's repository URL."},
         else: {"admin", "Admin permissions are required on the repository to change the project's repository URL."}
 
-    with {:ok, github_repository} <- can_change_url?(connector, url, token, fallback?),
-         {:ok, git_repository} <- Model.GitRepository.from_github(url),
+    with {:ok, git_repository} <- Model.GitRepository.from_github(url),
+         {:ok, target_token} <-
+           if(github_app?,
+             do: GithubAdapter.token(adapter, requester.user_id, git_repository),
+             else: wrap(connector.token)
+           ),
+         fallback? = github_app? and target_token == "",
+         token = if(fallback?, do: connector.token, else: target_token),
+         {:ok, github_repository} <- can_change_url?(connector, url, token, fallback?),
          {:ok, %{^permission => true}} <-
            GithubAdapter.repository_permissions(
              requester.user_id,

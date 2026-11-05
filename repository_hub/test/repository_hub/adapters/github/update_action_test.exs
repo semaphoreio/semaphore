@@ -613,6 +613,62 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       assert_not_called(GithubClient.find_repository(:_, :_))
     end
 
+    test "saves github_app settings with one token lookup, so a failing second lookup does not matter", %{
+      github_app_adapter: adapter
+    } do
+      repository = RepositoryModelFactory.githubapp_repo()
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:dummy/repository.git",
+          pipeline_file: ".semaphore/semaphore-2.yml"
+        )
+
+      with_mock RepositoryIntegratorClient, [:passthrough], [] do
+        :meck.expect(
+          RepositoryIntegratorClient,
+          :get_token,
+          [:_, :_, :_],
+          :meck.seq([{:ok, "tok"}, {:error, "token lookup failed"}])
+        )
+
+        assert %UpdateResponse{} = UpdateAction.execute(adapter, request)
+        assert_called_exactly(RepositoryIntegratorClient.get_token(:_, :_, :_), 1)
+      end
+
+      {:ok, updated_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert updated_repository.pipeline_file == ".semaphore/semaphore-2.yml"
+    end
+
+    test "saves oauth settings with one token lookup, so a failing second lookup does not matter", %{
+      github_oauth_adapter: adapter
+    } do
+      repository = RepositoryModelFactory.github_repo()
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: repository.url,
+          pipeline_file: ".semaphore/semaphore-2.yml"
+        )
+
+      :meck.expect(
+        UserClient,
+        :get_repository_token,
+        [:_, :_],
+        :meck.seq([{:ok, "tok"}, {:error, "token lookup failed"}])
+      )
+
+      assert %UpdateResponse{} = UpdateAction.execute(adapter, request)
+
+      assert_called_exactly(UserClient.get_repository_token(:_, :_), 1)
+      assert_called_exactly(UserClient.describe(:_), 1)
+
+      {:ok, updated_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert updated_repository.pipeline_file == ".semaphore/semaphore-2.yml"
+    end
+
     test "moves a repository when the old GitHub App installation is gone", %{github_app_adapter: adapter} do
       repository =
         RepositoryModelFactory.githubapp_repo(
@@ -734,6 +790,7 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
 
       assert String.ends_with?(lookup_token, "-github_oauth_token")
       assert create_token == lookup_token
+      assert_called_exactly(UserClient.get_repository_token(:_, :_), 1)
 
       assert_called(
         GithubClient.repository_permissions(
