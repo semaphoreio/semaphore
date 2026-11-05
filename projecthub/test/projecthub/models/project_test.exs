@@ -660,6 +660,19 @@ defmodule Projecthub.Models.ProjectTest do
       assert project.deleted_at == nil
       assert project.deleted_by == nil
     end
+
+    test "when its event cannot be published => raises and leaves the project deleted" do
+      %{id: id} = create_and_soft_destroy()
+      {:ok, project} = Project.find(id, true)
+
+      with_mock Events.ProjectRestored, publish: fn _ -> raise "broker unavailable" end do
+        assert_raise RuntimeError, fn -> Project.restore(project) end
+      end
+
+      assert {:error, :not_found} = Project.find(id)
+      assert {:ok, still_deleted} = Project.find(id, true)
+      assert still_deleted.deleted_at != nil
+    end
   end
 
   describe ".find" do
