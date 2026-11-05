@@ -153,4 +153,18 @@ RSpec.describe InternalApi::RepoProxy::PrPayload do
       end.to raise_error(described_class::PrNotMergeableError, /not mergeable/i)
     end
   end
+
+  context "when GitHub's merge commit does not contain the PR head yet" do
+    before do
+      allow(Semaphore::RepoHost::Hooks::Handler)
+        .to receive(:update_pr_data)
+        .and_return([:stale_merge_commit, { pr: pr }, ""])
+    end
+
+    it "raises PrNotMergeableError saying the merge commit is not up to date" do
+      expect do
+        described_class.new(ref, number).call(project, user)
+      end.to raise_error(described_class::PrNotMergeableError, /merge commit .* not up to date/i)
+    end
+  end
 end

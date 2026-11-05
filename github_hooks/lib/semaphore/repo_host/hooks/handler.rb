@@ -14,8 +14,35 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   PR_APPROVAL_PERMISSION = "project.view"
   PR_APPROVAL_OPTIONS_PERMISSION = "project.job.rerun"
 
+  # Errors a later attempt can get past. A resumed approval keeps its claim
+  # through them, so Sidekiq's retry can still launch it.
+  TRANSIENT_ERRORS = [
+    RepoHost::RemoteException::TooManyRequests,
+    RepoHost::RemoteException::ServiceUnavailable,
+    RepoHost::RemoteException::InternalServerError,
+    Octokit::ServerError,
+    Faraday::TimeoutError,
+    Faraday::ConnectionFailed
+  ].freeze
+
+  GithubCache = Semaphore::RepoHost::Hooks::GithubCache
+
+  # Outlives both retry budgets, so retries of any project on the repository hit.
+  SHARED_RESULT_TTL = 1.hour
+  # One worker per PR event resolves the merge; the others wait for its result.
+  # The lock outlives a full poll (about 12s) plus the follow-up requests.
+  SHARED_MERGE_LOCK_TTL = 30.seconds
+  SHARED_MERGE_WAIT = 20.seconds
+  SHARED_MERGE_WAIT_INTERVAL = 0.5
+  # Bounds each GitHub request of the PR path, so a lock holder stuck on a slow
+  # GitHub fails well within the lock instead of hanging on default timeouts.
+  GITHUB_REQUEST_TIMEOUT = 10
+
+  # How long after a hook another hook for the same PR can supersede it.
+  SUPERSEDING_HOOK_WINDOW = 30.minutes
+
   # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
-  def self.run(workflow, logger, hook_payload = "", signature = "", retries = 0)
+  def self.run(workflow, logger, hook_payload = "", signature = "", retries = 0, stale_attempts = 0) # rubocop:disable Metrics/ParameterLists
     # stops hooks from deleted projects from generating exceptions
     # should not be necessary when project deletion cleans up hooks
     if workflow.project.nil?
@@ -29,7 +56,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
     if verification_result == :retry
       if retries < 10
-        sidekiq_job_id = Semaphore::RepoHost::Hooks::Handler::Worker.perform_in(2.minutes, workflow.id, hook_payload, signature, retries + 1)
+        sidekiq_job_id = Semaphore::RepoHost::Hooks::Handler::Worker.perform_in(2.minutes, workflow.id, hook_payload, signature, retries + 1, *Array(stale_attempts.nonzero?))
         logger.info("Rescheduled in Sidekiq", :sidekiq_job_id => sidekiq_job_id)
       else
         logger.info("Too many retries, skipping hook")
@@ -48,7 +75,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     if support_sequential_runs?(workflow) && with_predecessors?(workflow)
       Watchman.increment("hook.processing.not_in_sequence")
 
-      sidekiq_job_id = Semaphore::RepoHost::Hooks::Handler::Worker.perform_async(workflow.id, hook_payload, signature, retries + 1)
+      sidekiq_job_id = Semaphore::RepoHost::Hooks::Handler::Worker.perform_async(workflow.id, hook_payload, signature, retries + 1, *Array(stale_attempts.nonzero?))
 
       logger.info("Rescheduled in Sidekiq", :sidekiq_job_id => sidekiq_job_id)
 
@@ -80,6 +107,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     # between approval and launch (TOCTOU protection).
     approved_head_sha = nil
     approved_options_granted = false
+    resuming_approval = false
 
     if workflow.payload.pr_approval?
       # NOTE: We don't check the organization workflow restrictions here
@@ -264,6 +292,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       end
 
       logger.info("pr-approval-resumed", :workflow_id => workflow.id)
+      resuming_approval = true
       approved_head_sha = workflow.payload.approved_pr_head_sha
       approved_options_granted = workflow.payload.pr_approval_include_secrets? || workflow.payload.pr_approval_enable_cache?
 
@@ -389,7 +418,11 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         end
 
         # Only the first attempt polls; a rescheduled run makes a single request.
-        state, meta, msg = update_pr_data(workflow.project, workflow.pull_request_number, workflow.commit_sha, :poll => retries.zero?)
+        # Approval launches compare the live PR head, so they never take a shared merge.
+        shared_base_sha = workflow.payload.pr_base_sha if approved_head_sha.blank? && !resuming_approval
+        state, meta, msg = update_pr_data(workflow.project, workflow.pull_request_number, workflow.commit_sha,
+                                          :poll => retries.zero?, :webhook_head_sha => workflow.payload.pr_head_sha,
+                                          :webhook_base_sha => shared_base_sha)
         case state
         when :not_found
           logger.info("pr-not-found #{msg}")
@@ -407,7 +440,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
           # No merge ref exists until GitHub's async test-merge resolves, so
           # retry rather than treat unknown as a conflict and skip the build.
           if retries < App.mergeable_unknown_max_retries && !below_rate_limit_reserve?(meta[:rate_limit_remaining])
-            sidekiq_job_id = Semaphore::RepoHost::Hooks::Handler::Worker.perform_in(2.minutes, workflow.id, hook_payload, signature, retries + 1)
+            sidekiq_job_id = Semaphore::RepoHost::Hooks::Handler::Worker.perform_in(2.minutes, workflow.id, hook_payload, signature, retries + 1, *Array(stale_attempts.nonzero?))
             logger.info("pr-mergeable-unknown-rescheduled", :sidekiq_job_id => sidekiq_job_id)
           else
             # Persistent unknown past the retry budget is a stuck/degraded state,
@@ -418,6 +451,10 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
             logger.info("pr-mergeable-unknown-giving-up", :retries => retries, :rate_limit_remaining => meta[:rate_limit_remaining])
             workflow.update(:state => Workflow::STATE_PR_NON_MERGEABLE)
           end
+
+          return
+        when :stale_merge_commit
+          handle_stale_merge_commit(workflow, meta, logger, hook_payload, signature, retries, stale_attempts, approved_head_sha)
 
           return
         when :skip_ci
@@ -470,6 +507,11 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         logger.error("Unknown error", error: e.message)
         release_pr_approval(workflow)
         raise e.class, e.message
+      rescue *TRANSIENT_ERRORS
+        # The approval comment's own retry claims the workflow again; a resumed
+        # run has no comment to come back through, so it keeps the claim.
+        release_pr_approval(workflow) unless resuming_approval
+        raise
       rescue StandardError
         release_pr_approval(workflow)
         raise
@@ -522,10 +564,100 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   #
   # Used also at InternalApi::RepoProxy::PrPayload
   #
-  def self.update_pr_data(project, number, commit_sha = nil, allow_skip = true, poll: true)
-    repo_host = ::RepoHost::Factory.create_from_project(project)
+  # rubocop:disable Metrics/ParameterLists
+  def self.update_pr_data(project, number, commit_sha = nil, allow_skip = true, poll: true, webhook_head_sha: nil, webhook_base_sha: nil)
+    repo_host = ::RepoHost::Factory.create_from_project(project, :request_timeout => GITHUB_REQUEST_TIMEOUT)
     repo_host.validate_token_presence!
 
+    merge_key = shared_merge_key(project, number, webhook_head_sha, webhook_base_sha)
+    return resolve_pr_data(repo_host, project, number, commit_sha, allow_skip, poll, webhook_head_sha) unless merge_key
+
+    shared = read_shared_merge(merge_key)
+    unless shared
+      lock_token = GithubCache.lock("#{merge_key}:lock", :ttl => SHARED_MERGE_LOCK_TTL)
+      shared = await_shared_merge(merge_key) if lock_token.nil?
+    end
+    return shared_merge_result(shared) if shared
+
+    begin
+      result = resolve_pr_data(repo_host, project, number, commit_sha, allow_skip, poll, webhook_head_sha)
+    rescue *TRANSIENT_ERRORS => e
+      GithubCache.write("#{merge_key}:failed", { "state" => "failed", "error" => e.class.name }, :ttl => SHARED_MERGE_LOCK_TTL)
+      raise
+    end
+    store_shared_merge(merge_key, result, commit_sha, webhook_head_sha)
+    result
+  ensure
+    GithubCache.unlock("#{merge_key}:lock", lock_token) if lock_token.is_a?(String)
+  end
+
+  # One merge per PR event: every delivery of an event has the same head and base.
+  # Shared only between projects of one organization that use the same GitHub
+  # credentials, so a reused merge never stands in for a project's own access.
+  def self.shared_merge_key(project, number, head_sha, base_sha)
+    return if head_sha.blank? || base_sha.blank? || !GithubCache.enabled?
+
+    credentials = project.repository.integration_type == "github_app" ? "app" : "user-#{project.creator_id}"
+    "pr_merge:#{project.organization_id}:#{credentials}:#{project.repo_owner_and_name.downcase}:#{number}:#{head_sha}:#{base_sha}"
+  end
+
+  def self.read_shared_merge(merge_key)
+    GithubCache.read_first(merge_key, "#{merge_key}:unknown", "#{merge_key}:failed")
+  end
+
+  # Waits while another worker holds the lock. Nil means resolve it here.
+  def self.await_shared_merge(merge_key)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + SHARED_MERGE_WAIT
+
+    loop do
+      sleep(SHARED_MERGE_WAIT_INTERVAL)
+      shared = read_shared_merge(merge_key)
+      return shared if shared
+      # The holder stores its result before releasing the lock.
+      return read_shared_merge(merge_key) unless GithubCache.exists?("#{merge_key}:lock")
+      return if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+    end
+  end
+
+  # An up-to-date merge is kept for the event. Unknown mergeability and transient
+  # GitHub failures are kept only as long as the lock, so waiters reschedule or
+  # retry instead of repeating the holder's requests.
+  def self.store_shared_merge(merge_key, result, commit_sha, webhook_head_sha)
+    state, meta, = result
+
+    if state == :mergeable_unknown
+      value = { "state" => "mergeable_unknown", "rate_limit_remaining" => meta[:rate_limit_remaining] }
+      GithubCache.write("#{merge_key}:unknown", value, :ttl => SHARED_MERGE_LOCK_TTL)
+    elsif state == :ok && (commit_sha.nil? || commit_sha == webhook_head_sha)
+      value = { "merge_commit_sha" => meta[:merge_commit_sha], "commit_author" => meta[:commit_author], "head_sha" => meta[:head_sha] }
+      Watchman.increment("hook.processing.pr_merge_shared", :tags => ["stored"]) if GithubCache.write(merge_key, value, :ttl => SHARED_RESULT_TTL, :only_new => true)
+    end
+  end
+
+  def self.shared_merge_result(shared)
+    if shared["state"] == "failed"
+      Watchman.increment("hook.processing.pr_merge_shared", :tags => ["reused_failure"])
+      raise RepoHost::RemoteException::ServiceUnavailable, "GitHub request failed for this pull request event (#{shared["error"]})"
+    end
+
+    if shared["state"] == "mergeable_unknown"
+      Watchman.increment("hook.processing.pr_merge_shared", :tags => ["reused_unknown"])
+      return [:mergeable_unknown, { :rate_limit_remaining => shared["rate_limit_remaining"] }, ""]
+    end
+
+    Watchman.increment("hook.processing.pr_merge_shared", :tags => ["reused"])
+    merge_commit_sha = shared["merge_commit_sha"]
+    meta = {
+      :ref => "refs/semaphoreci/#{merge_commit_sha}",
+      :merge_commit_sha => merge_commit_sha,
+      :mergeable => true,
+      :commit_author => shared["commit_author"],
+      :head_sha => shared["head_sha"]
+    }
+    [:ok, meta, ""]
+  end
+
+  def self.resolve_pr_data(repo_host, project, number, commit_sha, allow_skip, poll, webhook_head_sha)
     pr, merge_commit_sha, mergeable, msg = get_pr_data(repo_host, project, number, 0, :poll => poll)
 
     if pr == nil
@@ -548,12 +680,25 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     # commit injected between approval and launch. Read defensively so that
     # payloads without a :head entry (e.g. in tests) simply yield nil.
     head_sha = pr[:head] && pr[:head][:sha]
-    commit = repo_host.commit(project.repo_owner_and_name, commit_sha)
-    commit_author = commit.try(:author).try(:login)
-    commit_message = commit.try(:commit).try(:message).to_s
+    commit_author, skip_ci = commit_details(repo_host, project.repo_owner_and_name, commit_sha)
 
-    if allow_skip && ::Semaphore::SkipCi.new.call(commit_message)
+    if allow_skip && skip_ci
       return [:skip_ci, { :pr => pr, :mergeable => mergeable }, msg]
+    end
+
+    # GitHub can report a PR as mergeable while still serving the test-merge of
+    # an earlier head. Only build a merge commit that contains the pushed head.
+    expected_head_sha = webhook_head_sha.presence || head_sha
+    merge_parent_shas = merge_commit_parent_shas(repo_host, project.repo_owner_and_name, merge_commit_sha)
+    unless merge_parent_shas&.include?(expected_head_sha)
+      return [:stale_merge_commit, {
+        :pr => pr,
+        :head_sha => head_sha,
+        :merge_commit_sha => merge_commit_sha,
+        :merge_parent_shas => merge_parent_shas || [],
+        :stale_reason => merge_parent_shas.nil? ? "lookup_failed" : "head_missing",
+        :rate_limit_remaining => repo_host.last_response_rate_limit_remaining
+      }, msg]
     end
 
     begin
@@ -564,6 +709,86 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
       [:without_reference, { :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, ""]
     end
+  end
+
+  # Returns [author login, skip-ci requested]; commits never change, so it is cached by SHA.
+  def self.commit_details(repo_host, repo_slug, sha)
+    cache_key = "commit:#{repo_slug.downcase}:#{sha}"
+    cached = GithubCache.read(cache_key)
+    return cached.values_at("author", "skip_ci") if cached
+
+    commit = repo_host.commit(repo_slug, sha)
+    author = commit.try(:author).try(:login)
+    skip_ci = ::Semaphore::SkipCi.new.call(commit.try(:commit).try(:message).to_s)
+    GithubCache.write(cache_key, { "author" => author, "skip_ci" => skip_ci }, :ttl => SHARED_RESULT_TTL) if commit
+    [author, skip_ci]
+  end
+
+  def self.handle_stale_merge_commit(workflow, meta, logger, hook_payload, signature, retries, stale_attempts, approved_head_sha)
+    tags = [meta[:stale_reason]]
+    log_fields = {
+      :reason => meta[:stale_reason],
+      :head_sha => meta[:head_sha],
+      :webhook_head_sha => workflow.payload.pr_head_sha,
+      :merge_commit_sha => meta[:merge_commit_sha],
+      :stale_attempts => stale_attempts
+    }
+
+    if approved_head_sha.present? && !approved_pr_head_unchanged?(meta, approved_head_sha)
+      logger.info("pr-approval-stale-head", :workflow_id => workflow.id, :approved_head_sha => approved_head_sha, :live_head_sha => meta[:head_sha])
+      Watchman.increment("hooks.pr_approval.stale_head")
+      workflow.update(:state => Workflow::STATE_PR_APPROVAL_STALE)
+    elsif superseded_by_later_hook?(workflow, meta)
+      Watchman.increment("hook.processing.pr_superseded")
+      logger.info("pr-superseded", log_fields)
+      workflow.update(:state => Workflow::STATE_SKIP_SUPERSEDED_PR)
+    else
+      Watchman.increment("hook.processing.pr_stale_merge_commit", :tags => tags) if stale_attempts.zero?
+      Watchman.increment("hook.processing.pr_stale_merge_commit_attempt", :tags => tags)
+
+      if stale_attempts < App.stale_merge_commit_max_retries && !below_rate_limit_reserve?(meta[:rate_limit_remaining])
+        sidekiq_job_id = Semaphore::RepoHost::Hooks::Handler::Worker.perform_in(1.minute, workflow.id, hook_payload, signature, retries + 1, stale_attempts + 1)
+        logger.info("pr-stale-merge-commit-rescheduled", log_fields.merge(:sidekiq_job_id => sidekiq_job_id))
+      else
+        Watchman.increment("hook.processing.pr_stale_merge_commit_giving_up", :tags => tags)
+        logger.info("pr-stale-merge-commit-giving-up", log_fields.merge(:rate_limit_remaining => meta[:rate_limit_remaining]))
+        workflow.update(:state => Workflow::STATE_PR_STALE_MERGE_COMMIT)
+      end
+    end
+  end
+  # rubocop:enable Metrics/ParameterLists
+
+  # The merge holds GitHub's head, and a hook received after this one saw that
+  # head (or built that merge), so this hook's push is no longer the PR's newest.
+  # Ancestry is not evidence: a reset to an older commit is still the newest push.
+  def self.superseded_by_later_hook?(workflow, meta)
+    head_sha = meta[:head_sha]
+    return false if head_sha.blank? || head_sha == workflow.payload.pr_head_sha
+    return false unless Array(meta[:merge_parent_shas]).include?(head_sha)
+
+    later = Workflow
+      .in_project(workflow.project_id)
+      .where(:created_at => workflow.created_at...(workflow.created_at + SUPERSEDING_HOOK_WINDOW))
+      .where.not(:id => workflow.id)
+    branch = find_branch(workflow)
+    same_pr = later.pr_number_in_git_ref(workflow.pull_request_number)
+    same_pr = same_pr.or(later.where(:branch_id => branch.id)) if branch
+
+    same_pr.where(:commit_sha => [head_sha, meta[:merge_commit_sha]]).exists?
+  end
+
+  # Commit objects never change, so parents are cached by SHA. Returns nil when
+  # GitHub refused the lookup.
+  def self.merge_commit_parent_shas(repo_host, repo_slug, merge_commit_sha)
+    cache_key = "merge_parents:#{repo_slug.downcase}:#{merge_commit_sha}"
+    cached = GithubCache.read(cache_key)
+    return cached if cached
+
+    parent_shas = (repo_host.git_commit(repo_slug, merge_commit_sha)&.[](:parents) || []).map { |parent| parent[:sha] }
+    GithubCache.write(cache_key, parent_shas, :ttl => SHARED_RESULT_TTL) if parent_shas.any?
+    parent_shas
+  rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
+    nil
   end
 
   def self.ensure_ref(repo_host, repo_slug, ref, sha)
