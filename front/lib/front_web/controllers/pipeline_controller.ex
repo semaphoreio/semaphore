@@ -59,11 +59,7 @@ defmodule FrontWeb.PipelineController do
 
     root_pipeline = Pipeline.path(params["pipeline_id"], opts)
 
-    resource_ownership_matches? =
-      organization_matches?(organization_id, root_pipeline.organization_id) &&
-        workflow_matches?(workflow_id, root_pipeline.workflow_id)
-
-    resource_ownership_matches?
+    Pipeline.belongs_to_workflow?(root_pipeline, organization_id, workflow_id)
     |> case do
       true ->
         data =
@@ -169,14 +165,6 @@ defmodule FrontWeb.PipelineController do
     end
   end
 
-  defp organization_matches?(organization_id, pipeline_organization_id) do
-    organization_id == pipeline_organization_id
-  end
-
-  defp workflow_matches?(workflow_id, pipeline_workflow_id) do
-    workflow_id == pipeline_workflow_id
-  end
-
   defp log_stop(conn, project, workflow, pipeline) do
     conn
     |> Audit.new(:Pipeline, :Stopped)
@@ -239,11 +227,7 @@ defmodule FrontWeb.PipelineController do
     organization_id = conn.assigns.organization_id
     workflow_id = conn.assigns.workflow.id
 
-    resource_ownership_matches? =
-      organization_matches?(organization_id, pipeline.organization_id) &&
-        workflow_matches?(workflow_id, pipeline.workflow_id)
-
-    if pipeline && resource_ownership_matches? do
+    if Pipeline.belongs_to_workflow?(pipeline, organization_id, workflow_id) do
       conn
       |> assign(:pipeline, pipeline)
     else
