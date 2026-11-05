@@ -8,6 +8,8 @@ defmodule Rbac.Roles.Owner do
       permissions: [
         "organization.activity_monitor.view",
         "organization.change_owner",
+        "organization.computers.manage",
+        "organization.computers.view",
         "organization.custom_roles.view",
         "organization.dashboards.manage",
         "organization.dashboards.view",
