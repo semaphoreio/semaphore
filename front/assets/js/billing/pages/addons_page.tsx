@@ -38,6 +38,7 @@ export const AddonsPage = () => {
     if (!config.updateAddonUrl) return;
 
     dispatch({ type: `SET_UPDATING`, value: addonName });
+    dispatch({ type: `SET_ERROR`, value: null });
 
     fetch(config.updateAddonUrl, {
       method: `POST`,
@@ -53,10 +54,13 @@ export const AddonsPage = () => {
         dispatch({ type: `SET_UPDATING`, value: null });
         if (json.ok) {
           fetchGroups();
+        } else {
+          dispatch({ type: `SET_ERROR`, value: json.error || `Failed to update add-on.` });
         }
       })
       .catch(() => {
         dispatch({ type: `SET_UPDATING`, value: null });
+        dispatch({ type: `SET_ERROR`, value: `Failed to update add-on.` });
       });
   };
 
@@ -84,6 +88,12 @@ export const AddonsPage = () => {
       {state.status === stores.Addons.Status.Error && (
         <div className="bb b--black-075 br3 shadow-3 bg-white pa3">
           <div className="red">Failed to load add-ons.</div>
+        </div>
+      )}
+
+      {state.error && (
+        <div className="bb b--black-075 br3 shadow-3 bg-white pa3 mb3">
+          <div className="red">{state.error}</div>
         </div>
       )}
 
