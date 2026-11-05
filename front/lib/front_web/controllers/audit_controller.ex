@@ -26,6 +26,7 @@ defmodule FrontWeb.AuditController do
   plug(FrontWeb.Plugs.Header when action in [:index, :show, :setup, :create, :update])
 
   @watchman_prefix "audit.endpoint"
+  @grpc_invalid_argument GRPC.Status.invalid_argument()
 
   def index(conn, params) do
     Watchman.benchmark(watchman_name(:index, :duration), fn ->
@@ -408,26 +409,56 @@ defmodule FrontWeb.AuditController do
     end)
   end
 
-  def csv(conn, _params) do
+  def csv(conn, params) do
     Watchman.benchmark("audit.csv.duration", fn ->
       org_id = conn.assigns.organization_id
 
-      case Front.Audit.UI.start_csv_stream(org_id) do
-        {:ok, channel, first_page} ->
-          conn
-          |> put_resp_content_type("text/csv")
-          |> put_resp_header("content-disposition", ~s(attachment; filename="audit.csv"))
-          |> send_chunked(200)
-          |> Front.Audit.UI.stream_csv(channel, first_page, org_id)
+      case Front.Audit.UI.parse_csv_range(params) do
+        {:ok, range} ->
+          export_csv(conn, org_id, range, csv_filename(range))
 
-        {:error, reason} ->
-          Logger.error("Audit CSV export failed before headers: #{inspect(reason)}")
-
+        {:error, message} ->
           conn
           |> put_resp_content_type("text/plain")
-          |> send_resp(:bad_gateway, "Failed to export audit logs")
+          |> send_resp(:bad_request, message)
       end
     end)
+  end
+
+  defp export_csv(conn, org_id, range, filename) do
+    case Front.Audit.UI.start_csv_stream(org_id, range) do
+      {:ok, channel, first_page} ->
+        conn
+        |> put_resp_content_type("text/csv")
+        |> put_resp_header("content-disposition", ~s(attachment; filename="#{filename}"))
+        |> send_chunked(200)
+        |> Front.Audit.UI.stream_csv(channel, first_page, org_id, range)
+
+      {:error, %GRPC.RPCError{status: @grpc_invalid_argument, message: message}} ->
+        conn
+        |> put_resp_content_type("text/plain")
+        |> send_resp(:bad_request, message)
+
+      {:error, reason} ->
+        Logger.error("Audit CSV export failed before headers: #{inspect(reason)}")
+
+        conn
+        |> put_resp_content_type("text/plain")
+        |> send_resp(:bad_gateway, "Failed to export audit logs")
+    end
+  end
+
+  # Built from the parsed range (never from raw params), so it only holds ISO dates.
+  defp csv_filename(%{from: nil, to: nil}), do: "audit.csv"
+
+  defp csv_filename(%{from: from, to: to}) do
+    from_part = if from, do: from |> DateTime.to_date() |> Date.to_iso8601(), else: "start"
+
+    # "to" is the exclusive start of the day after the last exported day
+    to_part =
+      if to, do: to |> DateTime.to_date() |> Date.add(-1) |> Date.to_iso8601(), else: "now"
+
+    "audit_#{from_part}_#{to_part}.csv"
   end
 
   defp render_page(conn, changeset, params) do
