@@ -25,13 +25,6 @@
             <link href="${url.resourcesPath}/${style}" rel="stylesheet" />
         </#list>
     </#if>
-    <script type="importmap">
-        {
-            "imports": {
-                "alpinejs": "${url.resourcesCommonPath}/node_modules/alpinejs/dist/module.esm.js"
-            }
-        }
-    </script>
     <#if properties.scripts?has_content>
         <#list properties.scripts?split(' ') as script>
             <script src="${url.resourcesPath}/${script}" type="text/javascript"></script>
@@ -42,15 +35,24 @@
             <script src="${script}" type="text/javascript"></script>
         </#list>
     </#if>
+    <script type="module">
+        <#outputformat "JavaScript">
+        import { startSessionPolling } from ${(url.resourcesPath + "/js/authChecker.js")?c};
+
+        startSessionPolling(
+            ${url.ssoLoginInOtherTabsUrl?c}
+        );
+        </#outputformat>
+    </script>
     <#if authenticationSession??>
         <script type="module">
-            import { checkCookiesAndSetTimer } from "${url.resourcesPath}/js/authChecker.js";
+            <#outputformat "JavaScript">
+            import { checkAuthSession } from ${(url.resourcesPath + "/js/authChecker.js")?c};
 
-            checkCookiesAndSetTimer(
-              "${authenticationSession.authSessionId}",
-              "${authenticationSession.tabId}",
-              "${url.ssoLoginInOtherTabsUrl}"
+            checkAuthSession(
+                ${authenticationSession.authSessionIdHash?c}
             );
+            </#outputformat>
         </script>
     </#if>
 </head>
@@ -136,11 +138,6 @@
         <#nested "socialProviders">
       </footer>
     </div>
-<script type="module">
-    import Alpine from "alpinejs";
-
-    Alpine.start();
-</script>
 </body>
 </html>
 </#macro>
