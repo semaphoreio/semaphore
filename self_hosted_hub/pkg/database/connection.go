@@ -24,15 +24,24 @@ type Config struct {
 	ApplicationName string
 }
 
-var dbInstance *gorm.DB
-var dbInstanceOnce sync.Once
+var (
+	dbInstance *gorm.DB
+	dbMu       sync.Mutex
+	// connectFn is a variable so tests can simulate connect failures.
+	connectFn = connect
+)
 
 // Conn returns a session on the process-wide connection pool.
 // The pool is created once, even if the first calls happen concurrently.
+// If connecting fails (connect panics), nothing is cached and the next
+// call tries again.
 func Conn() *gorm.DB {
-	dbInstanceOnce.Do(func() {
-		dbInstance = connect()
-	})
+	dbMu.Lock()
+	defer dbMu.Unlock()
+
+	if dbInstance == nil {
+		dbInstance = connectFn()
+	}
 
 	return dbInstance.Session(&gorm.Session{})
 }
