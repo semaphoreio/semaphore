@@ -83,7 +83,7 @@ defmodule FrontWeb.BranchController do
         pagination: model.pagination,
         pollman: pollman,
         title: compose_title(branch, project, model.organization),
-        conflict_info: determine_conflict(model.workflows)
+        conflict_info: determine_conflict(model.workflows, project)
       }
       |> Front.Breadcrumbs.Branch.construct()
 
@@ -141,7 +141,7 @@ defmodule FrontWeb.BranchController do
       pagination: model.pagination,
       pollman: pollman,
       page: :branch,
-      conflict_info: determine_conflict(model.workflows)
+      conflict_info: determine_conflict(model.workflows, project)
     )
   end
 
@@ -152,7 +152,9 @@ defmodule FrontWeb.BranchController do
     end
   end
 
-  defp determine_conflict(workflows) do
+  defp determine_conflict(_workflows, %{pull_request_commit: "head_commit"}), do: false
+
+  defp determine_conflict(workflows, _project) do
     if Enum.empty?(workflows) do
       false
     else

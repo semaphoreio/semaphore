@@ -104,6 +104,8 @@ data:
       enabled: false
     self_hosted_agents:
       quantity: 1000
+    pr_head_builds:
+      enabled: false
     sem_approve_options:
       enabled: false
     superjerry_tests:
@@ -240,6 +242,8 @@ data:
       enabled: false
     self_hosted_agents:
       quantity: 1000
+    pr_head_builds:
+      enabled: false
     sem_approve_options:
       enabled: false
     superjerry_tests:
