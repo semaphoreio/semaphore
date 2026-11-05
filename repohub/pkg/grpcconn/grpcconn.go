@@ -199,7 +199,7 @@ func EnvPoolSize() int {
 
 	n, err := strconv.Atoi(raw)
 	if err != nil || n < 1 {
-		log.Printf("grpcconn: ignoring invalid %s=%q, using default %d", poolSizeEnvVar, raw, DefaultPoolSize)
+		log.Printf("grpcconn: ignoring invalid %s=%s, using default %d", poolSizeEnvVar, strconv.Quote(raw), DefaultPoolSize)
 		return DefaultPoolSize
 	}
 	if n > MaxPoolSize {
