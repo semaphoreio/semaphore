@@ -10,7 +10,7 @@ defmodule RepositoryHub.TentacatFactory do
       # rate_limit checks, the second (arity 4) handles tag dereference calls.
       {Tentacat, [],
        [
-         get: fn "rate_limit", _ -> {200, %{"rate" => %{"remaining" => 15_000}}, nil} end,
+         get: &tentacat_get_mock/2,
          get: &tentacat_get_mock/4
        ]},
       {Tentacat.Repositories, [], repo_get: &repo_get_mock/3, list_mine: &list_mine_mock/2},
@@ -31,6 +31,35 @@ defmodule RepositoryHub.TentacatFactory do
       {Tentacat.References, [], find: &find_reference/4},
       {Tentacat.Commits, [], find: &get_commit/4}
     ]
+  end
+
+  def tentacat_get_mock("rate_limit", _client) do
+    {200, %{"rate" => %{"remaining" => 15_000}}, nil}
+  end
+
+  def tentacat_get_mock("repositories/" <> id, _client) do
+    response_body = %{
+      "id" => String.to_integer(id),
+      "name" => "renamed-repository",
+      "full_name" => "new-owner/renamed-repository",
+      "owner" => %{"login" => "new-owner"},
+      "description" => "Renamed repository.",
+      "private" => true,
+      "permissions" => %{"admin" => true},
+      "created_at" => "2021-12-04T12:33:02Z",
+      "default_branch" => "main",
+      "ssh_url" => "git@github.com:new-owner/renamed-repository.git"
+    }
+
+    status_code = 200
+
+    response = %HTTPoison.Response{
+      status_code: status_code,
+      body: Jason.encode!(response_body),
+      headers: []
+    }
+
+    {status_code, response_body, response}
   end
 
   def tentacat_get_mock("rate_limit", _client, _params, _options) do

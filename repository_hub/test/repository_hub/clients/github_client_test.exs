@@ -103,6 +103,41 @@ defmodule RepositoryHub.GithubClientTest do
       assert %{} = result
     end
 
+    test "find_repository with a numeric remote_id looks the repository up by id" do
+      response =
+        find_repository_params(repo_owner: "old-owner", repo_name: "old-name", remote_id: "401025")
+        |> GithubClient.find_repository(token: "foobar")
+
+      assert {:ok, result} = response
+      assert result.id == "401025"
+      assert result.owner == "new-owner"
+      assert result.name == "renamed-repository"
+      assert result.ssh_url == "git@github.com:new-owner/renamed-repository.git"
+
+      assert_called(Tentacat.get("repositories/401025", :_))
+      assert_not_called(Tentacat.Repositories.repo_get(:_, :_, :_))
+    end
+
+    test "find_repository with an empty remote_id looks the repository up by owner and name" do
+      response =
+        find_repository_params(remote_id: "")
+        |> GithubClient.find_repository(token: "foobar")
+
+      assert {:ok, %{id: "1234"}} = response
+
+      assert_called(Tentacat.Repositories.repo_get(:_, "dummy", "repository"))
+    end
+
+    test "find_repository with a non-numeric remote_id looks the repository up by owner and name" do
+      response =
+        find_repository_params(remote_id: Ecto.UUID.generate())
+        |> GithubClient.find_repository(token: "foobar")
+
+      assert {:ok, %{id: "1234"}} = response
+
+      assert_called(Tentacat.Repositories.repo_get(:_, "dummy", "repository"))
+    end
+
     test "create_webhook success" do
       response =
         create_webhook_params()

@@ -43,7 +43,8 @@ defimpl RepositoryHub.SyncRepositoryAction, for: RepositoryHub.GithubAdapter do
     GithubClient.find_repository(
       %{
         repo_owner: repository.owner,
-        repo_name: repository.name
+        repo_name: repository.name,
+        remote_id: repository.remote_id
       },
       token: github_token
     )
