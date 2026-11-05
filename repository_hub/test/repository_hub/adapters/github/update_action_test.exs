@@ -3,7 +3,7 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
   use RepositoryHub.ServerActionCase, async: false
 
   alias RepositoryHub.Adapters
-  alias RepositoryHub.Server.UpdateAction
+  alias RepositoryHub.Server.{RegenerateDeployKeyAction, UpdateAction}
   alias RepositoryHub.InternalApiFactory
 
   alias RepositoryHub.{
@@ -15,7 +15,7 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
     RepositoryModelFactory
   }
 
-  alias InternalApi.Repository.UpdateResponse
+  alias InternalApi.Repository.{RegenerateDeployKeyResponse, UpdateResponse}
   import Mock
 
   setup_with_mocks(
@@ -1273,6 +1273,25 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
         assert_one_deploy_key_after_overlapping_url_changes(adapter, repository, pool)
       end)
     end
+
+    test "leaves one deploy key when regenerating a key that does not exist overlaps a url change", %{
+      github_app_adapter: adapter
+    } do
+      with_real_connections(fn pool ->
+        repository = RepositoryModelFactory.githubapp_repo()
+
+        assert_one_deploy_key_after_regenerate_overlaps_url_change(adapter, repository, pool)
+      end)
+    end
+
+    test "leaves one deploy key when regenerating the key overlaps a url change", %{github_app_adapter: adapter} do
+      with_real_connections(fn pool ->
+        repository = RepositoryModelFactory.githubapp_repo()
+        DeployKeysModelFactory.create_deploy_key(project_id: repository.project_id, repository_id: repository.id)
+
+        assert_one_deploy_key_after_regenerate_overlaps_url_change(adapter, repository, pool)
+      end)
+    end
   end
 
   defp github_reports(id, owner, name) do
@@ -1295,7 +1314,7 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
   end
 
   defp with_real_connections(test_body) do
-    {:ok, pool} = Repo.start_link(name: nil, pool: DBConnection.ConnectionPool, pool_size: 2)
+    {:ok, pool} = Repo.start_link(name: nil, pool: DBConnection.ConnectionPool, pool_size: 3)
     Repo.put_dynamic_repo(pool)
 
     try do
@@ -1349,6 +1368,76 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
              Repo.all(from(key in RepositoryHub.Model.DeployKeys, where: key.project_id == ^repository.project_id))
 
     assert {:ok, _} = RepositoryHub.Model.DeployKeyQuery.get_by_repository_id(repository.id)
+  end
+
+  defp assert_one_deploy_key_after_regenerate_overlaps_url_change(adapter, repository, pool) do
+    test_process = self()
+    key_pair = RepositoryHub.Model.DeployKeys.generate_private_public_key_pair()
+
+    :meck.expect(GithubClient, :create_deploy_key, fn
+      %{repo_name: "repository-2"}, _opts ->
+        {:ok, %{id: System.unique_integer([:positive]), title: "url change"}}
+
+      _params, _opts ->
+        send(test_process, {:regenerating_deploy_key, self()})
+
+        receive do
+          :continue -> {:ok, %{id: System.unique_integer([:positive]), title: "regenerate"}}
+        end
+    end)
+
+    with_mock RepositoryHub.Model.DeployKeys, [:passthrough], generate_private_public_key_pair: fn -> key_pair end do
+      regenerate =
+        Task.async(fn ->
+          Repo.put_dynamic_repo(pool)
+
+          RegenerateDeployKeyAction.execute(
+            adapter,
+            InternalApiFactory.regenerate_deploy_key_request(repository_id: repository.id)
+          )
+        end)
+
+      assert_receive {:regenerating_deploy_key, regenerate_process}, 5_000
+
+      url_change =
+        Task.async(fn ->
+          Repo.put_dynamic_repo(pool)
+
+          UpdateAction.execute(
+            adapter,
+            InternalApiFactory.update_request(
+              repository_id: repository.id,
+              url: "git@github.com:dummy/repository-2.git",
+              user_id: "requester-user-id"
+            )
+          )
+        end)
+
+      wait_for_query_blocked_on_a_lock()
+      send(regenerate_process, :continue)
+
+      assert [{:ok, %RegenerateDeployKeyResponse{}}, %UpdateResponse{}] = Task.await_many([regenerate, url_change])
+    end
+
+    assert [_deploy_key] =
+             Repo.all(from(key in RepositoryHub.Model.DeployKeys, where: key.project_id == ^repository.project_id))
+
+    assert {:ok, _} = RepositoryHub.Model.DeployKeyQuery.get_by_repository_id(repository.id)
+  end
+
+  defp wait_for_query_blocked_on_a_lock(attempts \\ 60)
+  defp wait_for_query_blocked_on_a_lock(0), do: :ok
+
+  defp wait_for_query_blocked_on_a_lock(attempts) do
+    %{rows: [[blocked]]} =
+      Repo.query!(
+        "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'"
+      )
+
+    if blocked == 0 do
+      Process.sleep(50)
+      wait_for_query_blocked_on_a_lock(attempts - 1)
+    end
   end
 
   defp assert_old_resources_kept_and_created_resources_removed(repository, deploy_key) do

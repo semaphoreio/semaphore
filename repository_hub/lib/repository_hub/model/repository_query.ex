@@ -60,6 +60,24 @@ defmodule RepositoryHub.Model.RepositoryQuery do
   end
 
   @doc """
+  Finds repository by its id and locks its row until the surrounding transaction ends
+  """
+  @spec lock_for_update(String.t()) :: {:ok, Repositories.t()} | {:error, String.t()}
+  def lock_for_update(id) do
+    Repositories
+    |> where(id: ^id)
+    |> lock("FOR UPDATE")
+    |> Repo.one()
+    |> case do
+      nil ->
+        error("Repository not found.")
+
+      repository ->
+        wrap(repository)
+    end
+  end
+
+  @doc """
   Finds repository by its id
   """
   @spec get_by_id(String.t()) :: {:ok, Repositories.t()} | {:error, String.t()}
