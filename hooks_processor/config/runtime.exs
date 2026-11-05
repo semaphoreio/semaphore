@@ -12,6 +12,7 @@ config :hooks_processor,
   amqp_url: System.get_env("AMQP_URL")
 
 config :hooks_processor, HooksProcessor.EctoRepo,
+  prepare: :unnamed,
   database: System.get_env("POSTGRES_DB_NAME"),
   username: System.get_env("POSTGRES_DB_USER"),
   password: System.get_env("POSTGRES_DB_PASSWORD"),
