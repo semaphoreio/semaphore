@@ -86,9 +86,9 @@ defmodule RepositoryHub.GithubConnector do
              "Connect your GitHub account to Semaphore to change the repository URL."
            ) do
       repository_changes = %{
-        name: git_repository.repo,
-        owner: git_repository.owner,
-        url: git_repository.ssh_git_url,
+        name: github_repository.name,
+        owner: github_repository.owner,
+        url: github_repository.ssh_url,
         remote_id: github_repository.id,
         private: github_repository.is_private?,
         default_branch: github_repository.default_branch,

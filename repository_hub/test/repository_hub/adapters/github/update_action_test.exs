@@ -1007,6 +1007,62 @@ defmodule RepositoryHub.Server.Github.UpdateActionTest do
       assert_not_called(GithubClient.create_webhook(:_, :_))
     end
 
+    test "saves a service account's settings when the url differs only in letter case", %{
+      github_app_adapter: adapter
+    } do
+      repository = RepositoryModelFactory.githubapp_repo()
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:Dummy/Repository.git",
+          pipeline_file: ".semaphore/semaphore-2.yml",
+          user_id: "service-account-user-id"
+        )
+
+      assert %UpdateResponse{} = UpdateAction.execute(adapter, request)
+
+      {:ok, updated_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert updated_repository.pipeline_file == ".semaphore/semaphore-2.yml"
+      assert updated_repository.url == repository.url
+
+      assert_not_called(GithubClient.find_repository(:_, :_))
+      assert_not_called(UserClient.describe(:_))
+    end
+
+    test "stores the owner and name GitHub reports, not the letter case of the requested url", %{
+      github_app_adapter: adapter
+    } do
+      repository = RepositoryModelFactory.githubapp_repo()
+
+      :meck.expect(GithubClient, :find_repository, fn params, opts ->
+        {:ok, github_repository} = GithubClientFactory.find_repository_mock(params, opts)
+
+        {:ok,
+         %{
+           github_repository
+           | owner: "new-org",
+             name: "repository",
+             ssh_url: "git@github.com:new-org/repository.git"
+         }}
+      end)
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@github.com:New-Org/Repository.git",
+          user_id: "requester-user-id"
+        )
+
+      assert %UpdateResponse{repository: response_repository} = UpdateAction.execute(adapter, request)
+      assert response_repository.url == "git@github.com:new-org/repository.git"
+
+      {:ok, updated_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert updated_repository.owner == "new-org"
+      assert updated_repository.name == "repository"
+      assert updated_repository.url == "git@github.com:new-org/repository.git"
+    end
+
     test "rejects an oauth url change when the requester is not an admin of the target repository", %{
       github_oauth_adapter: adapter
     } do
