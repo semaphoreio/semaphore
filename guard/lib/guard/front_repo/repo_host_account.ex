@@ -231,7 +231,139 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   # StaleEntryError (surfaced as {:error, :stale}) and we re-evaluate ONCE
   # (no loop): recover if a rotation is now visible, otherwise degrade to
   # :transient so the next request re-decides cleanly - never a blind revoke.
-  defp revoke_unrotated(%__MODULE__{} = rha, %__MODULE__{} = fresh) do
+  # Already revoked: nothing to write, and no reason to spend a rate check on
+  # a row that cannot change state.
+  defp revoke_unrotated(_rha, %__MODULE__{revoked: true}), do: {:error, :revoked}
+
+  # Rate-limited only where the classification is a judgement call. GitHub's
+  # bad_refresh_token and GitLab's invalid_grant are unambiguous in RFC 6749,
+  # so there is no misreading to protect against.
+  defp revoke_unrotated(%__MODULE__{} = rha, %__MODULE__{repo_host: "bitbucket"} = fresh) do
+    if revoke_rate_exceeded?(fresh) do
+      {:error, :transient}
+    else
+      do_revoke_unrotated(rha, fresh)
+    end
+  end
+
+  defp revoke_unrotated(%__MODULE__{} = rha, %__MODULE__{} = fresh),
+    do: do_revoke_unrotated(rha, fresh)
+
+  # Rate limit on the revoke path.
+  #
+  # Which provider wording means "this user's grant is dead" rather than "our
+  # OAuth consumer was rejected" is decided by matching exact strings. The rate
+  # needs no strings and cannot be fooled by a rewording:
+  #
+  #   a user-grant problem is per-account; a client-credential problem is
+  #   fleet-wide.
+  #
+  # Above the threshold, revocations for that provider are refused and reported
+  # as transient. Rows age out of the window, so this limits the rate of
+  # revocation rather than stopping it: a genuine run of dead grants still
+  # drains, a fleet-wide fault is held to N accounts per window.
+  #
+  # The threshold's invariant: below the provider's normal refresh rate, above
+  # its normal rate of new dead grants.
+  @revoke_rate_window_seconds 600
+  @default_revoke_rate_threshold 5
+
+  # Cached briefly so a storm - the moment this matters most - cannot turn every
+  # revoke attempt into its own query. Staleness can only delay tripping.
+  @revoke_rate_cache_ttl :timer.seconds(5)
+
+  @revoke_rate_cache :oauth_revoke_rate_cache
+
+  # Runtime-configurable via OAUTH_REVOKE_RATE_THRESHOLD (see config/runtime.exs)
+  # so it can be retuned by changing the deployment's environment and restarting
+  # the pods. Read on each check rather than into a module attribute, which
+  # would capture whatever the BUILD container saw.
+  defp revoke_rate_threshold do
+    case Application.get_env(:guard, :oauth_revoke_rate_threshold, @default_revoke_rate_threshold) do
+      threshold when is_integer(threshold) and threshold > 0 ->
+        threshold
+
+      other ->
+        # Zero would compare `count >= 0` - always true - and stop every
+        # revocation on the provider.
+        Logger.error(
+          "Invalid :oauth_revoke_rate_threshold #{inspect(other)}; " <>
+            "falling back to #{@default_revoke_rate_threshold}"
+        )
+
+        @default_revoke_rate_threshold
+    end
+  end
+
+  defp revoke_rate_exceeded?(%__MODULE__{} = rha) do
+    threshold = revoke_rate_threshold()
+
+    case recently_revoked_count(rha.repo_host, threshold) do
+      {:ok, count} when count >= threshold ->
+        Watchman.increment({"guard.oauth.revoke_breaker_open", [rha.repo_host]})
+
+        Logger.error(
+          "Revocation rate-limited to #{threshold} accounts per " <>
+            "#{div(@revoke_rate_window_seconds, 60)} minutes for #{rha.repo_host}: " <>
+            "refusing rha=#{rha.id} user=#{rha.user_id} and reporting it as transient. " <>
+            "Many accounts revoking at once is the signature of a client-credential " <>
+            "or provider-wide failure, not of users independently revoking access."
+        )
+
+        true
+
+      {:ok, _count} ->
+        false
+
+      # Fail closed. This is a safety device; if it cannot answer, it must not
+      # silently stop protecting. The counter is how that becomes visible - a
+      # broken check would otherwise look exactly like a quiet day.
+      :error ->
+        Watchman.increment({"guard.oauth.revoke_rate_check_failed", [rha.repo_host]})
+        true
+    end
+  end
+
+  defp recently_revoked_count(repo_host, threshold) do
+    case Cachex.get(@revoke_rate_cache, repo_host) do
+      {:ok, count} when is_integer(count) ->
+        {:ok, count}
+
+      _ ->
+        case count_recently_revoked(repo_host, threshold) do
+          {:ok, count} = result ->
+            Cachex.put(@revoke_rate_cache, repo_host, count, ttl: @revoke_rate_cache_ttl)
+            result
+
+          # Not cached: a failed check must be retried, not held for the TTL.
+          :error ->
+            :error
+        end
+    end
+  end
+
+  # Cross-replica by construction: it reads the same shared rows every pod
+  # writes to. LIMIT bounds the scan once the threshold is reached.
+  defp count_recently_revoked(repo_host, threshold) do
+    cutoff = DateTime.utc_now() |> DateTime.add(-@revoke_rate_window_seconds, :second)
+
+    # `select: r.id` rather than a literal: Ecto requires a subquery to select a
+    # source, a field or a map.
+    capped =
+      from(r in __MODULE__,
+        where: r.repo_host == ^repo_host and r.revoked == true and r.updated_at > ^cutoff,
+        select: r.id,
+        limit: ^threshold
+      )
+
+    {:ok, from(r in subquery(capped), select: count(r.id)) |> FrontRepo.one() || 0}
+  rescue
+    error ->
+      Logger.error("Revoke rate check failed for #{repo_host}: #{inspect(error)}")
+      :error
+  end
+
+  defp do_revoke_unrotated(%__MODULE__{} = rha, %__MODULE__{} = fresh) do
     case update_account(%{revoked: true}, fresh, lock: true) do
       {:ok, _} ->
         {:error, :revoked}

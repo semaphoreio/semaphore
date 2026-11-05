@@ -99,7 +99,7 @@ defmodule Guard.Api.Bitbucket do
       {:ok, %Tesla.Env{status: status, body: body, headers: headers}} ->
         log_response_headers(status, headers, repo_host_account.id, repo_host_account.user_id)
 
-        case OAuth.classify_refresh_response(status, body) do
+        case OAuth.classify_refresh_response(repo_host_account.repo_host, status, body) do
           :revoked ->
             Logger.warning(
               "Failed to refresh Bitbucket token (HTTP #{status}): " <>
