@@ -1,8 +1,15 @@
 import { State } from "./state"
 import { Events } from "./events"
 
+// Thrown to unwind the fetch chain when the loop is stopped mid-flight.
+class StoppedError extends Error {}
+
 export var EventsFetcher = {
   init(options) {
+    // Drop a loop left over from a previous job page before starting a new one.
+    this.stop()
+
+    this.stopped = false
     this.next = 0
     this.consecutiveErrorsCounter = 0
     this.maxConsecutiveErrors = options.maxConsecutiveErrors
@@ -14,9 +21,34 @@ export var EventsFetcher = {
     State.set("fetching", "in_progress")
   },
 
+  //
+  // Cancels the loop.
+  //
+  // The next tick is scheduled from inside the promise chain, so clearing the
+  // pending timeout is not enough on its own - a fetch that is already in
+  // flight would resolve afterwards and schedule another one. The flag makes
+  // those continuations return instead.
+  //
+  stop() {
+    this.stopped = true
+
+    clearTimeout(this.timeout)
+    this.timeout = null
+  },
+
+  scheduleTick(interval) {
+    if (this.stopped) { return }
+
+    this.timeout = setTimeout(this.tick.bind(this), interval)
+  },
+
   tick() {
+    if (this.stopped) { return }
+
     fetch(this.fetchUrl(), {credentials: 'same-origin', headers: this.fetchHeaders()})
     .then((response) => {
+      if (this.stopped) { throw new StoppedError() }
+
       if (response.status == 200) {
         return response.json()
       }
@@ -33,16 +65,18 @@ export var EventsFetcher = {
         this.finish()
         this.afterFinish()
       } else if (data.events.length > 0) {
-        setTimeout(this.tick.bind(this), this.regularInterval)
+        this.scheduleTick(this.regularInterval)
       } else if (data.events.length == 0) {
-        setTimeout(this.tick.bind(this), this.backOffInterval)
+        this.scheduleTick(this.backOffInterval)
       }
     })
-    .catch(() => {
+    .catch((error) => {
+      if (this.stopped || error instanceof StoppedError) { return }
+
       this.consecutiveErrorsCounter += 1
 
       if (this.consecutiveErrorsCounter < this.maxConsecutiveErrors) {
-        setTimeout(this.tick.bind(this), this.backOffInterval)
+        this.scheduleTick(this.backOffInterval)
       } else {
         this.setFailureState()
         this.afterFinish()

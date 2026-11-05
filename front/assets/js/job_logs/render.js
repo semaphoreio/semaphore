@@ -15,18 +15,36 @@ export var Render = {
   },
 
   start(options) {
+    // Drop a loop left over from a previous job page before starting a new one.
+    this.stop();
+
+    this.stopped = false;
     this.init(options);
     this.tick();
   },
 
+  //
+  // Cancels the render loop. tick() reschedules itself at 0ms while events are
+  // still arriving, so under Turbo this would otherwise keep spinning against
+  // a detached container for as long as the tab stayed open.
+  //
+  stop() {
+    this.stopped = true;
+
+    clearTimeout(this.timeout);
+    this.timeout = null;
+  },
+
   tick() {
+    if (this.stopped) { return }
+
     let events = Events.getAllItems();
     if(events.length > 0) {
       this.process(events)
     }
 
     if(Events.isRunning() || Events.notEmpty()) {
-      setTimeout(this.tick.bind(this), 0);
+      this.timeout = setTimeout(this.tick.bind(this), 0);
     } else {
       this.afterFinish()
     }
