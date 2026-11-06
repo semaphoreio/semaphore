@@ -65,6 +65,16 @@ defmodule Zebra.Workers.Dispatcher do
 
       :ok
     else
+      # The secondary provider serves only some organizations, so its NOT_FOUND
+      # says nothing about the other jobs of this machine type: only this job waits.
+      {:error, {:secondary_provider, %GRPC.RPCError{status: 5}}} ->
+        Logger.info(
+          "[#{job.id}] - no agent available from the secondary provider for #{job.machine_type} - waiting until next tick"
+        )
+
+      {:error, {:secondary_provider, e}} ->
+        Logger.error("[#{job.id}] secondary provider: #{inspect(e)}")
+
       # If chmura returns a NOT_FOUND response,
       # complaining about not having available agents for a machine type,
       # we stop sending occupy requests for this machine type until the next worker tick,

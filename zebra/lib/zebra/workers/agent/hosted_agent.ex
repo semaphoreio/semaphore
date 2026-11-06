@@ -1,9 +1,17 @@
 defmodule Zebra.Workers.Agent.HostedAgent do
   require Logger
-  defstruct [:id, :name, :ip_address, :ctrl_port, :auth_token, :ssh_port]
+  defstruct [:id, :name, :ip_address, :ctrl_port, :auth_token, :ssh_port, :provider]
 
   alias InternalApi.Chmura.Chmura.Stub
   alias InternalApi.Chmura.{OccupyAgentRequest, ReleaseAgentRequest}
+
+  # A second provider with the same API can serve the hosted jobs of organizations
+  # that have this feature. The job keeps the provider that gave it its agent, so the
+  # release goes back to the same one even if the feature changes meanwhile.
+  @secondary_provider "secondary"
+  @secondary_provider_feature "secondary_hosted_agent_provider"
+
+  def secondary_provider, do: @secondary_provider
 
   # sobelow_skip ["Config.TLSVerify"]
   def http_options,
@@ -58,6 +66,8 @@ defmodule Zebra.Workers.Agent.HostedAgent do
   end
 
   def occupy(job) do
+    provider = provider_for(job)
+
     Task.async(fn ->
       Watchman.benchmark("zebra.external.chmura.occupy", fn ->
         {machine_type, machine_os_image} = translate_machine(job)
@@ -74,13 +84,13 @@ defmodule Zebra.Workers.Agent.HostedAgent do
 
         Logger.info("Occupying agent for job: #{job.id} ...")
 
-        case channel() |> Stub.occupy_agent(request, timeout: 30_000) do
-          {:ok, response} ->
-            {:ok, construct_agent(response)}
-
+        with {:ok, channel} <- connect(provider),
+             {:ok, response} <- Stub.occupy_agent(channel, request, timeout: 30_000) do
+          {:ok, construct_agent(response, provider)}
+        else
           {:error, error} ->
             Logger.error(inspect(error))
-            {:error, error}
+            {:error, occupy_error(provider, error)}
         end
       end)
     end)
@@ -93,35 +103,73 @@ defmodule Zebra.Workers.Agent.HostedAgent do
 
       request = ReleaseAgentRequest.new(agent_id: job.agent_id)
 
-      case Stub.release_agent(channel(), request, timeout: 30_000) do
-        {:ok, _} ->
-          :ok
-
+      with {:ok, channel} <- connect(job.agent_provider),
+           {:ok, _} <- Stub.release_agent(channel, request, timeout: 30_000) do
+        :ok
+      else
         {:error, err} ->
           ids = "job_id:'#{job.id}' agent_id:'#{job.agent_id}'"
           Logger.error("Error while releasing agent #{ids}, err: #{inspect(err)}")
-          {:error, err.message}
+          {:error, error_message(err)}
       end
     end)
   end
 
-  def construct_agent(response) do
+  def construct_agent(response, provider \\ nil) do
     %__MODULE__{
       id: response.agent.id,
       name: "",
       ip_address: response.agent.ip_address,
       ctrl_port: response.agent.ctrl_port,
       auth_token: response.agent.auth_token || "",
-      ssh_port: response.agent.ssh_port
+      ssh_port: response.agent.ssh_port,
+      provider: provider
     }
   end
 
-  defp channel do
+  defp provider_for(job) do
+    if secondary_endpoint() && secondary_provider_enabled?(job.organization_id) do
+      @secondary_provider
+    else
+      nil
+    end
+  end
+
+  defp secondary_provider_enabled?(nil), do: false
+
+  defp secondary_provider_enabled?(org_id) do
+    FeatureProvider.feature_enabled?(@secondary_provider_feature, param: org_id)
+  end
+
+  defp secondary_endpoint do
+    case Application.get_env(:zebra, :chmura_secondary_endpoint) do
+      endpoint when is_binary(endpoint) and endpoint != "" -> endpoint
+      _ -> nil
+    end
+  end
+
+  # Errors from the secondary provider are tagged, so the dispatcher can tell them
+  # from the default provider's and keep serving other organizations' jobs.
+  defp occupy_error(@secondary_provider, error), do: {:secondary_provider, error}
+  defp occupy_error(_default, error), do: error
+
+  defp connect(@secondary_provider) do
+    case secondary_endpoint() do
+      nil -> {:error, "no endpoint is configured for the secondary agent provider"}
+      endpoint -> GRPC.Stub.connect(endpoint)
+    end
+  end
+
+  defp connect(_default) do
     endpoint = Application.fetch_env!(:zebra, :chmura_endpoint)
 
     {:ok, channel} = GRPC.Stub.connect(endpoint)
-    channel
+    {:ok, channel}
   end
+
+  defp error_message(%{message: message}), do: message
+  defp error_message(message) when is_binary(message), do: message
+  defp error_message(error), do: inspect(error)
 
   @spec translate_machine(job :: Zebra.Models.Job.t()) :: {String.t(), String.t()}
   defp translate_machine(job) do

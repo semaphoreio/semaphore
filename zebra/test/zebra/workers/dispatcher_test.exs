@@ -548,6 +548,76 @@ defmodule Zebra.Workers.DispatcherTest do
       assert blank_image_job.machine_os_image == ""
       assert nil_image_job.machine_os_image in [nil, ""]
     end
+
+    test "a NOT_FOUND from the secondary provider does not hold back other organizations' jobs" do
+      System.put_env("DISPATCH_SELF_HOSTED_ONLY", "false")
+      System.put_env("DISPATCH_CLOUD_ONLY", "false")
+
+      # In tests both providers are the fake server; its answer is chosen per job.
+      Application.put_env(:zebra, :chmura_secondary_endpoint, "localhost:50051")
+      on_exit(fn -> Application.delete_env(:zebra, :chmura_secondary_endpoint) end)
+      Cachex.clear(:feature_provider_cache)
+
+      org_with_feature = Ecto.UUID.generate()
+
+      Mox.stub(Support.MockedProvider, :provide_features, fn org_id, opts ->
+        {:ok, features} = Support.StubbedProvider.provide_features(org_id, opts)
+        state = if org_id == org_with_feature, do: :enabled, else: :hidden
+
+        {:ok,
+         features ++ [Support.StubbedProvider.feature("secondary_hosted_agent_provider", [state])]}
+      end)
+
+      earlier = DateTime.add(DateTime.utc_now(), -600, :second) |> DateTime.truncate(:second)
+
+      # Scheduled first, so they open the machine type's batch.
+      secondary_jobs =
+        Enum.map(1..20, fn _ ->
+          {:ok, job} =
+            Support.Factories.Job.create(:scheduled, %{
+              organization_id: org_with_feature,
+              scheduled_at: earlier
+            })
+
+          job
+        end)
+
+      other_jobs =
+        Enum.map(1..20, fn _ ->
+          {:ok, job} = Support.Factories.Job.create(:scheduled)
+          job
+        end)
+
+      secondary_ids = MapSet.new(secondary_jobs, & &1.id)
+
+      GrpcMock.stub(Support.FakeServers.ChmuraApi, :occupy_agent, fn req, _ ->
+        if MapSet.member?(secondary_ids, req.request_id) do
+          raise GRPC.RPCError, status: GRPC.Status.not_found(), message: "No suitable agent found"
+        else
+          %InternalApi.Chmura.OccupyAgentResponse{
+            agent: %InternalApi.Chmura.Agent{
+              id: Ecto.UUID.generate(),
+              ip_address: "1.2.3.4",
+              ssh_port: 80,
+              ctrl_port: 80,
+              auth_token: "asdas"
+            }
+          }
+        end
+      end)
+
+      with_stubbed_http_calls(fn ->
+        Worker.init() |> Zebra.Workers.DbWorker.tick()
+      end)
+
+      Enum.each(other_jobs, fn job ->
+        job = Job.reload(job)
+        assert Job.started?(job)
+        assert job.agent_provider == nil
+      end)
+
+      Enum.each(secondary_jobs, fn job -> assert Job.scheduled?(Job.reload(job)) end)
+    end
   end
 
   describe ".process" do

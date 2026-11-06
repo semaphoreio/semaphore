@@ -43,7 +43,7 @@ defmodule Zebra.Models.Job do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   @required_fields ~w(name organization_id project_id aasm_state created_at updated_at machine_type spec)a
-  @optional_fields ~w(build_id priority execution_time_limit deployment_target_id repository_id enqueued_at scheduled_at started_at finished_at request index port name machine_os_image failure_reason result agent_id agent_name agent_ip_address agent_ctrl_port agent_auth_token private_ssh_key expires_at original_job_id)a
+  @optional_fields ~w(build_id priority execution_time_limit deployment_target_id repository_id enqueued_at scheduled_at started_at finished_at request index port name machine_os_image failure_reason result agent_id agent_name agent_ip_address agent_ctrl_port agent_auth_token agent_provider private_ssh_key expires_at original_job_id)a
 
   schema "jobs" do
     belongs_to(:task, Zebra.Models.Task, foreign_key: :build_id)
@@ -69,6 +69,8 @@ defmodule Zebra.Models.Job do
     field(:agent_ctrl_port, :integer)
     field(:agent_ip_address, :string)
     field(:agent_auth_token, :string)
+    # Which hosted agent provider gave the job its agent; nil is the default one.
+    field(:agent_provider, :string)
     field(:private_ssh_key, :string)
     field(:execution_time_limit, :integer, default: 24 * 60 * 60)
     field(:priority, :integer)
@@ -139,6 +141,7 @@ defmodule Zebra.Models.Job do
       agent_ip_address: nil,
       agent_ctrl_port: nil,
       agent_auth_token: nil,
+      agent_provider: nil,
       private_ssh_key: nil,
       failure_reason: nil,
       execution_time_limit: nil
@@ -584,7 +587,8 @@ defmodule Zebra.Models.Job do
       agent_ip_address: agent.ip_address,
       port: agent.ssh_port,
       agent_ctrl_port: agent.ctrl_port,
-      agent_auth_token: agent.auth_token
+      agent_auth_token: agent.auth_token,
+      agent_provider: Map.get(agent, :provider)
     }
   end
 
@@ -598,6 +602,7 @@ defmodule Zebra.Models.Job do
       port: agent.ssh_port,
       agent_ctrl_port: agent.ctrl_port,
       agent_auth_token: agent.auth_token,
+      agent_provider: Map.get(agent, :provider),
       request: sanitized_request(job)
     }
   end
