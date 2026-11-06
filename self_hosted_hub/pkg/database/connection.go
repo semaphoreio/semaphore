@@ -74,7 +74,7 @@ func connect() *gorm.DB {
 		ApplicationName: os.Getenv("APPLICATION_NAME"),
 	}
 
-	dsnTemplate := "host=%s port=%s user=%s password=%s dbname=%s sslmode=%s application_name=%s connect_timeout=5"
+	dsnTemplate := "connect_timeout=5 host=%s port=%s user=%s password=%s dbname=%s sslmode=%s application_name=%s"
 	dsn := fmt.Sprintf(dsnTemplate, c.Host, c.Port, c.User, c.Pass, c.Name, c.Ssl, c.ApplicationName)
 
 	logger := gormLogger.New(log.New(os.Stdout, "\r\n", log.LstdFlags), gormLogger.Config{
