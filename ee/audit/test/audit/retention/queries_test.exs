@@ -190,6 +190,46 @@ defmodule Audit.Retention.QueriesTest do
       assert is_nil(get_event(disabled_expired.id).expires_at)
       refute is_nil(get_event(disabled_not_due.id).expires_at)
     end
+
+    test "deletes only events older than the floor" do
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      floor = DateTime.add(now, -400 * 86_400, :second)
+      expired_at = DateTime.add(now, -60, :second)
+
+      at_floor = RetentionFixtures.insert_event(%{timestamp: floor, expires_at: expired_at})
+
+      before_floor =
+        RetentionFixtures.insert_event(%{
+          timestamp: DateTime.add(floor, -1, :second),
+          expires_at: expired_at
+        })
+
+      assert {:ok, %{deleted: 1, unmarked: 1}} =
+               Queries.delete_expired_batch(10, fn _ -> true end, floor)
+
+      assert is_nil(get_event(at_floor.id).expires_at)
+      assert is_nil(Repo.get(Event, before_floor.id))
+    end
+
+    test "looks up the feature flags with no transaction open" do
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      floor = DateTime.add(now, -400 * 86_400, :second)
+
+      RetentionFixtures.insert_event(%{
+        timestamp: DateTime.add(now, -500 * 86_400, :second),
+        expires_at: DateTime.add(now, -60, :second)
+      })
+
+      test_pid = self()
+
+      enabled? = fn _org_id ->
+        send(test_pid, {:in_transaction, Repo.in_transaction?()})
+        true
+      end
+
+      assert {:ok, %{deleted: 1}} = Queries.delete_expired_batch(10, enabled?, floor)
+      assert_received {:in_transaction, false}
+    end
   end
 
   defp set_expires_at(event_id, expires_at) do

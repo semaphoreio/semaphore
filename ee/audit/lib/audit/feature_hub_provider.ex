@@ -17,10 +17,27 @@ defmodule Audit.FeatureHubProvider do
     ttl = Keyword.get(opts, :ttl, :timer.minutes(15))
     cache_key = cache_key(org_id, "list_organization_features")
 
-    # A reload is requested when the organization's features have changed,
-    # so it must not be answered from this cache.
-    if Keyword.get(opts, :reload, false), do: Audit.Cache.delete(cache_key)
+    if Keyword.get(opts, :reload, false) do
+      reload_features(org_id, cache_key, ttl)
+    else
+      cached_features(org_id, cache_key, ttl)
+    end
+  end
 
+  # A reload is requested when the organization's features have changed, so it
+  # refetches them. If that fails, the cached features are kept, not replaced.
+  defp reload_features(org_id, cache_key, ttl) do
+    case do_list_features(org_id) do
+      {:ok, features} ->
+        Audit.Cache.put(cache_key, features, ttl)
+        {:ok, features}
+
+      {:error, _} ->
+        cached_features(org_id, cache_key, ttl)
+    end
+  end
+
+  defp cached_features(org_id, cache_key, ttl) do
     Audit.Cache.fetch(cache_key, fn ->
       do_list_features(org_id)
       |> case do
@@ -82,7 +99,7 @@ defmodule Audit.FeatureHubProvider do
           {:error, e} ->
             Logger.error("Error fetching organization features: #{inspect(e)}")
 
-            {:ok, []}
+            {:error, e}
         end
       after
         GRPC.Stub.disconnect(ch)
