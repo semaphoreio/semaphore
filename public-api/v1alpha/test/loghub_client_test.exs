@@ -395,6 +395,88 @@ defmodule PipelinesAPI.LoghubClient.Test do
     end
   end
 
+  describe ".stream_log_events/3 flow control" do
+    # A reader slower than loghub: without flow control gun acknowledges and
+    # delivers every frame as it arrives, so the log piles up in the reader's
+    # mailbox. With it, loghub waits for the reader.
+    @batches 120
+    @event_size 64 * 1024
+
+    setup do
+      previous = Application.get_env(:pipelines_api, :loghub_stream_timeout)
+      Application.put_env(:pipelines_api, :loghub_stream_timeout, 15_000)
+
+      on_exit(fn ->
+        Application.put_env(:pipelines_api, :loghub_stream_timeout, previous)
+        Application.delete_env(:pipelines_api, :loghub_stream_flow_control)
+      end)
+
+      GrpcMock.stub(LoghubMock, :stream_log_events, fn _, stream ->
+        for i <- 1..@batches do
+          GRPC.Server.send_reply(stream, %InternalApi.Loghub.GetLogEventsResponse{
+            status: ok(),
+            events: [String.duplicate(<<rem(i, 26) + ?a>>, @event_size)],
+            final: true
+          })
+        end
+      end)
+
+      :ok
+    end
+
+    test "a slow reader holds well under 1 MiB of the log, and still gets all of it" do
+      {result, queued} = read_slowly()
+
+      assert queued < 1024 * 1024
+      assert {:ok, batches} = result
+      assert length(batches) == @batches
+
+      assert Enum.map(batches, fn [event] -> {byte_size(event), :binary.first(event)} end) ==
+               Enum.map(1..@batches, fn i -> {@event_size, rem(i, 26) + ?a} end)
+    end
+
+    test "without flow control the same reader queues most of the log (the bound above can fail)" do
+      Application.put_env(:pipelines_api, :loghub_stream_flow_control, false)
+
+      {result, queued} = read_slowly()
+
+      assert queued > 4 * 1024 * 1024
+      assert {:ok, batches} = result
+      assert length(batches) == @batches
+    end
+
+    # Stalls on the first batch long enough for an unbounded read to take in
+    # the whole log, then reads the rest. Returns the result and the bytes of
+    # stream data waiting in the reader's mailbox after the stall.
+    defp read_slowly do
+      fun = fn events, {batches, queued} ->
+        queued =
+          if batches == [] do
+            Process.sleep(500)
+            queued_gun_data()
+          else
+            queued
+          end
+
+        {:cont, {[events | batches], queued}}
+      end
+
+      {:ok, {batches, queued}} = LoghubClient.stream_log_events(@job_id, {[], 0}, fun)
+      {{:ok, Enum.reverse(batches)}, queued}
+    end
+
+    defp queued_gun_data do
+      {:messages, messages} = Process.info(self(), :messages)
+
+      messages
+      |> Enum.map(fn
+        {:gun_data, _conn, _ref, _fin, data} -> byte_size(data)
+        _ -> 0
+      end)
+      |> Enum.sum()
+    end
+  end
+
   defp gun_connections, do: :gun_conns_sup |> Supervisor.which_children() |> length()
 
   defp ok do
