@@ -167,7 +167,7 @@ defmodule Scheduler.PeriodicsTriggers.Model.PeriodicsTriggersQueries do
   def get_n_by_periodic_id(id, n) do
     PeriodicsTriggers
     |> where([pt], pt.periodic_id == ^id)
-    |> order_by([pt], desc: pt.triggered_at)
+    |> order_by([pt], desc_nulls_last: pt.triggered_at)
     |> limit(^n)
     |> Repo.all([])
     |> ToTuple.ok()
@@ -181,7 +181,7 @@ defmodule Scheduler.PeriodicsTriggers.Model.PeriodicsTriggersQueries do
   def get_all_by_periodic_id(id) do
     PeriodicsTriggers
     |> where([pt], pt.periodic_id == ^id)
-    |> order_by([pt], desc: pt.triggered_at)
+    |> order_by([pt], desc_nulls_last: pt.triggered_at)
     |> Repo.all([])
     |> ToTuple.ok()
   rescue

@@ -201,4 +201,45 @@ defmodule Scheduler.PeriodicsTriggers.Model.PeriodicsTriggersQueries.Test do
     assert DateTime.compare(ts_before, ptr.triggered_at) == :lt
     assert ptr.scheduling_status == "running"
   end
+
+  describe "get_n_by_periodic_id/2 and get_all_by_periodic_id/1 ordering" do
+    alias Scheduler.PeriodicsRepo
+    alias Scheduler.PeriodicsTriggers.Model.PeriodicsTriggers
+    import Ecto.Query
+
+    defp insert_at(periodic, seconds_ago) do
+      ts = DateTime.add(DateTime.utc_now(), -seconds_ago, :second)
+      {:ok, ptr} = PeriodicsTriggersQueries.insert(periodic, %{triggered_at: ts})
+      ptr
+    end
+
+    test "returns newest first when all triggered_at are set", ctx do
+      old = insert_at(ctx.periodic, 300)
+      mid = insert_at(ctx.periodic, 200)
+      new = insert_at(ctx.periodic, 100)
+
+      assert {:ok, all} = PeriodicsTriggersQueries.get_all_by_periodic_id(ctx.periodic.id)
+      assert Enum.map(all, & &1.id) == [new.id, mid.id, old.id]
+
+      assert {:ok, two} = PeriodicsTriggersQueries.get_n_by_periodic_id(ctx.periodic.id, 2)
+      assert Enum.map(two, & &1.id) == [new.id, mid.id]
+    end
+
+    test "puts rows with NULL triggered_at last", ctx do
+      old = insert_at(ctx.periodic, 300)
+      new = insert_at(ctx.periodic, 100)
+      null_row = insert_at(ctx.periodic, 200)
+
+      PeriodicsRepo.update_all(
+        from(t in PeriodicsTriggers, where: t.id == ^null_row.id),
+        set: [triggered_at: nil]
+      )
+
+      assert {:ok, all} = PeriodicsTriggersQueries.get_all_by_periodic_id(ctx.periodic.id)
+      assert Enum.map(all, & &1.id) == [new.id, old.id, null_row.id]
+
+      assert {:ok, two} = PeriodicsTriggersQueries.get_n_by_periodic_id(ctx.periodic.id, 2)
+      assert Enum.map(two, & &1.id) == [new.id, old.id]
+    end
+  end
 end
