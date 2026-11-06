@@ -101,10 +101,31 @@ defmodule Zebra.Models.TaskTest do
       {:ok, t1} = Support.Factories.Task.create(%{result: "passed"})
       {:ok, t2} = Support.Factories.Task.create(%{result: "passed"})
 
-      assert Zebra.Models.Task.find_many_by_id_or_request_token([
-               t1.id,
-               t2.build_request_id
-             ]) == {:ok, [t1, t2]}
+      assert {:ok, tasks} =
+               Zebra.Models.Task.find_many_by_id_or_request_token([
+                 t1.id,
+                 t2.build_request_id
+               ])
+
+      assert Enum.sort(Enum.map(tasks, & &1.id)) == Enum.sort([t1.id, t2.id])
+    end
+
+    test "it loads the fields needed to describe a task but not the request" do
+      {:ok, t1} = Support.Factories.Task.create(%{result: "passed", request: %{"jobs" => [1]}})
+
+      assert {:ok, [t]} = Zebra.Models.Task.find_many_by_id_or_request_token([t1.id])
+
+      for f <- [:id, :build_request_id, :ppl_id, :workflow_id, :result, :created_at, :updated_at] do
+        assert Map.fetch!(t, f) == Map.fetch!(t1, f)
+      end
+
+      assert t1.request != nil
+      assert t.request == nil
+    end
+
+    test "it returns an empty list when nothing matches" do
+      assert Zebra.Models.Task.find_many_by_id_or_request_token([Ecto.UUID.generate()]) ==
+               {:ok, []}
     end
   end
 end

@@ -122,10 +122,23 @@ defmodule Zebra.Models.Task do
     end
   end
 
+  # Returns tasks with only the columns needed to describe them. The large
+  # `request` column (and other unused ones) is left nil.
+  @describe_fields [
+    :id,
+    :build_request_id,
+    :ppl_id,
+    :workflow_id,
+    :result,
+    :created_at,
+    :updated_at
+  ]
+
   def find_many_by_id_or_request_token(ids) do
     tasks =
       __MODULE__
       |> Q.where([t], t.id in ^ids or t.build_request_id in ^ids)
+      |> Q.select([t], struct(t, ^@describe_fields))
       |> Zebra.LegacyRepo.all()
 
     {:ok, tasks}
