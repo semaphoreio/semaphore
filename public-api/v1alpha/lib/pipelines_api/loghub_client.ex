@@ -4,6 +4,7 @@ defmodule PipelinesAPI.LoghubClient do
   """
 
   require Logger
+  alias PipelinesAPI.LoghubClient.FlowControlledGun
   alias PipelinesAPI.Util.{Metrics, ToTuple}
   alias InternalApi.Loghub.GetLogEventsRequest
   alias LogTee, as: LT
@@ -20,6 +21,23 @@ defmodule PipelinesAPI.LoghubClient do
   # connection after closing_timeout (default 15s); until then loghub keeps
   # streaming a log nobody reads and holds a fetch slot for it.
   @connect_opts [adapter_opts: %{http2_opts: %{closing_timeout: 1_000}}]
+
+  # The stream also reads with flow control, so loghub sends only as fast as
+  # the caller consumes and a slow HTTP client can't make the log queue up in
+  # the caller's mailbox (see FlowControlledGun). On by default; the setting
+  # exists to compare against the unbounded read in tests.
+  defp stream_connect_opts do
+    if Application.get_env(:pipelines_api, :loghub_stream_flow_control, true) do
+      [
+        adapter: FlowControlledGun,
+        adapter_opts: %{
+          http2_opts: Map.merge(%{closing_timeout: 1_000}, FlowControlledGun.http2_opts())
+        }
+      ]
+    else
+      @connect_opts
+    end
+  end
 
   @unavailable GRPC.Status.unavailable()
   @unimplemented GRPC.Status.unimplemented()
@@ -77,7 +95,9 @@ defmodule PipelinesAPI.LoghubClient do
   Reads the log of a job with the StreamLogEvents rpc and calls
   `fun.(events, acc)` with each batch of events, oldest first, as loghub sends
   it. `fun` returns `{:cont, acc}` to read on, or `{:halt, acc}` to stop (the
-  call is cancelled). Only one batch is held at a time.
+  call is cancelled). Only one batch is held at a time, and the connection is
+  flow controlled, so loghub sends only as fast as `fun` returns: a slow
+  reader holds well under 1 MiB of the log, not the rest of it.
 
   The stream is read in the calling process: the connection delivers the
   stream's messages to the process that opened it. The call is cancelled
@@ -153,7 +173,7 @@ defmodule PipelinesAPI.LoghubClient do
   # bounds the wait for each message).
   #
   defp stream_call(request, acc, fun) do
-    case GRPC.Stub.connect(url(), @connect_opts) do
+    case GRPC.Stub.connect(url(), stream_connect_opts()) do
       {:ok, channel} -> stream_call(channel, request, acc, fun)
       {:error, error} -> {:error, {:error, error}, acc}
     end

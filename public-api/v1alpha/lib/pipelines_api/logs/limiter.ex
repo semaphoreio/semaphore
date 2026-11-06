@@ -16,13 +16,13 @@ defmodule PipelinesAPI.Logs.Limiter do
   If the limiter itself can't be reached (e.g. while it restarts), callers
   get `{:error, :busy}` too, so the endpoint answers 503 instead of crashing.
 
-  Size: `LOGS_MAX_CONCURRENT` (default 4). A streamed log holds at most about
-  one log in memory (1MiB before the response starts, then the batches loghub
-  sent ahead of a slow client; archived logs are capped at 16MiB, the read
-  cap at 32MiB). The default fits the smallest deployments (a 200Mi pod with
-  a ~130Mi baseline, at the typical cost of a few MiB per stream); bigger
-  pods should raise it, e.g. 8 for a 640Mi pod. loghub serves 6 streams per
-  loghub pod, so a much higher cap here mostly turns into waiting on loghub.
+  Size: `LOGS_MAX_CONCURRENT` (default 4). A streamed log holds about 1MiB
+  before the response starts (the buffer that picks the response shape),
+  then one loghub batch plus well under 1MiB of flow-controlled read-ahead,
+  however slowly the client reads (see `PipelinesAPI.LoghubClient`). The
+  default fits small deployments; bigger pods can raise it. loghub caps its
+  own concurrent streams per pod too, so a much higher cap here mostly turns
+  into waiting on loghub.
 
   Metrics: the `in_use` gauge on every change, and a `rejected` counter.
   """
