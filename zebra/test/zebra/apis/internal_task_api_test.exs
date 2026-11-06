@@ -92,6 +92,27 @@ defmodule Zebra.Apis.InternalTaskApiTest do
       assert {:ok, reply} = Stub.describe_many(channel(), req)
       assert reply.tasks == Serializer.serialize_many(tasks)
     end
+
+    test "finished task => returns state, result and finished_at" do
+      unfinished_id = schedule_task(Ecto.UUID.generate())
+      finished_id = schedule_task(Ecto.UUID.generate())
+
+      {:ok, task} = Zebra.Models.Task.find(finished_id)
+      {:ok, _} = Zebra.Models.Task.finish(task, "passed")
+
+      req = InternalApi.Task.DescribeManyRequest.new(task_ids: [unfinished_id, finished_id])
+
+      assert {:ok, reply} = Stub.describe_many(channel(), req)
+
+      described = Enum.find(reply.tasks, &(&1.id == finished_id))
+      assert described.state == InternalApi.Task.Task.State.value(:FINISHED)
+      assert described.result == InternalApi.Task.Task.Result.value(:PASSED)
+      assert described.finished_at.seconds > 0
+
+      other = Enum.find(reply.tasks, &(&1.id == unfinished_id))
+      assert other.state == InternalApi.Task.Task.State.value(:RUNNING)
+      assert other.finished_at == nil
+    end
   end
 
   describe ".terminate" do
