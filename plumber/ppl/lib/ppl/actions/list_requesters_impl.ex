@@ -76,21 +76,38 @@ defmodule Ppl.Actions.ListRequestersImpl do
 
   @spec list_requesters_sql(list_request()) :: {entries :: list(), next_page_token :: String.t()}
   defp list_requesters_sql(list_request) do
+    list_request = %{
+      list_request
+      | page: max(list_request.page, 1),
+        page_size: max(list_request.page_size, 1)
+    }
+
     base_query()
     |> filter(list_request)
     # using subquery - otherwise we'll get our results in an unpredictable order
     |> subquery()
     |> order_by([ppl_req], asc: ppl_req.requested_at)
-    |> Repo.paginate(page: list_request.page, page_size: list_request.page_size)
+    |> fetch_page(list_request.page, list_request.page_size)
     |> case do
-      %{entries: entries, total_pages: total_pages, page_number: page_number}
-      when page_number >= total_pages ->
+      {entries, false} ->
         {Enum.map(entries, &build_requester/1), ""}
 
-      %{entries: entries, page_number: page_number} ->
+      {entries, true} ->
         {Enum.map(entries, &build_requester/1),
-         encode_page_token(%{list_request | page: page_number + 1})}
+         encode_page_token(%{list_request | page: list_request.page + 1})}
     end
+  end
+
+  # Reads one row past the page to know whether a next page exists, so the
+  # distinct requesters of the whole window do not have to be counted on every call.
+  defp fetch_page(query, page, page_size) do
+    rows =
+      query
+      |> limit(^(page_size + 1))
+      |> offset(^((page - 1) * page_size))
+      |> Repo.all()
+
+    {Enum.take(rows, page_size), length(rows) > page_size}
   end
 
   defp filter(query, params) do
