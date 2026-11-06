@@ -207,7 +207,7 @@ defmodule Ppl.Grpc.Server do
   def describe_topology(request, _stream) do
     Metrics.benchmark("Ppl.describe_topology", __MODULE__, fn ->
       with ppl_id             <- request.ppl_id,
-           {:ok, ppl_request} <- PplRequestsQueries.get_by_id(ppl_id),
+           {:ok, ppl_request} <- PplRequestsQueries.get_fields_by_id(ppl_id, [:definition]),
            true               <- ppl_request != nil,
            {:ok, topology}    <- Actions.describe_topology(ppl_request.definition)
       do

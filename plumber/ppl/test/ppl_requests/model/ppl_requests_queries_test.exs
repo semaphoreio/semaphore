@@ -183,6 +183,40 @@ defmodule Ppl.PplRequests.Model.PplRequestsQueries.Test do
     assert response.id == id
   end
 
+  test "get_fields_by_id() returns only the requested fields with stored values", ctx do
+    assert {:ok, ppl_req} = PplRequestsQueries.insert_request(ctx.request)
+    definition = %{"version" => "v1.0", "blocks" => [%{"name" => "a"}, %{"name" => "b"}]}
+    assert {:ok, ppl_req} = PplRequestsQueries.insert_definition(ppl_req, definition, "switch-1")
+    assert {:ok, full} = PplRequestsQueries.get_by_id(ppl_req.id)
+
+    assert {:ok, %{block_count: block_count} = light} =
+             PplRequestsQueries.get_fields_by_id(ppl_req.id, [:block_count])
+    assert Map.keys(light) == [:block_count]
+    assert block_count == full.block_count
+    assert block_count == 2
+
+    assert {:ok, light} =
+             PplRequestsQueries.get_fields_by_id(ppl_req.id, [:switch_id, :wf_id, :ppl_artefact_id, :definition])
+    assert light == Map.take(full, [:switch_id, :wf_id, :ppl_artefact_id, :definition])
+    assert light.switch_id == "switch-1"
+    refute Map.has_key?(light, :source_args)
+  end
+
+  test "get_fields_by_id() - not found and invalid id return errors", _ctx do
+    id = UUID.uuid4()
+    assert {:error, msg} = PplRequestsQueries.get_fields_by_id(id, [:block_count])
+    assert msg == "PipelineRequest with id: #{id} not found."
+
+    assert {:error, _} = PplRequestsQueries.get_fields_by_id("not-a-uuid", [:block_count])
+  end
+
+  test "get_all_by_wf_id() returns path fields only", ctx do
+    assert {:ok, ppl_req} = PplRequestsQueries.insert_request(ctx.request)
+    assert {:ok, [elem]} = PplRequestsQueries.get_all_by_wf_id(ppl_req.wf_id)
+
+    assert elem == Map.take(ppl_req, [:id, :ppl_artefact_id, :inserted_at, :switch_id, :request_args])
+  end
+
   test "get by request_token - success", ctx do
     {:ok, request} = Map.fetch(ctx, :request)
     assert {:ok, _ppl_req} = PplRequestsQueries.insert_request(request)

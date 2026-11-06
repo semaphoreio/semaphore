@@ -158,6 +158,25 @@ defmodule Ppl.PplRequests.Model.PplRequestsQueries do
   end
 
   @doc """
+  Reads only the given fields of the PplRequest with given ppl_id and returns
+  them as a plain map (not a struct, so a field that was not selected raises
+  instead of reading as nil).
+
+  Use it on hot paths that need a few small columns: a full read returns the
+  large JSON columns (definition, request_args, source_args, ...) and Postgres
+  has to detoast and decompress them for every call.
+  """
+  def get_fields_by_id(id, fields) when is_list(fields) and fields != [] do
+    PplRequests
+    |> where([pr], pr.id == ^id)
+    |> select([pr], map(pr, ^fields))
+    |> Repo.one()
+    |> return_tuple("PipelineRequest with id: #{id} not found.")
+  rescue
+    e -> {:error, e}
+  end
+
+  @doc """
   Finds PplRequest by request_token
   """
   def get_by_request_token(request_token) do
@@ -258,11 +277,13 @@ defmodule Ppl.PplRequests.Model.PplRequestsQueries do
   end
 
   @doc """
-  Returns all pipelines from workflow with given wf_id
+  Returns all pipelines from workflow with given wf_id, as maps holding only the
+  fields needed to build the workflow path (no definition or source_args).
   """
   def get_all_by_wf_id(wf_id) do
     PplRequests
     |> where(wf_id: ^wf_id)
+    |> select([pr], map(pr, [:id, :ppl_artefact_id, :inserted_at, :switch_id, :request_args]))
     |> Repo.all([])
     |> return_tuple("There is not any pipeline from workflow with wf_id '#{wf_id}'.")
   end

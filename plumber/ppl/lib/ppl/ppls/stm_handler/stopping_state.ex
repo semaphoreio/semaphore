@@ -45,7 +45,7 @@ defmodule Ppl.Ppls.STMHandler.StoppingState do
 #######################
 
   def scheduling_handler(ppl) do
-    with {:ok, ppl_req}  <- PplRequestsQueries.get_by_id(ppl.ppl_id),
+    with {:ok, ppl_req}  <- PplRequestsQueries.get_fields_by_id(ppl.ppl_id, [:block_count]),
          resp = {:ok, _ppl_status} <- get_status(ppl, ppl_req.block_count)
     do handle_stopping(resp, ppl)
     else

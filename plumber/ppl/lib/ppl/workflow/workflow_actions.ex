@@ -26,7 +26,7 @@ defmodule Ppl.WorkflowActions do
 
   defp first_by_first_ppl_id(%{first_ppl_id: ppl_id})
     when is_binary(ppl_id) and ppl_id != "" do
-      case PplRequestsQueries.get_by_id(ppl_id) do
+      case PplRequestsQueries.get_fields_by_id(ppl_id, [:ppl_artefact_id]) do
         {:ok, ppl_req} -> {:ok, ppl_req.ppl_artefact_id}
         error -> error
       end
@@ -35,7 +35,7 @@ defmodule Ppl.WorkflowActions do
 
   defp first_by_last_ppl_id(:not_found, %{last_ppl_id: ppl_id})
     when is_binary(ppl_id) and ppl_id != "" do
-      with {:ok, last_ppl}    <- PplRequestsQueries.get_by_id(ppl_id),
+      with {:ok, last_ppl}    <- PplRequestsQueries.get_fields_by_id(ppl_id, [:wf_id]),
            {:ok, initial_ppl} <- PplRequestsQueries.get_initial_wf_ppl(last_ppl.wf_id),
       do: {:ok, initial_ppl.ppl_artefact_id}
   end

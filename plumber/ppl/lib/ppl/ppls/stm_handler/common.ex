@@ -50,7 +50,7 @@ defmodule Ppl.Ppls.STMHandler.Common do
     ppl_id = data.exit_transition.ppl_id
     result = data.user_exit_function.result
     result_reason = Map.get(data.user_exit_function, :result_reason, "")
-    with {:ok, ppl_req}  <- PplRequestsQueries.get_by_id(ppl_id),
+    with {:ok, ppl_req}  <- PplRequestsQueries.get_fields_by_id(ppl_id, [:switch_id]),
          {:ok, _message} <- GoferClient.pipeline_done(ppl_req.switch_id, result, result_reason),
     do: :ok
   end
