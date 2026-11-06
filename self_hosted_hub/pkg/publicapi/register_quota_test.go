@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/semaphoreio/semaphore/self_hosted_hub/pkg/database"
 	"github.com/semaphoreio/semaphore/self_hosted_hub/pkg/feature"
 	models "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/models"
 	quotas "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/quotas"
@@ -54,6 +55,10 @@ func Test__RegisterQuotaLookup(t *testing.T) {
 		orgID := uuid.New()
 		_, token, err := models.CreateAgentType(orgID, &testRequesterID, "s1-quota-concurrent")
 		require.NoError(t, err)
+
+		// The test environment defaults to a pool of one connection, which
+		// serializes the goroutines and hides any race. Widen the pool.
+		useConnectionPool(t, 20)
 
 		server := newServerWithFeatureProvider(t, &stubFeatureProvider{quantity: 3})
 
@@ -188,6 +193,20 @@ func newServerWithFeatureProvider(t *testing.T, provider feature.Provider) *Serv
 
 	server.InitRouter()
 	return server
+}
+
+// useConnectionPool raises the shared pool size for the duration of the test.
+func useConnectionPool(t *testing.T, size int) {
+	sqlDB, err := database.Conn().DB()
+	require.NoError(t, err)
+
+	sqlDB.SetMaxOpenConns(size)
+	sqlDB.SetMaxIdleConns(size)
+
+	t.Cleanup(func() {
+		sqlDB.SetMaxOpenConns(1)
+		sqlDB.SetMaxIdleConns(1)
+	})
 }
 
 // A connection that does not share the application's connection pool,
