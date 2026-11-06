@@ -179,8 +179,15 @@ defmodule Guard.McpOAuth.Token do
     end
   end
 
-  defp validate_client(%{client_id: client_id}, client_id), do: :ok
-  defp validate_client(_family, _client_id), do: {:error, invalid_refresh_token()}
+  # The scope check refuses a Computers family whose client is no longer the
+  # configured one, as authenticate_client/1 did not authenticate it.
+  defp validate_client(family, client_id) do
+    if family.client_id == client_id and family.scope == scope(client_id) do
+      :ok
+    else
+      {:error, invalid_refresh_token()}
+    end
+  end
 
   defp validate_live(%{family: family} = refresh_token) do
     now = DateTime.utc_now()
