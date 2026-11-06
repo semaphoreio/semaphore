@@ -6,11 +6,12 @@ class AddRemoteIdIndexToGithubAppInstallationRepositories < ActiveRecord::Migrat
   # access is moved between them.
   #
   # A concurrent build that is interrupted leaves an INVALID index behind, and
-  # if_not_exists then skips it on the next run. After deploying, check
+  # if_not_exists then skips it on a later run. After deploying, check
   #   SELECT indisvalid FROM pg_index
   #   WHERE indexrelid = 'idx_gh_app_inst_repos_on_remote_id'::regclass;
-  # If it is false, DROP INDEX CONCURRENTLY idx_gh_app_inst_repos_on_remote_id
-  # and run this migration again.
+  # If it is false, DROP INDEX CONCURRENTLY idx_gh_app_inst_repos_on_remote_id and
+  # recreate it by hand with the same CREATE INDEX CONCURRENTLY statement.
+  # Running this migration again is a no-op once its version is recorded.
   disable_ddl_transaction!
 
   def change

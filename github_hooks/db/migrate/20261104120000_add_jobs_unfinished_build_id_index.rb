@@ -5,11 +5,12 @@ class AddJobsUnfinishedBuildIdIndex < ActiveRecord::Migration[6.1]
   # small.
   #
   # A concurrent build that is interrupted leaves an INVALID index behind, and
-  # if_not_exists then skips it on the next run. After deploying, check
+  # if_not_exists then skips it on a later run. After deploying, check
   #   SELECT indisvalid FROM pg_index
   #   WHERE indexrelid = 'index_jobs_on_build_id_unfinished'::regclass;
-  # If it is false, DROP INDEX CONCURRENTLY index_jobs_on_build_id_unfinished
-  # and run this migration again.
+  # If it is false, DROP INDEX CONCURRENTLY index_jobs_on_build_id_unfinished and
+  # recreate it by hand with the same CREATE INDEX CONCURRENTLY statement.
+  # Running this migration again is a no-op once its version is recorded.
   disable_ddl_transaction!
 
   def change
