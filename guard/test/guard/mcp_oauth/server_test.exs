@@ -1034,6 +1034,48 @@ defmodule Guard.McpOAuth.Server.Test do
       assert response.status_code == 200
     end
 
+    test "refreshes its RS256 tokens only with its client secret", %{user_id: user_id} do
+      code = user_id |> computers_authorize() |> get_header("location") |> extract_code()
+
+      tokens =
+        code
+        |> computers_token(%{"client_secret" => @computers_client_secret})
+        |> Map.fetch!(:body)
+        |> Jason.decode!()
+
+      for params <- [%{}, %{"client_secret" => "wrong"}] do
+        assert {400, %{"error" => "invalid_client"}} =
+                 refresh(tokens["refresh_token"], @computers_client_id, params)
+      end
+
+      assert {400, %{"error" => "invalid_grant"}} =
+               refresh(tokens["refresh_token"], create_test_client().client_id)
+
+      assert {200, result} =
+               refresh(tokens["refresh_token"], @computers_client_id, %{
+                 "client_secret" => @computers_client_secret
+               })
+
+      assert result["scope"] == "computers"
+      assert result["expires_in"] == 3600
+      refute result["refresh_token"] == tokens["refresh_token"]
+
+      {:ok, jwks_resp} = HTTPoison.get(mcp_oauth_url("/jwks"), default_headers())
+      assert [key] = Jason.decode!(jwks_resp.body)["keys"]
+
+      assert {true, jwt, _jws} =
+               JOSE.JWT.verify_strict(JOSE.JWK.from_map(key), ["RS256"], result["access_token"])
+
+      assert jwt.fields["aud"] == @computers_audience
+      assert jwt.fields["scope"] == "computers"
+      assert jwt.fields["semaphore_user_id"] == user_id
+
+      System.put_env("COMPUTERS_OAUTH_CLIENT_ID", "renamed")
+
+      assert {400, %{"error" => "invalid_grant"}} =
+               refresh(result["refresh_token"], @computers_client_id)
+    end
+
     test "is not there when its signing key is not an RSA private key", %{user_id: user_id} do
       System.put_env("COMPUTERS_OAUTH_SIGNING_KEY", "not a key")
 
