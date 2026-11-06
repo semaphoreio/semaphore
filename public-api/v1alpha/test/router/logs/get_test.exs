@@ -873,7 +873,7 @@ defmodule PipelinesAPI.Logs.Get.Test do
       end)
     end
 
-    # The leak behind the OOM: a client that gives up must not leave loghub
+    # A client that gives up must not leave loghub
     # (and this service) working on a log nobody reads.
     test "a client hanging up mid-stream cancels the loghub stream within about a second",
          ctx do
