@@ -2,9 +2,11 @@ package database
 
 import (
 	"database/sql"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	postgres "gorm.io/driver/postgres"
@@ -63,6 +65,7 @@ func Test__Conn__ConcurrentCallersShareOneConnect(t *testing.T) {
 	var calls int32
 	withConnectFn(t, func() *gorm.DB {
 		atomic.AddInt32(&calls, 1)
+		time.Sleep(10 * time.Millisecond)
 		return real
 	})
 
@@ -76,4 +79,28 @@ func Test__Conn__ConcurrentCallersShareOneConnect(t *testing.T) {
 	}
 	wg.Wait()
 	assert.Equal(t, int32(1), atomic.LoadInt32(&calls))
+}
+
+func Test__connect__FailedAttemptsDoNotLeakGoroutines(t *testing.T) {
+	t.Setenv("DB_HOST", "127.0.0.1")
+	t.Setenv("DB_PORT", "1")
+	t.Setenv("DB_NAME", "x")
+	t.Setenv("DB_USERNAME", "x")
+	t.Setenv("DB_PASSWORD", "x")
+
+	attempt := func() {
+		defer func() { _ = recover() }()
+		connect()
+	}
+
+	attempt()
+	time.Sleep(100 * time.Millisecond)
+	before := runtime.NumGoroutine()
+
+	for i := 0; i < 50; i++ {
+		attempt()
+	}
+	time.Sleep(200 * time.Millisecond)
+
+	assert.LessOrEqual(t, runtime.NumGoroutine(), before+5)
 }

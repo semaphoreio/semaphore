@@ -74,7 +74,7 @@ func connect() *gorm.DB {
 		ApplicationName: os.Getenv("APPLICATION_NAME"),
 	}
 
-	dsnTemplate := "host=%s port=%s user=%s password=%s dbname=%s sslmode=%s application_name=%s"
+	dsnTemplate := "host=%s port=%s user=%s password=%s dbname=%s sslmode=%s application_name=%s connect_timeout=5"
 	dsn := fmt.Sprintf(dsnTemplate, c.Host, c.Port, c.User, c.Pass, c.Name, c.Ssl, c.ApplicationName)
 
 	logger := gormLogger.New(log.New(os.Stdout, "\r\n", log.LstdFlags), gormLogger.Config{
@@ -86,6 +86,13 @@ func connect() *gorm.DB {
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger})
 	if err != nil {
+		// gorm.Open can return a handle whose ping failed; close it so the
+		// pool and its opener goroutine do not leak on every retry.
+		if db != nil {
+			if failedDB, e := db.DB(); e == nil {
+				_ = failedDB.Close()
+			}
+		}
 		panic(err)
 	}
 
