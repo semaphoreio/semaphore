@@ -160,67 +160,75 @@ defmodule Audit.Retention.Queries do
   `floor`, and unmarks the others so they leave the deletion queue instead of
   blocking it.
 
-  `enabled?` is called once per organization while the batch is locked, so it
-  must be cheap (feature lookups are cached).
-
-  Uses FOR UPDATE SKIP LOCKED to prevent concurrent workers from
-  processing the same records.
+  `enabled?` is called once per organization before any row is locked, so a
+  slow lookup holds no locks. The delete and the unmark then lock their rows
+  with FOR UPDATE SKIP LOCKED and check `expires_at` again, so rows that were
+  unmarked or marked again in the meantime, or that another worker holds, are
+  left alone.
 
   Returns `{:ok, %{deleted: deleted_count, unmarked: unmarked_count}}`.
   """
   @spec delete_expired_batch(pos_integer(), (String.t() -> boolean()), DateTime.t()) ::
           {:ok, %{deleted: non_neg_integer(), unmarked: non_neg_integer()}} | {:error, term()}
   def delete_expired_batch(limit, enabled?, floor) do
-    Repo.transaction(fn ->
-      expired = fetch_expired(limit)
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+    expired = fetch_expired(limit, now)
 
-      enabled_org_ids =
-        expired
-        |> Enum.map(fn {_id, org_id, _timestamp} -> org_id end)
-        |> Enum.uniq()
-        |> Enum.filter(enabled?)
+    enabled_org_ids =
+      expired
+      |> Enum.map(fn {_id, org_id, _timestamp} -> org_id end)
+      |> Enum.uniq()
+      |> Enum.filter(enabled?)
 
-      {to_delete, to_unmark} =
-        Enum.split_with(expired, fn {_id, org_id, timestamp} ->
-          org_id in enabled_org_ids and DateTime.compare(timestamp, floor) == :lt
-        end)
+    {to_delete, to_unmark} =
+      Enum.split_with(expired, fn {_id, org_id, timestamp} ->
+        org_id in enabled_org_ids and DateTime.compare(timestamp, floor) == :lt
+      end)
 
-      %{deleted: delete_by_ids(ids(to_delete)), unmarked: unmark_by_ids(ids(to_unmark))}
-    end)
+    {:ok,
+     %{
+       deleted: delete_expired(ids(to_delete), now),
+       unmarked: unmark_expired(ids(to_unmark), now)
+     }}
   rescue
     e in [Postgrex.Error, DBConnection.ConnectionError] -> {:error, e}
   end
 
-  defp fetch_expired(limit) do
-    now = DateTime.utc_now() |> DateTime.truncate(:second)
-
+  defp fetch_expired(limit, now) do
     from(e in Event,
       where: not is_nil(e.expires_at) and e.expires_at <= ^now,
       order_by: [asc: e.expires_at],
       select: {e.id, e.org_id, e.timestamp},
-      limit: ^limit,
-      lock: "FOR UPDATE SKIP LOCKED"
+      limit: ^limit
     )
     |> Repo.all()
   end
 
   defp ids(events), do: Enum.map(events, fn {id, _org_id, _timestamp} -> id end)
 
-  defp delete_by_ids([]), do: 0
+  defp still_expired(ids, now) do
+    from(e in Event,
+      where: e.id in ^ids and e.expires_at <= ^now,
+      select: e.id,
+      lock: "FOR UPDATE SKIP LOCKED"
+    )
+  end
 
-  defp delete_by_ids(ids) do
+  defp delete_expired([], _now), do: 0
+
+  defp delete_expired(ids, now) do
     {count, _} =
-      from(e in Event, where: e.id in ^ids)
+      from(e in Event, where: e.id in subquery(still_expired(ids, now)))
       |> Repo.delete_all()
 
     count
   end
 
-  defp unmark_by_ids([]), do: 0
+  defp unmark_expired([], _now), do: 0
 
-  defp unmark_by_ids(ids) do
+  defp unmark_expired(ids, now) do
     {count, _} =
-      from(e in Event, where: e.id in ^ids)
+      from(e in Event, where: e.id in subquery(still_expired(ids, now)))
       |> Repo.update_all(set: [expires_at: nil])
 
     count

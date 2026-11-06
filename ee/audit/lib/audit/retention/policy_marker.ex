@@ -16,7 +16,7 @@ defmodule Audit.Retention.PolicyMarker do
 
   Processing is gated per org by the `:audit_logs_retention` feature flag. When a
   policy event arrives its org is checked against the flag; if the flag is not
-  enabled the event is ignored — nothing is marked or unmarked. The check is
+  enabled the event is ignored, and nothing is marked or unmarked. The check is
   fail-closed: a Feature service error is treated as "disabled", so a lookup
   failure never marks audit logs for deletion. This is orthogonal to the
   service-level `RETENTION_CONSUMER_ENABLED` switch (which decides whether the
@@ -40,7 +40,7 @@ defmodule Audit.Retention.PolicyMarker do
   This consumer is edge-triggered: an org's old events are only marked when a
   `usage.apply_organization_policy` event arrives for it. Cleaning up
   organizations that predate the rollout therefore relies on the upstream
-  publisher periodically *replaying* the policy for all orgs — the same
+  publisher periodically *replaying* the policy for all orgs, the same
   contract Zebra/Plumber already depend on. There is intentionally no
   per-service backfill here; if the platform is purely edge-triggered, the
   replay must be added upstream so all consumers benefit.
@@ -175,7 +175,7 @@ defmodule Audit.Retention.PolicyMarker do
 
     # The floor is a hard minimum retention. A cutoff newer than it (a window
     # shorter than the floor, or a future/misconfigured date) is clamped back to
-    # the floor rather than honored — never expire audit logs younger than the
+    # the floor rather than honored: never expire audit logs younger than the
     # floor, but still delete everything older than it.
     if DateTime.compare(cutoff, floor) == :gt do
       {:clamped, floor}

@@ -74,6 +74,17 @@ defmodule Audit.Retention.DeleterTest do
     assert_unmarked(marked_event.id)
   end
 
+  test "keeps and unmarks expired events when the feature lookup fails" do
+    stub_failing_feature_service()
+
+    marked_event = insert_expired_event(500)
+
+    tick()
+
+    assert event_exists?(marked_event.id)
+    assert_unmarked(marked_event.id)
+  end
+
   test "stops deleting once the organization's feature change event arrives" do
     marked_event = insert_expired_event(500)
     org_id = marked_event.org_id

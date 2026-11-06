@@ -54,6 +54,12 @@ defmodule Support.DataCase do
 
         GrpcMock.stub(FeatureMock, :list_organization_features, response)
       end
+
+      def stub_failing_feature_service do
+        GrpcMock.stub(FeatureMock, :list_organization_features, fn _request, _stream ->
+          raise GRPC.RPCError, status: GRPC.Status.unavailable(), message: "unavailable"
+        end)
+      end
     end
   end
 
