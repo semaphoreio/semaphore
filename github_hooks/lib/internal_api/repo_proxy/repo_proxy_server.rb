@@ -300,7 +300,7 @@ module InternalApi
           :pr_number => hook.pull_request_number.to_s,
           :pr_sha => hook.payload.pr_head_sha.to_s,
           :pr_branch_name => hook.payload.pr_head_branch_name.to_s,
-          :pr_base_sha => hook.payload.pr_base_sha.to_s,
+          :pr_base_sha => (hook.payload.pr_base_sha if hook.payload.is_a?(::RepoHost::Github::Payload)).to_s,
           :pr_mergeable => pr_mergeable(hook),
           :tag_name => hook.payload.tag_name.to_s,
           :branch_name => branch_name(hook)

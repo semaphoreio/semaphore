@@ -62,6 +62,16 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
         expect(response.hook.git_ref_type).to eq(:PR)
         expect(response.hook.pr_base_sha).to eq("1ddd006407eda6ea5ca0e0b538ba7d4914c08611")
       end
+
+      it "returns no base commit for a Bitbucket pull request" do
+        request = JSON.parse(File.read(Rails.root.join("fixtures/bitbucket_payloads/pull_request_open.json").to_s))
+        hook = FactoryBot.create(:workflow_with_branch, :provider => "bitbucket", :request => request, :commit_author => "octocat")
+
+        response = server.describe(InternalApi::RepoProxy::DescribeRequest.new(:hook_id => hook.id), call)
+
+        expect(response.hook.git_ref_type).to eq(:PR)
+        expect(response.hook.pr_base_sha).to eq("")
+      end
     end
 
     context "when pusher is not present" do
