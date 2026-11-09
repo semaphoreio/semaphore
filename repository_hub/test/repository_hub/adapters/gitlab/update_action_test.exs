@@ -8,6 +8,8 @@ defmodule RepositoryHub.Server.Gitlab.UpdateActionTest do
   alias InternalApi
 
   alias RepositoryHub.{
+    DeployKeysModelFactory,
+    GitlabClient,
     GitlabClientFactory,
     RepositoryModelFactory
   }
@@ -49,6 +51,28 @@ defmodule RepositoryHub.Server.Gitlab.UpdateActionTest do
                "branches" => ["main", "develop"],
                "tags" => ["v*"]
              }
+    end
+
+    test "stores the id of a newly created webhook when the url changes", %{gitlab_adapter: adapter} do
+      repository = RepositoryModelFactory.gitlab_repo(url: "git@gitlab.com:dummy/repository.git")
+      DeployKeysModelFactory.create_deploy_key(project_id: repository.project_id, repository_id: repository.id)
+
+      :meck.expect(GitlabClient, :find_webhook, fn _params, _opts ->
+        {:error, %{status: GRPC.Status.not_found(), message: "Webhook not found"}}
+      end)
+
+      request =
+        InternalApiFactory.update_request(
+          repository_id: repository.id,
+          url: "git@gitlab.com:dummy/repository-fork.git"
+        )
+
+      assert {:ok, %UpdateResponse{}} = UpdateAction.execute(adapter, request)
+
+      {:ok, updated_repository} = RepositoryHub.Model.RepositoryQuery.get_by_id(repository.id)
+      assert updated_repository.name == "repository-fork"
+      assert updated_repository.hook_id == "112233"
+      assert_called(GitlabClient.create_webhook(:_, :_))
     end
 
     test "should fail with invalid repository id", %{gitlab_adapter: adapter} do
