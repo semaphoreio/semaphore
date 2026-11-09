@@ -102,6 +102,13 @@ RSpec.describe Project, :type => :model do
 
         expect(project.pull_request_head_commit?).to be(false)
       end
+
+      it "keeps the first answer for the life of the instance" do
+        allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:pr_head_builds, project.organization_id).and_return(true, false)
+
+        expect([project.pull_request_head_commit?, project.pull_request_head_commit?]).to eq([true, true])
+        expect(Semaphore::FeatureFlags).to have_received(:enabled?).once
+      end
     end
   end
 

@@ -1484,6 +1484,19 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             expect(described_class.find_branch(@workflow).pull_request_mergeable).to be_nil
           end
 
+          it "keeps one build mode for the whole run when the feature lookup changes its answer" do
+            allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:pr_head_builds, anything).and_return(true, false)
+            allow(repo_host).to receive(:create_ref)
+            expect(described_class).to receive(:launch_pipeline)
+            expect(described_class).not_to receive(:update_pull_request_mergeable)
+            expect(Semaphore::Events::PullRequestUnmergeable).not_to receive(:emit)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.commit_sha).to eq(head_sha)
+            expect(Semaphore::FeatureFlags).to have_received(:enabled?).with(:pr_head_builds, anything).once
+          end
+
           it "falls back to the pull request head ref when the head can't be pinned" do
             allow(repo_host).to receive(:create_ref).and_raise(::RepoHost::RemoteException::Unauthorized, "no token")
             allow(repo_host).to receive(:pull_request).and_return(:head => { :sha => head_sha })
