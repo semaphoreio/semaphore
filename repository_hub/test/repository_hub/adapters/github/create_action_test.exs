@@ -70,6 +70,17 @@ defmodule RepositoryHub.Server.Github.CreateActionTest do
       assert {:ok, _} = CreateAction.execute(adapter, request)
     end
 
+    test "should fail with a clear error when the user has no GitHub account connected", %{
+      github_app_adapter: adapter
+    } do
+      request = InternalApiFactory.create_request(integration_type: :GITHUB_APP)
+
+      :meck.expect(RepositoryHub.UserClient, :get_repository_provider_logins, fn :GITHUB, _user_id -> {:ok, []} end)
+
+      assert {:error, %{message: message}} = CreateAction.execute(adapter, request)
+      assert message == "Connect your GitHub account to Semaphore to add this repository."
+    end
+
     test "should fail when open source project want to create private repository", %{github_app_adapter: adapter} do
       request =
         InternalApiFactory.create_request(
