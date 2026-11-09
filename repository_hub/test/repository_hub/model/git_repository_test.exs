@@ -189,4 +189,21 @@ defmodule RepositoryHub.Model.GitRepositoryTest do
       assert {:ok, false} == GitRepository.equal?(bitbucket_repository, "git@bitbucket.org:MarvinWills/Base-App.git")
     end
   end
+
+  describe ".did_host_change?" do
+    test "bitbucket.org and ssh.bitbucket.org are the same host" do
+      {:ok, old_host} = GitRepository.new("git@bitbucket.org:marvinwills/base-app.git")
+      {:ok, new_host} = GitRepository.new("git@ssh.bitbucket.org:marvinwills/base-app.git")
+
+      assert {:ok, false} == GitRepository.did_host_change?(old_host, "git@ssh.bitbucket.org:marvinwills/base-app.git")
+      assert {:ok, false} == GitRepository.did_host_change?(new_host, "git@bitbucket.org:marvinwills/base-app.git")
+    end
+
+    test "moving between providers is a host change" do
+      {:ok, bitbucket_repository} = GitRepository.new("git@ssh.bitbucket.org:marvinwills/base-app.git")
+
+      assert {:ok, true} ==
+               GitRepository.did_host_change?(bitbucket_repository, "git@github.com:marvinwills/base-app.git")
+    end
+  end
 end
