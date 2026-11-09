@@ -30,7 +30,7 @@ export function promotionLabel(p: Pipeline) {
 }
 
 const PIPE_PAD = { top: 72, side: 28, bottom: 28 };
-const MIN_OPEN_W = 460;
+const MIN_OPEN_W = 730;
 
 let elk: ELK | null = null;
 const innerCache = new Map<string, Promise<ElkNode>>();
