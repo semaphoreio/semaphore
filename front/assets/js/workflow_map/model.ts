@@ -305,3 +305,11 @@ export function formatDuration(total: number): string {
   if (hours) return `${two(hours)}:${two(minutes)}:${two(rest)}`;
   return `${two(minutes)}:${two(rest)}`;
 }
+
+export const blockSummary = (b: Block) => {
+  const c = countJobs(b.jobs);
+  return [
+    `${b.jobs.length} ${b.jobs.length === 1 ? `job` : `jobs`}`,
+    ...([`failed`, `running`, `queued`, `stopped`] as Status[]).filter((s) => c[s]).map((s) => `${c[s]} ${STATUS_LABEL[s].toLowerCase()}`),
+  ].join(` · `);
+};
