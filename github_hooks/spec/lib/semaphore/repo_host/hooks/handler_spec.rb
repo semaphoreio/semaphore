@@ -787,6 +787,77 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         end
       end
 
+      context "when the project builds pull request head commits" do
+        let(:repo_host) { double(::RepoHost::Github::Client.new("token")) }
+        let(:pushed_sha) { "pushed-after-approval" }
+
+        def approve_reviewed(workflow, **options)
+          allow(@workflow.payload).to receive_messages(
+            issue_number: 1,
+            pr_approval?: true,
+            pr_approval_sha: workflow.commit_sha,
+            comment_author: "maintainer",
+            comment_created_at: approval_comment_time,
+            **options
+          )
+        end
+
+        before do
+          @workflow.project.update!(:pull_request_commit => "head_commit")
+          allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:pr_head_builds, anything).and_return(true)
+          allow(@logger).to receive(:info)
+          allow(Watchman).to receive(:increment)
+          allow(described_class).to receive_messages(approval_option_enabled?: true, can_approve_forked_pr?: true)
+          allow(::RepoHost::Factory).to receive(:create_from_project).and_return(repo_host)
+          allow(repo_host).to receive(:validate_token_presence!)
+          allow(repo_host).to receive(:commit).and_return(RepoHost::Github::Responses::Commit.commit)
+        end
+
+        it "builds the approved commit with its options even after the fork pushed again" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+          approved_sha = workflow.commit_sha
+          approve_reviewed(workflow, pr_approval_include_secrets?: true)
+          allow(repo_host).to receive(:pull_request).and_return(:head => { :sha => pushed_sha })
+          expect(repo_host).to receive(:create_ref).with(anything, "refs/semaphoreci/#{approved_sha}", approved_sha)
+
+          expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
+
+          described_class.run(@workflow, @logger)
+
+          launched = Workflow.find(workflow.id)
+          expect(launched.commit_sha).to eq(approved_sha)
+          expect(launched.git_ref).to eq("refs/semaphoreci/#{approved_sha}")
+          expect(JSON.parse(launched.request["payload"])["semaphore_approval"]).to include("include_secrets" => true, "approved_head_sha" => approved_sha)
+        end
+
+        it "refuses to run when the commit can't be pinned and the fork head moved" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+          approve_reviewed(workflow)
+          allow(repo_host).to receive(:create_ref).and_raise(::RepoHost::RemoteException::Unauthorized, "no token")
+          allow(repo_host).to receive(:pull_request).and_return(:head => { :sha => pushed_sha })
+
+          expect(described_class).not_to receive(:launch_pipeline)
+
+          described_class.run(@workflow, @logger)
+
+          expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_PR_APPROVAL_STALE)
+        end
+
+        it "releases an approval with options when the commit can't be pinned" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+          approve_reviewed(workflow, pr_approval_include_secrets?: true)
+          allow(repo_host).to receive(:create_ref).and_raise(::RepoHost::RemoteException::Unauthorized, "no token")
+          allow(repo_host).to receive(:pull_request).and_return(:head => { :sha => workflow.commit_sha })
+
+          expect(described_class).not_to receive(:launch_pipeline)
+          expect(Watchman).to receive(:increment).with("hooks.pr_approval.options_without_reference")
+
+          described_class.run(@workflow, @logger)
+
+          expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+        end
+      end
+
       context "when no Semaphore ref can be created (without_reference)" do
         def without_reference_data(workflow, head_sha: nil)
           [:without_reference, { :mergeable => true, :commit_author => "octocat", :head_sha => head_sha || workflow.commit_sha }, ""]

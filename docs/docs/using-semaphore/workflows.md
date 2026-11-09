@@ -258,7 +258,7 @@ When building the head commit, the workflow doesn't test your changes combined w
 
 The setting applies to every pull request workflow of the project: workflows started by pull request events from GitHub, by [`/sem-approve`](#sem-approve) on forked pull requests, and for a pull request reference through the [API](../reference/api) or the command line. If GitHub can't keep a reference to the commit, for example for some pull requests from forks, Semaphore builds the pull request's head reference instead, so a re-run can build a newer commit than the original run.
 
-With the head commit option, [`/sem-approve`](#sem-approve) runs the commit that was approved, and refuses to run if the pull request head changed after the approval.
+With the head commit option, [`/sem-approve`](#sem-approve) runs exactly the commit that was approved, even if the fork pushed newer commits after the approval; those commits need their own approval. If GitHub can't keep a reference to the approved commit, Semaphore builds the pull request's head reference instead, so it refuses to run if the pull request head changed after the approval, and an approval with options is not run.
 
 In both modes, pull request jobs get these environment variables:
 
@@ -298,7 +298,7 @@ If a `/sem-approve` comment requests an option that is **not available** — eit
 
 These options are currently available for GitHub pull request approvals.
 
-Approving forked pull requests is limited to newly created comments: editing an existing comment does not trigger — or re-trigger — an approval. An approval is bound to the fork commit that was present when the comment was written, or to the commit named by its SHA: if the fork pushes a new commit before the run starts, the run is not executed. Review the new commit, then approve it again with its SHA. Due to security concerns, `/sem-approve` will work only once. Subsequent pushes to the forked pull request must be approved again.
+Approving forked pull requests is limited to newly created comments: editing an existing comment does not trigger — or re-trigger — an approval. An approval is bound to the fork commit that was present when the comment was written, or to the commit named by its SHA: if the fork pushes a new commit before the run starts, the run is not executed (with the [head commit option](#pr-commit), the approved commit runs instead). Review the new commit, then approve it again with its SHA. Due to security concerns, `/sem-approve` will work only once. Subsequent pushes to the forked pull request must be approved again.
 
 ## How to skip commits {#skip}
 
