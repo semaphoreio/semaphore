@@ -10,10 +10,10 @@ defmodule RepositoryHub.GithubConnector do
   alias RepositoryHub.{
     Model,
     Toolkit,
-    GithubClient
+    GithubClient,
+    GithubAdapter,
+    UserClient
   }
-
-  alias Ecto.Multi
 
   import Toolkit
 
@@ -33,12 +33,12 @@ defmodule RepositoryHub.GithubConnector do
     end)
   end
 
-  def update_repository_url(connector, url) do
+  def prepare_url_change(connector, adapter, url, user_id) do
     connector.git_repository
     |> Model.GitRepository.equal?(url)
     |> unwrap(fn
       true ->
-        wrap(connector)
+        wrap(recased(connector, url))
 
       false ->
         connector.git_repository
@@ -47,15 +47,69 @@ defmodule RepositoryHub.GithubConnector do
           true ->
             fail_with(:precondition, "Changing git host is not supported yet.")
 
+          false when user_id == "" ->
+            fail_with(:precondition, "Changing the repository URL requires a known requester.")
+
           false ->
-            connector
-            |> can_change_url?(url)
-            |> update_repository_url_impl(url)
+            UserClient.describe(user_id)
+            |> unwrap(&change_url_as_requester(connector, adapter, url, &1))
         end)
     end)
   end
 
-  defp can_change_url?(connector, url) do
+  defp change_url_as_requester(_connector, _adapter, _url, %{user: %{creation_source: :SERVICE_ACCOUNT}}) do
+    fail_with(:precondition, "Service accounts can't change the repository URL.")
+  end
+
+  defp change_url_as_requester(connector, adapter, url, requester) do
+    github_app? = connector.repository.integration_type == "github_app"
+
+    {permission, denied_message} =
+      if github_app?,
+        do: {"push", "Write permissions are required on the repository to change the project's repository URL."},
+        else: {"admin", "Admin permissions are required on the repository to change the project's repository URL."}
+
+    with {:ok, git_repository} <- Model.GitRepository.from_github(url),
+         {:ok, target_token} <-
+           if(github_app?,
+             do: GithubAdapter.token(adapter, requester.user_id, git_repository),
+             else: wrap(connector.token)
+           ),
+         fallback? = github_app? and target_token == "",
+         token = if(fallback?, do: connector.token, else: target_token),
+         {:ok, github_repository} <- can_change_url?(connector, url, token, fallback?),
+         {:ok, %{^permission => true}} <-
+           GithubAdapter.repository_permissions(
+             requester.user_id,
+             %{repo_owner: git_repository.owner, repo_name: git_repository.repo},
+             token,
+             "Connect your GitHub account to Semaphore to change the repository URL."
+           ) do
+      repository_changes = %{
+        name: github_repository.name,
+        owner: github_repository.owner,
+        url: github_repository.ssh_url,
+        remote_id: github_repository.id,
+        private: github_repository.is_private?,
+        default_branch: github_repository.default_branch,
+        connected: true
+      }
+
+      if github_repository.id != connector.repository.remote_id do
+        create_target_resources(connector, git_repository, token, repository_changes)
+      else
+        wrap(%{unchanged(connector) | repository_changes: repository_changes})
+      end
+    else
+      {:ok, _permissions} ->
+        fail_with(:precondition, denied_message)
+
+      error ->
+        error
+    end
+  end
+
+  defp can_change_url?(connector, url, token, fallback?) do
     Model.GitRepository.from_github(url)
     |> unwrap(fn git_repository ->
       GithubClient.find_repository(
@@ -63,134 +117,65 @@ defmodule RepositoryHub.GithubConnector do
           repo_owner: git_repository.owner,
           repo_name: git_repository.repo
         },
-        token: connector.token
+        token: token
       )
+      |> tap(fn result ->
+        if fallback?,
+          do: Watchman.increment({"github_app.update_url.target_token_fallback", [to_string(elem(result, 0))]})
+      end)
+      |> unwrap_error(fn
+        _ when fallback? ->
+          fail_with(
+            :precondition,
+            "Semaphore GitHub App is not installed on #{git_repository.owner}, or it has no access to #{git_repository.repo}."
+          )
+
+        error ->
+          error(error)
+      end)
     end)
     |> unwrap(fn
-      %{with_admin_access?: true} ->
-        wrap(connector)
+      %{with_admin_access?: true} = github_repository ->
+        wrap(github_repository)
 
-      _ when connector.repository.integration_type == "github_app" ->
-        wrap(connector)
+      github_repository when connector.repository.integration_type == "github_app" ->
+        wrap(github_repository)
 
       _ ->
         fail_with(:precondition, "Admin permissions are required on the repository to add the project to Semaphore")
     end)
   end
 
-  defp update_repository_url_impl(connector, url) do
-    connector
-    |> unwrap(fn connector ->
-      Multi.new()
-      |> Multi.run(:new_git_repository, fn _, _ ->
-        Model.GitRepository.from_github(url)
-      end)
-      |> Multi.run(:updated_repository, fn _, context ->
-        Model.RepositoryQuery.update(
-          connector.repository,
-          %{
-            name: context.new_git_repository.repo,
-            owner: context.new_git_repository.owner,
-            url: context.new_git_repository.ssh_git_url
-          },
-          returning: true
-        )
-      end)
-      |> Multi.run(:remove_old_webhook, fn _, _context ->
-        connector
-        |> remove_webhook()
-      end)
-      |> Multi.run(:remove_old_deploy_key, fn _, _context ->
-        connector
-        |> remove_deploy_key()
-      end)
-      |> Multi.run(:create_new_webhook, fn _, context ->
-        context.updated_repository
-        |> create_webhook(context.new_git_repository, connector.token)
-      end)
-      |> Multi.run(:create_deploy_key, fn _, context ->
-        context.updated_repository
-        |> create_deploy_key(context.new_git_repository, connector.token)
-      end)
-      |> Multi.run(:new_repository, fn _, _context ->
-        Model.RepositoryQuery.get_by_id(connector.repository.id)
-      end)
-      |> RepositoryHub.Repo.transaction()
-      |> unwrap(fn context ->
-        %{connector | repository: context.new_repository, git_repository: context.new_git_repository}
-        |> wrap()
-      end)
-    end)
-  end
-
-  def remove_deploy_key(connector) do
-    Model.DeployKeyQuery.get_by_repository_id(connector.repository.id)
-    |> unwrap(fn deploy_key ->
-      GithubClient.remove_deploy_key(
-        %{
-          repo_owner: connector.git_repository.owner,
-          repo_name: connector.git_repository.repo,
-          key_id: deploy_key.remote_id
-        },
-        token: connector.token
-      )
-      |> unwrap(fn _ ->
-        wrap(deploy_key)
-      end)
-    end)
-    |> unwrap(fn deploy_key ->
-      Model.DeployKeyQuery.delete(deploy_key.id)
-    end)
-  end
-
-  def remove_webhook(connector) do
-    GithubClient.remove_webhook(
+  defp recased(connector, url) do
+    with {:ok, requested} <- Model.GitRepository.from_github(url),
+         true <- requested.ssh_git_url != connector.git_repository.ssh_git_url,
+         {:ok, github_repository} when github_repository.id == connector.repository.remote_id <-
+           GithubClient.find_repository(%{repo_owner: requested.owner, repo_name: requested.repo},
+             token: connector.token
+           ) do
       %{
-        repo_owner: connector.git_repository.owner,
-        repo_name: connector.git_repository.repo,
-        webhook_id: connector.repository.hook_id
-      },
-      token: connector.token
-    )
-    |> unwrap(fn _ ->
-      connector.repository
-      |> Model.RepositoryQuery.update(%{hook_id: ""})
-    end)
+        unchanged(connector)
+        | repository_changes: %{
+            name: github_repository.name,
+            owner: github_repository.owner,
+            url: github_repository.ssh_url
+          }
+      }
+    else
+      _ -> unchanged(connector)
+    end
+  rescue
+    _ -> unchanged(connector)
   end
 
-  def create_webhook(repository, git_repository, token) do
-    params = %{
-      repo_owner: git_repository.owner,
-      repo_name: git_repository.repo,
-      url: GithubClient.Webhook.url(repository.project_id),
-      events: GithubClient.Webhook.events()
-    }
-
-    GithubClient.find_webhook(params, token: token)
-    |> unwrap_error(fn _ ->
-      {:ok, {secret, secret_enc}} = Model.Repositories.generate_hook_secret(repository)
-
-      params
-      |> Map.put(:secret, secret)
-      |> GithubClient.create_webhook(token: token)
-      |> case do
-        {:ok, _} ->
-          Model.RepositoryQuery.update(repository, %{
-            hook_secret_enc: secret_enc
-          })
-
-        error ->
-          error
-      end
-    end)
-    |> unwrap(fn webhook ->
-      Model.RepositoryQuery.update(repository, %{
-        hook_id: webhook.id
-      })
-    end)
+  defp unchanged(connector) do
+    %{connector: connector, repository_changes: %{}, new_deploy_key: nil, old_resources: nil, created: nil}
   end
 
-  def create_deploy_key(repository, git_repository, token) do
+  defp create_target_resources(connector, git_repository, token, repository_changes) do
+    repository = connector.repository
+    old_resources = capture_old_resources(connector)
+
     {private_key, public_key} = Model.DeployKeys.generate_private_public_key_pair()
 
     {:ok, private_key_enc} =
@@ -200,26 +185,160 @@ defmodule RepositoryHub.GithubConnector do
         "semaphore-#{repository.project_id}"
       )
 
-    GithubClient.create_deploy_key(
-      %{
-        repo_owner: git_repository.owner,
-        repo_name: git_repository.repo,
-        title: "semaphore-#{git_repository.owner}-#{git_repository.repo}",
-        key: public_key,
-        read_only: true
-      },
-      token: token
-    )
-    |> unwrap(fn remote_key ->
-      %{
-        public_key: public_key,
-        private_key_enc: private_key_enc,
-        deployed: true,
-        remote_id: remote_key.id,
-        project_id: repository.project_id,
-        repository_id: repository.id
-      }
-      |> Model.DeployKeyQuery.insert()
+    {:ok, {secret, secret_enc}} = Model.Repositories.generate_hook_secret(repository)
+
+    created = %{
+      label: "created",
+      owner: git_repository.owner,
+      repo: git_repository.repo,
+      token: token,
+      hook_id: nil,
+      deploy_key: nil
+    }
+
+    create_webhook(repository, git_repository, token, secret)
+    |> unwrap(fn webhook ->
+      created = %{created | hook_id: webhook.id}
+
+      try do
+        GithubClient.create_deploy_key(
+          %{
+            repo_owner: git_repository.owner,
+            repo_name: git_repository.repo,
+            title: "semaphore-#{git_repository.owner}-#{git_repository.repo}",
+            key: public_key,
+            read_only: true
+          },
+          token: token
+        )
+      rescue
+        error ->
+          remove_github_resources(created)
+          reraise error, __STACKTRACE__
+      end
+      |> case do
+        {:ok, remote_key} ->
+          wrap(%{
+            connector: connector,
+            repository_changes: Map.merge(repository_changes, %{hook_id: webhook.id, hook_secret_enc: secret_enc}),
+            new_deploy_key: %{
+              public_key: public_key,
+              private_key_enc: private_key_enc,
+              deployed: true,
+              remote_id: remote_key.id,
+              project_id: repository.project_id,
+              repository_id: repository.id
+            },
+            old_resources: old_resources,
+            created: %{created | deploy_key: %{remote_id: remote_key.id}}
+          })
+
+        error ->
+          remove_github_resources(created)
+          error
+      end
     end)
+  end
+
+  def apply_url_change(change) do
+    Model.RepositoryQuery.update(change.connector.repository, change.repository_changes, returning: true)
+    |> unwrap(fn repository ->
+      replace_deploy_key(change)
+      |> unwrap(fn _ -> wrap(repository) end)
+    end)
+  end
+
+  defp replace_deploy_key(%{new_deploy_key: nil}), do: wrap(nil)
+
+  defp replace_deploy_key(%{new_deploy_key: new_deploy_key}) do
+    Model.DeployKeyQuery.delete_by_project_id(new_deploy_key.project_id)
+    |> unwrap(fn _ -> Model.DeployKeyQuery.insert(new_deploy_key) end)
+  end
+
+  defp capture_old_resources(connector) do
+    old_deploy_key =
+      case Model.DeployKeyQuery.get_by_repository_id(connector.repository.id) do
+        {:ok, deploy_key} -> %{id: deploy_key.id, remote_id: deploy_key.remote_id}
+        {:error, _} -> nil
+      end
+
+    %{
+      label: "old",
+      owner: connector.git_repository.owner,
+      repo: connector.git_repository.repo,
+      token: connector.token,
+      hook_id: connector.repository.hook_id,
+      deploy_key: old_deploy_key
+    }
+  end
+
+  def remove_github_resources(nil), do: :ok
+
+  def remove_github_resources(resources) do
+    remove_webhook(resources)
+    remove_deploy_key(resources)
+    :ok
+  end
+
+  defp remove_webhook(%{token: ""}), do: :ok
+  defp remove_webhook(%{hook_id: nil}), do: :ok
+
+  defp remove_webhook(resources) do
+    GithubClient.remove_webhook(
+      %{repo_owner: resources.owner, repo_name: resources.repo, webhook_id: resources.hook_id},
+      token: resources.token
+    )
+    |> unwrap_error(&log_removal_failure("webhook", resources, &1))
+  rescue
+    error -> log_removal_failure("webhook", resources, error)
+  end
+
+  defp remove_deploy_key(%{token: ""}), do: :ok
+  defp remove_deploy_key(%{deploy_key: nil}), do: :ok
+
+  defp remove_deploy_key(%{deploy_key: deploy_key} = resources) do
+    GithubClient.remove_deploy_key(
+      %{repo_owner: resources.owner, repo_name: resources.repo, key_id: deploy_key.remote_id},
+      token: resources.token
+    )
+    |> unwrap_error(&log_removal_failure("deploy_key", resources, &1))
+  rescue
+    error -> log_removal_failure("deploy_key", resources, error)
+  end
+
+  defp log_removal_failure(kind, resources, reason) do
+    log_warn([
+      "url change: failed to remove the #{resources.label} #{kind} on #{resources.owner}/#{resources.repo}: #{inspect(reason)}"
+    ])
+
+    Watchman.increment({"github_app.update_url.#{resources.label}_#{kind}_removal_failed", []})
+  end
+
+  defp create_webhook(repository, git_repository, token, secret) do
+    params = %{
+      repo_owner: git_repository.owner,
+      repo_name: git_repository.repo,
+      url: GithubClient.Webhook.url(repository.project_id),
+      events: GithubClient.Webhook.events()
+    }
+
+    with {:ok, stale} <- GithubClient.find_webhook(params, token: token),
+         {:error, reason} <- GithubClient.remove_webhook(Map.put(params, :webhook_id, stale.id), token: token) do
+      log_removal_failure(
+        "webhook",
+        %{label: "stale", owner: git_repository.owner, repo: git_repository.repo},
+        reason
+      )
+
+      fail_with(
+        :precondition,
+        "Couldn't remove webhook #{stale.id} from #{git_repository.owner}/#{git_repository.repo}. Remove it on GitHub and try again."
+      )
+    else
+      _ ->
+        params
+        |> Map.put(:secret, secret)
+        |> GithubClient.create_webhook(token: token)
+    end
   end
 end
