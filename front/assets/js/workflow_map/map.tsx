@@ -7,12 +7,9 @@ import { MapLayout, Point, layoutMap, promotionLabel } from "./layout";
 import { PromoteButton } from "./promote";
 import { Chips, Search, Stepper } from "./toolbar";
 import { BlockCard, BlockSummary, Counts, Duration, PipelineTitle, StatusBar, StatusIcon } from "./ui";
+import { blockSize, jobRowHeight, jobTop } from "./lines";
 
 const CARD = { w: 300, h: 72 };
-const BLOCK = { w: 230, h: 74 };
-const OPEN_BLOCK_W = 260;
-const JOB_ROW_H = 23;
-const BLOCK_HEAD_H = 40;
 
 const CLICKABLE = { pointerEvents: `all` as const };
 
@@ -334,12 +331,13 @@ const WorkflowMap = () => {
     }
     if (p && P.has(p.id) && (p.blocks === null || (p.blocks.length && !L.pipelines.get(p.id)?.open))) return false;
     const b = boxOf(wf, L, t.id);
-    if (!b || (t.job !== undefined && b.h < BLOCK_HEAD_H + t.job * JOB_ROW_H)) return false;
+    const blk = t.job === undefined ? undefined : wf.blocks.get(t.id);
+    if (!b || (blk && b.h < jobTop(blk, t.job))) return false;
     const cx = b.x + b.w / 2;
     if (t.how === `center`) {
       void rf.setCenter(cx, b.y + b.h / 2, { zoom: rf.getZoom(), duration: 350 });
-    } else if (t.job !== undefined) {
-      void rf.setCenter(cx, b.y + BLOCK_HEAD_H + t.job * JOB_ROW_H + 11, { zoom: Math.max(rf.getZoom(), 1), duration: 450 });
+    } else if (blk) {
+      void rf.setCenter(cx, b.y + jobTop(blk, t.job) + jobRowHeight(blk.jobs[t.job]) / 2, { zoom: Math.max(rf.getZoom(), 1), duration: 450 });
     } else {
       const pad = p ? 1.12 : 1.6;
       const z = Math.max(0.1, Math.min(1, vw / (b.w * pad), vh / (b.h * pad)));
@@ -358,7 +356,7 @@ const WorkflowMap = () => {
     layoutMap(
       wf,
       (p) => P.has(p.id),
-      (b) => (B.has(b.id) ? { w: OPEN_BLOCK_W, h: BLOCK_HEAD_H + b.jobs.length * JOB_ROW_H + 8 } : BLOCK),
+      (b) => blockSize(b, B.has(b.id)),
       CARD
     )
       .then((L) => alive && setLayout(L))
