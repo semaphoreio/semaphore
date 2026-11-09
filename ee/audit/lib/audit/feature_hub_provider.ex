@@ -17,6 +17,27 @@ defmodule Audit.FeatureHubProvider do
     ttl = Keyword.get(opts, :ttl, :timer.minutes(15))
     cache_key = cache_key(org_id, "list_organization_features")
 
+    if Keyword.get(opts, :reload, false) do
+      reload_features(org_id, cache_key, ttl)
+    else
+      cached_features(org_id, cache_key, ttl)
+    end
+  end
+
+  # A reload is requested when the organization's features have changed, so it
+  # refetches them. If that fails, the cached features are kept, not replaced.
+  defp reload_features(org_id, cache_key, ttl) do
+    case do_list_features(org_id) do
+      {:ok, features} ->
+        Audit.Cache.put(cache_key, features, ttl)
+        {:ok, features}
+
+      {:error, _} ->
+        cached_features(org_id, cache_key, ttl)
+    end
+  end
+
+  defp cached_features(org_id, cache_key, ttl) do
     Audit.Cache.fetch(cache_key, fn ->
       do_list_features(org_id)
       |> case do
@@ -58,26 +79,30 @@ defmodule Audit.FeatureHubProvider do
       {:ok, ep} = Application.fetch_env(:audit, :feature_api_endpoint)
       {:ok, ch} = GRPC.Stub.connect(ep)
 
-      Stub.list_organization_features(ch, req, timeout: 3_000)
-      |> tap(fn
-        {:ok, _res} ->
-          Watchman.increment("feature_hub.list_organization_features.success")
+      try do
+        Stub.list_organization_features(ch, req, timeout: 3_000)
+        |> tap(fn
+          {:ok, _res} ->
+            Watchman.increment("feature_hub.list_organization_features.success")
 
-        {:error, _} ->
-          Watchman.increment("feature_hub.list_organization_features.failure")
-      end)
-      |> case do
-        {:ok, res} ->
-          features =
-            res.organization_features
-            |> Enum.map(&feature_from_grpc/1)
+          {:error, _} ->
+            Watchman.increment("feature_hub.list_organization_features.failure")
+        end)
+        |> case do
+          {:ok, res} ->
+            features =
+              res.organization_features
+              |> Enum.map(&feature_from_grpc/1)
 
-          {:ok, features}
+            {:ok, features}
 
-        {:error, e} ->
-          Logger.error("Error fetching organization features: #{inspect(e)}")
+          {:error, e} ->
+            Logger.error("Error fetching organization features: #{inspect(e)}")
 
-          {:ok, []}
+            {:error, e}
+        end
+      after
+        GRPC.Stub.disconnect(ch)
       end
     end)
   end

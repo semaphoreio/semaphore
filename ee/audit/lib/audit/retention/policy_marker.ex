@@ -1,0 +1,191 @@
+defmodule Audit.Retention.PolicyMarker do
+  @moduledoc """
+  Subscribes to retention policy events and marks audit events for expiration.
+
+  Listens to the same `usage.apply_organization_policy` AMQP event that
+  Zebra and Plumber consume. On each message it:
+
+  1. Unmarks events with `timestamp >= cutoff_date` → clears `expires_at`
+  2. Marks events with `timestamp < cutoff_date` → sets `expires_at = now + grace_period`
+
+  Both steps stop once `RETENTION_APPLIER_TIME_LIMIT_SEC` (default 900) has passed,
+  so a large backlog cannot keep the message unacknowledged past the broker's
+  timeout. The organization's next policy event continues where this one stopped.
+
+  ## Feature flag (per-organization)
+
+  Processing is gated per org by the `:audit_logs_retention` feature flag. When a
+  policy event arrives its org is checked against the flag; if the flag is not
+  enabled the event is ignored, and nothing is marked or unmarked. The check is
+  fail-closed: a Feature service error is treated as "disabled", so a lookup
+  failure never marks audit logs for deletion. This is orthogonal to the
+  service-level `RETENTION_CONSUMER_ENABLED` switch (which decides whether the
+  consumer runs at all); the flag decides which organizations it acts on.
+  `Audit.Retention.Deleter` checks the flag again before deleting, so turning it
+  off also stops deletion of events that are already marked.
+
+  ## Retention floor
+
+  `cutoff_date` is computed by the upstream publisher, not this service. To
+  guarantee a minimum retention, any cutoff newer than
+  `now - min_retention_days` (default 400) is *clamped* back to that floor
+  rather than honored: a too-short window (or a future/misconfigured cutoff)
+  still deletes everything older than the floor instead of silently dropping
+  the event, but audit logs younger than the floor are never expired. Clamps
+  are surfaced via the `retention.policy.cutoff_clamped` metric. The deleter
+  checks the same floor, so raising it also keeps events marked under the old one.
+
+  ## Cleanup of existing organizations (upstream dependency)
+
+  This consumer is edge-triggered: an org's old events are only marked when a
+  `usage.apply_organization_policy` event arrives for it. Cleaning up
+  organizations that predate the rollout therefore relies on the upstream
+  publisher periodically *replaying* the policy for all orgs, the same
+  contract Zebra/Plumber already depend on. There is intentionally no
+  per-service backfill here; if the platform is purely edge-triggered, the
+  replay must be added upstream so all consumers benefit.
+  """
+
+  require Logger
+
+  alias Google.Protobuf.Timestamp
+  alias InternalApi.Usage.OrganizationPolicyApply
+  alias Audit.Retention
+  alias Audit.Retention.Queries
+
+  use Tackle.Consumer,
+    url: Application.get_env(:audit, :amqp_url),
+    service: "audit-retention",
+    exchange: "usage_internal_api",
+    routing_key: "usage.apply_organization_policy",
+    retry_limit: 10,
+    retry_delay: 10
+
+  def handle_message(message) do
+    with {:ok, event} <- decode(message),
+         {:ok, org_id} <- validate_org_id(event.org_id),
+         :ok <- check_feature_enabled(org_id),
+         {:ok, cutoff} <- resolve_cutoff(event.cutoff_date) do
+      apply_policy(org_id, cutoff)
+    else
+      {:invalid, reason} ->
+        Watchman.increment("retention.policy.invalid")
+        Logger.warning("[Retention] Skipping invalid policy event: #{reason}")
+        :ok
+
+      {:disabled, org_id} ->
+        Watchman.increment("retention.policy.feature_disabled")
+        Logger.debug("[Retention] Skipping org=#{org_id}: audit_logs_retention feature disabled")
+        :ok
+    end
+  end
+
+  # Per-org guard: retention is only applied to organizations that have the
+  # `:audit_logs_retention` feature enabled. `Retention.enabled?/1` is fail-closed
+  # (returns false on a Feature service error), so a lookup failure skips the org
+  # rather than risking deletion of its audit logs.
+  defp check_feature_enabled(org_id) do
+    if Retention.enabled?(org_id) do
+      :ok
+    else
+      {:disabled, org_id}
+    end
+  end
+
+  # A cutoff newer than the retention floor (a window shorter than the floor, a
+  # future date, or a misconfigured publisher) is clamped back to the floor
+  # instead of dropped, so we still delete everything older than the floor
+  # rather than silently doing nothing. Clamps are surfaced for monitoring.
+  defp resolve_cutoff(raw) do
+    case parse_cutoff(raw) do
+      {:clamped, floor} ->
+        Watchman.increment("retention.policy.cutoff_clamped")
+
+        Logger.warning("[Retention] cutoff newer than the retention floor; clamping to #{floor}")
+
+        {:ok, floor}
+
+      other ->
+        other
+    end
+  end
+
+  @spec apply_policy(String.t(), DateTime.t()) :: :ok | no_return()
+  defp apply_policy(org_id, cutoff) do
+    {marked, unmarked, status} = Queries.mark_expiring(org_id, cutoff)
+
+    if status == :time_limit, do: Watchman.increment("retention.policy.time_limit")
+
+    Logger.info(
+      "[Retention] org=#{org_id} cutoff=#{cutoff} marked=#{marked} unmarked=#{unmarked} status=#{status}"
+    )
+
+    :ok
+  rescue
+    e in [Postgrex.Error, DBConnection.ConnectionError] ->
+      Watchman.increment("retention.policy.error")
+      Logger.error("[Retention] Failed to process policy event for org=#{org_id}: #{inspect(e)}")
+      reraise e, __STACKTRACE__
+
+    e ->
+      Logger.error(
+        "[Retention] Unexpected policy processing error for org=#{org_id}: #{inspect(e)}"
+      )
+
+      reraise e, __STACKTRACE__
+  end
+
+  defp decode(message) do
+    case OrganizationPolicyApply.decode(message) do
+      %OrganizationPolicyApply{} = event -> {:ok, event}
+      other -> {:invalid, "unexpected payload: #{inspect(other)}"}
+    end
+  rescue
+    e -> {:invalid, "failed to decode message: #{inspect(e)}"}
+  end
+
+  defp validate_org_id(nil), do: {:invalid, "org_id is missing in policy payload"}
+  defp validate_org_id(""), do: {:invalid, "org_id is missing in policy payload"}
+
+  defp validate_org_id(org_id) when is_binary(org_id) do
+    case Ecto.UUID.cast(org_id) do
+      {:ok, valid_uuid} -> {:ok, valid_uuid}
+      :error -> {:invalid, "invalid org_id format: expected UUID, got #{inspect(org_id)}"}
+    end
+  end
+
+  defp validate_org_id(invalid), do: {:invalid, "invalid org_id: #{inspect(invalid)}"}
+
+  defp parse_cutoff(nil), do: {:invalid, "cutoff_date is missing in policy payload"}
+
+  defp parse_cutoff(%Timestamp{seconds: 0, nanos: 0}),
+    do: {:invalid, "cutoff_date is missing in policy payload"}
+
+  defp parse_cutoff(%Timestamp{seconds: seconds, nanos: nanos})
+       when is_integer(seconds) and is_integer(nanos) and seconds >= 0 and nanos >= 0 and
+              nanos < 1_000_000_000 do
+    total_nanoseconds = seconds * 1_000_000_000 + nanos
+
+    cutoff =
+      total_nanoseconds
+      |> DateTime.from_unix!(:nanosecond)
+      |> DateTime.truncate(:second)
+
+    floor = Retention.floor()
+
+    # The floor is a hard minimum retention. A cutoff newer than it (a window
+    # shorter than the floor, or a future/misconfigured date) is clamped back to
+    # the floor rather than honored: never expire audit logs younger than the
+    # floor, but still delete everything older than it.
+    if DateTime.compare(cutoff, floor) == :gt do
+      {:clamped, floor}
+    else
+      {:ok, cutoff}
+    end
+  rescue
+    error -> {:invalid, "failed to parse cutoff_date: #{inspect(error)}"}
+  end
+
+  defp parse_cutoff(invalid),
+    do: {:invalid, "invalid cutoff_date format: #{inspect(invalid)}"}
+end
