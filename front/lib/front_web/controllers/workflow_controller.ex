@@ -12,9 +12,11 @@ defmodule FrontWeb.WorkflowController do
     Branch,
     Deployments,
     Organization,
+    Pipeline,
     Repohub,
     RepoProxy,
     Secret,
+    Switch,
     User,
     FetchingJob
   }
@@ -23,6 +25,7 @@ defmodule FrontWeb.WorkflowController do
   alias Front.Audit
 
   alias FrontWeb.Plugs.{
+    FeatureEnabled,
     FetchPermissions,
     Header,
     PageAccess,
@@ -33,12 +36,18 @@ defmodule FrontWeb.WorkflowController do
   plug(PutProjectAssigns)
   plug(FetchPermissions, scope: "project")
 
-  plug(PublicPageAccess when action in [:show, :status])
-  plug(PageAccess, [permissions: "project.view"] when action not in [:show, :status])
+  plug(PublicPageAccess when action in [:show, :status, :map, :map_pipelines])
+
+  plug(
+    PageAccess,
+    [permissions: "project.view"] when action not in [:show, :status, :map, :map_pipelines]
+  )
+
   plug(PageAccess, [permissions: "project.workflow.manage"] when action in [:edit])
   plug(PageAccess, [permissions: "project.job.rerun"] when action in [:rebuild])
 
   plug(Header when action in [:show, :edit])
+  plug(FeatureEnabled, [:ui_workflow_map] when action in [:map, :map_pipelines])
 
   def edit(conn, _params) do
     Watchman.benchmark("workflow.edit.duration", fn ->
@@ -391,6 +400,7 @@ defmodule FrontWeb.WorkflowController do
         alert: alert,
         permissions: conn.assigns.permissions,
         showForkExplanation?: fork && !close_fork_explanation,
+        edit_workflow?: true,
         js: :workflow_view
       }
       |> put_layout_assigns(conn, template)
@@ -431,6 +441,64 @@ defmodule FrontWeb.WorkflowController do
       conn
       |> put_layout(false)
       |> render("_status.html", data)
+    end)
+  end
+
+  def map(conn, _params) do
+    Watchman.benchmark("map.duration", fn ->
+      render(conn, "map.json", workflow: conn.assigns.workflow)
+    end)
+  end
+
+  def map_pipelines(conn, params) do
+    Watchman.benchmark("map_pipelines.duration", fn ->
+      in_workflow = MapSet.new(conn.assigns.workflow.pipelines, & &1.id)
+      user_id = conn.assigns[:user_id]
+      with_promotions = params |> Map.get("promotions", "") |> String.split(",", trim: true)
+
+      ids =
+        params
+        |> Map.get("ids", "")
+        |> String.split(",", trim: true)
+        |> Enum.filter(&MapSet.member?(in_workflow, &1))
+        |> Enum.uniq()
+
+      Watchman.submit("map_pipelines.ids", length(ids), :count)
+
+      pipelines =
+        TaskSupervisor
+        |> Task.Supervisor.async_stream_nolink(
+          ids,
+          fn id ->
+            pipeline = id |> Pipeline.find(detailed: true) |> Front.WorkflowPage.Diagram.load()
+            switch? = pipeline.switch_id not in [nil, ""]
+
+            switch =
+              switch? and id in with_promotions and Switch.find(pipeline.switch_id, user_id)
+
+            %{
+              pipeline: pipeline,
+              switch:
+                cond do
+                  not switch? -> nil
+                  switch -> Switch.preload_users(switch)
+                  true -> :unchanged
+                end
+            }
+          end,
+          max_concurrency: 8,
+          timeout: 30_000,
+          on_timeout: :kill_task
+        )
+        |> Enum.flat_map(fn
+          {:ok, loaded} -> [loaded]
+          _ -> []
+        end)
+
+      render(conn, "map_pipelines.json",
+        pipelines: pipelines,
+        can_promote?: conn.assigns.permissions["project.job.rerun"] || false
+      )
     end)
   end
 

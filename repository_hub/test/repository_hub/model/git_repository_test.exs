@@ -174,5 +174,19 @@ defmodule RepositoryHub.Model.GitRepositoryTest do
 
       assert {:ok, false} == GitRepository.equal?(git_repository, new_url)
     end
+
+    test "when a github url differs only in letter case => return truthy tuple" do
+      {:ok, git_repository} = GitRepository.new("git@github.com:marvinwills/base-app.git")
+
+      assert {:ok, true} == GitRepository.equal?(git_repository, "https://github.com/MarvinWills/Base-App")
+    end
+
+    test "when a gitlab or bitbucket url differs only in letter case => returns falsey tuple" do
+      {:ok, gitlab_repository} = GitRepository.new("git@gitlab.com:marvinwills/base-app.git")
+      {:ok, bitbucket_repository} = GitRepository.new("git@bitbucket.org:marvinwills/base-app.git")
+
+      assert {:ok, false} == GitRepository.equal?(gitlab_repository, "git@gitlab.com:MarvinWills/Base-App.git")
+      assert {:ok, false} == GitRepository.equal?(bitbucket_repository, "git@bitbucket.org:MarvinWills/Base-App.git")
+    end
   end
 end

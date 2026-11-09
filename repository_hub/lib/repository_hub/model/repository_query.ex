@@ -34,6 +34,11 @@ defmodule RepositoryHub.Model.RepositoryQuery do
     repository
     |> Repositories.changeset(params)
     |> Repo.update(opts)
+    |> unwrap_error(fn changeset ->
+      changeset
+      |> consolidate_changeset_errors()
+      |> error
+    end)
   rescue
     e -> {:error, e}
   catch
@@ -52,6 +57,24 @@ defmodule RepositoryHub.Model.RepositoryQuery do
     e -> {:error, e}
   catch
     a, b -> {:error, [a, b]}
+  end
+
+  @doc """
+  Finds repository by its id and locks its row until the surrounding transaction ends
+  """
+  @spec lock_for_update(String.t()) :: {:ok, Repositories.t()} | {:error, String.t()}
+  def lock_for_update(id) do
+    Repositories
+    |> where(id: ^id)
+    |> lock("FOR UPDATE")
+    |> Repo.one()
+    |> case do
+      nil ->
+        error("Repository not found.")
+
+      repository ->
+        wrap(repository)
+    end
   end
 
   @doc """

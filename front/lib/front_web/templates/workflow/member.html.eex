@@ -1,3 +1,4 @@
+<%= unless FeatureProvider.feature_enabled?(:ui_workflow_map, param: @conn.assigns[:organization_id]) do %>
 <div
     data-poll-background
     data-poll-state="poll"
@@ -8,6 +9,7 @@
   <img class="mr2" width="22" height="22" src=<%= image_source("spinner-2.svg") %> />
   Fetching pipelines...
 </div>
+<% end %>
 
 <%= render "_workflow.html", conn: @conn, workflow_id: @workflow.id, selected_pipeline_id: @selected_pipeline_id, permissions: @permissions %>
 <%= render FrontWeb.SharedView, "_tips.html", conn: @conn, project: @project, right_or_left: "right", workflow: @workflow %>

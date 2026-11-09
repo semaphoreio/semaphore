@@ -195,8 +195,13 @@ defmodule Zebra.Workers.JobRequestFactory do
   end
 
   def submit_metrics(job) do
+    tags =
+      if Job.self_hosted?(job.machine_type),
+        do: ["self_hosted"],
+        else: ["cloud", job.machine_type]
+
     Zebra.Metrics.submit_datetime_diff(
-      "job.initializing.duration",
+      {"job.initializing.duration", tags},
       job.enqueued_at,
       job.created_at
     )
