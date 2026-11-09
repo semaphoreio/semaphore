@@ -8,11 +8,12 @@ export const JOB_ROW_H = 23;
 export const NAME_LINE_H = 18;
 export const JOB_LINE_H = 16;
 export const META_LINE_H = 14;
+export const JOB_TIME_W = 58;
 
 const FIT = {
   summary: { weight: 500, size: 0, width: BLOCK.w - 2 * 12 - 16 - 8 },
   head: { weight: 500, size: 0, width: OPEN_BLOCK_W - 2 * 8 - 16 - 8 },
-  job: { weight: 400, size: 13, width: OPEN_BLOCK_W - 2 * 8 - 14 - 2 * 8 - 46 },
+  job: { weight: 400, size: 13, width: OPEN_BLOCK_W - 2 * 8 - 14 - 2 * 8 - JOB_TIME_W },
   meta: { weight: 400, size: 12, width: BLOCK.w - 2 * 12 },
 };
 

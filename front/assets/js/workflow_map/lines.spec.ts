@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import { describe, test } from "mocha";
 
-import { Block, Job } from "./model";
-import { BLOCK, BLOCK_HEAD_H, JOB_ROW_H, JOB_LINE_H, META_LINE_H, NAME_LINE_H, OPEN_BLOCK_W, blockSize, jobTop } from "./lines";
+import { Block, Job, formatDuration } from "./model";
+import { BLOCK, BLOCK_HEAD_H, JOB_ROW_H, JOB_LINE_H, JOB_TIME_W, META_LINE_H, NAME_LINE_H, OPEN_BLOCK_W, blockSize, jobTop } from "./lines";
 
 const job = (key: string, name: string, status = `passed`) => ({ key, id: null, name, status, startedAt: null, finishedAt: null, reused: false }) as Job;
 const block = (name: string, jobs: Job[] = []) => ({ id: name, name, deps: [], jobs }) as Block;
@@ -27,6 +27,13 @@ describe(`block sizes on the map`, () => {
       w: OPEN_BLOCK_W,
       h: BLOCK_HEAD_H + NAME_LINE_H + JOB_ROW_H + JOB_ROW_H + JOB_LINE_H + 8,
     });
+  });
+
+  test(`a job row keeps room for any duration under a day`, () => {
+    const monoAdvance = 0.6 * 12;
+    for (const text of [formatDuration(59 * 60 + 59), formatDuration(24 * 3600 - 1), `reused`, `--:--`]) {
+      expect(text.length * monoAdvance, text).to.be.at.most(JOB_TIME_W);
+    }
   });
 
   test(`each job row starts below the rows before it`, () => {

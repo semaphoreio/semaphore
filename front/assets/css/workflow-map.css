@@ -684,6 +684,12 @@ a.wf-map-job:hover {
   line-clamp: 2;
 }
 
+.wf-map-job .wf-map-time {
+  flex: none;
+  min-width: 58px;
+  text-align: right;
+}
+
 .wf-map-job.hit {
   background: var(--wf-map-mark-soft);
   color: #202B30;
