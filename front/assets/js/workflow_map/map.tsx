@@ -290,10 +290,10 @@ function build(wf: Workflow, L: MapLayout) {
   return { nodes, edges };
 }
 
-function structureKey(wf: Workflow, open: Set<string>, openB: Set<string>) {
+export function structureKey(wf: Workflow, open: Set<string>, openB: Set<string>) {
   return wf.pipelines
     .map((p) => {
-      const blocks = open.has(p.id) && p.blocks ? p.blocks.map((b) => `${b.name}:${b.deps.length}:${openB.has(b.id) ? b.jobs.length : `-`}`).join(`,`) : `closed`;
+      const blocks = open.has(p.id) && p.blocks ? p.blocks.map((b) => `${b.name}:${b.deps.length}:${openB.has(b.id) ? b.jobs.length : `-`}:${blockSize(b, openB.has(b.id)).h}`).join(`,`) : `closed`;
       const promotions = p.promotions?.map((promotion) => `${promotion.name}:${promotion.pipelines.length}`).join(`,`) ?? ``;
       return `${p.id}<${p.parent?.id ?? ``}>${blocks}[${promotions}]`;
     })
@@ -333,7 +333,7 @@ const WorkflowMap = () => {
     if (p && P.has(p.id) && (p.blocks === null || (p.blocks.length && !L.pipelines.get(p.id)?.open))) return false;
     const b = boxOf(wf, L, t.id);
     const blk = t.job === undefined ? undefined : wf.blocks.get(t.id);
-    if (!b || (blk && b.h < jobTop(blk, t.job))) return false;
+    if (!b || (blk && (!blk.jobs[t.job] || b.h < jobTop(blk, t.job)))) return false;
     const cx = b.x + b.w / 2;
     if (t.how === `center`) {
       void rf.setCenter(cx, b.y + b.h / 2, { zoom: rf.getZoom(), duration: 350 });
@@ -354,12 +354,8 @@ const WorkflowMap = () => {
   useEffect(() => {
     if (!wf) return;
     let alive = true;
-    layoutMap(
-      wf,
-      (p) => P.has(p.id),
-      (b) => blockSize(b, B.has(b.id)),
-      CARD
-    )
+    document.fonts.ready
+      .then(() => layoutMap(wf, (p) => P.has(p.id), (b) => blockSize(b, B.has(b.id)), CARD))
       .then((L) => alive && setLayout(L))
       .catch(() => {
         if (alive) layoutError.value = `Couldn't lay out this workflow. Reload the page to try again.`;
