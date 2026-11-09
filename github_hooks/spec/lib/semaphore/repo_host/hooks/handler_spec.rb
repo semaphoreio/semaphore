@@ -2061,15 +2061,25 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       expect(repo_host).to have_received(:pull_request).twice
     end
 
-    it "lets the next workers fail fast when the holder hit a transient GitHub error" do
+    it "records a holder's transient GitHub error for the workers waiting on it" do
       allow(repo_host).to receive(:pull_request).and_raise(Faraday::TimeoutError)
 
       expect { resolve }.to raise_error(Faraday::TimeoutError)
-      expect { resolve }.to raise_error(RepoHost::RemoteException::ServiceUnavailable, /Faraday::TimeoutError/)
-      expect(repo_host).to have_received(:pull_request).once
       expect(described_class::GithubCache.exists?(lock_key)).to be(false)
       expect(RedisClient.new(:url => App.redis_sidekiq_url).call("TTL", "github_hooks:v1:#{merge_key}:failed"))
         .to be_between(1, described_class::SHARED_MERGE_LOCK_TTL.to_i)
+    end
+
+    it "calls GitHub again on a later attempt after a holder's transient error" do
+      allow(repo_host).to receive(:pull_request).and_raise(Faraday::TimeoutError)
+      expect { resolve }.to raise_error(Faraday::TimeoutError)
+      allow(repo_host).to receive(:pull_request).and_return({ :merge_commit_sha => merge_sha, :mergeable => true, :head => { :sha => head_sha } })
+
+      state, meta, = resolve
+
+      expect(state).to eq(:ok)
+      expect(meta[:merge_commit_sha]).to eq(merge_sha)
+      expect(repo_host).to have_received(:pull_request).twice
     end
 
     it "fails a waiter when the holder reports a transient GitHub error" do

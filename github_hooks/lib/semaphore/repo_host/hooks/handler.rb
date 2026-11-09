@@ -601,8 +601,12 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     "pr_merge:#{project.organization_id}:#{credentials}:#{project.repo_owner_and_name.downcase}:#{number}:#{head_sha}:#{base_sha}"
   end
 
-  def self.read_shared_merge(merge_key)
-    GithubCache.read_first(merge_key, "#{merge_key}:unknown", "#{merge_key}:failed")
+  # A holder's transient failure only answers workers that were waiting on it;
+  # later attempts, its own retry included, call GitHub again.
+  def self.read_shared_merge(merge_key, include_failure: false)
+    keys = [merge_key, "#{merge_key}:unknown"]
+    keys << "#{merge_key}:failed" if include_failure
+    GithubCache.read_first(*keys)
   end
 
   # Waits while another worker holds the lock. Nil means resolve it here.
@@ -611,10 +615,10 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
     loop do
       sleep(SHARED_MERGE_WAIT_INTERVAL)
-      shared = read_shared_merge(merge_key)
+      shared = read_shared_merge(merge_key, :include_failure => true)
       return shared if shared
       # The holder stores its result before releasing the lock.
-      return read_shared_merge(merge_key) unless GithubCache.exists?("#{merge_key}:lock")
+      return read_shared_merge(merge_key, :include_failure => true) unless GithubCache.exists?("#{merge_key}:lock")
       return if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
     end
   end
