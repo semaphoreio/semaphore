@@ -324,6 +324,7 @@ const WorkflowMap = () => {
   const key = wf ? structureKey(wf, P, B) : ``;
 
   const go = (L: MapLayout, t: Target) => {
+    if (!vw || !vh) return false;
     const p = wf.pipelineById.get(t.id);
     if (t.how === `all` || (!p && !wf.blocks.has(t.id))) {
       void rf.fitView({ padding: 0.06, maxZoom: 1, duration: 400 });
@@ -372,7 +373,7 @@ const WorkflowMap = () => {
 
   useEffect(() => {
     if (graph && layout) requestAnimationFrame(() => settle(layout));
-  }, [graph]);
+  }, [graph, vw, vh]);
 
   useEffect(() => {
     if (!f || !wf || f.seq === handledSeq.current) return;
