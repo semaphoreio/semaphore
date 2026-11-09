@@ -19,12 +19,13 @@ describe(`names the map may shorten`, () => {
     root.remove();
   });
 
-  test(`a pipeline title carries the full name and keeps the attempt out of the part that shortens`, async () => {
+  test(`a pipeline title carries the full name on the part that shortens, shown only when it is cut, and keeps the attempt out of it`, async () => {
     const p = { name: `a very long pipeline name`, attempt: 2 } as Pipeline;
 
     await act(() => render(<PipelineTitle p={p}/>, root));
 
-    expect(root.querySelector(`.wf-map-title`).getAttribute(`data-tippy-content`)).to.equal(p.name);
+    expect(root.querySelector(`.wf-map-title-name`).getAttribute(`data-tippy-content`)).to.equal(p.name);
+    expect(root.querySelector(`.wf-map-title-name`).hasAttribute(`data-tip-if-cut`)).to.equal(true);
     expect(root.querySelector(`[title]`)).to.equal(null);
     expect(root.querySelector(`.wf-map-title-name`).textContent).to.equal(p.name);
     expect(root.querySelector(`.wf-map-title-name .wf-map-attempt`)).to.equal(null);
@@ -39,7 +40,9 @@ describe(`names the map may shorten`, () => {
 
     expect(root.querySelector(`.wf-map-block-head`).getAttribute(`data-tippy-content`)).to.equal(`Collapse ${block.name}`);
     expect(root.querySelector(`.wf-map-block-head [data-tippy-content]`)).to.equal(null);
+    expect(root.querySelector(`.wf-map-block-head`).hasAttribute(`data-tip-if-cut`)).to.equal(false);
     expect(root.querySelector(`.wf-map-job-name`).getAttribute(`data-tippy-content`)).to.equal(job.name);
+    expect(root.querySelector(`.wf-map-job-name`).hasAttribute(`data-tip-if-cut`)).to.equal(true);
     expect(root.querySelector(`[title]`)).to.equal(null);
   });
 
@@ -61,6 +64,7 @@ describe(`names the map may shorten`, () => {
 
     const name = root.querySelector(`.wf-map-summary-name .wf-map-block-name`);
     expect(name.getAttribute(`data-tippy-content`)).to.equal(block.name);
+    expect(name.hasAttribute(`data-tip-if-cut`)).to.equal(true);
     expect(name.textContent).to.equal(block.name);
   });
 });

@@ -60,7 +60,7 @@ export const JobRow = ({ job }: { job: Job, }) => {
   const body = (
     <>
       <StatusIcon status={job.status} size={14}/>
-      <span className="wf-map-job-name" data-tippy-content={job.name}>
+      <span className="wf-map-job-name" data-tippy-content={job.name} data-tip-if-cut>
         <Highlight text={job.name}/>
       </span>
       {job.reused ? <span className="wf-map-time">reused</span> : <Duration start={job.startedAt} end={job.finishedAt} running={job.status === `running`}/>}
@@ -95,7 +95,7 @@ export const BlockSummary = ({ block, onClick }: { block: Block, onClick: () => 
     <button className={`wf-map-summary ${f && (f.id === block.id || f.id.startsWith(`${block.id}#`)) ? `focused` : ``}`} onClick={onClick}>
       <span className="wf-map-summary-name">
         <StatusIcon status={blockStatus(block)}/>
-        <span className="wf-map-block-name" data-tippy-content={block.name}>
+        <span className="wf-map-block-name" data-tippy-content={block.name} data-tip-if-cut>
           <Highlight text={block.name}/>
         </span>
       </span>
@@ -126,8 +126,8 @@ export const BlockCard = ({ block, onHeaderClick }: { block: Block, onHeaderClic
 };
 
 export const PipelineTitle = ({ p }: { p: Pipeline, }) => (
-  <span className="wf-map-title" data-tippy-content={p.name}>
-    <span className="wf-map-title-name">
+  <span className="wf-map-title">
+    <span className="wf-map-title-name" data-tippy-content={p.name} data-tip-if-cut>
       <Highlight text={p.name}/>
     </span>
     {p.attempt > 1 && <span className="wf-map-attempt">#{p.attempt}</span>}

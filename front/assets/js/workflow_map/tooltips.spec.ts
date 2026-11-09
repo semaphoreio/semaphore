@@ -28,9 +28,41 @@ describe(`bindTooltips`, () => {
   });
 
   it(`gives the map's tooltips their own theme`, () => {
-    const props: unknown[] = [];
-    bindTooltips(document.getElementById(`root`), (node: HTMLElement, p: unknown) => props.push(p) && factory([])(node));
-    expect(props).to.deep.equal([{ duration: [150, 50], theme: `wf-map` }]);
+    const props: { duration: unknown, theme: unknown, }[] = [];
+    bindTooltips(document.getElementById(`root`), (node: HTMLElement, p: { duration: unknown, theme: unknown, }) => props.push(p) && factory([])(node));
+    expect(props.map(({ duration, theme }) => ({ duration, theme }))).to.deep.equal([{ duration: [150, 50], theme: `wf-map` }]);
+  });
+
+  describe(`a name's tooltip shows only when the name is cut`, () => {
+    const size = (node: HTMLElement, box: { scrollWidth: number, clientWidth: number, scrollHeight: number, clientHeight: number, }) =>
+      Object.entries(box).forEach(([k, v]) => Object.defineProperty(node, k, { value: v }));
+    const onShowFor = (html: string) => {
+      document.body.innerHTML = `<div id="root">${html}</div>`;
+      let onShow: (tip: { reference: Element, }) => boolean;
+      bindTooltips(document.getElementById(`root`), (node: HTMLElement, p: { onShow: typeof onShow, }) => (onShow = p.onShow) && factory([])(node));
+      return (box: Parameters<typeof size>[1]) => {
+        const node = document.getElementById(`n`);
+        size(node, box);
+        return onShow({ reference: node });
+      };
+    };
+    const fits = { scrollWidth: 80, clientWidth: 80, scrollHeight: 32, clientHeight: 32 };
+
+    it(`stays hidden for a name that fits`, () => {
+      expect(onShowFor(`<span id="n" data-tippy-content="lint" data-tip-if-cut>lint</span>`)(fits)).to.equal(false);
+    });
+
+    it(`shows for a name cut on one line`, () => {
+      expect(onShowFor(`<span id="n" data-tippy-content="long" data-tip-if-cut>long</span>`)({ ...fits, scrollWidth: 140 })).to.equal(true);
+    });
+
+    it(`shows for a name cut after two lines`, () => {
+      expect(onShowFor(`<span id="n" data-tippy-content="long" data-tip-if-cut>long</span>`)({ ...fits, scrollHeight: 48 })).to.equal(true);
+    });
+
+    it(`always shows a tooltip that is not a name`, () => {
+      expect(onShowFor(`<button id="n" data-tippy-content="Next match (N)">next</button>`)(fits)).to.equal(true);
+    });
   });
 
   it(`does not bind twice, and follows a changed tooltip`, () => {
