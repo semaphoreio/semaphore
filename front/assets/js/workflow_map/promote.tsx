@@ -43,7 +43,7 @@ export const Promotions = ({ p }: { p: Pipeline, }) => (
             {promotion.deployment ? (promotion.deployment.allowed ? `lock_open` : `lock`) : `rocket_launch`}
           </span>
           <span className="wf-map-promotion-text">
-            <span className="wf-map-promotion-name">{promotion.name}</span>
+            <span className="wf-map-promotion-name" data-tippy-content={promotion.name} data-tip-if-cut>{promotion.name}</span>
             <span className={`wf-map-promotion-note ${latest?.result === `FAILED` ? `failed` : ``} ${latest ? `` : `fresh`}`}>{blocked ? promotion.deployment.name : note}</span>
           </span>
           <button

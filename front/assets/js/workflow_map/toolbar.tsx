@@ -97,10 +97,10 @@ export const Search = () => {
                 <button role="option" aria-selected={i === active} className={`wf-map-result ${i === active ? `active` : ``}`} onMouseEnter={() => setActive(i)} onClick={() => choose(x)}>
                   <StatusIcon status={x.status} size={14}/>
                   <span className="wf-map-result-kind">{x.kind}</span>
-                  <span className="wf-map-result-label">
+                  <span className="wf-map-result-label" data-tippy-content={x.label} data-tip-if-cut>
                     <Highlight text={x.label}/>
                   </span>
-                  <span className="wf-map-result-context">{x.context}</span>
+                  <span className="wf-map-result-context" data-tippy-content={x.context} data-tip-if-cut>{x.context}</span>
                 </button>
               </Fragment>
             );

@@ -1,5 +1,6 @@
-import { Block, Job, Pipeline, STATUSES, STATUS_LABEL, Status, blockStatus, countJobs, formatDuration } from "./model";
+import { Block, Job, Pipeline, STATUSES, STATUS_LABEL, Status, blockStatus, blockSummary, countJobs, formatDuration } from "./model";
 import { focus, hits, now, query } from "./store";
+import { headHeight, jobRowHeight } from "./lines";
 
 export const StatusIcon = ({ status, size = 16 }: { status: Status, size?: number, }) => {
   const fill = { style: { fill: `var(--wf-map-${status})` } };
@@ -59,18 +60,18 @@ export const JobRow = ({ job }: { job: Job, }) => {
   const body = (
     <>
       <StatusIcon status={job.status} size={14}/>
-      <span className="wf-map-job-name">
+      <span className="wf-map-job-name" data-tippy-content={job.name} data-tip-if-cut>
         <Highlight text={job.name}/>
       </span>
       {job.reused ? <span className="wf-map-time">reused</span> : <Duration start={job.startedAt} end={job.finishedAt} running={job.status === `running`}/>}
     </>
   );
   return job.id ? (
-    <a className={cls} href={`/jobs/${job.id}`} key={flash ? `${job.key}:${f.seq}` : job.key}>
+    <a className={cls} style={{ height: jobRowHeight(job) }} href={`/jobs/${job.id}`} key={flash ? `${job.key}:${f.seq}` : job.key}>
       {body}
     </a>
   ) : (
-    <div className={cls} key={job.key}>
+    <div className={cls} style={{ height: jobRowHeight(job) }} key={job.key}>
       {body}
     </div>
   );
@@ -88,6 +89,22 @@ export const StatusBar = ({ jobs }: { jobs: Job[], }) => {
   );
 };
 
+export const BlockSummary = ({ block, onClick }: { block: Block, onClick: () => void, }) => {
+  const f = focus.value;
+  return (
+    <button className={`wf-map-summary ${f && (f.id === block.id || f.id.startsWith(`${block.id}#`)) ? `focused` : ``}`} onClick={onClick}>
+      <span className="wf-map-summary-name">
+        <StatusIcon status={blockStatus(block)}/>
+        <span className="wf-map-block-name" data-tippy-content={block.name} data-tip-if-cut>
+          <Highlight text={block.name}/>
+        </span>
+      </span>
+      <StatusBar jobs={block.jobs}/>
+      <span className="wf-map-summary-meta">{blockSummary(block)}</span>
+    </button>
+  );
+};
+
 export const BlockCard = ({ block, onHeaderClick }: { block: Block, onHeaderClick?: () => void, }) => {
   const h = hits.value;
   const f = focus.value;
@@ -95,7 +112,7 @@ export const BlockCard = ({ block, onHeaderClick }: { block: Block, onHeaderClic
   const st = blockStatus(block);
   return (
     <div className={`wf-map-block ${h.active && !h.blocks.has(block) ? `dim` : ``} ${focused ? `focused` : ``}`}>
-      <button className="wf-map-block-head" onClick={onHeaderClick} data-tippy-content="Collapse block">
+      <button className="wf-map-block-head" style={{ height: headHeight(block) }} onClick={onHeaderClick} data-tippy-content={`Collapse ${block.name}`}>
         <StatusIcon status={st}/>
         <span className="wf-map-block-name">
           <Highlight text={block.name}/>
@@ -110,7 +127,9 @@ export const BlockCard = ({ block, onHeaderClick }: { block: Block, onHeaderClic
 
 export const PipelineTitle = ({ p }: { p: Pipeline, }) => (
   <span className="wf-map-title">
-    <Highlight text={p.name}/>
+    <span className="wf-map-title-name" data-tippy-content={p.name} data-tip-if-cut>
+      <Highlight text={p.name}/>
+    </span>
     {p.attempt > 1 && <span className="wf-map-attempt">#{p.attempt}</span>}
   </span>
 );
