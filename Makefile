@@ -114,6 +114,7 @@ check.deps:
 		-w /app \
 		-e HOST_UID=$$(id -u) \
 		-e HOST_GID=$$(id -g) \
+		-e GIT_TERMINAL_PROMPT=0 \
 		-e TRIVY_DB_REPOSITORY \
 		-e TRIVY_JAVA_DB_REPOSITORY \
 		$(SECURITY_TOOLBOX_RUBY_IMAGE) \
