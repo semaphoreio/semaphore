@@ -60,6 +60,18 @@ describe(`bindTooltips`, () => {
       expect(onShowFor(`<span id="n" data-tippy-content="long" data-tip-if-cut>long</span>`)({ ...fits, scrollHeight: 48 })).to.equal(true);
     });
 
+    it(`stays hidden for a name that overflows its line box by 1 px`, () => {
+      const show = (box: Partial<typeof fits>) => onShowFor(`<span id="n" data-tippy-content="After pipeline" data-tip-if-cut>After pipeline</span>`)({ ...fits, ...box });
+      expect(show({ scrollHeight: 19, clientHeight: 18 })).to.equal(false);
+      expect(show({ scrollWidth: 95, clientWidth: 94 })).to.equal(false);
+    });
+
+    it(`shows for a two-line name cut by more than 1 px`, () => {
+      const show = (box: Partial<typeof fits>) => onShowFor(`<span id="n" data-tippy-content="long" data-tip-if-cut>long</span>`)({ ...fits, ...box });
+      expect(show({ scrollHeight: 55, clientHeight: 36 })).to.equal(true);
+      expect(show({ scrollWidth: 96, clientWidth: 94 })).to.equal(true);
+    });
+
     it(`always shows a tooltip that is not a name`, () => {
       expect(onShowFor(`<button id="n" data-tippy-content="Next match (N)">next</button>`)(fits)).to.equal(true);
     });

@@ -5,7 +5,7 @@ type TippyFactory = (target: HTMLElement, props: TipProps) => unknown;
 
 const onShow = ({ reference }: { reference: Element, }) => {
   const node = reference as HTMLElement;
-  const cut = node.scrollWidth > node.clientWidth || node.scrollHeight > node.clientHeight;
+  const cut = node.scrollWidth > node.clientWidth + 1 || node.scrollHeight > node.clientHeight + 1;
   return cut || !(`tipIfCut` in node.dataset);
 };
 
