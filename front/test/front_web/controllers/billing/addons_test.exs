@@ -134,6 +134,22 @@ defmodule FrontWeb.BillingController.AddonsTest do
              }
     end
 
+    test "shows the reason as sent when it is not valid percent-encoding", %{conn: conn} do
+      GrpcMock.stub(BillingMock, :update_addon, fn _, _ ->
+        raise GRPC.RPCError, status: 9, message: "Tier price changed by 100%zz"
+      end)
+
+      conn =
+        conn
+        |> put_req_header("content-type", "application/json")
+        |> post("/billing/update_addon.json", %{addon_name: "support-tier-3", enabled: true})
+
+      assert json_response(conn, 422) == %{
+               "ok" => false,
+               "error" => "Tier price changed by 100%zz"
+             }
+    end
+
     test "hides other errors behind a generic message", %{conn: conn} do
       GrpcMock.stub(BillingMock, :update_addon, fn _, _ ->
         raise GRPC.RPCError, status: 2, message: "Internal Server Error"
