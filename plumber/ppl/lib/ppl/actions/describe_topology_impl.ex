@@ -7,6 +7,10 @@ defmodule Ppl.Actions.DescribeTopologyImpl do
   alias JobMatrix.ParallelismHandler, as: ParallelismHandler
   alias Util.ToTuple
 
+  # ListActivityImpl calls describe_topology/1 with a SQL projection of the
+  # definition (ListActivityImpl.topology_definition/1), not the full document.
+  # Any new block or job field read here, or by JobMatrix, must be added to
+  # that projection too, or ListActivity will silently see it as missing.
   def describe_topology(definition) do
     with {:ok, blocks}         <- describe_blocks_topology(definition),
          {:ok, after_pipeline} <- describe_after_pipeline_topology(definition)

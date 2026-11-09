@@ -1,0 +1,12 @@
+<div class="wf-head-actions">
+  <%= if !assigns[:permissions] or @permissions["project.job.rerun"] do %>
+    <%= link "Rerun Workflow", to: workflow_path(@conn, :rebuild, @workflow.id), method: :post, class: "btn btn-secondary btn-small", "data-tippy-content": "Starts a fresh run of the whole workflow from this commit" %>
+  <% else %>
+    <button class="btn btn-secondary btn-small" disabled>Rerun Workflow</button>
+  <% end %>
+  <%= if assigns[:edit_workflow?] do %>
+    <%= link to: "/workflows/#{@workflow.id}/edit" do %>
+      <button id="editWorkflow" class="btn btn-secondary btn-small" <%= if !assigns[:permissions]["project.workflow.manage"], do: "disabled" %>>Edit Workflow</button>
+    <% end %>
+  <% end %>
+</div>
