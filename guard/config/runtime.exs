@@ -69,7 +69,7 @@ config :guard, session_key: System.get_env("SESSION_COOKIE_NAME")
 
 config :guard,
   mcp_oauth_access_token_ttl_seconds:
-    String.to_integer(System.get_env("MCP_OAUTH_ACCESS_TOKEN_TTL_SECONDS") || "86400"),
+    String.to_integer(System.get_env("MCP_OAUTH_ACCESS_TOKEN_TTL_SECONDS") || "3600"),
   mcp_oauth_refresh_token_ttl_seconds:
     String.to_integer(System.get_env("MCP_OAUTH_REFRESH_TOKEN_TTL_SECONDS") || "2592000"),
   mcp_oauth_refresh_token_max_age_seconds:

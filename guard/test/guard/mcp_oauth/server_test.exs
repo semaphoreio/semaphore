@@ -585,12 +585,12 @@ defmodule Guard.McpOAuth.Server.Test do
       result = Jason.decode!(response.body)
       assert is_binary(result["access_token"])
       assert result["token_type"] == "Bearer"
-      assert result["expires_in"] == 86_400
+      assert result["expires_in"] == 3_600
       assert result["scope"] == "mcp"
 
       signer = Joken.Signer.create("HS256", System.get_env("MCP_OAUTH_JWT_KEYS"))
       assert {:ok, claims} = Joken.verify(result["access_token"], signer)
-      assert claims["exp"] - claims["iat"] == 86_400
+      assert claims["exp"] - claims["iat"] == 3_600
     end
 
     test "token exchange honors configured TTL", %{user_id: user_id} do
@@ -720,7 +720,7 @@ defmodule Guard.McpOAuth.Server.Test do
     } do
       assert {200, result} = refresh(tokens["refresh_token"], client.client_id)
       assert result["token_type"] == "Bearer"
-      assert result["expires_in"] == 86_400
+      assert result["expires_in"] == 3_600
       assert result["scope"] == "mcp"
       assert is_binary(result["refresh_token"])
       refute result["refresh_token"] == tokens["refresh_token"]
