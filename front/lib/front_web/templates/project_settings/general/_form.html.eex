@@ -170,6 +170,9 @@
               <%= label f, :pull_request_commit, "Head commit (the latest commit on the pull request branch)", class: "ml2", for: "project_pull_request_commit_head_commit" %>
             </div>
             <p class="f6 mt1 mb0">Head commit builds start right away without waiting for GitHub to prepare the merge, but they don't test the changes combined with the base branch.</p>
+            <%= if @project.pull_request_commit == "head_commit" and !FeatureProvider.feature_enabled?(:pr_head_builds, param: @conn.assigns[:organization_id]) do %>
+            <p id="pull-request-commit-unavailable" class="f6 mt1 mb0 b">Head commit builds are not available for this organization right now, so pull requests build the merge commit. Choose Merge commit to keep this setting in line.</p>
+            <% end %>
           </div>
           <% end %>
         <% end %>

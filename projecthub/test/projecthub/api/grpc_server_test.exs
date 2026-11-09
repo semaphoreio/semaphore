@@ -3669,7 +3669,7 @@ defmodule Projecthub.Api.GrpcServerTest do
       assert {:ok, %{pull_request_commit: "head_commit"}} = Project.find(project.id)
     end
 
-    test "update with a value while pr_head_builds is off => keeps the stored value", %{channel: channel} do
+    test "update to MERGE_COMMIT while pr_head_builds is off => switches back", %{channel: channel} do
       set_pr_head_builds(false)
       {:ok, project} = Support.Factories.Project.create_with_repo(%{pull_request_commit: "head_commit"})
 
@@ -3677,8 +3677,8 @@ defmodule Projecthub.Api.GrpcServerTest do
       {:ok, response} = Stub.update(channel, pr_commit_update_request(project, merge))
 
       assert response.metadata.status.code == :OK
-      assert response.project.spec.repository.pull_request_commit == :HEAD_COMMIT
-      assert {:ok, %{pull_request_commit: "head_commit"}} = Project.find(project.id)
+      assert response.project.spec.repository.pull_request_commit == :MERGE_COMMIT
+      assert {:ok, %{pull_request_commit: "merge_commit"}} = Project.find(project.id)
     end
 
     defp set_pr_head_builds(enabled) do

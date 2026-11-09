@@ -1046,14 +1046,15 @@ defmodule Projecthub.Api.GrpcServer do
   # An unspecified value leaves the stored setting alone, so clients that don't
   # know the field (older CLIs, manifests applied as written) never reset it.
   defp pull_request_commit_settings(project_spec, org_id) do
-    if pr_head_builds_enabled?(org_id) do
-      case project_spec.repository.pull_request_commit do
-        :MERGE_COMMIT -> %{pull_request_commit: "merge_commit"}
-        :HEAD_COMMIT -> %{pull_request_commit: "head_commit"}
-        _ -> %{}
-      end
-    else
-      %{}
+    case project_spec.repository.pull_request_commit do
+      :MERGE_COMMIT ->
+        %{pull_request_commit: "merge_commit"}
+
+      :HEAD_COMMIT ->
+        if pr_head_builds_enabled?(org_id), do: %{pull_request_commit: "head_commit"}, else: %{}
+
+      _ ->
+        %{}
     end
   end
 

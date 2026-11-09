@@ -97,10 +97,34 @@ defmodule FrontWeb.BranchControllerTest do
         )
 
       DB.update(:projects, project)
+      Support.Stubs.Feature.enable_feature(project.org_id, :pr_head_builds)
 
       html = conn |> get(branch_path(conn, :show, branch.id)) |> html_response(200)
 
       refute html =~ "has conflicts that must be resolved"
+    end
+
+    test "shows the conflict banner when head commit builds are stored but pr_head_builds is off",
+         %{
+           conn: conn,
+           project: project
+         } do
+      alias InternalApi.Projecthub.Project.Spec.Repository.PullRequestCommit
+
+      branch = conflicting_pull_request_branch(project)
+
+      project =
+        put_in(
+          project.api_model.spec.repository.pull_request_commit,
+          PullRequestCommit.value(:HEAD_COMMIT)
+        )
+
+      DB.update(:projects, project)
+      Support.Stubs.Feature.disable_feature(project.org_id, :pr_head_builds)
+
+      html = conn |> get(branch_path(conn, :show, branch.id)) |> html_response(200)
+
+      assert html =~ "has conflicts that must be resolved"
     end
 
     test "when branch is tag, opens the page", %{conn: conn, project: project} do

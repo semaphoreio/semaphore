@@ -152,10 +152,12 @@ defmodule FrontWeb.BranchController do
     end
   end
 
-  defp determine_conflict(_workflows, %{pull_request_commit: "head_commit"}), do: false
+  defp determine_conflict(workflows, project) do
+    head_commit_builds? =
+      project.pull_request_commit == "head_commit" and
+        FeatureProvider.feature_enabled?(:pr_head_builds, param: project.organization_id)
 
-  defp determine_conflict(workflows, _project) do
-    if Enum.empty?(workflows) do
+    if head_commit_builds? or Enum.empty?(workflows) do
       false
     else
       latest_workflow = List.first(workflows)

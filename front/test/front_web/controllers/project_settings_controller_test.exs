@@ -570,6 +570,54 @@ defmodule FrontWeb.ProjectSettingsControllerTest do
       refute html =~ ~s(<input checked id="project_pull_request_commit_head_commit")
     end
 
+    test "GET general - head commit stored without pr_head_builds => says pull requests build the merge commit",
+         %{conn: conn, project_name: project_name} do
+      alias InternalApi.Projecthub.Project.Spec.Repository.PullRequestCommit
+
+      project = DB.find_by(:projects, :name, project_name)
+
+      project =
+        put_in(
+          project.api_model.spec.repository.pull_request_commit,
+          PullRequestCommit.value(:HEAD_COMMIT)
+        )
+
+      DB.update(:projects, project)
+
+      html =
+        conn
+        |> get(project_settings_path(conn, :general, project_name))
+        |> html_response(200)
+
+      assert html =~ ~s(id="pull-request-commit-options")
+      assert html =~ ~s(id="pull-request-commit-unavailable")
+      assert html =~ ~s(<input checked id="project_pull_request_commit_head_commit")
+    end
+
+    test "GET general - head commit stored with pr_head_builds => no unavailable note",
+         %{conn: conn, project_name: project_name, org_id: org_id} do
+      alias InternalApi.Projecthub.Project.Spec.Repository.PullRequestCommit
+
+      Feature.enable_feature(org_id, :pr_head_builds)
+      project = DB.find_by(:projects, :name, project_name)
+
+      project =
+        put_in(
+          project.api_model.spec.repository.pull_request_commit,
+          PullRequestCommit.value(:HEAD_COMMIT)
+        )
+
+      DB.update(:projects, project)
+
+      html =
+        conn
+        |> get(project_settings_path(conn, :general, project_name))
+        |> html_response(200)
+
+      assert html =~ ~s(<input checked id="project_pull_request_commit_head_commit")
+      refute html =~ "pull-request-commit-unavailable"
+    end
+
     test "GET general - without pr_head_builds => does not offer the pull request commit",
          %{conn: conn, project_name: project_name} do
       html =
