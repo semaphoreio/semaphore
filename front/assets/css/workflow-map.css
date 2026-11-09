@@ -144,18 +144,25 @@
 
 .wf-map-seg {
   display: inline-flex;
+  max-width: 100%;
   border: 1px solid #D3DADE;
   border-radius: 6px;
   overflow: hidden;
 }
 
 .wf-map-seg button {
+  min-width: 0;
   border: 0;
   background: #fff;
   padding: 2px 10px;
   font-size: 13px;
   color: #495358;
+  white-space: nowrap;
   cursor: pointer;
+}
+
+.wf-map-seg button:first-child {
+  flex: none;
 }
 
 .wf-map-seg button + button {
@@ -378,10 +385,19 @@
 }
 
 .wf-map-title {
+  display: flex;
+  min-width: 0;
   white-space: nowrap;
 }
 
+.wf-map-title-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .wf-map-attempt {
+  flex: none;
   margin-left: .35em;
   font-weight: 400;
   color: #96A0A6;
@@ -484,8 +500,6 @@
 .wf-map-card-title {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   font-size: 15px;
   font-weight: 600;
   color: #202B30;
@@ -521,6 +535,7 @@
 }
 
 .wf-map-pipeline-title {
+  min-width: 96px;
   font-size: 16px;
   font-weight: 600;
   color: #202B30;
@@ -591,6 +606,7 @@
 
 .wf-map-summary-meta {
   font-size: 12px;
+  line-height: 14px;
   color: #677278;
 }
 
@@ -625,8 +641,15 @@
 }
 
 .wf-map-block-name {
+  display: -webkit-box;
+  min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  line-height: 18px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .wf-map-job {
@@ -649,11 +672,22 @@ a.wf-map-job:hover {
 }
 
 .wf-map-job-name {
+  display: -webkit-box;
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  line-height: 16px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.wf-map-job .wf-map-time {
+  flex: none;
+  min-width: 58px;
+  text-align: right;
 }
 
 .wf-map-job.hit {
@@ -1011,4 +1045,8 @@ a.wf-map-job:hover {
 .wf-map-actions .btn-tiny .material-symbols-outlined {
   font-size: 16px;
   line-height: 1;
+}
+
+.tippy-box[data-theme~="wf-map"] {
+  overflow-wrap: anywhere;
 }

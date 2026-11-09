@@ -1,18 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { computed, signal } from "@preact/signals";
 import { BaseEdge, Background, Controls, Edge, EdgeLabelRenderer, EdgeProps, Handle, MiniMap, Node, NodeProps, Panel, Position, ReactFlow, ReactFlowProvider, useReactFlow, useStore } from "@xyflow/react";
-import { Pipeline, STATUS_LABEL, Status, Workflow, blockStatus, countJobs, pipelineJobs } from "./model";
+import { Pipeline, Workflow, blockStatus, pipelineJobs } from "./model";
 import { focus, hits, layoutError, popover, rerunPipeline, selected, stopPipeline, togglePopover, workflow } from "./store";
 import { MapLayout, Point, layoutMap, promotionLabel } from "./layout";
 import { PromoteButton } from "./promote";
 import { Chips, Search, Stepper } from "./toolbar";
-import { BlockCard, Counts, Duration, Highlight, PipelineTitle, StatusBar, StatusIcon } from "./ui";
+import { BlockCard, BlockSummary, Counts, Duration, PipelineTitle, StatusBar, StatusIcon } from "./ui";
+import { blockSize, jobRowHeight, jobTop } from "./lines";
 
 const CARD = { w: 300, h: 72 };
-const BLOCK = { w: 230, h: 74 };
-const OPEN_BLOCK_W = 260;
-const JOB_ROW_H = 23;
-const BLOCK_HEAD_H = 40;
 
 const CLICKABLE = { pointerEvents: `all` as const };
 
@@ -187,14 +184,7 @@ const PipelineNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
 const BlockNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
   const b = workflow.value?.blocks.get(data.id);
   const h = hits.value;
-  const f = focus.value;
   if (!b) return null;
-  const st = blockStatus(b);
-  const c = countJobs(b.jobs);
-  const summary = [
-    `${b.jobs.length} ${b.jobs.length === 1 ? `job` : `jobs`}`,
-    ...([`failed`, `running`, `queued`, `stopped`] as Status[]).filter((s) => c[s]).map((s) => `${c[s]} ${STATUS_LABEL[s].toLowerCase()}`),
-  ].join(` · `);
   const flip = () => {
     aim({ id: b.id, how: `center` });
     toggle(openBlocks, b.id);
@@ -211,16 +201,7 @@ const BlockNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
       {openBlocks.value.has(b.id) ? (
         <BlockCard block={b} onHeaderClick={flip}/>
       ) : (
-        <button className={`wf-map-summary ${f && (f.id === b.id || f.id.startsWith(`${b.id}#`)) ? `focused` : ``}`} onClick={flip}>
-          <span className="wf-map-summary-name">
-            <StatusIcon status={st}/>
-            <span>
-              <Highlight text={b.name}/>
-            </span>
-          </span>
-          <StatusBar jobs={b.jobs}/>
-          <span className="wf-map-summary-meta">{summary}</span>
-        </button>
+        <BlockSummary block={b} onClick={flip}/>
       )}
       <Handle type="source" position={Position.Right} isConnectable={false}/>
     </div>
@@ -309,10 +290,10 @@ function build(wf: Workflow, L: MapLayout) {
   return { nodes, edges };
 }
 
-function structureKey(wf: Workflow, open: Set<string>, openB: Set<string>) {
+export function structureKey(wf: Workflow, open: Set<string>, openB: Set<string>) {
   return wf.pipelines
     .map((p) => {
-      const blocks = open.has(p.id) && p.blocks ? p.blocks.map((b) => `${b.name}:${b.deps.length}:${openB.has(b.id) ? b.jobs.length : `-`}`).join(`,`) : `closed`;
+      const blocks = open.has(p.id) && p.blocks ? p.blocks.map((b) => `${b.name}:${b.deps.length}:${openB.has(b.id) ? b.jobs.length : `-`}:${blockSize(b, openB.has(b.id)).h}`).join(`,`) : `closed`;
       const promotions = p.promotions?.map((promotion) => `${promotion.name}:${promotion.pipelines.length}`).join(`,`) ?? ``;
       return `${p.id}<${p.parent?.id ?? ``}>${blocks}[${promotions}]`;
     })
@@ -343,6 +324,7 @@ const WorkflowMap = () => {
   const key = wf ? structureKey(wf, P, B) : ``;
 
   const go = (L: MapLayout, t: Target) => {
+    if (!vw || !vh) return false;
     const p = wf.pipelineById.get(t.id);
     if (t.how === `all` || (!p && !wf.blocks.has(t.id))) {
       void rf.fitView({ padding: 0.06, maxZoom: 1, duration: 400 });
@@ -350,12 +332,13 @@ const WorkflowMap = () => {
     }
     if (p && P.has(p.id) && (p.blocks === null || (p.blocks.length && !L.pipelines.get(p.id)?.open))) return false;
     const b = boxOf(wf, L, t.id);
-    if (!b || (t.job !== undefined && b.h < BLOCK_HEAD_H + t.job * JOB_ROW_H)) return false;
+    const blk = t.job === undefined ? undefined : wf.blocks.get(t.id);
+    if (!b || (blk && (!blk.jobs[t.job] || b.h < jobTop(blk, t.job)))) return false;
     const cx = b.x + b.w / 2;
     if (t.how === `center`) {
       void rf.setCenter(cx, b.y + b.h / 2, { zoom: rf.getZoom(), duration: 350 });
-    } else if (t.job !== undefined) {
-      void rf.setCenter(cx, b.y + BLOCK_HEAD_H + t.job * JOB_ROW_H + 11, { zoom: Math.max(rf.getZoom(), 1), duration: 450 });
+    } else if (blk) {
+      void rf.setCenter(cx, b.y + jobTop(blk, t.job) + jobRowHeight(blk.jobs[t.job]) / 2, { zoom: Math.max(rf.getZoom(), 1), duration: 450 });
     } else {
       const pad = p ? 1.12 : 1.6;
       const z = Math.max(0.1, Math.min(1, vw / (b.w * pad), vh / (b.h * pad)));
@@ -371,12 +354,8 @@ const WorkflowMap = () => {
   useEffect(() => {
     if (!wf) return;
     let alive = true;
-    layoutMap(
-      wf,
-      (p) => P.has(p.id),
-      (b) => (B.has(b.id) ? { w: OPEN_BLOCK_W, h: BLOCK_HEAD_H + b.jobs.length * JOB_ROW_H + 8 } : BLOCK),
-      CARD
-    )
+    document.fonts.ready
+      .then(() => layoutMap(wf, (p) => P.has(p.id), (b) => blockSize(b, B.has(b.id)), CARD))
       .then((L) => alive && setLayout(L))
       .catch(() => {
         if (alive) layoutError.value = `Couldn't lay out this workflow. Reload the page to try again.`;
@@ -390,7 +369,7 @@ const WorkflowMap = () => {
 
   useEffect(() => {
     if (graph && layout) requestAnimationFrame(() => settle(layout));
-  }, [graph]);
+  }, [graph, vw, vh]);
 
   useEffect(() => {
     if (!f || !wf || f.seq === handledSeq.current) return;
