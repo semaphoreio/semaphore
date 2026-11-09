@@ -27,6 +27,12 @@ describe(`bindTooltips`, () => {
     expect(made[0].reference.id).to.equal(`a`);
   });
 
+  it(`gives the map's tooltips their own theme`, () => {
+    const props: unknown[] = [];
+    bindTooltips(document.getElementById(`root`), (node: HTMLElement, p: unknown) => props.push(p) && factory([])(node));
+    expect(props).to.deep.equal([{ duration: [150, 50], theme: `wf-map` }]);
+  });
+
   it(`does not bind twice, and follows a changed tooltip`, () => {
     const made: Fake[] = [];
     const root = document.getElementById(`root`);

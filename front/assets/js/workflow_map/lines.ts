@@ -1,4 +1,4 @@
-import type { Block, Job } from "./model";
+import { Block, Job, blockSummary } from "./model";
 
 export const BLOCK = { w: 230, h: 74 };
 export const OPEN_BLOCK_W = 260;
@@ -7,11 +7,13 @@ const HEAD_H = 30;
 export const JOB_ROW_H = 23;
 export const NAME_LINE_H = 18;
 export const JOB_LINE_H = 16;
+export const META_LINE_H = 14;
 
 const FIT = {
   summary: { weight: 500, size: 0, width: BLOCK.w - 2 * 12 - 16 - 8 },
   head: { weight: 500, size: 0, width: OPEN_BLOCK_W - 2 * 8 - 16 - 8 },
   job: { weight: 400, size: 13, width: OPEN_BLOCK_W - 2 * 8 - 14 - 2 * 8 - 46 },
+  meta: { weight: 400, size: 12, width: BLOCK.w - 2 * 12 },
 };
 
 const measured = new Map<string, 1 | 2>();
@@ -46,4 +48,4 @@ export const jobTop = (b: Block, index: number) =>
 export const blockSize = (b: Block, open: boolean) =>
   open
     ? { w: OPEN_BLOCK_W, h: jobTop(b, b.jobs.length) + 8 }
-    : { w: BLOCK.w, h: BLOCK.h + (nameLines(b.name, `summary`) - 1) * NAME_LINE_H };
+    : { w: BLOCK.w, h: BLOCK.h + (nameLines(b.name, `summary`) - 1) * NAME_LINE_H + (nameLines(blockSummary(b), `meta`) - 1) * META_LINE_H };

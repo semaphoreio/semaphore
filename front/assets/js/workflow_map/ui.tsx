@@ -1,4 +1,4 @@
-import { Block, Job, Pipeline, STATUSES, STATUS_LABEL, Status, blockStatus, countJobs, formatDuration } from "./model";
+import { Block, Job, Pipeline, STATUSES, STATUS_LABEL, Status, blockStatus, blockSummary, countJobs, formatDuration } from "./model";
 import { focus, hits, now, query } from "./store";
 import { headHeight, jobRowHeight } from "./lines";
 
@@ -91,11 +91,6 @@ export const StatusBar = ({ jobs }: { jobs: Job[], }) => {
 
 export const BlockSummary = ({ block, onClick }: { block: Block, onClick: () => void, }) => {
   const f = focus.value;
-  const c = countJobs(block.jobs);
-  const summary = [
-    `${block.jobs.length} ${block.jobs.length === 1 ? `job` : `jobs`}`,
-    ...([`failed`, `running`, `queued`, `stopped`] as Status[]).filter((s) => c[s]).map((s) => `${c[s]} ${STATUS_LABEL[s].toLowerCase()}`),
-  ].join(` · `);
   return (
     <button className={`wf-map-summary ${f && (f.id === block.id || f.id.startsWith(`${block.id}#`)) ? `focused` : ``}`} onClick={onClick}>
       <span className="wf-map-summary-name">
@@ -105,7 +100,7 @@ export const BlockSummary = ({ block, onClick }: { block: Block, onClick: () => 
         </span>
       </span>
       <StatusBar jobs={block.jobs}/>
-      <span className="wf-map-summary-meta">{summary}</span>
+      <span className="wf-map-summary-meta">{blockSummary(block)}</span>
     </button>
   );
 };

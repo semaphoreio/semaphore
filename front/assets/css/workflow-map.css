@@ -606,6 +606,7 @@
 
 .wf-map-summary-meta {
   font-size: 12px;
+  line-height: 14px;
   color: #677278;
 }
 
@@ -1038,4 +1039,8 @@ a.wf-map-job:hover {
 .wf-map-actions .btn-tiny .material-symbols-outlined {
   font-size: 16px;
   line-height: 1;
+}
+
+.tippy-box[data-theme~="wf-map"] {
+  overflow-wrap: anywhere;
 }
