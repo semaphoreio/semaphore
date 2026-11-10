@@ -41,6 +41,14 @@ config :zebra, Zebra.Workers.JobDeletionPolicyWorker,
   longnaptime: String.to_integer(System.get_env("JOB_DELETION_POLICY_WORKER_LONGNAPTIME_MS") || "600000"),
   batch_size: String.to_integer(System.get_env("JOB_DELETION_POLICY_WORKER_BATCH_SIZE") || "100")
 
+# Defaults: 250 rows per tick, a tick per second while there is work, so at
+# most ~21M rows a day; every 10 minutes once caught up with the cutoff.
+config :zebra, Zebra.Workers.FinishedJobCleaner,
+  cutoff_days: String.to_integer(System.get_env("FINISHED_JOB_CLEANER_CUTOFF_DAYS") || "3"),
+  batch_size: String.to_integer(System.get_env("FINISHED_JOB_CLEANER_BATCH_SIZE") || "250"),
+  naptime: String.to_integer(System.get_env("FINISHED_JOB_CLEANER_NAPTIME_MS") || "1000"),
+  longnaptime: String.to_integer(System.get_env("FINISHED_JOB_CLEANER_LONGNAPTIME_MS") || "600000")
+
 config :zebra, Zebra.Workers.JobDeletionPolicyMarker,
   grace_period_days: String.to_integer(System.get_env("JOB_DELETION_POLICY_MARKER_GRACE_PERIOD_DAYS") || "15"),
   batch_size: String.to_integer(System.get_env("JOB_DELETION_POLICY_MARKER_BATCH_SIZE") || "1000")

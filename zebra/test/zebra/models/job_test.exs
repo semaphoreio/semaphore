@@ -701,6 +701,85 @@ defmodule Zebra.Models.JobTest do
     end
   end
 
+  describe "credentials on terminal transitions" do
+    @ssh_key "fake-debug-ssh-key"
+
+    test ".finish drops the debug SSH key and keeps the agent token" do
+      {:ok, job} = Support.Factories.Job.create(:started, %{private_ssh_key: @ssh_key})
+
+      assert {:ok, finished} = Job.finish(job, "passed")
+
+      assert is_nil(finished.private_ssh_key)
+      reloaded = Job.reload(job)
+      assert is_nil(reloaded.private_ssh_key)
+      # post-job processing still needs the token after the job finishes
+      assert reloaded.agent_auth_token == "lol"
+    end
+
+    test ".stop terminates the agent with its token, then drops the debug SSH key" do
+      {:ok, job} = Support.Factories.Job.create(:started, %{private_ssh_key: @ssh_key})
+
+      with_mock Zebra.Workers.Agent.HostedAgent, [:passthrough],
+        send: fn _host, _port, _token, _path, _body -> :ok end do
+        assert {:ok, stopped} = Job.stop(job)
+        assert Job.stopped?(stopped)
+
+        assert_called(
+          Zebra.Workers.Agent.HostedAgent.send("1.2.3.4", 443, "lol", "/jobs/terminate", :_)
+        )
+      end
+
+      reloaded = Job.reload(job)
+      assert is_nil(reloaded.private_ssh_key)
+      assert reloaded.agent_auth_token == "lol"
+    end
+
+    test ".force_finish drops the debug SSH key" do
+      {:ok, job} = Support.Factories.Job.create(:scheduled, %{private_ssh_key: @ssh_key})
+
+      assert {:ok, _} = Job.force_finish(job, "Santa said that he was naughty")
+
+      assert is_nil(Job.reload(job).private_ssh_key)
+    end
+
+    test ".bulk_force_finish drops the debug SSH key even though it does not load the column" do
+      {:ok, job1} = Support.Factories.Job.create(:enqueued, %{private_ssh_key: @ssh_key})
+      {:ok, job2} = Support.Factories.Job.create(:enqueued, %{private_ssh_key: @ssh_key})
+
+      Job.bulk_force_finish([job1.id, job2.id], "They were bad")
+
+      assert Job.finished?(Job.reload(job1))
+      assert is_nil(Job.reload(job1).private_ssh_key)
+      assert is_nil(Job.reload(job2).private_ssh_key)
+    end
+
+    test "the debug SSH key is kept while the job is running" do
+      {:ok, job} = Support.Factories.Job.create(:scheduled, %{private_ssh_key: @ssh_key})
+
+      agent = %Zebra.Workers.Agent.HostedAgent{
+        id: Ecto.UUID.generate(),
+        name: "",
+        ip_address: "1.2.3.4",
+        ctrl_port: 443,
+        auth_token: "lol",
+        ssh_port: 22
+      }
+
+      assert {:ok, started} = Job.start(job, agent, sanitize_request: true)
+
+      assert Job.started?(started)
+      assert Job.reload(job).private_ssh_key == @ssh_key
+    end
+
+    test ".finish of a job that never got a key still finishes" do
+      {:ok, job} = Support.Factories.Job.create(:pending)
+
+      assert {:ok, finished} = Job.finish(job, "failed")
+      assert Job.finished?(finished)
+      assert is_nil(Job.reload(job).private_ssh_key)
+    end
+  end
+
   describe ".detect_type" do
     test "when it is a pipeline job => pipeline_job" do
       {:ok, task} = Support.Factories.Task.create()
