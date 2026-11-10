@@ -68,7 +68,8 @@ defmodule Gofer.DeploymentTrigger.Model.HistoryPage do
   end
 
   defp load_page(page = %__MODULE__{}) do
-    {triggers, is_last?} = {list_page_triggers(page), is_last_page?(page)}
+    triggers = list_page_triggers(page)
+    is_last? = match?({:AFTER, _}, page.current_cursor) and is_last_page?(page)
     {results, {prev, next}} = form_page_result(page, triggers, is_last?)
     %__MODULE__{page | cursor_before: prev, cursor_after: next, results: results}
   end
@@ -76,30 +77,13 @@ defmodule Gofer.DeploymentTrigger.Model.HistoryPage do
   # constructing page
 
   defp is_latest_page?(page = %__MODULE__{current_cursor: {:BEFORE, epoch}}),
-    do: count_triggers_after(page.deployment_id, epoch) == 0
+    do: count_triggers_after(page, epoch) == 0
 
   defp is_latest_page?(page = %__MODULE__{current_cursor: {:AFTER, epoch}}),
-    do: count_triggers_after(page.deployment_id, epoch) <= page.max_size + 1
-
-  defp is_latest_page?(page = %__MODULE__{current_cursor: :FIRST}) do
-    count_triggers_after(
-      page.deployment_id,
-      DateTime.utc_now() |> DateTime.to_unix(:microsecond)
-    ) <= page.max_size
-  end
-
-  defp is_last_page?(page = %__MODULE__{current_cursor: :FIRST}) do
-    count_triggers_before(
-      page.deployment_id,
-      DateTime.utc_now() |> DateTime.to_unix(:microsecond)
-    ) <= page.max_size
-  end
-
-  defp is_last_page?(page = %__MODULE__{current_cursor: {:BEFORE, epoch}}),
-    do: count_triggers_before(page.deployment_id, epoch) <= page.max_size + 1
+    do: count_triggers_after(page, epoch) <= page.max_size + 1
 
   defp is_last_page?(page = %__MODULE__{current_cursor: {:AFTER, epoch}}),
-    do: count_triggers_before(page.deployment_id, epoch) <= 0
+    do: count_triggers_before(page, epoch) <= 0
 
   defp form_page_result(page = %__MODULE__{current_cursor: :FIRST}, triggers, _is_last?) do
     {results, prev_items} = Enum.split(triggers, page.max_size)
@@ -146,21 +130,23 @@ defmodule Gofer.DeploymentTrigger.Model.HistoryPage do
 
   # Ecto queries
 
-  defp count_triggers_before(deployment_id, epoch) do
+  defp count_triggers_before(page = %__MODULE__{}, epoch) do
     datetime = DateTime.from_unix!(epoch, :microsecond)
 
     Ecto.Query.from(dt in Trigger)
-    |> Ecto.Query.where([dt], dt.deployment_id == ^deployment_id)
+    |> Ecto.Query.where([dt], dt.deployment_id == ^page.deployment_id)
     |> Ecto.Query.where([dt], dt.triggered_at <= ^datetime)
+    |> Ecto.Query.limit(^page.max_size + 2)
     |> EctoRepo.aggregate(:count, :id)
   end
 
-  defp count_triggers_after(deployment_id, epoch) do
+  defp count_triggers_after(page = %__MODULE__{}, epoch) do
     datetime = DateTime.from_unix!(epoch, :microsecond)
 
     Ecto.Query.from(dt in Trigger)
-    |> Ecto.Query.where([dt], dt.deployment_id == ^deployment_id)
+    |> Ecto.Query.where([dt], dt.deployment_id == ^page.deployment_id)
     |> Ecto.Query.where([dt], dt.triggered_at >= ^datetime)
+    |> Ecto.Query.limit(^page.max_size + 2)
     |> EctoRepo.aggregate(:count, :id)
   end
 
