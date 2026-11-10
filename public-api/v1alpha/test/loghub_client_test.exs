@@ -446,14 +446,18 @@ defmodule PipelinesAPI.LoghubClient.Test do
     end
 
     # Stalls on the first batch long enough for an unbounded read to take in
-    # the whole log, then reads the rest. Returns the result and the bytes of
-    # stream data waiting in the reader's mailbox after the stall.
+    # the whole log, and again halfway through, after many frames have been
+    # read and credited (a reader that returns too much credit only drifts
+    # past the bound later in the stream). Returns the result and the most
+    # bytes of stream data waiting in the reader's mailbox after a stall.
+    @stall_at [0, div(@batches, 2)]
+
     defp read_slowly do
       fun = fn events, {batches, queued} ->
         queued =
-          if batches == [] do
+          if length(batches) in @stall_at do
             Process.sleep(500)
-            queued_gun_data()
+            max(queued, queued_gun_data())
           else
             queued
           end

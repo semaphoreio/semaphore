@@ -9,8 +9,8 @@ defmodule PipelinesAPI.Logs.Limiter do
   `after` block runs.
 
   A slot is held for as long as the response takes. That is bounded by the
-  loghub deadline while loghub streams, and by the edge's route timeout
-  (30s) for a client that reads slowly: the edge then closes the connection
+  loghub deadline while loghub streams, and by the gateway timeout
+  for a client that reads slowly: the gateway then closes the connection
   and cowboy kills the request process.
 
   If the limiter itself can't be reached (e.g. while it restarts), callers

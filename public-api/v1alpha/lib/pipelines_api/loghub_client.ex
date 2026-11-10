@@ -11,7 +11,7 @@ defmodule PipelinesAPI.LoghubClient do
 
   defp url(), do: System.get_env("LOGHUB_API_URL")
 
-  # gRPC deadline for loghub calls, kept below the 30s edge timeout so a slow
+  # gRPC deadline for loghub calls, kept below the gateway timeout so a slow
   # request gets DEADLINE_EXCEEDED (503) instead of an edge 504. Wormhole's
   # timeout is set a bit above it, so the deadline fires first.
   defp loghub_timeout, do: Application.get_env(:pipelines_api, :loghub_stream_timeout, 25_000)
