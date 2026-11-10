@@ -10,6 +10,8 @@ config :lager, async_threshold: 500
 config :lager, async_threshold_window: 250
 
 config :pipelines_api, grpc_timeout: 30_000
+# Deadline for loghub log fetches; below the 30s edge timeout (see LoghubClient).
+config :pipelines_api, loghub_stream_timeout: 25_000
 config :pipelines_api, wormhole_timeout: 30_500
 
 config :grpc, http2_client_adapter: GRPC.Adapter.Gun
