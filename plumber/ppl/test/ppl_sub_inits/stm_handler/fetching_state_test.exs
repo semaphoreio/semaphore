@@ -1,6 +1,8 @@
 defmodule Ppl.PplSubInits.STMHandler.FetchingState.Test do
   use Ppl.IntegrationCase, async: false
 
+  import Ecto.Query
+
   alias Ppl.TaskClient
   alias Ppl.PplRequests.Model.PplRequestsQueries
   alias Ppl.PplSubInits.Model.PplSubInitsQueries
@@ -286,6 +288,68 @@ defmodule Ppl.PplSubInits.STMHandler.FetchingState.Test do
     assert {:ok, "done", "passed"} == TaskClient.describe(compl_task_id)
 
     GrpcMock.verify!(ProjectServiceMock)
+    GrpcMock.verify!(PFCServiceMock)
+
+    Test.Helpers.stop_all_loopers(loopers)
+  end
+
+  @tag :integration
+  test "when request parameters set a reserved env var => sub_init fails as malformed before compilation" do
+    {:ok, %{port: pfc_port}} = Test.Support.GrpcServerHelper.start_server_with_cleanup(PFCServiceMock)
+    Test.Support.GrpcServerHelper.setup_service_url(@url_env_name_pfc, pfc_port)
+
+    on_exit(fn ->
+      System.put_env(@url_env_name_pfc, "localhost:50053")
+    end)
+
+    PFCServiceMock
+    |> GrpcMock.expect(:describe, 0, fn _request, _stream -> raise "pre-flight checks were fetched" end)
+
+    loopers =
+      []
+      |> Enum.concat([Task.Supervisor.start_link(name: PplsTaskSupervisor)])
+      |> Enum.concat([Ppl.Ppls.STMHandler.InitializingState.start_link()])
+      |> Enum.concat([Ppl.PplSubInits.STMHandler.CreatedState.start_link()])
+
+    {:ok, %{ppl_id: ppl_id}} =
+      %{
+        "repo_name" => "22_skip_block",
+        "file_name" => "multiple_valid_whens.yml",
+        "label" => "multiple_valid_whens",
+        "branch_name" => "multiple_valid_whens"
+      }
+      |> Test.Helpers.schedule_request_factory(:local)
+      |> Actions.schedule()
+
+    :timer.sleep(2_000)
+
+    {:ok, ppl_req} = PplRequestsQueries.get_by_id(ppl_id)
+
+    request_args =
+      Map.put(ppl_req.request_args, "env_vars", [
+        %{"name" => "SEMAPHORE_PIPELINE_RESULT", "value" => "passed"}
+      ])
+
+    Ppl.EctoRepo.update_all(
+      from(pr in Ppl.PplRequests.Model.PplRequests, where: pr.id == ^ppl_id),
+      set: [request_args: request_args]
+    )
+
+    assert {:ok, psi} = PplSubInitsQueries.get_by_id(ppl_id)
+    assert psi.state == "fetching"
+
+    assert {:ok, exit_func} = FetchingState.scheduling_handler(psi)
+
+    assert exit_func.(:repo, :changes) ==
+             {:ok,
+              %{
+                state: "done",
+                result: "failed",
+                result_reason: "malformed",
+                error_description:
+                  ~s(Error: "Reserved environment variables cannot be set: SEMAPHORE_PIPELINE_RESULT \(parameters\)")
+              }}
+
     GrpcMock.verify!(PFCServiceMock)
 
     Test.Helpers.stop_all_loopers(loopers)
