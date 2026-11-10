@@ -30,7 +30,7 @@ export function promotionLabel(p: Pipeline) {
 }
 
 const PIPE_PAD = { top: 72, side: 28, bottom: 28 };
-const MIN_OPEN_W = 730;
+const LABEL = { width: 160, height: 20 };
 
 let elk: ELK | null = null;
 const innerCache = new Map<string, Promise<ElkNode>>();
@@ -97,7 +97,7 @@ export async function layoutMap(
     },
     children: wf.pipelines.map((p, i) => {
       const g = inners[i];
-      return { id: p.id, width: g ? Math.max(MIN_OPEN_W, g.width) : closed.w, height: g ? g.height : closed.h };
+      return { id: p.id, width: g ? Math.max(closed.w, g.width) : closed.w, height: g ? g.height : closed.h };
     }),
     edges: wf.pipelines
       .filter((p) => p.parent)
@@ -107,7 +107,7 @@ export async function layoutMap(
           id: `${p.parent.id}=>${p.id}`,
           sources: [p.parent.id],
           targets: [p.id],
-          labels: label ? [{ text: label, width: label.length * 6.5 + 18, height: 20 }] : [],
+          labels: label ? [{ text: label, ...LABEL }] : [],
         };
       }),
   });

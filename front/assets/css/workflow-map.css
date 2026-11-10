@@ -390,10 +390,14 @@
   white-space: nowrap;
 }
 
-.wf-map-title-name {
+.wf-map-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
 }
 
 .wf-map-attempt {
@@ -526,16 +530,30 @@
 
 .wf-map-pipeline-head {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
   height: 64px;
-  padding: 0 16px 0 12px;
+  padding: 0 12px;
+}
+
+.wf-map-pipeline-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 28px;
   white-space: nowrap;
-  overflow: hidden;
+}
+
+.wf-map-pipeline-sub {
+  height: 22px;
+  padding-left: 36px;
 }
 
 .wf-map-pipeline-title {
-  min-width: 96px;
+  flex: 1;
+  min-width: 0;
   font-size: 16px;
   font-weight: 600;
   color: #202B30;
@@ -543,9 +561,6 @@
 
 .wf-map-pipeline-meta {
   flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   font-size: 13px;
   color: #677278;
 }
@@ -598,13 +613,15 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  overflow: hidden;
   white-space: nowrap;
   font-weight: 500;
   color: #202B30;
 }
 
 .wf-map-summary-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 12px;
   line-height: 14px;
   color: #677278;
@@ -632,7 +649,6 @@
   padding: 0;
   border: 0;
   background: none;
-  overflow: hidden;
   white-space: nowrap;
   font-weight: 500;
   color: #202B30;
@@ -641,15 +657,7 @@
 }
 
 .wf-map-block-name {
-  display: -webkit-box;
-  min-width: 0;
-  overflow: hidden;
-  overflow-wrap: anywhere;
-  white-space: normal;
   line-height: 18px;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
 }
 
 .wf-map-job {
@@ -672,16 +680,8 @@ a.wf-map-job:hover {
 }
 
 .wf-map-job-name {
-  display: -webkit-box;
   flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  overflow-wrap: anywhere;
-  white-space: normal;
   line-height: 16px;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
 }
 
 .wf-map-job .wf-map-time {
@@ -826,10 +826,15 @@ a.wf-map-job:hover {
   border-radius: 10px;
   background: #fff;
   color: #495358;
+  max-width: 160px;
   font-size: 11px;
   line-height: 16px;
   white-space: nowrap;
-  pointer-events: none;
+  pointer-events: all;
+}
+
+.wf-map-edge-label .wf-map-name {
+  display: block;
 }
 
 .wf-map-actions {

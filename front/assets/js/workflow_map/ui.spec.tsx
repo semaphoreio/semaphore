@@ -19,52 +19,55 @@ describe(`names the map may shorten`, () => {
     root.remove();
   });
 
-  test(`a pipeline title carries the full name on the part that shortens, shown only when it is cut, and keeps the attempt out of it`, async () => {
+  test(`a pipeline title shows the full name, selectable in place, with no tooltip, and keeps the attempt out of it`, async () => {
     const p = { name: `a very long pipeline name`, attempt: 2 } as Pipeline;
 
     await act(() => render(<PipelineTitle p={p}/>, root));
 
-    expect(root.querySelector(`.wf-map-title-name`).getAttribute(`data-tippy-content`)).to.equal(p.name);
-    expect(root.querySelector(`.wf-map-title-name`).hasAttribute(`data-tip-if-cut`)).to.equal(true);
-    expect(root.querySelector(`[title]`)).to.equal(null);
-    expect(root.querySelector(`.wf-map-title-name`).textContent).to.equal(p.name);
+    const name = root.querySelector(`.wf-map-title-name`);
+    expect(name.classList.contains(`wf-map-name`)).to.equal(true);
+    expect(name.classList.contains(`nopan`)).to.equal(true);
+    expect(name.textContent).to.equal(p.name);
+    expect(root.querySelector(`[data-tippy-content], [title]`)).to.equal(null);
     expect(root.querySelector(`.wf-map-title-name .wf-map-attempt`)).to.equal(null);
     expect(root.querySelector(`.wf-map-attempt`).textContent).to.equal(`#2`);
   });
 
-  test(`an open block carries the full block and job names, one tooltip each`, async () => {
+  test(`an open block shows the full block and job names with no name tooltips and no measured heights`, async () => {
     const job = { key: `b#0`, id: null, name: `a very long job name`, status: `passed`, startedAt: null, finishedAt: null, reused: false } as Job;
     const block = { id: `b`, name: `a very long block name`, deps: [], jobs: [job] } as Block;
 
     await act(() => render(<BlockCard block={block}/>, root));
 
-    expect(root.querySelector(`.wf-map-block-head`).getAttribute(`data-tippy-content`)).to.equal(`Collapse ${block.name}`);
-    expect(root.querySelector(`.wf-map-block-head [data-tippy-content]`)).to.equal(null);
-    expect(root.querySelector(`.wf-map-block-head`).hasAttribute(`data-tip-if-cut`)).to.equal(false);
-    expect(root.querySelector(`.wf-map-job-name`).getAttribute(`data-tippy-content`)).to.equal(job.name);
-    expect(root.querySelector(`.wf-map-job-name`).hasAttribute(`data-tip-if-cut`)).to.equal(true);
-    expect(root.querySelector(`[title]`)).to.equal(null);
+    expect(root.querySelector(`.wf-map-block-head`).getAttribute(`data-tippy-content`)).to.equal(`Collapse the block`);
+    expect(root.querySelector(`.wf-map-block-head .wf-map-name`).textContent).to.equal(block.name);
+    expect(root.querySelector(`.wf-map-job-name`).textContent).to.equal(job.name);
+    expect(root.querySelectorAll(`.wf-map-name [data-tippy-content], .wf-map-name[data-tippy-content], [title]`)).to.have.length(0);
+    expect(root.querySelector<HTMLElement>(`.wf-map-job`).style.height).to.equal(``);
   });
 
-  test(`a job row is one line tall for a short name and two for a long one`, async () => {
-    const job = (key: string, name: string) => ({ key, id: null, name, status: `passed`, startedAt: null, finishedAt: null, reused: false }) as Job;
-    const block = { id: `b`, name: `build`, deps: [], jobs: [job(`b#0`, `lint`), job(`b#1`, `integration tests against the staging database`)] } as Block;
-
-    await act(() => render(<BlockCard block={block}/>, root));
-
-    const rows = root.querySelectorAll<HTMLElement>(`.wf-map-job`);
-    expect(rows[0].style.height).to.equal(`23px`);
-    expect(rows[1].style.height).to.equal(`39px`);
-  });
-
-  test(`a collapsed block carries the full name on the part that shortens`, async () => {
+  test(`a collapsed block shows the full name, selectable in place`, async () => {
     const block = { id: `b`, name: `a very long block name`, deps: [], jobs: [] } as Block;
 
     await act(() => render(<BlockSummary block={block} onClick={() => undefined}/>, root));
 
     const name = root.querySelector(`.wf-map-summary-name .wf-map-block-name`);
-    expect(name.getAttribute(`data-tippy-content`)).to.equal(block.name);
-    expect(name.hasAttribute(`data-tip-if-cut`)).to.equal(true);
+    expect(name.classList.contains(`wf-map-name`)).to.equal(true);
+    expect(name.hasAttribute(`data-tippy-content`)).to.equal(false);
     expect(name.textContent).to.equal(block.name);
+  });
+
+  test(`a click that ends a text selection inside a block does not toggle it`, async () => {
+    const block = { id: `b`, name: `a very long block name`, deps: [], jobs: [] } as Block;
+    let toggled = 0;
+
+    await act(() => render(<BlockSummary block={block} onClick={() => toggled++}/>, root));
+
+    const button = root.querySelector<HTMLButtonElement>(`.wf-map-summary`);
+    button.click();
+    window.getSelection().selectAllChildren(root.querySelector(`.wf-map-name-text`));
+    button.click();
+    window.getSelection().removeAllRanges();
+    expect(toggled).to.equal(1);
   });
 });

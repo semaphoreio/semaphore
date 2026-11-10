@@ -13,10 +13,17 @@ const workflowWith = (statuses: string[]) => {
 };
 
 describe(`structureKey`, () => {
-  test(`changes when a collapsed block's job counts wrap to a second line`, () => {
+  test(`stays the same when only a collapsed block's job states change`, () => {
     const open = new Set([`p`]);
     const before = structureKey(workflowWith([`passed`, `passed`, `passed`, `passed`, `passed`]), open, new Set());
     const after = structureKey(workflowWith([`failed`, `running`, `queued`, `stopped`, `passed`]), open, new Set());
+    expect(after).to.equal(before);
+  });
+
+  test(`changes when an open block gains a job`, () => {
+    const open = new Set([`p`]);
+    const before = structureKey(workflowWith([`passed`]), open, new Set([`b`]));
+    const after = structureKey(workflowWith([`passed`, `passed`]), open, new Set([`b`]));
     expect(after).to.not.equal(before);
   });
 });

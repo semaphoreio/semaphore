@@ -6,8 +6,8 @@ import { focus, hits, layoutError, popover, rerunPipeline, selected, stopPipelin
 import { MapLayout, Point, layoutMap, promotionLabel } from "./layout";
 import { PromoteButton } from "./promote";
 import { Chips, Search, Stepper } from "./toolbar";
-import { BlockCard, BlockSummary, Counts, Duration, PipelineTitle, StatusBar, StatusIcon } from "./ui";
-import { blockSize, jobRowHeight, jobTop } from "./lines";
+import { BlockCard, BlockSummary, Counts, Duration, Name, PipelineTitle, StatusBar, StatusIcon, selecting } from "./ui";
+import { JOB_ROW_H, blockSize, jobTop } from "./lines";
 
 const CARD = { w: 300, h: 72 };
 
@@ -105,7 +105,7 @@ const CardNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
       tabIndex={0}
       data-popover-trigger={p.errorHtml ? `` : undefined}
       className={`wf-map-card ${selected.value === p.id ? `selected` : ``} ${h.active && !n ? `dim` : ``}`}
-      onClick={(e) => open(e.currentTarget)}
+      onClick={(e) => selecting(e.currentTarget) || open(e.currentTarget)}
       onKeyDown={(e) => (e.key === `Enter` || e.key === ` `) && (e.preventDefault(), open(e.currentTarget))}
     >
       <Handle type="target" id="in" position={Position.Left} isConnectable={false}/>
@@ -147,34 +147,38 @@ const PipelineNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
   const h = hits.value;
   if (!p) return null;
   return (
-    <div className={`wf-map-pipeline ${selected.value === p.id ? `selected` : ``} ${h.active && !h.pipelines.has(p) ? `dim` : ``}`} onClick={() => (selected.value = p.id)}>
+    <div className={`wf-map-pipeline ${selected.value === p.id ? `selected` : ``} ${h.active && !h.pipelines.has(p) ? `dim` : ``}`} onClick={(e) => selecting(e.currentTarget) || (selected.value = p.id)}>
       <Handle type="target" id="in" position={Position.Left} isConnectable={false} style={{ top: 34 }}/>
       <div className="wf-map-pipeline-head">
-        <button
-          className="wf-map-collapse"
-          aria-label={`Collapse ${p.name}`}
-          data-tippy-content="Collapse to a card"
-          onClick={(e) => {
-            e.stopPropagation();
-            aim({ id: p.id, how: `center` });
-            toggle(openPipelines, p.id, false);
-          }}
-        >
-          ▾
-        </button>
-        <StatusIcon status={p.status} size={18}/>
-        <span className="wf-map-pipeline-title">
-          <PipelineTitle p={p}/>
-        </span>
-        <span className="wf-map-pipeline-meta">{p.yamlFile}</span>
-        {p.initJob && (
-          <a className={`wf-map-init-log ${p.initJob.status}`} href={p.initJob.url} onClick={(e) => e.stopPropagation()}>
-            Initialization log
-          </a>
-        )}
-        <Duration start={p.runningAt} end={p.doneAt} running={p.status === `running`}/>
-        <Counts jobs={pipelineJobs(p)}/>
-        <PipelineActions p={p}/>
+        <div className="wf-map-pipeline-row">
+          <button
+            className="wf-map-collapse"
+            aria-label={`Collapse ${p.name}`}
+            data-tippy-content="Collapse to a card"
+            onClick={(e) => {
+              e.stopPropagation();
+              aim({ id: p.id, how: `center` });
+              toggle(openPipelines, p.id, false);
+            }}
+          >
+            ▾
+          </button>
+          <StatusIcon status={p.status} size={18}/>
+          <span className="wf-map-pipeline-title">
+            <PipelineTitle p={p}/>
+          </span>
+          <Duration start={p.runningAt} end={p.doneAt} running={p.status === `running`}/>
+        </div>
+        <div className="wf-map-pipeline-row wf-map-pipeline-sub">
+          <Name className="wf-map-pipeline-meta">{p.yamlFile}</Name>
+          {p.initJob && (
+            <a className={`wf-map-init-log ${p.initJob.status}`} href={p.initJob.url} onClick={(e) => e.stopPropagation()}>
+              Init log
+            </a>
+          )}
+          <Counts jobs={pipelineJobs(p)}/>
+          <PipelineActions p={p} compact/>
+        </div>
       </div>
       <Handle type="source" id="out" position={Position.Right} isConnectable={false} style={{ top: 34 }}/>
     </div>
@@ -242,7 +246,7 @@ const RouteEdge = ({ id, data, source, target }: EdgeProps<Edge<{ points: Point[
       {data.label && data.labelAt && (
         <EdgeLabelRenderer>
           <div className="wf-map-edge-label" style={{ transform: `translate(-50%, -50%) translate(${data.labelAt.x}px, ${data.labelAt.y}px)` }}>
-            {data.label}
+            <Name>{data.label}</Name>
           </div>
         </EdgeLabelRenderer>
       )}
@@ -293,7 +297,7 @@ function build(wf: Workflow, L: MapLayout) {
 export function structureKey(wf: Workflow, open: Set<string>, openB: Set<string>) {
   return wf.pipelines
     .map((p) => {
-      const blocks = open.has(p.id) && p.blocks ? p.blocks.map((b) => `${b.name}:${b.deps.length}:${openB.has(b.id) ? b.jobs.length : `-`}:${blockSize(b, openB.has(b.id)).h}`).join(`,`) : `closed`;
+      const blocks = open.has(p.id) && p.blocks ? p.blocks.map((b) => `${b.name}:${b.deps.length}:${openB.has(b.id) ? b.jobs.length : `-`}`).join(`,`) : `closed`;
       const promotions = p.promotions?.map((promotion) => `${promotion.name}:${promotion.pipelines.length}`).join(`,`) ?? ``;
       return `${p.id}<${p.parent?.id ?? ``}>${blocks}[${promotions}]`;
     })
@@ -333,12 +337,12 @@ const WorkflowMap = () => {
     if (p && P.has(p.id) && (p.blocks === null || (p.blocks.length && !L.pipelines.get(p.id)?.open))) return false;
     const b = boxOf(wf, L, t.id);
     const blk = t.job === undefined ? undefined : wf.blocks.get(t.id);
-    if (!b || (blk && (!blk.jobs[t.job] || b.h < jobTop(blk, t.job)))) return false;
+    if (!b || (blk && (!blk.jobs[t.job] || b.h < jobTop(t.job)))) return false;
     const cx = b.x + b.w / 2;
     if (t.how === `center`) {
       void rf.setCenter(cx, b.y + b.h / 2, { zoom: rf.getZoom(), duration: 350 });
     } else if (blk) {
-      void rf.setCenter(cx, b.y + jobTop(blk, t.job) + jobRowHeight(blk.jobs[t.job]) / 2, { zoom: Math.max(rf.getZoom(), 1), duration: 450 });
+      void rf.setCenter(cx, b.y + jobTop(t.job) + JOB_ROW_H / 2, { zoom: Math.max(rf.getZoom(), 1), duration: 450 });
     } else {
       const pad = p ? 1.12 : 1.6;
       const z = Math.max(0.1, Math.min(1, vw / (b.w * pad), vh / (b.h * pad)));

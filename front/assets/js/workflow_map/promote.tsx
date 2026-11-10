@@ -2,6 +2,7 @@ import { signal } from "@preact/signals";
 import { useEffect, useState } from "preact/hooks";
 import { Pipeline, Promotion } from "./model";
 import { popover, promote, togglePopover } from "./store";
+import { Name } from "./ui";
 
 export const promoting = signal<{ pipeline: Pipeline, promotion: Promotion, } | null>(null);
 
@@ -43,7 +44,7 @@ export const Promotions = ({ p }: { p: Pipeline, }) => (
             {promotion.deployment ? (promotion.deployment.allowed ? `lock_open` : `lock`) : `rocket_launch`}
           </span>
           <span className="wf-map-promotion-text">
-            <span className="wf-map-promotion-name" data-tippy-content={promotion.name} data-tip-if-cut>{promotion.name}</span>
+            <Name className="wf-map-promotion-name">{promotion.name}</Name>
             <span className={`wf-map-promotion-note ${latest?.result === `FAILED` ? `failed` : ``} ${latest ? `` : `fresh`}`}>{blocked ? promotion.deployment.name : note}</span>
           </span>
           <button
