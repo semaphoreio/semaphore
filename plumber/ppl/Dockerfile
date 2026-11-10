@@ -27,8 +27,8 @@ RUN mix local.hex --force --if-missing && \
 
 # install mix dependencies
 # NOTE: the build context is the repository root (see DOCKER_BUILD_PATH in the
-# Makefile) so that feature_provider, which lives outside the plumber/ tree,
-# can be copied into the image.
+# Makefile) so that feature_provider and env_var_policy, which live outside the
+# plumber/ tree, can be copied into the image.
 COPY plumber/ppl/mix.exs plumber/ppl/mix.lock ./
 COPY plumber/block/mix.exs plumber/block/mix.lock ../block/
 COPY plumber/definition_validator/mix.exs plumber/definition_validator/mix.lock ../definition_validator/
@@ -38,6 +38,7 @@ COPY plumber/looper/mix.exs plumber/looper/mix.lock ../looper/
 COPY plumber/proto/mix.exs plumber/proto/mix.lock ../proto/
 COPY plumber/spec/mix.exs plumber/spec/mix.lock ../spec/
 COPY feature_provider ../feature_provider
+COPY env_var_policy ../env_var_policy
 RUN mix deps.get --only $MIX_ENV
 RUN mkdir config
 
