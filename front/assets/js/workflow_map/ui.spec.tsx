@@ -128,4 +128,46 @@ describe(`names the map may shorten`, () => {
       window.getSelection().removeAllRanges();
     });
   });
+  describe(`the copy button on a name`, () => {
+    let copied: string[];
+    const realClipboard = Object.getOwnPropertyDescriptor(window.navigator, `clipboard`);
+
+    beforeEach(() => {
+      copied = [];
+      Object.defineProperty(window.navigator, `clipboard`, { configurable: true, value: { writeText: (t: string) => (copied.push(t), Promise.resolve()) } });
+    });
+
+    afterEach(() => {
+      if (realClipboard) Object.defineProperty(window.navigator, `clipboard`, realClipboard);
+      else delete (window.navigator as { clipboard?: unknown, }).clipboard;
+    });
+
+    test(`copies the full name, says so, and never toggles the block`, async () => {
+      const block = { id: `b`, name: `a very long block name`, deps: [], jobs: [] } as Block;
+      let toggled = 0;
+      await act(() => render(<BlockSummary block={block} onClick={() => toggled++}/>, root));
+
+      await act(async () => {
+        root.querySelector(`.wf-map-copy`).dispatchEvent(new MouseEvent(`click`, { bubbles: true, cancelable: true, detail: 1 }));
+        await Promise.resolve();
+      });
+      await new Promise((r) => setTimeout(r, DOUBLE_CLICK_MS + 20));
+
+      expect(copied).to.deep.equal([block.name]);
+      expect(toggled).to.equal(0);
+      expect(root.querySelector(`.wf-map-copy`).classList.contains(`copied`)).to.equal(true);
+      expect(root.querySelector(`.wf-map-copy`).getAttribute(`aria-label`)).to.equal(`Copied`);
+      expect(root.querySelector(`.wf-map-name`).textContent).to.equal(block.name);
+    });
+
+    test(`in a job row it keeps the browser from opening the job`, async () => {
+      const job = { key: `b#0`, id: `j1`, name: `a very long job name`, status: `passed`, startedAt: null, finishedAt: null, reused: false } as Job;
+      await act(() => render(<JobRow job={job}/>, root));
+
+      const opened = root.querySelector(`.wf-map-copy`).dispatchEvent(new MouseEvent(`click`, { bubbles: true, cancelable: true, detail: 1 }));
+
+      expect(opened).to.equal(false);
+      expect(copied).to.deep.equal([job.name]);
+    });
+  });
 });

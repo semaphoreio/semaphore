@@ -420,6 +420,39 @@
   box-shadow: 0 1px 6px rgba(32, 43, 48, 0.2);
 }
 
+.wf-map-copy {
+  display: none;
+  margin-left: 6px;
+  padding: 1px 2px;
+  border-radius: 3px;
+  vertical-align: -1px;
+  color: #677278;
+  fill: currentColor;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.wf-map-name:hover .wf-map-copy {
+  display: inline-block;
+}
+
+.wf-map-copy:hover {
+  background: #EEF1F2;
+  color: #202B30;
+}
+
+.wf-map-copy.copied {
+  color: var(--wf-map-passed);
+}
+
+.wf-map-copy.copied::after {
+  content: "Copied";
+  margin-left: 3px;
+  font-size: 11px;
+  font-weight: 400;
+}
+
 .react-flow__node:has(.wf-map-name:hover),
 .wf-map-edge-label:has(.wf-map-name:hover) {
   z-index: 1000 !important;

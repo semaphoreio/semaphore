@@ -1,4 +1,5 @@
 import { ComponentChildren } from "preact";
+import { useState } from "preact/hooks";
 import { Block, Job, Pipeline, STATUSES, STATUS_LABEL, Status, blockStatus, blockSummary, countJobs, formatDuration } from "./model";
 import { focus, hits, now, query } from "./store";
 
@@ -62,9 +63,42 @@ export const plainClick = (e: MouseEvent, act: (el: Element) => void) => {
   else act(el);
 };
 
+export const COPIED_MS = 1500;
+
+const CopyName = () => {
+  const [copied, setCopied] = useState(false);
+  return (
+    <span
+      role="button"
+      className={`wf-map-copy ${copied ? `copied` : ``}`}
+      aria-label={copied ? `Copied` : `Copy the name`}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        void navigator.clipboard.writeText(e.currentTarget.parentElement.textContent).then(() => {
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), COPIED_MS);
+        });
+      }}
+    >
+      <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+        {copied ? (
+          <path d="M13.8 3.7 6 11.5 2.2 7.7l1-1L6 9.4l6.8-6.8z"/>
+        ) : (
+          <path d="M5 1h8a1 1 0 0 1 1 1v9h-1.5V2.5H5zM3 4h7a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm.5 1.5v8h6v-8z"/>
+        )}
+      </svg>
+    </span>
+  );
+};
+
 export const Name = ({ className = ``, children }: { className?: string, children: ComponentChildren, }) => (
   <span className={`wf-map-name nopan nodrag ${className}`}>
-    <span className="wf-map-name-text">{children}</span>
+    <span className="wf-map-name-text">
+      {children}
+      <CopyName/>
+    </span>
   </span>
 );
 
