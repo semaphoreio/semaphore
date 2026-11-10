@@ -23,7 +23,11 @@ defmodule FrontWeb.AgentsController do
     user_id = conn.assigns.user_id
     org_id = conn.assigns.organization_id
 
-    activity = Front.ActivityMonitor.load(org_id, user_id)
+    activity =
+      case Front.ActivityMonitor.load(org_id, user_id) do
+        {:error, _} -> Front.ActivityMonitor.empty(org_id)
+        activity -> activity
+      end
 
     conn
     |> render("index.html",

@@ -7,6 +7,11 @@ defmodule Front.ActivityMonitor.Repo do
 
   @max_activity_monitor_pages 10
 
+  # Most active jobs one load collects from zebra, the same as the previous
+  # single lookup (10 pages of 500).
+  @max_activity_monitor_jobs 5_000
+  @jobs_page_size 500
+
   defmodule Data do
     use TypedStruct
 
@@ -20,59 +25,234 @@ defmodule Front.ActivityMonitor.Repo do
     end
   end
 
-  @spec load(String.t(), String.t(), Map.t()) :: {:ok, Data.t()} | {:error, String.t()}
+  @cache :activity_monitor_cache
+
+  # Upper bound for the debug sessions lookup (its pages plus the describe of
+  # the debugged pipelines).
+  @debugs_timeout 60_000
+  @jobs_timeout 30_000
+
+  # Default hard cap for one org-wide fetch. Cachex runs fetch fallbacks in a
+  # bare process and waiters block until it reports back, so the fallback must
+  # always return.
+  @org_activity_timeout 90_000
+
+  # Only what the activity page and the agent stats read is cached. Every
+  # cache read copies the entry, so raw pipelines and jobs would cost far more
+  # memory and time than the page needs.
+  @pipeline_fields [
+    :ppl_id,
+    :wf_id,
+    :name,
+    :state,
+    :project_id,
+    :branch_id,
+    :git_ref,
+    :git_ref_type,
+    :commit_message,
+    :commiter_username,
+    :commiter_avatar_url,
+    :requester_id,
+    :promoter_id,
+    :priority,
+    :created_at,
+    :blocks
+  ]
+  @block_job_fields [:status, :state, :machine_type]
+  @job_fields [:state, :machine_type, :self_hosted]
+
+  def cache_name, do: @cache
+
+  @spec load(String.t(), String.t(), Map.t()) :: {:ok, Data.t()} | {:error, any()}
   def load(org_id, user_id, tracing_headers) do
-    fetch_organization = Async.run(fn -> describe_organization(org_id, tracing_headers) end)
+    fetch_accessible_ids =
+      Async.run(fn -> Front.RBAC.Members.list_accessible_projects(org_id, user_id) end)
 
-    fetch_accessable_projects =
-      Async.run(fn -> list_projects(org_id, user_id, tracing_headers) end)
+    case load_org_activity(org_id, tracing_headers) do
+      {:ok, activity} ->
+        accessable_projects =
+          filter_accessible_projects(activity.projects, await(fetch_accessible_ids))
 
-    fetch_active_pipelines = Async.run(fn -> list_pipeline_activity(org_id, tracing_headers) end)
+        {:ok,
+         struct!(Data,
+           org: activity.org,
+           accessable_projects: accessable_projects,
+           users: activity.users,
+           active_pipelines: activity.active_pipelines,
+           active_jobs: activity.active_jobs,
+           active_debug_sessions: activity.active_debug_sessions
+         )}
 
-    fetch_debugs = Async.run(fn -> list_active_debugs(org_id, tracing_headers) end)
-
-    with {:ok, org} <- await(fetch_organization),
-         {:ok, accessable_projects} <- await(fetch_accessable_projects),
-         {:ok, active_pipelines} <- await(fetch_active_pipelines),
-         {:ok, debug_sessions} <- await(fetch_debugs),
-         ppl_ids <- Enum.map(active_pipelines, fn %{ppl_id: id} -> id end),
-         debugged_ppl_ids <- Enum.map(debug_sessions, fn debug -> debug.debugged_job.ppl_id end),
-         fetch_users <-
-           Async.run(fn -> list_authors_of(active_pipelines, debug_sessions, tracing_headers) end),
-         fetch_jobs <- Async.run(fn -> list_active_jobs(tracing_headers, org_id, ppl_ids) end),
-         fetch_debugged_ppls <-
-           Async.run(fn -> describe_many_ppls(debugged_ppl_ids, tracing_headers) end),
-         {:ok, users} <- await(fetch_users),
-         {:ok, active_jobs} <- await(fetch_jobs),
-         {:ok, debugged_ppls} <- await(fetch_debugged_ppls),
-         {:ok, detailed_debugs} <- merge_pipeline_data(debug_sessions, debugged_ppls),
-         {:ok, detailed_pipelines} <- combine_data(active_pipelines, active_jobs) do
-      {:ok,
-       struct!(Data,
-         org: org,
-         accessable_projects: accessable_projects,
-         users: users,
-         active_pipelines: detailed_pipelines,
-         active_jobs: active_jobs,
-         active_debug_sessions: detailed_debugs
-       )}
-    else
       {:error, error} ->
-        Logger.error("Failed to collect data for activity monitor page: #{inspect(error)}")
-        {:error, error}
-
-      error ->
+        Task.shutdown(fetch_accessible_ids.task, :brutal_kill)
         Logger.error("Failed to collect data for activity monitor page: #{inspect(error)}")
         {:error, error}
     end
   end
 
-  defp await(func) do
-    case Async.await(func) do
+  @doc """
+  Loads the organization-wide activity data (everything except the per-user
+  project visibility). The result is cached per organization for a few
+  seconds, and concurrent requests for the same organization share a single
+  in-flight fetch. Errors are never cached.
+  """
+  def load_org_activity(org_id, tracing_headers) do
+    fallback = fn ->
+      case fetch_org_activity_bounded(org_id, tracing_headers) do
+        {:ok, activity} -> {:commit, {:ok, activity}}
+        {:error, _} = error -> {:ignore, error}
+      end
+    end
+
+    case Cachex.fetch(@cache, org_id, fallback) do
+      {status, {:ok, activity}} when status in [:ok, :commit] -> {:ok, activity}
+      {:ignore, {:error, error}} -> {:error, error}
+      {:error, error} -> {:error, error}
+      other -> {:error, other}
+    end
+  end
+
+  defp fetch_org_activity_bounded(org_id, tracing_headers) do
+    with_task_supervisor(fn sup ->
+      task =
+        Task.Supervisor.async_nolink(sup, fn ->
+          fetch_org_activity(sup, org_id, tracing_headers)
+        end)
+
+      case Task.yield(task, org_activity_timeout()) || Task.shutdown(task, :brutal_kill) do
+        {:ok, {:ok, activity}} -> {:ok, activity}
+        {:ok, {:error, error}} -> {:error, error}
+        {:ok, other} -> {:error, other}
+        {:exit, reason} -> {:error, {:exit, reason}}
+        nil -> {:error, :timeout}
+      end
+    end)
+  catch
+    kind, reason -> {:error, {kind, reason}}
+  end
+
+  # Set from ACTIVITY_MONITOR_FETCH_TIMEOUT_MS. Anything that isn't a positive
+  # integer falls back to the default.
+  defp org_activity_timeout do
+    case Application.get_env(:front, :activity_monitor_fetch_timeout_ms) do
+      ms when is_integer(ms) and ms > 0 ->
+        ms
+
+      ms when is_binary(ms) ->
+        case Integer.parse(String.trim(ms)) do
+          {parsed, ""} when parsed > 0 -> parsed
+          _ -> invalid_fetch_timeout(ms)
+        end
+
+      nil ->
+        @org_activity_timeout
+
+      ms ->
+        invalid_fetch_timeout(ms)
+    end
+  end
+
+  defp invalid_fetch_timeout(value) do
+    Logger.warning(
+      "Invalid activity monitor fetch timeout #{inspect(value)}, using #{@org_activity_timeout}ms"
+    )
+
+    @org_activity_timeout
+  end
+
+  # Every task started for one fetch runs under a supervisor owned by that
+  # fetch, and the supervisor is stopped when the fetch ends: with a result,
+  # an error, or the cap. Nothing a finished fetch started keeps calling
+  # plumber or zebra in the background.
+  defp with_task_supervisor(fun) do
+    {:ok, sup} = Task.Supervisor.start_link()
+
+    try do
+      fun.(sup)
+    after
+      stop_task_supervisor(sup)
+    end
+  end
+
+  # A supervisor that is already gone has nothing left to stop.
+  defp stop_task_supervisor(sup) do
+    Supervisor.stop(sup)
+  catch
+    :exit, _ -> :ok
+  end
+
+  defp start_task(sup, fun) do
+    %Async{
+      task: Task.Supervisor.async_nolink(sup, fun),
+      observe: false,
+      started_at: :os.system_time(:millisecond)
+    }
+  end
+
+  defp fetch_org_activity(sup, org_id, tracing_headers) do
+    fetch_organization = start_task(sup, fn -> describe_organization(org_id, tracing_headers) end)
+
+    fetch_projects = start_task(sup, fn -> list_org_projects(org_id, tracing_headers) end)
+    fetch_debugs = start_task(sup, fn -> list_detailed_debugs(org_id, tracing_headers) end)
+
+    # The organization and projects lookups are fast; a failure there stops
+    # the fetch before any pipeline page is requested.
+    with {:ok, org} <- await(fetch_organization),
+         {:ok, projects} <- await(fetch_projects),
+         {:ok, active_pipelines, job_tasks} <-
+           start_pipelines_and_jobs(sup, org_id, tracing_headers, new_job_budget()),
+         {:ok, detailed_debugs} <- await(fetch_debugs, @debugs_timeout),
+         # Users are looked up while the job lookups are still running.
+         fetch_users <-
+           start_task(sup, fn ->
+             list_authors_of(active_pipelines, detailed_debugs, tracing_headers)
+           end),
+         {:ok, active_jobs} <- await_jobs(job_tasks),
+         {:ok, users} <- await(fetch_users),
+         {:ok, detailed_pipelines} <- combine_data(active_pipelines, active_jobs) do
+      {:ok,
+       %{
+         org: org,
+         projects: projects,
+         users: users,
+         active_pipelines: slim_pipelines(detailed_pipelines),
+         active_jobs: Enum.map(active_jobs, &Map.take(&1, @job_fields)),
+         active_debug_sessions: detailed_debugs
+       }}
+    else
+      {:error, error} -> {:error, error}
+      error -> {:error, error}
+    end
+  end
+
+  defp slim_pipelines(pipelines) do
+    Enum.map(pipelines, fn pipeline ->
+      pipeline
+      |> Map.take(@pipeline_fields)
+      |> Map.put(:blocks, Enum.map(pipeline.blocks, &slim_block/1))
+    end)
+  end
+
+  defp slim_block(block) do
+    block
+    |> Map.take([:state])
+    |> Map.put(:jobs, Enum.map(block.jobs, &Map.take(&1, @block_job_fields)))
+  end
+
+  defp await(task, timeout \\ 30_000) do
+    case Async.await(task, timeout: timeout) do
       {:ok, response} -> response
+      {:exit, reason} -> {:error, {:exit, reason}}
       error -> error
     end
   end
+
+  defp filter_accessible_projects(projects, {:ok, accessible_project_ids}) do
+    accessible = MapSet.new(accessible_project_ids)
+    Enum.filter(projects, fn project -> MapSet.member?(accessible, project.id) end)
+  end
+
+  defp filter_accessible_projects(_projects, _error), do: []
 
   # Describe organization
 
@@ -103,7 +283,7 @@ defmodule Front.ActivityMonitor.Repo do
 
   # List projects
 
-  def list_projects(org_id, user_id, tracing_headers) do
+  defp list_org_projects(org_id, tracing_headers) do
     Watchman.benchmark("activity_monitor.list_projects", fn ->
       req = InternalApi.Projecthub.RequestMeta.new(org_id: org_id)
       pagination = InternalApi.Projecthub.PaginationRequest.new(page: 1, page_size: 300)
@@ -116,26 +296,25 @@ defmodule Front.ActivityMonitor.Repo do
           pagination: pagination
         )
 
-      {:ok, res} =
-        Watchman.benchmark("activity_monitor.list_unauthorized_projects", fn ->
-          InternalApi.Projecthub.ProjectService.Stub.list(
-            channel,
-            list_request,
-            timeout: 30_000,
-            metadata: tracing_headers
-          )
-        end)
+      Watchman.benchmark("activity_monitor.list_unauthorized_projects", fn ->
+        InternalApi.Projecthub.ProjectService.Stub.list(
+          channel,
+          list_request,
+          timeout: 30_000,
+          metadata: tracing_headers
+        )
+      end)
+      |> case do
+        {:ok, res} ->
+          if res.metadata.status.code == InternalApi.ResponseStatus.Code.value(:OK) do
+            {:ok, construct_list(res.projects)}
+          else
+            Logger.info("Projecthub list response: #{inspect(res)}")
+            {:error, res.metadata.status}
+          end
 
-      if res.metadata.status.code == InternalApi.ResponseStatus.Code.value(:OK) do
-        projects =
-          res.projects
-          |> construct_list()
-          |> Front.RBAC.Members.filter_projects(org_id, user_id)
-
-        {:ok, projects}
-      else
-        Logger.info("Projecthub list response: #{inspect(res)}")
-        {:error, res.metadata.status}
+        {:error, error} ->
+          {:error, error}
       end
     end)
   end
@@ -152,7 +331,121 @@ defmodule Front.ActivityMonitor.Repo do
 
   # List active pipelines
 
-  def list_pipeline_activity(org_id, tracing_headers) do
+  @doc """
+  Lists active pipelines and, while paging through them, starts the job
+  lookup for each page right away. Pipeline pages are chained by page token,
+  so they stay sequential, but the job lookups run concurrently with the
+  remaining pipeline pages and with each other. All job lookups share one
+  zebra page budget, the same as a single lookup for every pipeline.
+  """
+  def list_pipelines_and_jobs(org_id, tracing_headers) do
+    with_task_supervisor(fn sup ->
+      with {:ok, pipelines, job_tasks} <-
+             start_pipelines_and_jobs(sup, org_id, tracing_headers, new_job_budget()),
+           {:ok, jobs} <- await_jobs(job_tasks) do
+        {:ok, {pipelines, jobs}}
+      end
+    end)
+  end
+
+  defp start_pipelines_and_jobs(sup, org_id, tracing_headers, budget) do
+    start_jobs = fn ppl_ids ->
+      start_task(sup, fn -> list_active_jobs(tracing_headers, org_id, ppl_ids, budget) end)
+    end
+
+    on_page = fn
+      [] -> nil
+      pipelines -> start_jobs.(ppl_ids_of(pipelines))
+    end
+
+    with {:ok, pages} <- list_pipeline_pages(org_id, tracing_headers, on_page) do
+      pipelines = Enum.flat_map(pages, fn {pipelines, _} -> pipelines end)
+
+      job_tasks =
+        case pipelines do
+          # Without pipelines, keep asking Zebra for all active jobs of the
+          # org (empty ppl_ids means no pipeline filter).
+          [] -> [start_jobs.([])]
+          _ -> pages |> Enum.map(fn {_, task} -> task end) |> Enum.reject(&is_nil/1)
+        end
+
+      {:ok, pipelines, job_tasks}
+    end
+  end
+
+  defp ppl_ids_of(pipelines), do: Enum.map(pipelines, fn %{ppl_id: id} -> id end)
+
+  # Shared by the job lookups of one load: slot 1 counts the jobs received,
+  # slot 2 records that the budget ran out (logged once).
+  defp new_job_budget, do: :atomics.new(2, signed: false)
+
+  # A lookup's first page is always fetched, so no pipeline page goes without
+  # jobs; further pages only while the load has fewer than
+  # @max_activity_monitor_jobs jobs.
+  defp take_job_page(nil, _page_token), do: true
+  defp take_job_page(_budget, ""), do: true
+
+  defp take_job_page(budget, _page_token) do
+    if :atomics.get(budget, 1) < @max_activity_monitor_jobs do
+      true
+    else
+      if :atomics.compare_exchange(budget, 2, 0, 1) == :ok do
+        Logger.error(
+          "Activity monitor job lookup stopped: reached max job count (max_jobs=#{@max_activity_monitor_jobs})"
+        )
+      end
+
+      false
+    end
+  end
+
+  defp count_jobs(nil, _jobs), do: :ok
+  defp count_jobs(budget, jobs), do: :atomics.add(budget, 1, length(jobs))
+
+  defp await_jobs(job_tasks) do
+    results =
+      job_tasks
+      |> Enum.map(fn async -> async.task end)
+      |> Task.yield_many(@jobs_timeout)
+
+    Enum.each(results, fn
+      {task, nil} -> Task.shutdown(task, :brutal_kill)
+      _ -> :ok
+    end)
+
+    results
+    |> Enum.reduce_while({:ok, []}, fn
+      {_task, {:ok, {:ok, jobs}}}, {:ok, acc} -> {:cont, {:ok, [jobs | acc]}}
+      {_task, {:ok, {:error, error}}}, _ -> {:halt, {:error, error}}
+      {_task, {:exit, reason}}, _ -> {:halt, {:error, {:exit, reason}}}
+      {_task, nil}, _ -> {:halt, {:error, :timeout}}
+    end)
+    |> case do
+      {:ok, pages} ->
+        # Duplicated pipelines across pages would fetch the same jobs twice.
+        {:ok, pages |> Enum.reverse() |> cap_jobs() |> Enum.uniq_by(&Map.get(&1, :id))}
+
+      error ->
+        error
+    end
+  end
+
+  # Lookups running in parallel can overshoot the job budget by a page each.
+  # Keep every lookup's first page, then fill the rest of the budget with the
+  # later pages, in pipeline page order.
+  defp cap_jobs(jobs_per_lookup) do
+    {first_pages, later_pages} =
+      jobs_per_lookup
+      |> Enum.map(&Enum.split(&1, @jobs_page_size))
+      |> Enum.unzip()
+
+    first_pages = Enum.concat(first_pages)
+    room = max(@max_activity_monitor_jobs - length(first_pages), 0)
+
+    first_pages ++ Enum.take(Enum.concat(later_pages), room)
+  end
+
+  defp list_pipeline_pages(org_id, tracing_headers, on_page) do
     alias InternalApi.Plumber.ListActivityRequest, as: Req
     alias InternalApi.Plumber.PipelineService
 
@@ -175,8 +468,9 @@ defmodule Front.ActivityMonitor.Repo do
         case PipelineService.Stub.list_activity(channel, request, options) do
           {:ok, response} ->
             page = Proto.to_map!(response, transformations: tf_map())
+            pipelines = Map.get(page, :pipelines, [])
 
-            {:ok, Map.get(page, :pipelines, []), Map.get(page, :next_page_token, "")}
+            {:ok, [{pipelines, on_page.(pipelines)}], Map.get(page, :next_page_token, "")}
 
           {:error, error} ->
             {:error, error}
@@ -228,6 +522,22 @@ defmodule Front.ActivityMonitor.Repo do
   defp extract_debugs_page(%{status: %{message: msg}}), do: {:error, msg}
   defp extract_debugs_page(error), do: {:error, error}
 
+  def list_detailed_debugs(org_id, tracing_headers) do
+    with {:ok, debug_sessions} <- list_active_debugs(org_id, tracing_headers),
+         {:ok, debugged_ppls} <- describe_debugged_ppls(debug_sessions, tracing_headers) do
+      merge_pipeline_data(debug_sessions, debugged_ppls)
+    end
+  end
+
+  defp describe_debugged_ppls([], _tracing_headers), do: {:ok, []}
+
+  defp describe_debugged_ppls(debug_sessions, tracing_headers) do
+    debug_sessions
+    |> Enum.map(fn debug -> debug.debugged_job.ppl_id end)
+    |> Enum.uniq()
+    |> describe_many_ppls(tracing_headers)
+  end
+
   # Describe_many pipelines which jobs are being debugged
 
   def describe_many_ppls(debugged_ppl_ids, tracing_headers) do
@@ -260,11 +570,11 @@ defmodule Front.ActivityMonitor.Repo do
 
   def list_authors_of(active_pipelines, debug_sessions, tracing_headers) do
     active_pipelines
-    |> Enum.reduce([], fn ppl, acc ->
+    |> Enum.flat_map(fn ppl ->
       if ppl.promoter_id != "" do
-        acc ++ [ppl.requester_id, ppl.promoter_id]
+        [ppl.requester_id, ppl.promoter_id]
       else
-        acc ++ [ppl.requester_id]
+        [ppl.requester_id]
       end
     end)
     |> Enum.concat(Enum.map(debug_sessions, fn debug -> debug.debug_user_id end))
@@ -283,10 +593,7 @@ defmodule Front.ActivityMonitor.Repo do
 
   # List jobs
 
-  def list_active_jobs(tracing_headers, org_id, ppl_ids) do
-    alias InternalApi.ServerFarm.Job.JobService
-    alias InternalApi.ServerFarm.Job.ListRequest
-
+  def list_active_jobs(tracing_headers, org_id, ppl_ids, budget \\ nil) do
     Watchman.benchmark("activity_monitor.list_active_jobs", fn ->
       url = Application.fetch_env!(:front, :job_api_grpc_endpoint)
       {:ok, channel} = GRPC.Stub.connect(url)
@@ -294,29 +601,44 @@ defmodule Front.ActivityMonitor.Repo do
       options = [timeout: 30_000, metadata: tracing_headers]
 
       list_all_pages(fn page_token ->
-        request =
-          %{
-            page_size: 500,
-            page_token: page_token,
-            order: :BY_CREATION_TIME_DESC,
-            organization_id: org_id,
-            ppl_ids: ppl_ids,
-            only_debug_jobs: false,
-            job_states: [:PENDING, :ENQUEUED, :SCHEDULED, :STARTED]
-          }
-          |> Proto.deep_new!(ListRequest)
-
-        case JobService.Stub.list(channel, request, options) do
-          {:ok, response} ->
-            response
-            |> Proto.to_map!(transformations: tf_map())
-            |> extract_jobs_page()
-
-          {:error, error} ->
-            {:error, error}
+        if take_job_page(budget, page_token) do
+          with {:ok, jobs, next_page_token} <-
+                 fetch_jobs_page(channel, options, org_id, ppl_ids, page_token) do
+            count_jobs(budget, jobs)
+            {:ok, jobs, next_page_token}
+          end
+        else
+          {:ok, [], ""}
         end
       end)
     end)
+  end
+
+  defp fetch_jobs_page(channel, options, org_id, ppl_ids, page_token) do
+    alias InternalApi.ServerFarm.Job.JobService
+    alias InternalApi.ServerFarm.Job.ListRequest
+
+    request =
+      %{
+        page_size: @jobs_page_size,
+        page_token: page_token,
+        order: :BY_CREATION_TIME_DESC,
+        organization_id: org_id,
+        ppl_ids: ppl_ids,
+        only_debug_jobs: false,
+        job_states: [:PENDING, :ENQUEUED, :SCHEDULED, :STARTED]
+      }
+      |> Proto.deep_new!(ListRequest)
+
+    case JobService.Stub.list(channel, request, options) do
+      {:ok, response} ->
+        response
+        |> Proto.to_map!(transformations: tf_map())
+        |> extract_jobs_page()
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   defp tf_map, do: %{Google.Protobuf.Timestamp => {__MODULE__, :timestamp_to_datetime}}
@@ -440,9 +762,11 @@ defmodule Front.ActivityMonitor.Repo do
   # Merge debug_sessions and debugged_pipelines data
 
   def merge_pipeline_data(debug_sessions, debugged_ppls) do
+    ppls_by_id = index_first_by(debugged_ppls, fn ppl -> ppl.ppl_id end)
+
     debug_sessions
     |> Enum.map(fn debug = %{debugged_job: debugged_job} ->
-      debug_ppl = Enum.find(debugged_ppls, fn ppl -> ppl.ppl_id == debugged_job.ppl_id end)
+      debug_ppl = Map.get(ppls_by_id, debugged_job.ppl_id)
 
       debugged_job = Map.put(debugged_job, :pipeline, debug_ppl)
 
@@ -458,6 +782,8 @@ defmodule Front.ActivityMonitor.Repo do
   status and ids with full job description received from Zebra
   """
   def combine_data(active_pipelines, active_jobs) do
+    jobs_by_key = Enum.group_by(active_jobs, fn job -> {job.ppl_id, job.name, job.index} end)
+
     active_pipelines
     |> Enum.map(fn pipeline ->
       blocks =
@@ -465,11 +791,11 @@ defmodule Front.ActivityMonitor.Repo do
         |> Enum.map(fn block ->
           {jobs, _} =
             block.jobs
-            |> Enum.reduce({[], active_jobs}, fn job, {block_jobs, full_jobs} ->
-              replace_job(pipeline.ppl_id, job, block_jobs, full_jobs)
+            |> Enum.reduce({[], MapSet.new()}, fn job, {block_jobs, used_ids} ->
+              replace_job(pipeline.ppl_id, job, block_jobs, {jobs_by_key, used_ids})
             end)
 
-          block |> Map.put(:jobs, jobs)
+          block |> Map.put(:jobs, Enum.reverse(jobs))
         end)
 
       pipeline |> Map.put(:blocks, blocks)
@@ -477,20 +803,21 @@ defmodule Front.ActivityMonitor.Repo do
     |> ToTuple.ok()
   end
 
-  defp replace_job(ppl_id, p_job = %{status: "scheduled"}, block_jobs, full_jobs) do
+  # Within a block, each Zebra job is used at most once (tracked by id), and
+  # the first matching job in Zebra order wins.
+  defp replace_job(ppl_id, p_job = %{status: "scheduled"}, block_jobs, {jobs_by_key, used_ids}) do
     full_job =
-      Enum.find(full_jobs, p_job, fn job ->
-        job.ppl_id == ppl_id and job.name == p_job.name and job.index == p_job.index
-      end)
+      jobs_by_key
+      |> Map.get({ppl_id, p_job.name, p_job.index}, [])
+      |> Enum.find(p_job, fn job -> not MapSet.member?(used_ids, Map.get(job, :id, "")) end)
 
-    block_jobs = block_jobs ++ [full_job]
-
-    full_jobs =
-      Enum.reject(full_jobs, fn job -> Map.get(job, :id, "") == Map.get(full_job, :id) end)
-
-    {block_jobs, full_jobs}
+    {[full_job | block_jobs], MapSet.put(used_ids, Map.get(full_job, :id))}
   end
 
-  defp replace_job(_ppl_id, job = %{status: "pending"}, block_jobs, full_jobs),
-    do: {block_jobs ++ [job], full_jobs}
+  defp replace_job(_ppl_id, job = %{status: "pending"}, block_jobs, {_jobs_by_key, used_ids}),
+    do: {[job | block_jobs], used_ids}
+
+  defp index_first_by(entries, key_fun) do
+    Enum.reduce(entries, %{}, fn entry, acc -> Map.put_new(acc, key_fun.(entry), entry) end)
+  end
 end
