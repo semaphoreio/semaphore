@@ -1,11 +1,25 @@
 defmodule Notifications.Util.Transforms do
   def decode_spec(spec, Semaphore.Notifications.V1alpha.Notification.Spec) do
-    transformations = %{
+    status = %{
       Semaphore.Notifications.V1alpha.Notification.Spec.Rule.Notify.Status =>
-        {__MODULE__, :public_n_to_atom},
-      Semaphore.Notifications.V1alpha.Notification.Spec.Rule.Notify.Email =>
-        {__MODULE__, :public_nil_to_email}
+        {__MODULE__, :public_n_to_atom}
     }
+
+    transformations =
+      Map.merge(status, %{
+        Semaphore.Notifications.V1alpha.Notification.Spec.Rule.Notify.Email =>
+          {__MODULE__, :public_nil_to_email},
+        Semaphore.Notifications.V1alpha.Notification.Spec.Rule.Notify.Slack =>
+          empty_if_nil(
+            Semaphore.Notifications.V1alpha.Notification.Spec.Rule.Notify.Slack,
+            status
+          ),
+        Semaphore.Notifications.V1alpha.Notification.Spec.Rule.Notify.Webhook =>
+          empty_if_nil(
+            Semaphore.Notifications.V1alpha.Notification.Spec.Rule.Notify.Webhook,
+            status
+          )
+      })
 
     Util.Proto.deep_new!(
       Semaphore.Notifications.V1alpha.Notification.Spec,
@@ -16,14 +30,22 @@ defmodule Notifications.Util.Transforms do
   end
 
   def decode_spec(rules, InternalApi.Notifications.Notification.Rule) do
-    transformations = %{
+    status = %{
       InternalApi.Notifications.Notification.Rule.Notify.Status =>
-        {__MODULE__, :private_n_to_atom},
-      InternalApi.Notifications.Notification.Rule.Notify.Email =>
-        {__MODULE__, :private_nil_to_email},
-      InternalApi.Notifications.Notification.Rule.Filter.Results =>
         {__MODULE__, :private_n_to_atom}
     }
+
+    transformations =
+      Map.merge(status, %{
+        InternalApi.Notifications.Notification.Rule.Notify.Email =>
+          {__MODULE__, :private_nil_to_email},
+        InternalApi.Notifications.Notification.Rule.Notify.Slack =>
+          empty_if_nil(InternalApi.Notifications.Notification.Rule.Notify.Slack, status),
+        InternalApi.Notifications.Notification.Rule.Notify.Webhook =>
+          empty_if_nil(InternalApi.Notifications.Notification.Rule.Notify.Webhook, status),
+        InternalApi.Notifications.Notification.Rule.Filter.Results =>
+          {__MODULE__, :private_n_to_atom}
+      })
 
     Enum.map(rules, fn rule ->
       Util.Proto.deep_new!(
@@ -92,6 +114,19 @@ defmodule Notifications.Util.Transforms do
     }
 
     Util.Proto.to_map!(proto, string_keys: true, transformations: tf)
+  end
+
+  defp empty_if_nil(module, transformations) do
+    fn
+      _, nil ->
+        module.new()
+
+      _, value ->
+        Util.Proto.deep_new!(module, value,
+          string_keys_to_atoms: true,
+          transformations: transformations
+        )
+    end
   end
 
   def atom_to_string(_name, value) do
