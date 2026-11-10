@@ -5,7 +5,7 @@ defmodule FrontWeb.ServiceAccountController do
   alias Front.{Audit, Models}
   alias FrontWeb.Plugs.{FetchPermissions, PageAccess, FeatureEnabled}
 
-  @manage ~w(create update delete regenerate_token)a
+  @manage ~w(create update delete regenerate_token take_ownership release_ownership)a
 
   plug(FetchPermissions, scope: "org")
   plug(PageAccess, permissions: "organization.service_accounts.view")
@@ -118,7 +118,7 @@ defmodule FrontWeb.ServiceAccountController do
     org_id = conn.assigns.organization_id
     user_id = conn.assigns.user_id
 
-    Models.ServiceAccount.regenerate_token(service_account_id, org_id)
+    Models.ServiceAccount.regenerate_token(service_account_id, org_id, user_id)
     |> case do
       {:ok, {service_account, api_token}} ->
         conn
@@ -131,6 +131,69 @@ defmodule FrontWeb.ServiceAccountController do
         |> Audit.log()
 
         json(conn, %{api_token: api_token})
+
+      {:error, message} ->
+        conn
+        |> put_status(422)
+        |> json(%{error: message})
+    end
+  end
+
+  @doc """
+  Makes the signed-in user the owner of a service account.
+
+  There is no way to name someone else: the account goes on to use its owner's access to
+  repositories, so taking it on is the owner's own call.
+  """
+  def take_ownership(conn, %{"id" => service_account_id}) do
+    org_id = conn.assigns.organization_id
+    user_id = conn.assigns.user_id
+
+    Models.ServiceAccount.take_ownership(service_account_id, org_id, user_id)
+    |> case do
+      {:ok, service_account} ->
+        conn
+        |> Audit.new(:ServiceAccount, :Modified)
+        |> Audit.add(resource_id: service_account.id)
+        |> Audit.add(resource_name: service_account.name)
+        |> Audit.add(description: "Service account owner changed")
+        |> Audit.metadata(organization_id: org_id)
+        |> Audit.metadata(user_id: user_id)
+        |> Audit.metadata(owner_id: user_id)
+        |> Audit.log()
+
+        render(conn, "show.json", service_account: service_account)
+
+      {:error, message} ->
+        conn
+        |> put_status(422)
+        |> json(%{error: message})
+    end
+  end
+
+  @doc """
+  Gives up ownership of a service account.
+
+  Guard accepts this only from the current owner, so there is nothing to name here either.
+  """
+  def release_ownership(conn, %{"id" => service_account_id}) do
+    org_id = conn.assigns.organization_id
+    user_id = conn.assigns.user_id
+
+    Models.ServiceAccount.release_ownership(service_account_id, org_id, user_id)
+    |> case do
+      {:ok, service_account} ->
+        conn
+        |> Audit.new(:ServiceAccount, :Modified)
+        |> Audit.add(resource_id: service_account.id)
+        |> Audit.add(resource_name: service_account.name)
+        |> Audit.add(description: "Service account owner changed")
+        |> Audit.metadata(organization_id: org_id)
+        |> Audit.metadata(user_id: user_id)
+        |> Audit.metadata(released_by: user_id)
+        |> Audit.log()
+
+        render(conn, "show.json", service_account: service_account)
 
       {:error, message} ->
         conn
