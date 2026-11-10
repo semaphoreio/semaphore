@@ -4,7 +4,7 @@ import { render } from "preact";
 import { act } from "preact/test-utils";
 
 import { Block, Job, Pipeline } from "./model";
-import { BlockCard, BlockSummary, PipelineTitle } from "./ui";
+import { BlockCard, BlockSummary, DOUBLE_CLICK_MS, JobRow, PipelineTitle } from "./ui";
 
 describe(`names the map may shorten`, () => {
   let root: HTMLElement;
@@ -69,5 +69,63 @@ describe(`names the map may shorten`, () => {
     button.click();
     window.getSelection().removeAllRanges();
     expect(toggled).to.equal(1);
+  });
+  describe(`a click on a node acts only when it selects no text`, () => {
+    const block = { id: `b`, name: `a very long block name`, deps: [], jobs: [] } as Block;
+    const wait = () => new Promise((r) => setTimeout(r, DOUBLE_CLICK_MS + 20));
+    const click = (el: Element, init: MouseEventInit = {}) => {
+      el.dispatchEvent(new MouseEvent(`pointerdown`, { bubbles: true, clientX: 10, clientY: 10 }));
+      return el.dispatchEvent(new MouseEvent(`click`, { bubbles: true, cancelable: true, detail: 1, clientX: 10, clientY: 10, ...init }));
+    };
+    let toggled: number;
+
+    beforeEach(async () => {
+      toggled = 0;
+      await act(() => render(<BlockSummary block={block} onClick={() => toggled++}/>, root));
+    });
+
+    test(`a plain click outside the name acts at once`, () => {
+      click(root.querySelector(`.wf-map-summary-meta`));
+      expect(toggled).to.equal(1);
+    });
+
+    test(`a plain click on the name acts after the double-click interval`, async () => {
+      click(root.querySelector(`.wf-map-name-text`));
+      expect(toggled).to.equal(0);
+      await wait();
+      expect(toggled).to.equal(1);
+    });
+
+    test(`a double or triple click on the name never acts`, async () => {
+      const name = root.querySelector(`.wf-map-name-text`);
+      click(name);
+      click(name, { detail: 2 });
+      click(name, { detail: 3 });
+      await wait();
+      expect(toggled).to.equal(0);
+    });
+
+    test(`a keyboard click acts at once, wherever the pointer was`, () => {
+      root.querySelector(`.wf-map-name-text`).dispatchEvent(new MouseEvent(`pointerdown`, { bubbles: true, clientX: 300, clientY: 300 }));
+      root.querySelector(`.wf-map-summary`).dispatchEvent(new MouseEvent(`click`, { bubbles: true, detail: 0 }));
+      expect(toggled).to.equal(1);
+    });
+
+    test(`a drag that ends on the node never acts, even when it selected nothing`, async () => {
+      click(root.querySelector(`.wf-map-name-text`), { clientX: 60 });
+      await wait();
+      expect(toggled).to.equal(0);
+    });
+
+    test(`a job row keeps a modifier click for the browser and swallows a selecting click`, async () => {
+      const job = { key: `b#0`, id: `j1`, name: `a very long job name`, status: `passed`, startedAt: null, finishedAt: null, reused: false } as Job;
+      await act(() => render(<JobRow job={job}/>, root));
+      const row = root.querySelector(`.wf-map-job`);
+
+      expect(click(row, { metaKey: true })).to.equal(true);
+      window.getSelection().selectAllChildren(root.querySelector(`.wf-map-name-text`));
+      expect(click(row)).to.equal(false);
+      window.getSelection().removeAllRanges();
+    });
   });
 });

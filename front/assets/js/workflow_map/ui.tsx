@@ -47,9 +47,19 @@ export const Highlight = ({ text }: { text: string, }) => {
   );
 };
 
-export const selecting = (el: Element) => {
+export const DOUBLE_CLICK_MS = 300;
+let pending: number | undefined;
+let down = { x: 0, y: 0 };
+document.addEventListener(`pointerdown`, (e) => (down = { x: e.clientX, y: e.clientY }), true);
+
+export const plainClick = (e: MouseEvent, act: (el: Element) => void) => {
+  window.clearTimeout(pending);
+  const el = e.currentTarget as Element;
   const s = window.getSelection();
-  return Boolean(s && !s.isCollapsed && el.contains(s.anchorNode));
+  const moved = e.detail > 0 && (Math.abs(e.clientX - down.x) > 3 || Math.abs(e.clientY - down.y) > 3);
+  if (e.detail > 1 || moved || (s && !s.isCollapsed && el.contains(s.anchorNode))) return;
+  if ((e.target as Element).closest(`.wf-map-name`)) pending = window.setTimeout(() => act(el), DOUBLE_CLICK_MS);
+  else act(el);
 };
 
 export const Name = ({ className = ``, children }: { className?: string, children: ComponentChildren, }) => (
@@ -78,7 +88,7 @@ export const JobRow = ({ job }: { job: Job, }) => {
     </>
   );
   return job.id ? (
-    <a className={cls} href={`/jobs/${job.id}`} draggable={false} key={flash ? `${job.key}:${f.seq}` : job.key} onClick={(e) => selecting(e.currentTarget) && e.preventDefault()}>
+    <a className={cls} href={`/jobs/${job.id}`} draggable={false} key={flash ? `${job.key}:${f.seq}` : job.key} onClick={(e) => e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || (e.preventDefault(), plainClick(e, () => window.location.assign(`/jobs/${job.id}`)))}>
       {body}
     </a>
   ) : (
@@ -103,7 +113,7 @@ export const StatusBar = ({ jobs }: { jobs: Job[], }) => {
 export const BlockSummary = ({ block, onClick }: { block: Block, onClick: () => void, }) => {
   const f = focus.value;
   return (
-    <button className={`wf-map-summary ${f && (f.id === block.id || f.id.startsWith(`${block.id}#`)) ? `focused` : ``}`} onClick={(e) => selecting(e.currentTarget) || onClick()}>
+    <button className={`wf-map-summary ${f && (f.id === block.id || f.id.startsWith(`${block.id}#`)) ? `focused` : ``}`} onClick={(e) => plainClick(e, onClick)}>
       <span className="wf-map-summary-name">
         <StatusIcon status={blockStatus(block)}/>
         <Name className="wf-map-block-name">
@@ -123,7 +133,7 @@ export const BlockCard = ({ block, onHeaderClick }: { block: Block, onHeaderClic
   const st = blockStatus(block);
   return (
     <div className={`wf-map-block ${h.active && !h.blocks.has(block) ? `dim` : ``} ${focused ? `focused` : ``}`}>
-      <button className="wf-map-block-head" onClick={(e) => selecting(e.currentTarget) || onHeaderClick?.()} data-tippy-content="Collapse the block">
+      <button className="wf-map-block-head" onClick={(e) => plainClick(e, () => onHeaderClick?.())} data-tippy-content="Collapse the block">
         <StatusIcon status={st}/>
         <Name className="wf-map-block-name">
           <Highlight text={block.name}/>

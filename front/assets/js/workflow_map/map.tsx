@@ -6,7 +6,7 @@ import { focus, hits, layoutError, popover, rerunPipeline, selected, stopPipelin
 import { MapLayout, Point, layoutMap, promotionLabel } from "./layout";
 import { PromoteButton } from "./promote";
 import { Chips, Search, Stepper } from "./toolbar";
-import { BlockCard, BlockSummary, Counts, Duration, Name, PipelineTitle, StatusBar, StatusIcon, selecting } from "./ui";
+import { BlockCard, BlockSummary, Counts, Duration, Name, PipelineTitle, StatusBar, StatusIcon, plainClick } from "./ui";
 import { JOB_ROW_H, blockSize, jobTop } from "./lines";
 
 const CARD = { w: 300, h: 72 };
@@ -105,7 +105,7 @@ const CardNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
       tabIndex={0}
       data-popover-trigger={p.errorHtml ? `` : undefined}
       className={`wf-map-card ${selected.value === p.id ? `selected` : ``} ${h.active && !n ? `dim` : ``}`}
-      onClick={(e) => selecting(e.currentTarget) || open(e.currentTarget)}
+      onClick={(e) => plainClick(e, open)}
       onKeyDown={(e) => (e.key === `Enter` || e.key === ` `) && (e.preventDefault(), open(e.currentTarget))}
     >
       <Handle type="target" id="in" position={Position.Left} isConnectable={false}/>
@@ -147,7 +147,7 @@ const PipelineNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
   const h = hits.value;
   if (!p) return null;
   return (
-    <div className={`wf-map-pipeline ${selected.value === p.id ? `selected` : ``} ${h.active && !h.pipelines.has(p) ? `dim` : ``}`} onClick={(e) => selecting(e.currentTarget) || (selected.value = p.id)}>
+    <div className={`wf-map-pipeline ${selected.value === p.id ? `selected` : ``} ${h.active && !h.pipelines.has(p) ? `dim` : ``}`} onClick={(e) => plainClick(e, () => (selected.value = p.id))}>
       <Handle type="target" id="in" position={Position.Left} isConnectable={false} style={{ top: 34 }}/>
       <div className="wf-map-pipeline-head">
         <div className="wf-map-pipeline-row">
