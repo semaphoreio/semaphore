@@ -876,6 +876,19 @@ a.wf-map-job:hover {
   box-shadow: var(--wf-map-pop);
 }
 
+.wf-map-promotion-filter {
+  display: block;
+  width: calc(100% - 16px);
+  margin: 4px 8px 6px;
+}
+
+.wf-map-promotion-none {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #677278;
+}
+
 .wf-map-promotion {
   display: flex;
   align-items: center;
