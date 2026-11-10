@@ -22,15 +22,39 @@ defmodule Front.ActivityMonitor.Repo do
 
   @cache :activity_monitor_cache
 
-  # Upper bound for the pipeline stream: its pages (each with a 30s gRPC
-  # timeout) plus the job lookups that are started while paging.
-  @pipelines_timeout 60_000
+  # Upper bound for the debug sessions lookup (its pages plus the describe of
+  # the debugged pipelines).
+  @debugs_timeout 60_000
   @jobs_timeout 30_000
 
-  # Hard cap for one org-wide fetch. Cachex runs fetch fallbacks in a bare
-  # process and waiters block until it reports back, so the fallback must
+  # Default hard cap for one org-wide fetch. Cachex runs fetch fallbacks in a
+  # bare process and waiters block until it reports back, so the fallback must
   # always return.
   @org_activity_timeout 90_000
+
+  # Only what the activity page and the agent stats read is cached. Every
+  # cache read copies the entry, so raw pipelines and jobs would cost far more
+  # memory and time than the page needs.
+  @pipeline_fields [
+    :ppl_id,
+    :wf_id,
+    :name,
+    :state,
+    :project_id,
+    :branch_id,
+    :git_ref,
+    :git_ref_type,
+    :commit_message,
+    :commiter_username,
+    :commiter_avatar_url,
+    :requester_id,
+    :promoter_id,
+    :priority,
+    :created_at,
+    :blocks
+  ]
+  @block_job_fields [:status, :state, :machine_type]
+  @job_fields [:state, :machine_type, :self_hosted]
 
   def cache_name, do: @cache
 
@@ -84,52 +108,98 @@ defmodule Front.ActivityMonitor.Repo do
   end
 
   defp fetch_org_activity_bounded(org_id, tracing_headers) do
-    task = Async.run(fn -> fetch_org_activity(org_id, tracing_headers) end)
+    with_task_supervisor(fn sup ->
+      task =
+        Task.Supervisor.async_nolink(sup, fn ->
+          fetch_org_activity(sup, org_id, tracing_headers)
+        end)
 
-    case Async.await(task, timeout: @org_activity_timeout) do
-      {:ok, {:ok, activity}} -> {:ok, activity}
-      {:ok, {:error, error}} -> {:error, error}
-      {:ok, other} -> {:error, other}
-      {:exit, reason} -> {:error, {:exit, reason}}
-      {:error, reason} -> {:error, reason}
-    end
+      case Task.yield(task, org_activity_timeout()) || Task.shutdown(task, :brutal_kill) do
+        {:ok, {:ok, activity}} -> {:ok, activity}
+        {:ok, {:error, error}} -> {:error, error}
+        {:ok, other} -> {:error, other}
+        {:exit, reason} -> {:error, {:exit, reason}}
+        nil -> {:error, :timeout}
+      end
+    end)
   catch
     kind, reason -> {:error, {kind, reason}}
   end
 
-  defp fetch_org_activity(org_id, tracing_headers) do
-    fetch_organization = Async.run(fn -> describe_organization(org_id, tracing_headers) end)
-    fetch_projects = Async.run(fn -> list_org_projects(org_id, tracing_headers) end)
+  defp org_activity_timeout do
+    Application.get_env(:front, :activity_monitor_fetch_timeout_ms, @org_activity_timeout)
+  end
 
-    fetch_pipelines_and_jobs =
-      Async.run(fn -> list_pipelines_and_jobs(org_id, tracing_headers) end)
+  # Every task started for one fetch runs under a supervisor owned by that
+  # fetch, and the supervisor is stopped when the fetch ends: with a result,
+  # an error, or the cap. Nothing a finished fetch started keeps calling
+  # plumber or zebra in the background.
+  defp with_task_supervisor(fun) do
+    {:ok, sup} = Task.Supervisor.start_link()
 
-    fetch_debugs = Async.run(fn -> list_detailed_debugs(org_id, tracing_headers) end)
+    try do
+      fun.(sup)
+    after
+      Supervisor.stop(sup)
+    end
+  end
 
+  defp start_task(sup, fun) do
+    %Async{
+      task: Task.Supervisor.async_nolink(sup, fun),
+      observe: false,
+      started_at: :os.system_time(:millisecond)
+    }
+  end
+
+  defp fetch_org_activity(sup, org_id, tracing_headers) do
+    fetch_organization = start_task(sup, fn -> describe_organization(org_id, tracing_headers) end)
+
+    fetch_projects = start_task(sup, fn -> list_org_projects(org_id, tracing_headers) end)
+    fetch_debugs = start_task(sup, fn -> list_detailed_debugs(org_id, tracing_headers) end)
+
+    # The organization and projects lookups are fast; a failure there stops
+    # the fetch before any pipeline page is requested.
     with {:ok, org} <- await(fetch_organization),
          {:ok, projects} <- await(fetch_projects),
-         {:ok, {active_pipelines, active_jobs}} <-
-           await(fetch_pipelines_and_jobs, @pipelines_timeout + @jobs_timeout),
-         {:ok, detailed_debugs} <- await(fetch_debugs, @pipelines_timeout),
+         {:ok, active_pipelines, job_tasks} <-
+           start_pipelines_and_jobs(sup, org_id, tracing_headers, new_job_page_budget()),
+         {:ok, detailed_debugs} <- await(fetch_debugs, @debugs_timeout),
+         # Users are looked up while the job lookups are still running.
          fetch_users <-
-           Async.run(fn ->
+           start_task(sup, fn ->
              list_authors_of(active_pipelines, detailed_debugs, tracing_headers)
            end),
-         {:ok, detailed_pipelines} <- combine_data(active_pipelines, active_jobs),
-         {:ok, users} <- await(fetch_users) do
+         {:ok, active_jobs} <- await_jobs(job_tasks),
+         {:ok, users} <- await(fetch_users),
+         {:ok, detailed_pipelines} <- combine_data(active_pipelines, active_jobs) do
       {:ok,
        %{
          org: org,
          projects: projects,
          users: users,
-         active_pipelines: detailed_pipelines,
-         active_jobs: active_jobs,
+         active_pipelines: slim_pipelines(detailed_pipelines),
+         active_jobs: Enum.map(active_jobs, &Map.take(&1, @job_fields)),
          active_debug_sessions: detailed_debugs
        }}
     else
       {:error, error} -> {:error, error}
       error -> {:error, error}
     end
+  end
+
+  defp slim_pipelines(pipelines) do
+    Enum.map(pipelines, fn pipeline ->
+      pipeline
+      |> Map.take(@pipeline_fields)
+      |> Map.put(:blocks, Enum.map(pipeline.blocks, &slim_block/1))
+    end)
+  end
+
+  defp slim_block(block) do
+    block
+    |> Map.take([:state])
+    |> Map.put(:jobs, Enum.map(block.jobs, &Map.take(&1, @block_job_fields)))
   end
 
   defp await(task, timeout \\ 30_000) do
@@ -228,35 +298,59 @@ defmodule Front.ActivityMonitor.Repo do
   Lists active pipelines and, while paging through them, starts the job
   lookup for each page right away. Pipeline pages are chained by page token,
   so they stay sequential, but the job lookups run concurrently with the
-  remaining pipeline pages and with each other.
+  remaining pipeline pages and with each other. All job lookups share one
+  zebra page budget, the same as a single lookup for every pipeline.
   """
   def list_pipelines_and_jobs(org_id, tracing_headers) do
-    start_jobs = fn
-      [] -> nil
-      pipelines -> start_jobs_fetch(tracing_headers, org_id, ppl_ids_of(pipelines))
+    with_task_supervisor(fn sup ->
+      with {:ok, pipelines, job_tasks} <-
+             start_pipelines_and_jobs(sup, org_id, tracing_headers, new_job_page_budget()),
+           {:ok, jobs} <- await_jobs(job_tasks) do
+        {:ok, {pipelines, jobs}}
+      end
+    end)
+  end
+
+  defp start_pipelines_and_jobs(sup, org_id, tracing_headers, budget) do
+    start_jobs = fn ppl_ids ->
+      start_task(sup, fn -> list_active_jobs(tracing_headers, org_id, ppl_ids, budget) end)
     end
 
-    with {:ok, pages} <- list_pipeline_pages(org_id, tracing_headers, start_jobs) do
+    on_page = fn
+      [] -> nil
+      pipelines -> start_jobs.(ppl_ids_of(pipelines))
+    end
+
+    with {:ok, pages} <- list_pipeline_pages(org_id, tracing_headers, on_page) do
       pipelines = Enum.flat_map(pages, fn {pipelines, _} -> pipelines end)
 
       job_tasks =
         case pipelines do
           # Without pipelines, keep asking Zebra for all active jobs of the
           # org (empty ppl_ids means no pipeline filter).
-          [] -> [start_jobs_fetch(tracing_headers, org_id, [])]
+          [] -> [start_jobs.([])]
           _ -> pages |> Enum.map(fn {_, task} -> task end) |> Enum.reject(&is_nil/1)
         end
 
-      with {:ok, jobs} <- await_jobs(job_tasks) do
-        {:ok, {pipelines, jobs}}
-      end
+      {:ok, pipelines, job_tasks}
     end
   end
 
   defp ppl_ids_of(pipelines), do: Enum.map(pipelines, fn %{ppl_id: id} -> id end)
 
-  defp start_jobs_fetch(tracing_headers, org_id, ppl_ids) do
-    Async.run(fn -> list_active_jobs(tracing_headers, org_id, ppl_ids) end)
+  defp new_job_page_budget, do: :atomics.new(1, signed: false)
+
+  # Takes one zebra page from the budget shared by the job lookups of a load.
+  defp take_job_page(nil), do: true
+
+  defp take_job_page(budget) do
+    taken = :atomics.add_get(budget, 1, 1)
+
+    if taken == @max_activity_monitor_pages + 1 do
+      log_pagination_stop(:max_pages, "")
+    end
+
+    taken <= @max_activity_monitor_pages
   end
 
   defp await_jobs(job_tasks) do
@@ -435,10 +529,7 @@ defmodule Front.ActivityMonitor.Repo do
 
   # List jobs
 
-  def list_active_jobs(tracing_headers, org_id, ppl_ids) do
-    alias InternalApi.ServerFarm.Job.JobService
-    alias InternalApi.ServerFarm.Job.ListRequest
-
+  def list_active_jobs(tracing_headers, org_id, ppl_ids, budget \\ nil) do
     Watchman.benchmark("activity_monitor.list_active_jobs", fn ->
       url = Application.fetch_env!(:front, :job_api_grpc_endpoint)
       {:ok, channel} = GRPC.Stub.connect(url)
@@ -446,29 +537,40 @@ defmodule Front.ActivityMonitor.Repo do
       options = [timeout: 30_000, metadata: tracing_headers]
 
       list_all_pages(fn page_token ->
-        request =
-          %{
-            page_size: 500,
-            page_token: page_token,
-            order: :BY_CREATION_TIME_DESC,
-            organization_id: org_id,
-            ppl_ids: ppl_ids,
-            only_debug_jobs: false,
-            job_states: [:PENDING, :ENQUEUED, :SCHEDULED, :STARTED]
-          }
-          |> Proto.deep_new!(ListRequest)
-
-        case JobService.Stub.list(channel, request, options) do
-          {:ok, response} ->
-            response
-            |> Proto.to_map!(transformations: tf_map())
-            |> extract_jobs_page()
-
-          {:error, error} ->
-            {:error, error}
+        if take_job_page(budget) do
+          fetch_jobs_page(channel, options, org_id, ppl_ids, page_token)
+        else
+          {:ok, [], ""}
         end
       end)
     end)
+  end
+
+  defp fetch_jobs_page(channel, options, org_id, ppl_ids, page_token) do
+    alias InternalApi.ServerFarm.Job.JobService
+    alias InternalApi.ServerFarm.Job.ListRequest
+
+    request =
+      %{
+        page_size: 500,
+        page_token: page_token,
+        order: :BY_CREATION_TIME_DESC,
+        organization_id: org_id,
+        ppl_ids: ppl_ids,
+        only_debug_jobs: false,
+        job_states: [:PENDING, :ENQUEUED, :SCHEDULED, :STARTED]
+      }
+      |> Proto.deep_new!(ListRequest)
+
+    case JobService.Stub.list(channel, request, options) do
+      {:ok, response} ->
+        response
+        |> Proto.to_map!(transformations: tf_map())
+        |> extract_jobs_page()
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   defp tf_map, do: %{Google.Protobuf.Timestamp => {__MODULE__, :timestamp_to_datetime}}

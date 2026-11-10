@@ -139,11 +139,252 @@ defmodule Front.ActivityMonitor.RepoLoadTest do
       for ppl <- data.active_pipelines do
         [scheduled_block, pending_block] = ppl.blocks
 
-        assert Enum.map(scheduled_block.jobs, & &1.id) ==
-                 ["#{ppl.ppl_id}-job_0", "#{ppl.ppl_id}-job_1"]
+        assert Enum.map(scheduled_block.jobs, & &1.state) == [:STARTED, :STARTED]
+
+        assert Enum.map(scheduled_block.jobs, & &1.machine_type) == [
+                 "e1-standard-2",
+                 "e1-standard-2"
+               ]
 
         assert Enum.map(pending_block.jobs, & &1.status) == ["pending", "pending"]
       end
+    end
+  end
+
+  describe "cached activity" do
+    test "keeps only the fields the page and the agent stats read" do
+      assert {:ok, _} = Repo.load(@org_id, "admin", %{})
+      assert {:ok, {:ok, cached}} = Cachex.get(Repo.cache_name(), @org_id)
+
+      assert cached.active_jobs != []
+
+      for job <- cached.active_jobs do
+        assert job |> Map.keys() |> Enum.sort() == [:machine_type, :self_hosted, :state]
+      end
+
+      for ppl <- cached.active_pipelines do
+        refute Map.has_key?(ppl, :organization_id)
+
+        for block <- ppl.blocks, job <- block.jobs do
+          assert Map.keys(job) -- [:machine_type, :state, :status] == []
+        end
+      end
+    end
+
+    test "renders the same activity and agent stats from the cached shape" do
+      GrpcMock.stub(InternalJobMock, :list, fn req, _stream ->
+        jobs =
+          Enum.flat_map(req.ppl_ids, fn ppl_id ->
+            [
+              job(ppl_id, "Job 1", 0),
+              Job.new(
+                id: "#{ppl_id}-job_1",
+                ppl_id: ppl_id,
+                name: "Job 2",
+                index: 1,
+                machine_type: "s1-own",
+                self_hosted: true,
+                state: Job.State.value(:SCHEDULED)
+              )
+            ]
+          end)
+
+        InternalApi.ServerFarm.Job.ListResponse.new(
+          status:
+            InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+          jobs: jobs,
+          next_page_token: ""
+        )
+      end)
+
+      assert {:ok, data} = Repo.load(@org_id, "admin", %{})
+
+      agents = %Front.ActivityMonitor.AgentStats{
+        agent_types: [
+          %{name: "e1-standard-2", occupied_count: 0, waiting_count: 0, total_count: 8}
+        ],
+        self_hosted_agent_types: [
+          %{name: "s1-own", occupied_count: 0, waiting_count: 0, total_count: 2}
+        ],
+        max_parallelism: 10,
+        max_agents: 2
+      }
+
+      stats = Front.ActivityMonitor.AgentStats.load_activity(agents, data)
+
+      assert [%{occupied_count: 2, waiting_count: 0}] = stats.agent_types
+      assert [%{occupied_count: 0, waiting_count: 2}] = stats.self_hosted_agent_types
+
+      activity = Front.ActivityMonitor.load(@org_id, "admin")
+
+      items =
+        activity.items.lobby.items ++ activity.items.waiting.items ++ activity.items.running.items
+
+      assert length(items) == 2
+
+      for item <- items do
+        assert item.job_stats.left == 2
+        assert item.job_stats.running.machine_types == %{"e1-standard-2" => 1}
+        assert item.job_stats.waiting.machine_types == %{"s1-own" => 1}
+      end
+    end
+  end
+
+  describe "zebra page budget" do
+    test "the job lookups of one load share a single page budget", ctx do
+      stub_pipeline_pages(ctx.counters, Enum.map(1..10, &[pipeline(&1)]))
+      zebra_calls = :counters.new(1, [])
+
+      GrpcMock.stub(InternalJobMock, :list, fn req, _stream ->
+        :counters.add(zebra_calls, 1, 1)
+
+        InternalApi.ServerFarm.Job.ListResponse.new(
+          status:
+            InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+          jobs: [job(hd(req.ppl_ids), "Job 1", 0)],
+          next_page_token: "next-#{System.unique_integer([:positive])}"
+        )
+      end)
+
+      assert {:ok, _} = Repo.load(@org_id, "admin", %{})
+      assert :counters.get(zebra_calls, 1) == 10
+    end
+  end
+
+  describe "cancelling a fetch" do
+    setup do
+      on_exit(fn -> Application.delete_env(:front, :activity_monitor_fetch_timeout_ms) end)
+    end
+
+    test "an organization failure requests nothing from plumber or zebra" do
+      GrpcMock.stub(OrganizationMock, :describe, fn _req, _stream ->
+        raise GRPC.RPCError, status: 14, message: "unavailable"
+      end)
+
+      record_backend_calls(self(), pipeline_delay: 50, zebra_delay: 50)
+
+      assert {:error, _} = Repo.load(@org_id, "admin", %{})
+      assert_no_backend_calls_after_return()
+    end
+
+    test "a failed pipeline page stops the job lookups already started" do
+      test_pid = self()
+
+      GrpcMock.stub(PipelineMock, :list_activity, fn req, _stream ->
+        send(test_pid, {:backend_call, :plumber})
+
+        case req.page_token do
+          "" ->
+            %{next_page_token: "page_2", previous_page_token: "", pipelines: [pipeline(1)]}
+            |> Util.Proto.deep_new!(InternalApi.Plumber.ListActivityResponse)
+
+          _ ->
+            :timer.sleep(100)
+            raise GRPC.RPCError, status: 14, message: "unavailable"
+        end
+      end)
+
+      stub_slow_paging_zebra(test_pid, 50)
+
+      assert {:error, %GRPC.RPCError{}} = Repo.load(@org_id, "admin", %{})
+      assert_no_backend_calls_after_return()
+    end
+
+    test "the fetch cap stops every lookup the fetch started" do
+      Application.put_env(:front, :activity_monitor_fetch_timeout_ms, 300)
+      record_backend_calls(self(), pipeline_delay: 100, zebra_delay: 50)
+
+      assert {:error, :timeout} = Repo.load(@org_id, "admin", %{})
+      assert_no_backend_calls_after_return()
+    end
+  end
+
+  describe "users lookup" do
+    test "starts before the job lookups finish" do
+      users_requested = :atomics.new(1, [])
+      test_pid = self()
+
+      GrpcMock.stub(UserMock, :describe_many, fn _req, _stream ->
+        :atomics.put(users_requested, 1, 1)
+
+        InternalApi.User.DescribeManyResponse.new(
+          status:
+            InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+          users: [InternalApi.User.User.new(id: "user_1", name: "octocat")]
+        )
+      end)
+
+      GrpcMock.stub(InternalJobMock, :list, fn req, _stream ->
+        send(test_pid, {:users_seen_by_zebra, wait_for_flag(users_requested, 40)})
+
+        InternalApi.ServerFarm.Job.ListResponse.new(
+          status:
+            InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+          jobs: [job(hd(req.ppl_ids), "Job 1", 0)],
+          next_page_token: ""
+        )
+      end)
+
+      assert {:ok, _} = Repo.load(@org_id, "admin", %{})
+      assert_received {:users_seen_by_zebra, true}
+    end
+  end
+
+  defp wait_for_flag(_flag, 0), do: false
+
+  defp wait_for_flag(flag, tries) do
+    if :atomics.get(flag, 1) == 1 do
+      true
+    else
+      :timer.sleep(25)
+      wait_for_flag(flag, tries - 1)
+    end
+  end
+
+  # Plumber pages forever and zebra pages forever, both slowly, and every call
+  # is reported to the test process.
+  defp record_backend_calls(test_pid, opts) do
+    pipeline_delay = Keyword.fetch!(opts, :pipeline_delay)
+
+    GrpcMock.stub(PipelineMock, :list_activity, fn req, _stream ->
+      send(test_pid, {:backend_call, :plumber})
+      :timer.sleep(pipeline_delay)
+      n = System.unique_integer([:positive])
+
+      %{
+        next_page_token: "page_#{req.page_token}#{n}",
+        previous_page_token: "",
+        pipelines: [pipeline(n)]
+      }
+      |> Util.Proto.deep_new!(InternalApi.Plumber.ListActivityResponse)
+    end)
+
+    stub_slow_paging_zebra(test_pid, Keyword.fetch!(opts, :zebra_delay))
+  end
+
+  defp stub_slow_paging_zebra(test_pid, delay) do
+    GrpcMock.stub(InternalJobMock, :list, fn req, _stream ->
+      send(test_pid, {:backend_call, :zebra})
+      :timer.sleep(delay)
+
+      InternalApi.ServerFarm.Job.ListResponse.new(
+        status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+        jobs: [job(hd(req.ppl_ids ++ ["none"]), "Job 1", 0)],
+        next_page_token: "next-#{System.unique_integer([:positive])}"
+      )
+    end)
+  end
+
+  defp assert_no_backend_calls_after_return do
+    flush_backend_calls()
+    refute_receive {:backend_call, _}, 500
+  end
+
+  defp flush_backend_calls do
+    receive do
+      {:backend_call, _} -> flush_backend_calls()
+    after
+      0 -> :ok
     end
   end
 

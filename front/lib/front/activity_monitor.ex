@@ -181,7 +181,7 @@ defmodule Front.ActivityMonitor do
     end
   end
 
-  @spec load(String.t(), String.t(), Map.t()) :: Activity.t() | {:error, String.t()}
+  @spec load(String.t(), String.t(), Map.t()) :: Activity.t() | {:error, any()}
   def load(org_id, user_id, tracing_headers \\ %{}) do
     Front.ActivityMonitor.Repo.load(org_id, user_id, tracing_headers)
     |> case do
