@@ -177,7 +177,7 @@ const PipelineNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
             </a>
           )}
           <Counts jobs={pipelineJobs(p)}/>
-          <PipelineActions p={p} compact/>
+          <PipelineActions p={p}/>
         </div>
       </div>
       <Handle type="source" id="out" position={Position.Right} isConnectable={false} style={{ top: 34 }}/>

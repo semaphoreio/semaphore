@@ -29,7 +29,7 @@ export function promotionLabel(p: Pipeline) {
   return [name, by].filter(Boolean).join(` · `) || null;
 }
 
-const PIPE_PAD = { top: 72, side: 28, bottom: 28 };
+const PIPE_PAD = { top: 88, side: 28, bottom: 28 };
 const LABEL = { width: 160, height: 20 };
 
 let elk: ELK | null = null;

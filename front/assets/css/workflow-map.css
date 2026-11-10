@@ -558,8 +558,12 @@
   flex-direction: column;
   justify-content: center;
   gap: 4px;
-  height: 64px;
+  height: 66px;
   padding: 0 12px;
+  border-bottom: 1px solid #D3DADE;
+  border-radius: 10.5px 10.5px 0 0;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(32, 43, 48, .08);
 }
 
 .wf-map-pipeline-row {
