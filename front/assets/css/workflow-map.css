@@ -653,6 +653,18 @@
   outline-offset: -1px;
 }
 
+.wf-map-after .wf-map-after-info {
+  flex: none;
+  margin-left: auto;
+  font-size: 18px;
+  color: #677278;
+  cursor: help;
+}
+
+.wf-map-after .wf-map-after-info:hover {
+  color: #202B30;
+}
+
 .wf-map-after .wf-map-summary:focus-visible,
 .wf-map-after .wf-map-block.focused {
   box-shadow: 0 0 0 3px var(--wf-map-select);

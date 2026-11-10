@@ -6,6 +6,7 @@ import { act } from "preact/test-utils";
 import { AfterBand, afterBand, openBlocks } from "./map";
 import { BLOCK, BLOCK_GAP, blockSize } from "./lines";
 import { Block, Job, Pipeline } from "./model";
+import { AFTER_INFO, BlockSummary } from "./ui";
 
 const job = (name: string, status: string) => ({ key: `p/After pipeline#${name}`, id: null, name, status, startedAt: null, finishedAt: null, reused: false }) as Job;
 
@@ -56,5 +57,33 @@ describe(`the after pipeline band`, () => {
     });
 
     expect(root.querySelector(`.wf-map-after .wf-map-summary`)).to.not.equal(null);
+  });
+
+  test(`has an info icon whose tooltip says it runs after the pipeline, collapsed and open`, async () => {
+    await act(() => render(<AfterBand block={after}/>, root));
+    const closed = root.querySelector<HTMLElement>(`.wf-map-after .wf-map-summary .wf-map-after-info`);
+    expect(closed.dataset.tippyContent).to.equal(AFTER_INFO);
+    expect(closed.getAttribute(`aria-label`)).to.equal(AFTER_INFO);
+
+    await act(() => {
+      root.querySelector(`.wf-map-summary`).dispatchEvent(new MouseEvent(`click`, { bubbles: true, detail: 0 }));
+    });
+
+    const open = root.querySelector<HTMLElement>(`.wf-map-after .wf-map-block-head .wf-map-after-info`);
+    expect(open.dataset.tippyContent).to.equal(AFTER_INFO);
+  });
+
+  test(`clicking the info icon leaves the card as it is`, async () => {
+    await act(() => render(<AfterBand block={after}/>, root));
+    await act(() => {
+      root.querySelector(`.wf-map-after-info`).dispatchEvent(new MouseEvent(`click`, { bubbles: true, detail: 0 }));
+    });
+    expect(root.querySelector(`.wf-map-summary`).getAttribute(`aria-expanded`)).to.equal(`false`);
+  });
+
+  test(`an ordinary block has no info icon`, async () => {
+    await act(() => render(<BlockSummary block={lint} onClick={() => undefined}/>, root));
+    expect(root.querySelector(`.wf-map-summary`)).to.not.equal(null);
+    expect(root.querySelector(`.wf-map-after-info`)).to.equal(null);
   });
 });

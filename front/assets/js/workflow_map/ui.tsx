@@ -150,6 +150,20 @@ export const StatusBar = ({ jobs }: { jobs: Job[], }) => {
   );
 };
 
+export const AFTER_INFO = `Runs after the pipeline completes`;
+
+const AfterInfo = () => (
+  <span
+    className="material-symbols-outlined wf-map-after-info"
+    role="img"
+    aria-label={AFTER_INFO}
+    data-tippy-content={AFTER_INFO}
+    onClick={(e) => e.stopPropagation()}
+  >
+    info
+  </span>
+);
+
 export const BlockSummary = ({ block, onClick }: { block: Block, onClick: () => void, }) => {
   const f = focus.value;
   return (
@@ -160,6 +174,7 @@ export const BlockSummary = ({ block, onClick }: { block: Block, onClick: () => 
         <Name className="wf-map-block-name">
           <Highlight text={block.name}/>
         </Name>
+        {block.after && <AfterInfo/>}
       </span>
       <StatusBar jobs={block.jobs}/>
       <span className="wf-map-summary-meta">{blockSummary(block)}</span>
@@ -180,6 +195,7 @@ export const BlockCard = ({ block, onHeaderClick }: { block: Block, onHeaderClic
         <Name className="wf-map-block-name">
           <Highlight text={block.name}/>
         </Name>
+        {block.after && <AfterInfo/>}
       </button>
       {block.jobs.map((j) => (
         <JobRow key={j.key} job={j}/>
