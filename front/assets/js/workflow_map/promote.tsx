@@ -60,8 +60,9 @@ export const Promotions = ({ p }: { p: Pipeline, }) => {
             : latest.processed && latest.result === `FAILED`
               ? `Failed to promote`
               : `${promotion.events.length > 1 ? `${promotion.events.length}× · ` : ``}${latest.auto ? `auto-promoted` : `by ${latest.author ?? `someone`}`}`;
-        const blocked = promotion.deployment && !promotion.deployment.allowed;
-        const why = blocked ? promotion.deployment.message ?? `Blocked by the ${promotion.deployment.name} deployment target` : `You don't have permission to promote`;
+        const why = !promotion.can_promote && (promotion.deployment && !promotion.deployment.allowed
+          ? promotion.deployment.message ?? `Blocked by the ${promotion.deployment.name} deployment target`
+          : `You don't have permission to promote`);
         return (
           <div key={promotion.name} className="wf-map-promotion" role="menuitem">
             <span className="material-symbols-outlined wf-map-promotion-icon" aria-hidden="true">
@@ -69,12 +70,14 @@ export const Promotions = ({ p }: { p: Pipeline, }) => {
             </span>
             <span className="wf-map-promotion-text">
               <Name className="wf-map-promotion-name">{promotion.name}</Name>
-              <span className={`wf-map-promotion-note ${latest?.result === `FAILED` ? `failed` : ``} ${latest ? `` : `fresh`}`}>{blocked ? promotion.deployment.name : note}</span>
+              {why
+                ? <span className="wf-map-promotion-note blocked">{why}</span>
+                : <span className={`wf-map-promotion-note ${latest?.result === `FAILED` ? `failed` : ``} ${latest ? `` : `fresh`}`}>{note}</span>}
             </span>
             <button
               className="btn btn-secondary btn-small"
               disabled={!promotion.can_promote || promotion.starting}
-              title={promotion.can_promote ? `Promote ${p.name} to ${promotion.name}` : why}
+              title={why || `Promote ${p.name} to ${promotion.name}`}
               onClick={() => {
                 popover.value = null;
                 promoting.value = { pipeline: p, promotion };

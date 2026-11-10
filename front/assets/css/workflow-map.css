@@ -953,6 +953,11 @@ a.wf-map-job:hover {
   color: #677278;
 }
 
+.wf-map-promotion-note.blocked {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .wf-map-promotion-note.failed {
   color: var(--wf-map-failed);
 }

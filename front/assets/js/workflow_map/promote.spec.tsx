@@ -172,3 +172,52 @@ describe(`promotions menu filter`, () => {
     expect(popover.value).to.not.equal(null);
   });
 });
+
+describe(`promotions menu reasons`, () => {
+  let root: HTMLElement;
+  const promotion = (name: string, can_promote: boolean, deployment: Promotion[`deployment`] = null) => ({ name, events: [], can_promote, deployment, parameters: [] }) as unknown as Promotion;
+  const row = (name: string) => [...root.querySelectorAll(`.wf-map-promotion`)].find((r) => r.querySelector(`.wf-map-promotion-name`).textContent === name);
+  const show = (...promotions: Promotion[]) => act(() => render(<Promotions p={{ id: `ci`, name: `Build`, promotions } as unknown as Pipeline}/>, root));
+
+  beforeEach(() => {
+    root = document.createElement(`div`);
+    document.body.appendChild(root);
+  });
+
+  afterEach(() => {
+    render(null, root);
+    root.remove();
+  });
+
+  test(`shows the deployment target's message when it blocks the promotion`, async () => {
+    await show(promotion(`Production`, false, { name: `prod`, allowed: false, message: `Deployments from branch "dev" to prod Deployment Target are forbidden` }));
+    const note = row(`Production`).querySelector(`.wf-map-promotion-note`);
+    expect(note.textContent).to.equal(`Deployments from branch "dev" to prod Deployment Target are forbidden`);
+    expect(note.classList.contains(`blocked`)).to.equal(true);
+    expect(row(`Production`).querySelector(`button`).disabled).to.equal(true);
+    expect(row(`Production`).querySelector(`.wf-map-promotion-icon`).textContent).to.equal(`lock`);
+  });
+
+  test(`names the deployment target when it sends no message`, async () => {
+    await show(promotion(`Production`, false, { name: `prod`, allowed: false, message: null }));
+    expect(row(`Production`).querySelector(`.wf-map-promotion-note`).textContent).to.equal(`Blocked by the prod deployment target`);
+  });
+
+  test(`says when the user may not promote at all`, async () => {
+    await show(promotion(`Staging`, false), promotion(`Production`, false, { name: `prod`, allowed: true, message: `You can deploy to prod Deployment Target` }));
+    for (const name of [`Staging`, `Production`]) {
+      expect(row(name).querySelector(`.wf-map-promotion-note`).textContent).to.equal(`You don't have permission to promote`);
+      expect(row(name).querySelector(`button`).disabled).to.equal(true);
+    }
+  });
+
+  test(`keeps the history note when the promotion can run`, async () => {
+    await show(promotion(`Staging`, true), promotion(`Production`, true, { name: `prod`, allowed: true, message: `You can deploy to prod Deployment Target` }));
+    for (const name of [`Staging`, `Production`]) {
+      const note = row(name).querySelector(`.wf-map-promotion-note`);
+      expect(note.textContent).to.equal(`Not promoted yet`);
+      expect(note.classList.contains(`blocked`)).to.equal(false);
+      expect(row(name).querySelector(`button`).disabled).to.equal(false);
+    }
+  });
+});
