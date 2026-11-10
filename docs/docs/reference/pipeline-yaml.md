@@ -219,7 +219,7 @@ agent:
 
 ### command {#command-in-containers}
 
-An optional property that overrides the Docker image's [CMD command](https://docs.docker.com/reference/dockerfile/#cmd).
+An optional property that overrides the Docker image's [CMD command](https://docs.docker.com/reference/dockerfile/#cmd). The value is a single string, not a list: a list is rejected by the pipeline validator with `Type mismatch. Expected String but got Array`.
 
 ```yaml title="Example"
 agent:
@@ -229,12 +229,12 @@ agent:
     - name: main
       image: 'registry.semaphoreci.com/ruby:2.6'
   # highlight-next-line
-      command: ["bundle", "exec", "rails", "server"]
+      command: "bundle exec rails server"
 ```
 
 ### entrypoint {#entrypoint-in-containers}
 
-An optional property that overrides the Docker image's [ENTRYPOINT entry](https://docs.docker.com/reference/dockerfile/#entrypoint).
+An optional property that overrides the Docker image's [ENTRYPOINT entry](https://docs.docker.com/reference/dockerfile/#entrypoint). Like `command`, the value is a single string, not a list.
 
 ```yaml title="Example"
 agent:
@@ -244,7 +244,7 @@ agent:
     - name: main
       image: 'registry.semaphoreci.com/ruby:2.6'
   # highlight-next-line
-      entrypoint: ["/bin/sh", "-c"]
+      entrypoint: "/bin/sh -c"
 ```
 
 ## execution_time_limit {#execution_time_limit}
