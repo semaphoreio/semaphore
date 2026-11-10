@@ -1119,8 +1119,24 @@ a.wf-map-job:hover {
   --wf-map-outline-active: #dde7ff;
 }
 
+.wf-map-outline-red {
+  --wf-map-outline: #e53935;
+  --wf-map-outline-text: #b71c1c;
+  --wf-map-outline-fill: #fff5f4;
+  --wf-map-outline-hover: #fde3e0;
+  --wf-map-outline-active: #fbd0cb;
+}
+
+.wf-map-outline-grey {
+  --wf-map-outline: #B5BCC0;
+  --wf-map-outline-text: #495358;
+  --wf-map-outline-hover: #F3F5F6;
+  --wf-map-outline-active: #E6EAEC;
+}
+
 .btn.wf-map-outline {
   color: var(--wf-map-outline-text);
+  background-color: var(--wf-map-outline-fill, #fff);
   box-shadow: 0 0 0 1px var(--wf-map-outline);
 }
 
