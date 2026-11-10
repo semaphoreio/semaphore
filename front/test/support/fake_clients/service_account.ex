@@ -47,7 +47,9 @@ defmodule Support.FakeClients.ServiceAccount do
           creator_id: creator_id,
           created_at: now_proto_timestamp(),
           updated_at: now_proto_timestamp(),
-          deactivated: false
+          deactivated: false,
+          owner_id: creator_id,
+          owner_active: creator_id != ""
         }
 
         api_token = generate_token()
@@ -167,16 +169,94 @@ defmodule Support.FakeClients.ServiceAccount do
   end
 
   @impl Front.ServiceAccount.Behaviour
-  def regenerate_token(service_account_id, org_id) do
+  def regenerate_token(service_account_id, org_id, requester_id) do
     Agent.get_and_update(__MODULE__, fn state ->
       case get_in(state, [:service_accounts, service_account_id]) do
-        %{org_id: ^org_id} ->
+        %{org_id: ^org_id} = service_account ->
           new_token = generate_token()
-          new_state = put_in(state, [:tokens, service_account_id], new_token)
+
+          new_state =
+            state
+            |> put_in([:tokens, service_account_id], new_token)
+            |> put_in(
+              [:service_accounts, service_account_id],
+              release_lent_owner(service_account, requester_id)
+            )
+
           {{:ok, new_token}, new_state}
 
         _ ->
           {{:error, "Service account not found"}, state}
+      end
+    end)
+  end
+
+  # The owner lends the account their access, so an owner who did not ask for the new
+  # token stops standing behind it.
+  defp release_lent_owner(%{owner_id: owner_id} = service_account, requester_id)
+       when owner_id not in ["", nil] and owner_id != requester_id,
+       do: %{service_account | owner_id: "", owner_active: false}
+
+  defp release_lent_owner(service_account, _requester_id), do: service_account
+
+  @doc """
+  An owner has to be a member of the same organization. Here that stands in as "not a
+  service account of this organization", which is enough to exercise the refusal.
+  """
+  @impl Front.ServiceAccount.Behaviour
+  def set_owner(service_account_id, org_id, owner_id) do
+    Agent.get_and_update(__MODULE__, fn state ->
+      if match?(%{org_id: ^org_id}, get_in(state, [:service_accounts, owner_id])) do
+        {{:error, "An owner has to be a member of the organization who is not a service account"},
+         state}
+      else
+        case get_in(state, [:service_accounts, service_account_id]) do
+          %{org_id: ^org_id} = service_account ->
+            owned = %{service_account | owner_id: owner_id, owner_active: true}
+
+            {{:ok, owned}, put_in(state, [:service_accounts, service_account_id], owned)}
+
+          _ ->
+            {{:error, "Service account not found"}, state}
+        end
+      end
+    end)
+  end
+
+  @impl Front.ServiceAccount.Behaviour
+  def release_owner(service_account_id, org_id, requester_id) do
+    Agent.get_and_update(__MODULE__, fn state ->
+      case get_in(state, [:service_accounts, service_account_id]) do
+        %{org_id: ^org_id, owner_id: ^requester_id} = service_account ->
+          released = %{service_account | owner_id: "", owner_active: false}
+
+          {{:ok, released}, put_in(state, [:service_accounts, service_account_id], released)}
+
+        %{org_id: ^org_id} ->
+          {{:error, "Only the owner can give up ownership"}, state}
+
+        _ ->
+          {{:error, "Service account not found"}, state}
+      end
+    end)
+  end
+
+  @doc """
+  Leaves a service account with no owner, which is otherwise only reached by a user
+  record going away. Here to set up that state.
+  """
+  def remove_owner(service_account_id) do
+    Agent.update(__MODULE__, fn state ->
+      case get_in(state, [:service_accounts, service_account_id]) do
+        nil ->
+          state
+
+        service_account ->
+          put_in(state, [:service_accounts, service_account_id], %{
+            service_account
+            | owner_id: "",
+              owner_active: false
+          })
       end
     end)
   end

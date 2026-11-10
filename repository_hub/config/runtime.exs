@@ -58,6 +58,12 @@ if config_env() == :prod do
 
   config :repository_hub, RepositoryHub.BuildStatusGuardCleanupWorker,
     enabled: System.get_env("BUILD_STATUS_GUARD_CLEANUP_ENABLED") != "false"
+
+  # A service account's projects take their owner's access to the repository. Off until
+  # the accounts already there have owners, since without one they cannot add projects.
+  config :repository_hub,
+         :enforce_service_account_owner?,
+         System.get_env("ENFORCE_SERVICE_ACCOUNT_OWNER") == "true"
 end
 
 on_prem? = if(System.get_env("ON_PREM") == "true", do: true, else: false)
