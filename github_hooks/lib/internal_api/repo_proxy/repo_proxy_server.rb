@@ -292,7 +292,7 @@ module InternalApi
           :repo_host_email => hook.author_email.to_s,
           :repo_host_avatar_url => hook.author_avatar_url.to_s,
           :repo_host_uid => hook.author_uid.to_s,
-          :repo_slug => hook.payload.repo_name.to_s,
+          :repo_slug => hook.repo_slug.to_s,
           :git_ref => hook.git_ref,
           :git_ref_type => type(hook),
           :pr_slug => hook.payload.pr_head_repo_name.to_s,
