@@ -173,23 +173,60 @@ defmodule Gofer.Actions.TriggerImpl do
     end
   end
 
+  # The message is relayed as-is to the UI, the public API and the CLI, so it
+  # names the deployment target and what was refused; the metadata only goes
+  # to the logs.
   defp handle_deployment_trigger_error({:error, :not_found}, metadata),
-    do: {:error, {:NOT_FOUND, error_message("deployment target not found", metadata)}}
+    do: {:error, {:NOT_FOUND, error_message("#{target(metadata)} not found", metadata)}}
 
-  defp handle_deployment_trigger_error({:error, {:SYNCING_TARGET, _meta}}, metadata),
-    do: {:error, {:REFUSED, error_message("deployment target is syncing", metadata)}}
+  defp handle_deployment_trigger_error({:error, {:SYNCING_TARGET, meta}}, metadata) do
+    metadata = Keyword.merge(metadata, meta)
+    {:error, {:REFUSED, error_message("#{target(metadata)} is syncing", metadata)}}
+  end
 
-  defp handle_deployment_trigger_error({:error, {:CORRUPTED_TARGET, _meta}}, metadata),
-    do: {:error, {:REFUSED, error_message("deployment target is corrupted", metadata)}}
+  defp handle_deployment_trigger_error({:error, {:CORRUPTED_TARGET, meta}}, metadata) do
+    metadata = Keyword.merge(metadata, meta)
+    {:error, {:REFUSED, error_message("#{target(metadata)} is corrupted", metadata)}}
+  end
 
-  defp handle_deployment_trigger_error({:error, {:CORDONED_TARGET, _meta}}, metadata),
-    do: {:error, {:REFUSED, error_message("deployment target is cordoned", metadata)}}
+  defp handle_deployment_trigger_error({:error, {:CORDONED_TARGET, meta}}, metadata) do
+    metadata = Keyword.merge(metadata, meta)
+    {:error, {:REFUSED, error_message("#{target(metadata)} is cordoned", metadata)}}
+  end
 
-  defp handle_deployment_trigger_error({:error, {:BANNED_SUBJECT, meta}}, metadata),
-    do: {:error, {:REFUSED, error_message("subject not allowed", Keyword.merge(metadata, meta))}}
+  defp handle_deployment_trigger_error({:error, {:BANNED_SUBJECT, meta}}, metadata) do
+    metadata = Keyword.merge(metadata, meta)
 
-  defp handle_deployment_trigger_error({:error, {:BANNED_OBJECT, meta}}, metadata),
-    do: {:error, {:REFUSED, error_message("object not allowed", Keyword.merge(metadata, meta))}}
+    message =
+      "subject not allowed: #{subject(metadata)} is not allowed to trigger #{target(metadata)}"
+
+    {:error, {:REFUSED, error_message(message, metadata)}}
+  end
+
+  defp handle_deployment_trigger_error({:error, {:BANNED_OBJECT, meta}}, metadata) do
+    metadata = Keyword.merge(metadata, meta)
+
+    message = "object not allowed: #{target(metadata)} does not accept #{git_ref(metadata)}"
+
+    {:error, {:REFUSED, error_message(message, metadata)}}
+  end
+
+  defp target(metadata), do: "deployment target '#{metadata[:deployment_name]}'"
+
+  defp subject(metadata) do
+    case metadata[:triggerer] do
+      nil -> "an anonymous trigger"
+      "" -> "an anonymous trigger"
+      triggerer -> "'#{triggerer}'"
+    end
+  end
+
+  defp git_ref(metadata) do
+    case metadata[:git_ref_type] do
+      "pr" -> "pull request ##{metadata[:label]}"
+      type -> "#{type} '#{metadata[:label]}'"
+    end
+  end
 
   defp error_message(message, metadata) do
     full_message =
