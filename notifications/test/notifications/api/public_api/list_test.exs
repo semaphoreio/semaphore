@@ -102,7 +102,18 @@ defmodule Notifications.Api.PublicApi.ListTest do
         rule = %{rule | notify: Map.put(rule.notify, unquote(missing), nil)}
         req = %{req | spec: %{req.spec | rules: [rule]}}
 
-        {:ok, _} = Stub.create_notification(channel, req, @options)
+        {:ok, created} = Stub.create_notification(channel, req, @options)
+
+        stored = Notifications.Repo.get!(Notifications.Models.Notification, created.metadata.id)
+        stored_notify = hd(stored.spec["rules"])["notify"]
+        assert stored_notify[unquote(to_string(missing))] != nil
+
+        [stored_rule] =
+          Notifications.Repo.all(
+            from(r in Notifications.Models.Rule, where: r.notification_id == ^created.metadata.id)
+          )
+
+        assert Map.get(stored_rule, unquote(missing)) == nil
 
         {:ok, res} = Stub.list_notifications(channel, ListNotificationsRequest.new(), @options)
         assert [listed] = res.notifications

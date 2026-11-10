@@ -63,7 +63,17 @@ defmodule Notifications.Util.Transforms do
         {__MODULE__, :atom_to_string}
     }
 
-    Util.Proto.to_map!(spec, string_keys: true, transformations: tf)
+    rules =
+      Enum.map(
+        spec.rules,
+        &fill_targets(
+          &1,
+          Semaphore.Notifications.V1alpha.Notification.Spec.Rule.Notify.Slack,
+          Semaphore.Notifications.V1alpha.Notification.Spec.Rule.Notify.Webhook
+        )
+      )
+
+    Util.Proto.to_map!(%{spec | rules: rules}, string_keys: true, transformations: tf)
   end
 
   def encode_spec(%{rules: rules}) do
@@ -74,9 +84,26 @@ defmodule Notifications.Util.Transforms do
     %{
       rules:
         Enum.map(rules, fn rule ->
-          Util.Proto.to_map!(rule, string_keys: true, transformations: tf)
+          rule
+          |> fill_targets(
+            InternalApi.Notifications.Notification.Rule.Notify.Slack,
+            InternalApi.Notifications.Notification.Rule.Notify.Webhook
+          )
+          |> Util.Proto.to_map!(string_keys: true, transformations: tf)
         end)
     }
+  end
+
+  defp fill_targets(rule = %{notify: nil}, _slack, _webhook), do: rule
+
+  defp fill_targets(rule, slack, webhook) do
+    notify = %{
+      rule.notify
+      | slack: rule.notify.slack || slack.new(),
+        webhook: rule.notify.webhook || webhook.new()
+    }
+
+    %{rule | notify: notify}
   end
 
   def encode_notify(notify = %InternalApi.Notifications.Notification.Rule.Notify{}) do
