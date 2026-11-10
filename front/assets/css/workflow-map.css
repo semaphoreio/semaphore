@@ -645,6 +645,19 @@
   height: 100%;
 }
 
+.wf-map-after .wf-map-summary,
+.wf-map-after .wf-map-block {
+  background: #F5F7F8;
+  box-shadow: none;
+  outline: 1px dashed #8C9C9C;
+  outline-offset: -1px;
+}
+
+.wf-map-after .wf-map-summary:focus-visible,
+.wf-map-after .wf-map-block.focused {
+  box-shadow: 0 0 0 3px var(--wf-map-select);
+}
+
 .wf-map-collapse {
   display: inline-flex;
   align-items: center;
