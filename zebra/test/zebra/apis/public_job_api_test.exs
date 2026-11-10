@@ -308,6 +308,36 @@ defmodule Zebra.Api.PublicJobApiTest do
              }
     end
 
+    test "a finished job still returns its SEMAPHORE_GIT_* env vars after its request is trimmed" do
+      alias Zebra.Workers.JobRequestFactory.JobRequest
+
+      request = %{
+        "commands" => ["make test"],
+        "env_vars" => [
+          JobRequest.env_var("SEMAPHORE_GIT_SHA", "4f3b2a1"),
+          JobRequest.env_var("SEMAPHORE_GIT_BRANCH", "main"),
+          JobRequest.env_var("MY_SECRET", "s3cr3t")
+        ]
+      }
+
+      assert_git_vars_survive_finish(request, [
+        {"SEMAPHORE_GIT_SHA", "4f3b2a1"},
+        {"SEMAPHORE_GIT_BRANCH", "main"}
+      ])
+    end
+
+    test "an old style request still returns its SEMAPHORE_GIT_* env vars after it is trimmed" do
+      request = %{
+        "commands" => ["make test"],
+        "environment_variables" => [
+          %{"name" => "SEMAPHORE_GIT_BRANCH", "unencrypted_content" => Base.encode64("main")},
+          %{"name" => "MY_SECRET", "unencrypted_content" => Base.encode64("s3cr3t")}
+        ]
+      }
+
+      assert_git_vars_survive_finish(request, [{"SEMAPHORE_GIT_BRANCH", "main"}])
+    end
+
     test "when the job is not found => returns not found" do
       {:ok, channel} = GRPC.Stub.connect("localhost:50051")
 
@@ -1709,5 +1739,49 @@ defmodule Zebra.Api.PublicJobApiTest do
       ],
       restricted_job: true
     }
+  end
+
+  # The git env vars the API returns for a finished job must be returned
+  # unchanged once FinishedJobCleaner has trimmed its request.
+  defp assert_git_vars_survive_finish(request, expected) do
+    alias Semaphore.Jobs.V1alpha.GetJobRequest
+    alias Semaphore.Jobs.V1alpha.JobsApi.Stub, as: JobsStub
+    alias Zebra.Workers.FinishedJobCleaner
+
+    finished_at = DateTime.utc_now() |> DateTime.add(-10 * 86_400) |> DateTime.truncate(:second)
+
+    {:ok, job} =
+      Support.Factories.Job.create(:finished, %{
+        project_id: hd(@authorized_projects),
+        organization_id: @org_id,
+        result: "passed",
+        finished_at: finished_at,
+        request: request
+      })
+
+    {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+    get = fn -> JobsStub.get_job(channel, GetJobRequest.new(job_id: job.id), @options) end
+
+    {:ok, before} = get.()
+
+    Zebra.LegacyRepo.delete_all("job_cleanup_cursors")
+
+    {:ok, worker} =
+      FinishedJobCleaner.build(cutoff_days: 3, batch_size: 10, naptime: 1, longnaptime: 1)
+
+    assert {:ok, %{trimmed: 1}} = FinishedJobCleaner.tick(worker)
+    refute Map.has_key?(Zebra.Models.Job.reload(job).request, "commands")
+
+    {:ok, after_trim} = get.()
+
+    git_vars = fn reply ->
+      reply.spec.env_vars
+      |> Enum.filter(&String.starts_with?(&1.name, "SEMAPHORE_GIT_"))
+      |> Enum.map(&{&1.name, &1.value})
+    end
+
+    assert git_vars.(before) == expected
+    assert git_vars.(after_trim) == expected
+    assert after_trim.spec == before.spec
   end
 end

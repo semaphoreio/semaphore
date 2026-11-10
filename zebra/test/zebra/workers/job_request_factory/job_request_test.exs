@@ -83,6 +83,59 @@ defmodule Zebra.Workers.JobRequestFactory.JobRequestTest do
     end
   end
 
+  describe ".finished_payload/1" do
+    test "keeps only SEMAPHORE_GIT_* env vars, unchanged" do
+      request = %{
+        "commands" => ["make test"],
+        "files" => [JobRequest.file("/a", "b", "0600")],
+        "env_vars" => [
+          JobRequest.env_var("SEMAPHORE_GIT_SHA", "abc"),
+          JobRequest.env_var("SEMAPHORE_JOB_ID", "id"),
+          JobRequest.env_var("SEMAPHORE_GIT_BRANCH", "main"),
+          JobRequest.env_var("SECRET", "s")
+        ]
+      }
+
+      assert JobRequest.finished_payload(request) == %{
+               "env_vars" => [
+                 JobRequest.env_var("SEMAPHORE_GIT_SHA", "abc"),
+                 JobRequest.env_var("SEMAPHORE_GIT_BRANCH", "main")
+               ]
+             }
+    end
+
+    test "keeps the old request shape" do
+      git_var = %{"name" => "SEMAPHORE_GIT_SHA", "unencrypted_content" => "YWJj"}
+
+      request = %{
+        "environment_variables" => [git_var, %{"name" => "A", "unencrypted_content" => "Yg=="}]
+      }
+
+      assert JobRequest.finished_payload(request) == %{"environment_variables" => [git_var]}
+    end
+
+    test "no git env vars => empty map" do
+      assert JobRequest.finished_payload(%{"commands" => ["x"]}) == %{}
+      assert JobRequest.finished_payload(%{"env_vars" => []}) == %{}
+      assert JobRequest.finished_payload(%{}) == %{}
+    end
+
+    test "malformed env vars do not raise" do
+      assert JobRequest.finished_payload(%{"env_vars" => "nope"}) == %{}
+      assert JobRequest.finished_payload(%{"env_vars" => [nil, 1, %{"name" => nil}]}) == %{}
+    end
+
+    test "a request that is not a map is returned as is" do
+      assert JobRequest.finished_payload(nil) == nil
+    end
+
+    test "is idempotent" do
+      request = %{"env_vars" => [JobRequest.env_var("SEMAPHORE_GIT_SHA", "abc")]}
+
+      assert JobRequest.finished_payload(request) == request
+    end
+  end
+
   describe ".sanitize/1" do
     test "nil => nil" do
       assert is_nil(JobRequest.sanitize(nil))
