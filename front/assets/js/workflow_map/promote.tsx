@@ -8,7 +8,7 @@ export const promoting = signal<{ pipeline: Pipeline, promotion: Promotion, } | 
 
 export const PromoteButton = ({ p, compact }: { p: Pipeline, compact?: boolean, }) => {
   if (!p.promotions?.length) return null;
-  const fresh = p.promotions.filter((promotion) => !promotion.events.length).length;
+  const n = p.promotions.length;
   return (
     <button
       className="btn btn-secondary btn-tiny wf-map-outline wf-map-outline-blue wf-map-promote"
@@ -16,11 +16,11 @@ export const PromoteButton = ({ p, compact }: { p: Pipeline, compact?: boolean, 
       aria-haspopup="menu"
       aria-expanded={popover.value?.kind === `promote` && popover.value.id === p.id}
       aria-label={compact ? `Promote ${p.name}` : undefined}
-      data-tippy-content={fresh ? `Promote: ${fresh} of ${p.promotions.length} promotions not run yet` : `Promote: all ${p.promotions.length} promotions have run`}
+      data-tippy-content={`Promote: ${n} ${n === 1 ? `promotion` : `promotions`}`}
       onClick={(e) => togglePopover(`promote`, p.id, e.currentTarget)}
     >
       {compact ? <span className="material-symbols-outlined" aria-hidden="true">rocket_launch</span> : `Promote ▾`}
-      {fresh > 0 && <span className="wf-map-promote-count">{fresh}</span>}
+      <span className="wf-map-promote-count">{n}</span>
     </button>
   );
 };
