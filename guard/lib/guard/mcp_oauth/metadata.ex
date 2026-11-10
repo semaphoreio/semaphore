@@ -21,7 +21,7 @@ defmodule Guard.McpOAuth.Metadata do
       "response_modes_supported" => ["query"],
       "grant_types_supported" => ["authorization_code"],
       "code_challenge_methods_supported" => ["S256"],
-      "token_endpoint_auth_methods_supported" => ["none"],
+      "token_endpoint_auth_methods_supported" => ["none", "client_secret_post"],
       "scopes_supported" => ["mcp"],
       "service_documentation" => "https://docs.semaphoreci.com/mcp",
       # OpenID Connect Discovery 1.0 required fields for OIDC-compliant clients

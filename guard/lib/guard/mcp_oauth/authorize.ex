@@ -40,7 +40,8 @@ defmodule Guard.McpOAuth.Authorize do
          redirect_uri: params["redirect_uri"],
          code_challenge: params["code_challenge"],
          state: params["state"],
-         scope: params["scope"] || "mcp"
+         scope: params["scope"] || "mcp",
+         prompt: params["prompt"]
        }}
     end
   end
