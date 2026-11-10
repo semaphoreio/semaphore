@@ -111,6 +111,20 @@ describe(`names the map may shorten`, () => {
       expect(toggled).to.equal(1);
     });
 
+    test(`a click on another node does not cancel a pending click on a name`, async () => {
+      const other = { id: `c`, name: `another block`, deps: [], jobs: [] } as Block;
+      let otherToggled = 0;
+      const box = document.createElement(`div`);
+      root.appendChild(box);
+      await act(() => render(<BlockSummary block={other} onClick={() => otherToggled++}/>, box));
+
+      click(root.querySelector(`.wf-map-name-text`));
+      click(box.querySelector(`.wf-map-summary-meta`));
+      await wait();
+      expect([toggled, otherToggled]).to.deep.equal([1, 1]);
+      render(null, box);
+    });
+
     test(`a drag that ends on the node never acts, even when it selected nothing`, async () => {
       click(root.querySelector(`.wf-map-name-text`), { clientX: 60 });
       await wait();

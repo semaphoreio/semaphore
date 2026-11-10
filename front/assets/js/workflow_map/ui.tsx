@@ -49,17 +49,17 @@ export const Highlight = ({ text }: { text: string, }) => {
 };
 
 export const DOUBLE_CLICK_MS = 300;
-let pending: number | undefined;
+const pending = new WeakMap<Element, number>();
 let down = { x: 0, y: 0 };
 document.addEventListener(`pointerdown`, (e) => (down = { x: e.clientX, y: e.clientY }), true);
 
 export const plainClick = (e: MouseEvent, act: (el: Element) => void) => {
-  window.clearTimeout(pending);
   const el = e.currentTarget as Element;
+  window.clearTimeout(pending.get(el));
   const s = window.getSelection();
   const moved = e.detail > 0 && (Math.abs(e.clientX - down.x) > 3 || Math.abs(e.clientY - down.y) > 3);
   if (e.detail > 1 || moved || (s && !s.isCollapsed && el.contains(s.anchorNode))) return;
-  if ((e.target as Element).closest(`.wf-map-name`)) pending = window.setTimeout(() => act(el), DOUBLE_CLICK_MS);
+  if ((e.target as Element).closest(`.wf-map-name`)) pending.set(el, window.setTimeout(() => act(el), DOUBLE_CLICK_MS));
   else act(el);
 };
 
