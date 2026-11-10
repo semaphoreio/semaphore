@@ -578,6 +578,13 @@
   color: #677278;
 }
 
+.wf-map-card-end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
 .wf-map-pipeline {
   width: 100%;
   height: 100%;

@@ -117,7 +117,6 @@ const CardNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
           <PipelineTitle p={p}/>
         </span>
         <PipelineActions p={p} compact/>
-        <Duration start={p.runningAt} end={p.doneAt} running={p.status === `running`}/>
       </span>
       {p.blocks ? <StatusBar jobs={jobs}/> : <span className="wf-map-bar loading"/>}
       <span className="wf-map-card-row wf-map-card-meta">
@@ -137,7 +136,10 @@ const CardNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
             {p.blocks.length} blocks · {jobs.length} jobs
           </span>
         )}
-        {h.active ? <span className={`wf-map-match ${n ? `` : `zero`}`}>{n} matching</span> : <Counts jobs={jobs}/>}
+        <span className="wf-map-card-end">
+          {h.active ? <span className={`wf-map-match ${n ? `` : `zero`}`}>{n} matching</span> : <Counts jobs={jobs}/>}
+          <Duration start={p.runningAt} end={p.doneAt} running={p.status === `running`}/>
+        </span>
       </span>
       <Handle type="source" id="out" position={Position.Right} isConnectable={false}/>
     </div>
