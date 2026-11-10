@@ -420,12 +420,20 @@
   box-shadow: 0 1px 6px rgba(32, 43, 48, 0.2);
 }
 
+.react-flow__node .wf-map-name {
+  padding-right: 20px;
+}
+
 .wf-map-copy {
   display: none;
-  margin-left: 6px;
-  padding: 1px 2px;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin: calc((1lh - 16px) / 2) 0 0 4px;
+  vertical-align: top;
   border-radius: 3px;
-  vertical-align: -1px;
   color: #677278;
   fill: currentColor;
   cursor: pointer;
@@ -433,8 +441,12 @@
   user-select: none;
 }
 
+.wf-map-copy svg {
+  display: block;
+}
+
 .wf-map-name:hover .wf-map-copy {
-  display: inline-block;
+  display: inline-flex;
 }
 
 .wf-map-copy:hover {
@@ -444,13 +456,6 @@
 
 .wf-map-copy.copied {
   color: var(--wf-map-passed);
-}
-
-.wf-map-copy.copied::after {
-  content: "Copied";
-  margin-left: 3px;
-  font-size: 11px;
-  font-weight: 400;
 }
 
 .react-flow__node:has(.wf-map-name:hover),
