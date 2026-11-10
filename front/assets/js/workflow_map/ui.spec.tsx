@@ -39,7 +39,7 @@ describe(`names the map may shorten`, () => {
 
     await act(() => render(<BlockCard block={block}/>, root));
 
-    expect(root.querySelector(`.wf-map-block-head`).getAttribute(`data-tippy-content`)).to.equal(`Collapse the block`);
+    expect(root.querySelector(`.wf-map-block-head`).hasAttribute(`data-tippy-content`)).to.equal(false);
     expect(root.querySelector(`.wf-map-block-head .wf-map-name`).textContent).to.equal(block.name);
     expect(root.querySelector(`.wf-map-job-name`).textContent).to.equal(job.name);
     expect(root.querySelectorAll(`.wf-map-name [data-tippy-content], .wf-map-name[data-tippy-content], [title]`)).to.have.length(0);
@@ -168,6 +168,25 @@ describe(`names the map may shorten`, () => {
 
       expect(opened).to.equal(false);
       expect(copied).to.deep.equal([job.name]);
+    });
+  });
+  describe(`collapsing and expanding`, () => {
+    const job = { key: `b#0`, id: null, name: `lint`, status: `passed`, startedAt: null, finishedAt: null, reused: false } as Job;
+    const block = { id: `b`, name: `Lint`, deps: [], jobs: [job] } as Block;
+
+    test(`a collapsed block says it is collapsed and shows a closed chevron`, async () => {
+      await act(() => render(<BlockSummary block={block} onClick={() => undefined}/>, root));
+      expect(root.querySelector(`.wf-map-summary`).getAttribute(`aria-expanded`)).to.equal(`false`);
+      expect(root.querySelector(`.wf-map-summary .wf-map-chevron`).classList.contains(`open`)).to.equal(false);
+    });
+
+    test(`an open block's head says it is expanded, shows an open chevron and has no tooltip`, async () => {
+      await act(() => render(<BlockCard block={block} onHeaderClick={() => undefined}/>, root));
+      const head = root.querySelector(`.wf-map-block-head`);
+      expect(head.getAttribute(`aria-expanded`)).to.equal(`true`);
+      expect(head.querySelector(`.wf-map-chevron`).classList.contains(`open`)).to.equal(true);
+      expect(head.hasAttribute(`data-tippy-content`)).to.equal(false);
+      expect(head.querySelector(`.wf-map-chevron`).getAttribute(`aria-hidden`)).to.equal(`true`);
     });
   });
 });

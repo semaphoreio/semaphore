@@ -102,6 +102,12 @@ export const Name = ({ className = ``, children }: { className?: string, childre
   </span>
 );
 
+export const Chevron = ({ open }: { open: boolean, }) => (
+  <svg className={`wf-map-chevron ${open ? `open` : ``}`} viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+    <path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 export const Duration = ({ start, end, running }: { start: number | null, end: number | null, running: boolean, }) => {
   const seconds = start ? (end ?? (running ? now.value : start)) - start : null;
   return <span className="wf-map-time">{seconds === null ? `--:--` : formatDuration(seconds)}</span>;
@@ -147,8 +153,9 @@ export const StatusBar = ({ jobs }: { jobs: Job[], }) => {
 export const BlockSummary = ({ block, onClick }: { block: Block, onClick: () => void, }) => {
   const f = focus.value;
   return (
-    <button className={`wf-map-summary ${f && (f.id === block.id || f.id.startsWith(`${block.id}#`)) ? `focused` : ``}`} onClick={(e) => plainClick(e, onClick)}>
+    <button className={`wf-map-summary ${f && (f.id === block.id || f.id.startsWith(`${block.id}#`)) ? `focused` : ``}`} aria-expanded={false} onClick={(e) => plainClick(e, onClick)}>
       <span className="wf-map-summary-name">
+        <Chevron open={false}/>
         <StatusIcon status={blockStatus(block)}/>
         <Name className="wf-map-block-name">
           <Highlight text={block.name}/>
@@ -167,7 +174,8 @@ export const BlockCard = ({ block, onHeaderClick }: { block: Block, onHeaderClic
   const st = blockStatus(block);
   return (
     <div className={`wf-map-block ${h.active && !h.blocks.has(block) ? `dim` : ``} ${focused ? `focused` : ``}`}>
-      <button className="wf-map-block-head" onClick={(e) => plainClick(e, () => onHeaderClick?.())} data-tippy-content="Collapse the block">
+      <button className="wf-map-block-head" aria-expanded={true} onClick={(e) => plainClick(e, () => onHeaderClick?.())}>
+        <Chevron open/>
         <StatusIcon status={st}/>
         <Name className="wf-map-block-name">
           <Highlight text={block.name}/>

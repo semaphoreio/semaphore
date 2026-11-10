@@ -550,6 +550,7 @@
 }
 
 .wf-map-card:hover {
+  background: #FAFBFB;
   box-shadow: 0 0 0 1.5px #B5BCC0, var(--wf-map-shadow);
 }
 
@@ -633,13 +634,31 @@
 }
 
 .wf-map-collapse {
-  width: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
   height: 28px;
-  border: 1px solid #D3DADE;
-  border-radius: 6px;
-  background: #fff;
-  color: #495358;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
   cursor: pointer;
+}
+
+.wf-map-collapse:hover {
+  background: #EEF1F2;
+}
+
+.wf-map-chevron {
+  display: block;
+  flex: none;
+  color: #677278;
+  transition: transform .15s;
+}
+
+.wf-map-chevron.open {
+  transform: rotate(90deg);
 }
 
 .wf-map-node {
@@ -669,6 +688,7 @@
 }
 
 .wf-map-summary:hover {
+  background: #FAFBFB;
   box-shadow: 0 0 0 1.5px #B5BCC0, var(--wf-map-shadow);
 }
 
@@ -710,17 +730,22 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
+  width: calc(100% + 8px);
   height: 30px;
-  margin-bottom: 4px;
-  padding: 0;
+  margin: 0 -4px 4px;
+  padding: 0 4px;
   border: 0;
   background: none;
   white-space: nowrap;
   font-weight: 500;
   color: #202B30;
   text-align: left;
+  border-radius: 6px;
   cursor: pointer;
+}
+
+.wf-map-block-head:hover {
+  background: #F3F5F6;
 }
 
 .wf-map-block-name {

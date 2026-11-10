@@ -6,7 +6,7 @@ import { focus, hits, layoutError, popover, rerunPipeline, selected, stopPipelin
 import { MapLayout, Point, layoutMap, promotionLabel } from "./layout";
 import { PromoteButton } from "./promote";
 import { Chips, Search, Stepper } from "./toolbar";
-import { BlockCard, BlockSummary, Counts, Duration, Name, PipelineTitle, StatusBar, StatusIcon, plainClick } from "./ui";
+import { BlockCard, BlockSummary, Chevron, Counts, Duration, Name, PipelineTitle, StatusBar, StatusIcon, plainClick } from "./ui";
 import { JOB_ROW_H, blockSize, jobTop } from "./lines";
 
 const CARD = { w: 300, h: 72 };
@@ -104,12 +104,14 @@ const CardNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
       role="button"
       tabIndex={0}
       data-popover-trigger={p.errorHtml ? `` : undefined}
+      aria-expanded={p.errorHtml ? undefined : false}
       className={`wf-map-card ${selected.value === p.id ? `selected` : ``} ${h.active && !n ? `dim` : ``}`}
       onClick={(e) => plainClick(e, open)}
       onKeyDown={(e) => (e.key === `Enter` || e.key === ` `) && (e.preventDefault(), open(e.currentTarget))}
     >
       <Handle type="target" id="in" position={Position.Left} isConnectable={false}/>
       <span className="wf-map-card-row">
+        {!p.errorHtml && <Chevron open={false}/>}
         <StatusIcon status={p.status} size={18}/>
         <span className="wf-map-card-title">
           <PipelineTitle p={p}/>
@@ -154,14 +156,14 @@ const PipelineNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
           <button
             className="wf-map-collapse"
             aria-label={`Collapse ${p.name}`}
-            data-tippy-content="Collapse to a card"
+            aria-expanded={true}
             onClick={(e) => {
               e.stopPropagation();
               aim({ id: p.id, how: `center` });
               toggle(openPipelines, p.id, false);
             }}
           >
-            ▾
+            <Chevron open/>
           </button>
           <StatusIcon status={p.status} size={18}/>
           <span className="wf-map-pipeline-title">
