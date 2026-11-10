@@ -406,6 +406,25 @@
   cursor: text;
 }
 
+.wf-map-name:hover {
+  overflow: visible;
+}
+
+.wf-map-name:hover > .wf-map-name-text {
+  position: relative;
+  z-index: 10;
+  margin: -2px -6px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 1px 6px rgba(32, 43, 48, 0.2);
+}
+
+.react-flow__node:has(.wf-map-name:hover),
+.wf-map-edge-label:has(.wf-map-name:hover) {
+  z-index: 1000 !important;
+}
+
 .wf-map-attempt {
   flex: none;
   margin-left: .35em;
