@@ -70,6 +70,17 @@ defmodule Guard.Application do
     rabbit = System.get_env("RABBIT_CONSUMER") || "true"
     id = System.get_env("ID_API") || "false"
     instance_config_api = System.get_env("INSTANCE_CONFIG_API") || "false"
+
+    services
+    |> add_grpc_service(grpc)
+    |> add_test_grpc_service(grpc, @guard_env)
+    |> add_id_service(id)
+    |> add_instance_config_api(instance_config_api)
+    |> add_rabbit_workers(rabbit)
+    |> add_scheduled_jobs()
+  end
+
+  defp add_scheduled_jobs(services) do
     organization_cleaner = System.get_env("START_ORGANIZATION_CLEANER") || "false"
     mcp_auth_code_cleaner = System.get_env("START_MCP_AUTH_CODE_CLEANER") || "false"
     cli_auth_code_cleaner = System.get_env("START_CLI_AUTH_CODE_CLEANER") || "false"
@@ -79,11 +90,6 @@ defmodule Guard.Application do
       System.get_env("START_FEDERATED_IDENTITY_SYNC_DRAINER") || "false"
 
     services
-    |> add_grpc_service(grpc)
-    |> add_test_grpc_service(grpc, @guard_env)
-    |> add_id_service(id)
-    |> add_instance_config_api(instance_config_api)
-    |> add_rabbit_workers(rabbit)
     |> add_organization_cleaner(organization_cleaner)
     |> add_mcp_auth_code_cleaner(mcp_auth_code_cleaner)
     |> add_cli_auth_code_cleaner(cli_auth_code_cleaner)
