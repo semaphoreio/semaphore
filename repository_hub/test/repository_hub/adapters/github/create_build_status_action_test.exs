@@ -892,7 +892,8 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
         {GithubAppId, [],
          [
            get: fn ->
-             {:error, %{status: GRPC.Status.unavailable(), message: "Can't fetch the GitHub App id from instance_config"}}
+             {:error,
+              %{status: GRPC.Status.unavailable(), message: "Can't fetch the GitHub App id from instance_config"}}
            end
          ]},
         {GithubChecksClient, [:passthrough], [list_check_runs: fn _params, _opts -> {:ok, []} end]}
