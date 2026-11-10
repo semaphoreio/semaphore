@@ -94,6 +94,10 @@ defmodule Scheduler.Workers.ScheduleTask do
         LT.warn(reason, "Cannot find revision for '#{periodic.id}'.")
         "Cannot find git commit reference." |> graceful_exit(state)
 
+      {:error, {:unavailable, message}} ->
+        LT.warn(message, "GitHub API temporarily unavailable for #{periodic.id}.")
+        message |> restart_with_exp_backoff(%{state | trigger: trigger})
+
       {:error, %{code: :RESOURCE_EXHAUSTED, message: message}} ->
         LT.warn(message, "Resource exhausted for #{periodic.id}.")
         message |> restart_with_exp_backoff(%{state | trigger: trigger})

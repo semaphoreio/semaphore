@@ -27,6 +27,8 @@ import (
 
 var ErrNotFound = errors.New("not found")
 
+var reportHTTPClient = &http.Client{Timeout: 5 * time.Minute}
+
 type Superjerry struct {
 	reportFetcherClient service.ReportFetcherClient
 	projectHubClient    service.ProjectHubClient
@@ -174,7 +176,7 @@ func (c *Superjerry) prepareReport(projectID string, jobID string) ([]parser.Tes
 	}
 
 	log.Printf("Fetching report for job: %s\n", jobID)
-	response, err := http.Get(url) // #nosec
+	response, err := reportHTTPClient.Get(url) // #nosec
 	if err != nil {
 		return nil, err
 	}

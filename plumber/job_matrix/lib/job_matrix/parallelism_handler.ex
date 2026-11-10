@@ -5,6 +5,10 @@ defmodule JobMatrix.ParallelismHandler do
 
   alias Util.ToTuple
 
+  # Ppl.Actions.ListActivityImpl feeds this module a SQL projection of the
+  # pipeline definition (see its topology_definition/1). Any new job field
+  # read here must be added to that projection too.
+
   def parallelize_jobs(block_def) when is_map(block_def)  do
     with {:ok, build} <- fetch_entity(block_def, "build"),
          {:ok, jobs}  <- fetch_jobs(build),
