@@ -62,7 +62,7 @@ const PipelineActions = ({ p, compact }: { p: Pipeline, compact?: boolean, }) =>
     <span className="wf-map-actions" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
       {p.stopUrl && (
         <button
-          className="btn btn-secondary btn-tiny"
+          className="btn btn-secondary btn-tiny wf-map-outline wf-map-outline-blue"
           disabled={busy !== null}
           aria-label={compact ? `Stop ${p.name}` : undefined}
           data-tippy-content="Stops this pipeline"
@@ -73,7 +73,7 @@ const PipelineActions = ({ p, compact }: { p: Pipeline, compact?: boolean, }) =>
       )}
       {p.rebuildUrl && (
         <button
-          className="btn btn-secondary btn-tiny wf-map-outline wf-map-outline-red"
+          className="btn btn-secondary btn-tiny wf-map-outline wf-map-outline-blue"
           disabled={busy !== null}
           aria-label={compact ? `Rerun the failed jobs of ${p.name}` : undefined}
           data-tippy-content="Reruns only the jobs in this pipeline that did not pass, keeping the ones that did"

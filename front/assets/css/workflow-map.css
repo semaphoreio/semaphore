@@ -1112,13 +1112,6 @@ a.wf-map-job:hover {
   --wf-map-outline-active: #dde7ff;
 }
 
-.wf-map-outline-red {
-  --wf-map-outline: #e53935;
-  --wf-map-outline-text: #b71c1c;
-  --wf-map-outline-hover: #fdecea;
-  --wf-map-outline-active: #fbd5d2;
-}
-
 .btn.wf-map-outline {
   color: var(--wf-map-outline-text);
   box-shadow: 0 0 0 1px var(--wf-map-outline);
