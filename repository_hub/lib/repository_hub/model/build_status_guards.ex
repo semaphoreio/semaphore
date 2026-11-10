@@ -1,7 +1,8 @@
 defmodule RepositoryHub.Model.BuildStatusGuards do
   @moduledoc """
   One row per (repository_id, commit_sha, context, source_id) check: the last
-  delivered commit-status state plus the in-flight delivery lease. Rows are
+  delivered commit-status state plus the in-flight delivery lease, and
+  whether the pipeline wrote a check-run (`has_check_run`). Rows are
   ephemeral coordination state owned by `RepositoryHub.BuildStatusGuard`;
   nothing else reads or writes them.
   """
@@ -17,5 +18,6 @@ defmodule RepositoryHub.Model.BuildStatusGuards do
     field(:last_state, :string)
     field(:claimed_at, :utc_datetime_usec)
     field(:updated_at, :utc_datetime_usec)
+    field(:has_check_run, :boolean)
   end
 end
