@@ -108,6 +108,7 @@ export interface Block {
   deps: Block[];
   jobs: Job[];
   pipeline: Pipeline;
+  after?: boolean;
 }
 
 export interface Promotion extends ApiPromotion {
@@ -183,7 +184,7 @@ function buildBlocks(p: Pipeline, detail: ApiPipelineDetail, wf: Workflow, hideS
   if (hideSkipped) for (const b of blocks) b.deps = [...new Set(b.deps.flatMap(through))];
   if (detail.after_jobs.length) {
     const sinks = blocks.filter((b) => !blocks.some((other) => other.deps.includes(b)));
-    const after: Block = { id: `${p.id}/${AFTER_PIPELINE}`, name: AFTER_PIPELINE, deps: sinks, jobs: [], pipeline: p };
+    const after: Block = { id: `${p.id}/${AFTER_PIPELINE}`, name: AFTER_PIPELINE, deps: sinks, jobs: [], pipeline: p, after: true };
     after.jobs = detail.after_jobs.map((j, n) => ({
       key: `${after.id}#${n}`,
       id: j.id,
@@ -305,3 +306,11 @@ export function formatDuration(total: number): string {
   if (hours) return `${two(hours)}:${two(minutes)}:${two(rest)}`;
   return `${two(minutes)}:${two(rest)}`;
 }
+
+export const blockSummary = (b: Block) => {
+  const c = countJobs(b.jobs);
+  return [
+    `${b.jobs.length} ${b.jobs.length === 1 ? `job` : `jobs`}`,
+    ...([`failed`, `running`, `queued`, `stopped`] as Status[]).filter((s) => c[s]).map((s) => `${c[s]} ${STATUS_LABEL[s].toLowerCase()}`),
+  ].join(` · `);
+};
