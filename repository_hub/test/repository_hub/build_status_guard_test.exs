@@ -169,6 +169,23 @@ defmodule RepositoryHub.BuildStatusGuardTest do
       end
     end
 
+    test "claims, finalizes and releases before the has_check_run migration", %{request: request} do
+      Repo.query!("ALTER TABLE build_status_guards RENAME COLUMN has_check_run TO has_check_run_hidden")
+
+      try do
+        success = %{request | status: :SUCCESS}
+        assert {:ok, fence} = BuildStatusGuard.claim(success)
+        assert :ok = BuildStatusGuard.finalize(success, fence)
+        assert :skip = BuildStatusGuard.claim(request)
+
+        rerun = %{success | source_id: Ecto.UUID.generate()}
+        assert {:ok, rerun_fence} = BuildStatusGuard.claim(rerun)
+        assert :ok = BuildStatusGuard.release(rerun, rerun_fence)
+      after
+        Repo.query!("ALTER TABLE build_status_guards RENAME COLUMN has_check_run_hidden TO has_check_run")
+      end
+    end
+
     test "guards checks independently per source_id", %{request: request} do
       success = %{request | status: :SUCCESS}
       assert {:ok, fence} = BuildStatusGuard.claim(success)

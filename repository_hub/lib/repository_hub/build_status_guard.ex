@@ -60,11 +60,14 @@ defmodule RepositoryHub.BuildStatusGuard do
     end
   end
 
+  # Selects only the columns the decision reads, so claiming never depends on
+  # a column added later (has_check_run): repository_hub can start before the
+  # front pods have migrated, and a missing column would fail every delivery.
   defp lock_row(key) do
     key
     |> by_key()
     |> lock("FOR UPDATE")
-    |> select([g], {g, fragment("now()")})
+    |> select([g], {%{last_state: g.last_state, claimed_at: g.claimed_at}, fragment("now()")})
     |> Repo.one!()
   end
 

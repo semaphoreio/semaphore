@@ -861,6 +861,7 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
       mark_check_run(request, "ppl-1")
 
       with_mocks([
+        {Watchman, [:passthrough], []},
         {FeatureProvider, [], [find_feature: fn _, _ -> {:ok, checks_api_feature(false)} end]},
         {GithubAppId, [], [get: fn -> {:error, %{status: 9, message: "GitHub App id is not configured"}} end]},
         {GithubChecksClient, [:passthrough], [list_check_runs: fn _params, _opts -> {:ok, []} end]}
@@ -868,6 +869,38 @@ defmodule RepositoryHub.Server.Github.CreateBuildStatusActionTest do
         assert {:ok, _} = CreateBuildStatusAction.execute(adapter, request)
         assert called(GithubClient.create_build_status(:_, :_))
         refute called(GithubChecksClient.list_check_runs(:_, :_))
+        refute called(Watchman.increment("set_check_run.mirror_failure"))
+      end
+    end
+
+    test "flag OFF + SUCCESS, GitHub App id unreadable → status delivered, mirror failure reported", %{
+      adapter: adapter,
+      repository: repository
+    } do
+      request =
+        InternalApiFactory.create_build_status_request(
+          repository_id: repository.id,
+          status: :SUCCESS,
+          source_id: "ppl-1"
+        )
+
+      mark_check_run(request, "ppl-1")
+
+      with_mocks([
+        {Watchman, [:passthrough], []},
+        {FeatureProvider, [], [find_feature: fn _, _ -> {:ok, checks_api_feature(false)} end]},
+        {GithubAppId, [],
+         [
+           get: fn ->
+             {:error, %{status: GRPC.Status.unavailable(), message: "Can't fetch the GitHub App id from instance_config"}}
+           end
+         ]},
+        {GithubChecksClient, [:passthrough], [list_check_runs: fn _params, _opts -> {:ok, []} end]}
+      ]) do
+        assert {:ok, _} = CreateBuildStatusAction.execute(adapter, request)
+        assert called(GithubClient.create_build_status(:_, :_))
+        refute called(GithubChecksClient.list_check_runs(:_, :_))
+        assert called(Watchman.increment("set_check_run.mirror_failure"))
       end
     end
 

@@ -173,11 +173,9 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
   # commit that never had one costs no GitHub call.
   defp mirror_to_check_run({:ok, _} = result, %{status: status, source_id: source_id} = request, context)
        when status != :PENDING and source_id != "" do
-    # No app id means no check-run was ever created.
-    with true <- check_run_on_commit?(request, context),
-         {:ok, app_id} <- GithubAppId.get() do
-      context
-      |> with_github_client(:find_check_run, &write_to_check_run(request, &1, app_id))
+    if check_run_on_commit?(request, context) do
+      request
+      |> mirror_with_app_id(context)
       |> log_mirror_failure(request, context)
     end
 
@@ -185,6 +183,23 @@ defimpl RepositoryHub.Server.CreateBuildStatusAction, for: RepositoryHub.GithubA
   end
 
   defp mirror_to_check_run(result, _request, _context), do: result
+
+  # No configured app id means no check-run was ever created. Any other
+  # failure to read it (instance_config down) is a mirror failure.
+  defp mirror_with_app_id(request, context) do
+    failed_precondition = GRPC.Status.failed_precondition()
+
+    case GithubAppId.get() do
+      {:ok, app_id} ->
+        with_github_client(context, :find_check_run, &write_to_check_run(request, &1, app_id))
+
+      {:error, %{status: ^failed_precondition}} ->
+        :ok
+
+      error ->
+        error
+    end
+  end
 
   # Every check-run write is marked on the guard rows first, and marked rows
   # are kept 30 days, so no mark means no check-run, unless it's older than
