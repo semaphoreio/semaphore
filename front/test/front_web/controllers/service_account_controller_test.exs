@@ -100,6 +100,9 @@ defmodule FrontWeb.ServiceAccountControllerTest do
                    "created_at" => "2024-01-01T10:00:00Z",
                    "updated_at" => "2024-01-01T10:00:00Z",
                    "deactivated" => false,
+                   "owner" => nil,
+                   "owner_active" => false,
+                   "creator" => nil,
                    "roles" => [
                      %{
                        "id" => "role_123",
@@ -112,6 +115,38 @@ defmodule FrontWeb.ServiceAccountControllerTest do
                ],
                "total_pages" => 1
              }
+    end
+
+    test "names the owner and the creator", %{conn: conn, org_id: org_id, user_id: user_id} do
+      GrpcMock.expect(RBACMock, :list_members, fn _request, _stream ->
+        %InternalApi.RBAC.ListMembersResponse{
+          members: [
+            %InternalApi.RBAC.ListMembersResponse.Member{
+              subject: %InternalApi.RBAC.Subject{
+                subject_id: "sa_123",
+                subject_type: InternalApi.RBAC.SubjectType.value(:SERVICE_ACCOUNT),
+                display_name: ""
+              },
+              subject_role_bindings: []
+            }
+          ],
+          total_pages: 1
+        }
+      end)
+
+      expect(ServiceAccountMock, :describe_many, fn ["sa_123"], ^org_id ->
+        {:ok, [owned_proto(org_id, user_id)]}
+      end)
+
+      user_name = DB.first(:users) |> Map.get(:api_model) |> Map.get(:name)
+
+      [account] =
+        conn |> get("/service_accounts") |> json_response(200) |> Map.get("service_accounts")
+
+      assert account["owner"] == %{"id" => user_id, "name" => user_name}
+      assert account["owner_active"] == true
+      # The creator is not a known user here, so there is no name to show for them.
+      assert account["creator"] == nil
     end
 
     test "handles pagination parameters", %{conn: conn, org_id: org_id} do
@@ -217,6 +252,9 @@ defmodule FrontWeb.ServiceAccountControllerTest do
                "created_at" => "2024-01-01T10:00:00Z",
                "updated_at" => "2024-01-01T10:00:00Z",
                "deactivated" => false,
+               "owner" => nil,
+               "owner_active" => false,
+               "creator" => nil,
                "api_token" => "api_token_123",
                "roles" => []
              }
@@ -378,6 +416,9 @@ defmodule FrontWeb.ServiceAccountControllerTest do
                "created_at" => "2024-01-01T10:00:00Z",
                "updated_at" => "2024-01-02T10:00:00Z",
                "deactivated" => false,
+               "owner" => nil,
+               "owner_active" => false,
+               "creator" => nil,
                "roles" => []
              }
     end
@@ -504,7 +545,7 @@ defmodule FrontWeb.ServiceAccountControllerTest do
       :ok
     end
 
-    test "regenerates token successfully", %{conn: conn} do
+    test "regenerates token successfully", %{conn: conn, user_id: user_id} do
       service_account_proto = %InternalApi.ServiceAccount.ServiceAccount{
         id: "sa_123",
         name: "Test Account",
@@ -520,7 +561,10 @@ defmodule FrontWeb.ServiceAccountControllerTest do
         {:ok, service_account_proto}
       end)
 
-      expect(ServiceAccountMock, :regenerate_token, fn "sa_123", _org_id ->
+      # The account goes on to use its owner's access, so guard is told who is asking
+      # for the token rather than only which account it belongs to.
+      expect(ServiceAccountMock, :regenerate_token, fn "sa_123", _org_id, requester_id ->
+        assert requester_id == user_id
         {:ok, "new_api_token_456"}
       end)
 
@@ -568,5 +612,121 @@ defmodule FrontWeb.ServiceAccountControllerTest do
                "error" => "Failed to regenerate service account token"
              }
     end
+  end
+
+  describe "POST /service_accounts/:id/take_ownership" do
+    setup %{org_id: org_id, user_id: user_id} do
+      Support.Stubs.PermissionPatrol.add_permissions(org_id, user_id, [
+        "organization.service_accounts.manage"
+      ])
+
+      :ok
+    end
+
+    test "makes the signed-in user the owner", %{conn: conn, org_id: org_id, user_id: user_id} do
+      expect(ServiceAccountMock, :set_owner, fn "sa_123", ^org_id, ^user_id ->
+        {:ok, owned_proto(org_id, user_id)}
+      end)
+
+      response = conn |> post("/service_accounts/sa_123/take_ownership") |> json_response(200)
+
+      assert response["owner_active"] == true
+    end
+
+    test "never takes an owner from the request", %{conn: conn, org_id: org_id, user_id: user_id} do
+      expect(ServiceAccountMock, :set_owner, fn "sa_123", ^org_id, owner_id ->
+        assert owner_id == user_id
+        {:ok, owned_proto(org_id, user_id)}
+      end)
+
+      conn
+      |> post("/service_accounts/sa_123/take_ownership", %{"owner_id" => "somebody_else"})
+      |> json_response(200)
+    end
+
+    test "passes on why it was refused", %{conn: conn} do
+      expect(ServiceAccountMock, :set_owner, fn _id, _org_id, _owner_id ->
+        {:error, "An owner has to be a member of the organization"}
+      end)
+
+      assert conn |> post("/service_accounts/sa_123/take_ownership") |> json_response(422) == %{
+               "error" => "An owner has to be a member of the organization"
+             }
+    end
+
+    test "needs the manage permission", %{conn: conn, org_id: org_id, user_id: user_id} do
+      Support.Stubs.PermissionPatrol.remove_all_permissions()
+
+      Support.Stubs.PermissionPatrol.add_permissions(org_id, user_id, [
+        "organization.view",
+        "organization.service_accounts.view"
+      ])
+
+      conn = post(conn, "/service_accounts/sa_123/take_ownership")
+
+      assert html_response(conn, 404) =~ "Page not found"
+    end
+  end
+
+  describe "POST /service_accounts/:id/release_ownership" do
+    setup %{org_id: org_id, user_id: user_id} do
+      Support.Stubs.PermissionPatrol.add_permissions(org_id, user_id, [
+        "organization.service_accounts.manage"
+      ])
+
+      :ok
+    end
+
+    test "gives up ownership for the signed-in user", %{
+      conn: conn,
+      org_id: org_id,
+      user_id: user_id
+    } do
+      expect(ServiceAccountMock, :release_owner, fn "sa_123", ^org_id, ^user_id ->
+        {:ok, %{owned_proto(org_id, "") | owner_active: false}}
+      end)
+
+      response = conn |> post("/service_accounts/sa_123/release_ownership") |> json_response(200)
+
+      assert response["owner_active"] == false
+    end
+
+    test "passes on a refusal from someone who is not the owner", %{conn: conn} do
+      expect(ServiceAccountMock, :release_owner, fn _id, _org_id, _requester_id ->
+        {:error, "Only the owner can give up ownership"}
+      end)
+
+      assert conn
+             |> post("/service_accounts/sa_123/release_ownership")
+             |> json_response(422) == %{"error" => "Only the owner can give up ownership"}
+    end
+
+    test "needs the manage permission", %{conn: conn, org_id: org_id, user_id: user_id} do
+      Support.Stubs.PermissionPatrol.remove_all_permissions()
+
+      Support.Stubs.PermissionPatrol.add_permissions(org_id, user_id, [
+        "organization.view",
+        "organization.service_accounts.view"
+      ])
+
+      conn = post(conn, "/service_accounts/sa_123/release_ownership")
+
+      assert html_response(conn, 404) =~ "Page not found"
+    end
+  end
+
+  defp owned_proto(org_id, owner_id) do
+    %InternalApi.ServiceAccount.ServiceAccount{
+      id: "sa_123",
+      name: "Test Service Account",
+      description: "Test description",
+      org_id: org_id,
+      creator_id: "someone_else",
+      created_at: %Google.Protobuf.Timestamp{seconds: 1_704_103_200},
+      updated_at: %Google.Protobuf.Timestamp{seconds: 1_704_103_200},
+      deactivated: false,
+      owner_id: owner_id,
+      owner_active: true
+    }
   end
 end

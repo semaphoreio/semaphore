@@ -27,11 +27,16 @@ defmodule Mix.Tasks.Dev.Server do
     org = Stubs.Organization.create_default(owner_id: first_user.id)
     Stubs.RBAC.add_owner(org.id, first_user.id)
     Stubs.RBAC.add_member(org.id, user.id)
+    # Without this every permission-gated page is hidden locally.
+    Stubs.PermissionPatrol.allow_everything(org.id, user.id)
 
     for i <- 2..4 do
       org = Stubs.Organization.create(name: "rt#{i}", org_username: "rt#{i}", owner_id: user.id)
       Stubs.RBAC.add_member(org.id, user.id)
+      Stubs.PermissionPatrol.allow_everything(org.id, user.id)
     end
+
+    seed_service_accounts(org.id, user.id, first_user.id)
 
     Stubs.Feature.set_org_defaults(org.id)
     Stubs.Billing.set_org_defaults(org.id)
@@ -71,6 +76,28 @@ defmodule Mix.Tasks.Dev.Server do
     end)
 
     {user, org}
+  end
+
+  # One account owned by the user you sign in as, one with no owner, so both states the
+  # list can show are there to look at.
+  defp seed_service_accounts(org_id, user_id, other_user_id) do
+    {:ok, _} =
+      Support.FakeClients.ServiceAccount.create(
+        org_id,
+        "deploy-bot",
+        "Adds the projects the release pipelines build",
+        user_id
+      )
+
+    {:ok, {ownerless, _token}} =
+      Support.FakeClients.ServiceAccount.create(
+        org_id,
+        "nightly-importer",
+        "Imports the nightly fixtures",
+        other_user_id
+      )
+
+    Support.FakeClients.ServiceAccount.remove_owner(ownerless.id)
   end
 
   defp create_project(:simple_project, org, user) do
