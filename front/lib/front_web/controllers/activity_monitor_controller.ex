@@ -23,7 +23,7 @@ defmodule FrontWeb.ActivityMonitorController do
       org_id = conn.assigns.organization_id
 
       user = Front.Models.User.find(user_id)
-      activity = Front.ActivityMonitor.load(org_id, user_id)
+      activity = org_id |> Front.ActivityMonitor.load(user_id) |> or_empty(org_id)
 
       conn
       |> render("index.html",
@@ -45,11 +45,21 @@ defmodule FrontWeb.ActivityMonitorController do
 
       tracing_headers = conn.assigns.tracing_headers
 
-      activity = Front.ActivityMonitor.load(org_id, user_id, tracing_headers)
+      case Front.ActivityMonitor.load(org_id, user_id, tracing_headers) do
+        {:error, _} ->
+          # The browser keeps the last data it has and polls again.
+          conn
+          |> put_status(:service_unavailable)
+          |> json(%{error: "Activity data is temporarily unavailable"})
 
-      conn |> json(activity)
+        activity ->
+          conn |> json(activity)
+      end
     end)
   end
+
+  defp or_empty({:error, _}, org_id), do: Front.ActivityMonitor.empty(org_id)
+  defp or_empty(activity, _org_id), do: activity
 
   def stop(conn, params) do
     Watchman.benchmark("activity_monitor.stop.duration", fn ->
