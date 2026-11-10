@@ -280,6 +280,37 @@ defmodule FrontWeb.DeploymentsControllerTest do
       refute html =~ "Deployment History is empty."
       assert html =~ "Deploy to Staging"
     end
+
+    test "renders the target with an empty history and a flash when history fails",
+         %{
+           conn: conn,
+           project_id: project_id,
+           target_id: target_id,
+           organization_id: org_id,
+           user_id: user_id
+         } = context do
+      PermissionPatrol.remove_all_permissions()
+
+      PermissionPatrol.allow_everything_except(
+        org_id,
+        user_id,
+        "project.deployment_targets.manage"
+      )
+
+      setup_deployment(context)
+
+      Deployments.Grpc.expect(:history, fn ->
+        raise GRPC.RPCError, status: :unknown, message: "query timed out"
+      end)
+
+      conn = call_show(conn, project_id, target_id)
+      html = html_response(conn, 200)
+
+      assert html =~ "Staging environment"
+      assert html =~ "We didn't find any deployments matching your criteria."
+      refute html =~ "Deploy to Staging"
+      assert get_flash(conn, :alert) == "Failure: unable to load deployment history"
+    end
   end
 
   describe "GET /project/:project/deployments/:id/edit" do
