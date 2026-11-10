@@ -238,6 +238,8 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         return
       end
 
+      logger.info("pr-approval-claimed", :approved_workflow_id => workflow.id, :approved_action => workflow.payload.action)
+
       options_persisted = mark_workflow_with_pr_approval_options(
         workflow,
         :include_secrets => include_secrets,

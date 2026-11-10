@@ -832,6 +832,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
 
           expect(Workflow.find(ready_for_review.id).state).to eq(Workflow::STATE_LAUNCHING)
           expect(Workflow.find(opened.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+          expect(@logger).to have_received(:info).with("pr-approval-claimed", :approved_workflow_id => ready_for_review.id, :approved_action => "ready_for_review")
         end
 
         it "launches it on the rescheduled run when mergeability was unknown at approval" do
