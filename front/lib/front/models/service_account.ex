@@ -15,12 +15,21 @@ defmodule Front.Models.ServiceAccount do
           source: role_source()
         }
 
+  @type person :: %{
+          id: String.t(),
+          name: String.t()
+        }
+
   @type t :: %__MODULE__{
           id: String.t(),
           name: String.t(),
           description: String.t(),
           org_id: String.t(),
           creator_id: String.t(),
+          owner_id: String.t(),
+          owner_active: boolean(),
+          creator: person() | nil,
+          owner: person() | nil,
           created_at: DateTime.t(),
           updated_at: DateTime.t(),
           deactivated: boolean(),
@@ -33,6 +42,10 @@ defmodule Front.Models.ServiceAccount do
     :description,
     :org_id,
     :creator_id,
+    :owner_id,
+    :owner_active,
+    :creator,
+    :owner,
     :created_at,
     :updated_at,
     :deactivated,
@@ -54,7 +67,8 @@ defmodule Front.Models.ServiceAccount do
          {:ok, service_accounts} <-
            Front.ServiceAccount.describe_many(member_ids, org_id),
          service_accounts <-
-           assign_service_accounts_to_members(members, service_accounts) do
+           assign_service_accounts_to_members(members, service_accounts),
+         service_accounts <- assign_people(service_accounts) do
       {:ok, {service_accounts, total_pages}}
     else
       error ->
@@ -104,9 +118,50 @@ defmodule Front.Models.ServiceAccount do
     end
   end
 
-  def regenerate_token(service_account_id, org_id) do
+  @doc """
+  Makes the given user the owner of a service account.
+
+  The caller passes their own id: an account acts for the person who took it on, and
+  lending someone else's access is theirs to do, not an administrator's.
+  """
+  def take_ownership(service_account_id, org_id, user_id) do
+    case Front.ServiceAccount.set_owner(service_account_id, org_id, user_id) do
+      {:ok, service_account} ->
+        {:ok, from_proto(service_account)}
+
+      {:error, message} when is_binary(message) ->
+        {:error, message}
+
+      error ->
+        Logger.error("Failed to take ownership of service account: #{inspect(error)}")
+        {:error, "Failed to take ownership of the service account"}
+    end
+  end
+
+  @doc """
+  Gives up ownership of a service account on behalf of the user making the request.
+
+  Guard accepts this only from the current owner, since it is their own access the
+  account was using.
+  """
+  def release_ownership(service_account_id, org_id, user_id) do
+    case Front.ServiceAccount.release_owner(service_account_id, org_id, user_id) do
+      {:ok, service_account} ->
+        {:ok, from_proto(service_account)}
+
+      {:error, message} when is_binary(message) ->
+        {:error, message}
+
+      error ->
+        Logger.error("Failed to release service account: #{inspect(error)}")
+        {:error, "Failed to give up ownership of the service account"}
+    end
+  end
+
+  def regenerate_token(service_account_id, org_id, requester_id) do
     with {:ok, service_account} <- Front.ServiceAccount.describe(service_account_id, org_id),
-         {:ok, api_token} <- Front.ServiceAccount.regenerate_token(service_account_id, org_id) do
+         {:ok, api_token} <-
+           Front.ServiceAccount.regenerate_token(service_account_id, org_id, requester_id) do
       {:ok, {from_proto(service_account), api_token}}
     else
       error ->
@@ -126,6 +181,8 @@ defmodule Front.Models.ServiceAccount do
       description: proto.description,
       org_id: proto.org_id,
       creator_id: proto.creator_id,
+      owner_id: proto.owner_id,
+      owner_active: proto.owner_active,
       created_at: timestamp_to_datetime(proto.created_at),
       updated_at: timestamp_to_datetime(proto.updated_at),
       deactivated: proto.deactivated,
@@ -138,6 +195,37 @@ defmodule Front.Models.ServiceAccount do
   end
 
   defp timestamp_to_datetime(_), do: DateTime.utc_now()
+
+  # The owner and the creator are shown by name: the owner because it is whose access the
+  # account uses, the creator because they are who to ask when an account has no owner.
+  defp assign_people(service_accounts) do
+    people =
+      service_accounts
+      |> Enum.flat_map(&[&1.owner_id, &1.creator_id])
+      |> Enum.reject(&(&1 in [nil, ""]))
+      |> Enum.uniq()
+      |> fetch_people()
+
+    Enum.map(service_accounts, fn service_account ->
+      %{
+        service_account
+        | owner: Map.get(people, service_account.owner_id),
+          creator: Map.get(people, service_account.creator_id)
+      }
+    end)
+  end
+
+  defp fetch_people([]), do: %{}
+
+  defp fetch_people(ids) do
+    ids
+    |> Front.Models.User.find_many()
+    |> Map.new(&{&1.id, %{id: &1.id, name: &1.name}})
+  rescue
+    error ->
+      Logger.error("Failed to look up service account owners: #{inspect(error)}")
+      %{}
+  end
 
   defp assign_service_accounts_to_members(members, service_accounts) do
     members

@@ -159,6 +159,12 @@ config :guard, Guard.FederatedIdentitySyncDrainer,
     {"* * * * *", {Guard.FederatedIdentitySyncDrainer, :process, []}}
   ]
 
+config :guard, Guard.ServiceAccount.OwnerBackfill,
+  jobs: [
+    # Every 15 minutes
+    {"*/15 * * * *", {Guard.ServiceAccount.OwnerBackfill, :process, []}}
+  ]
+
 config :guard, :hard_destroy_grace_period_days, 30
 
 config :guard, :posthog_api_key, ""

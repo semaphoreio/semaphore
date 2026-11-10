@@ -225,7 +225,7 @@ defmodule Front.Browser.PeopleTest do
   ###
 
   defp assert_number_of_role_labels(page, expected_no) do
-    role_label_css_selector = "span.f6.normal.ml1.ph1.br2"
+    role_label_css_selector = "span[data-role-label]"
     role_label_elems = all(page, Query.css(role_label_css_selector))
 
     assert length(role_label_elems) == expected_no
@@ -241,7 +241,7 @@ defmodule Front.Browser.PeopleTest do
   end
 
   defp assert_selected_role(page, role_name) do
-    role_label_css_selector = "span.f6.normal.ml1.ph1.br2"
+    role_label_css_selector = "span[data-role-label]"
     selected_role_query = Query.css(role_label_css_selector, count: :any, at: 0)
     selected_role = text(page, selected_role_query)
 

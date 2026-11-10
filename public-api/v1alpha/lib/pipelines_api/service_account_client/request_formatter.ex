@@ -114,8 +114,15 @@ defmodule PipelinesAPI.ServiceAccountClient.RequestFormatter do
 
   def form_regenerate_token_request(params, conn) when is_map(params) do
     org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
+    requester_id = Conn.get_req_header(conn, "x-semaphore-user-id") |> Enum.at(0, "")
 
-    RegenerateTokenRequest.new(service_account_id: Map.get(params, "id", ""), org_id: org_id)
+    RegenerateTokenRequest.new(
+      service_account_id: Map.get(params, "id", ""),
+      org_id: org_id,
+      # The new token is held by whoever asked for it, so guard needs to know who that
+      # is before it lets the account keep using its owner's access.
+      requester_id: requester_id
+    )
     |> ToTuple.ok()
   catch
     error -> error
