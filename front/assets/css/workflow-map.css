@@ -294,6 +294,12 @@
   stroke-dasharray: 2 5;
 }
 
+.wf-map .react-flow__edge.after .react-flow__edge-path {
+  stroke: #96A0A6;
+  stroke-width: 1.5;
+  stroke-dasharray: 3 4;
+}
+
 .wf-map .react-flow__minimap {
   border-radius: 6px;
   overflow: hidden;

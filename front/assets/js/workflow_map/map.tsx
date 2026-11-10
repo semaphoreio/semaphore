@@ -267,13 +267,20 @@ function build(wf: Workflow, L: MapLayout) {
     if (box.open) {
       for (const b of p.blocks ?? []) {
         const bb = L.blocks.get(b.id);
-        if (!bb) continue;
+        if (!bb || b.after) continue;
         nodes.push({ id: b.id, type: `block`, parentId: p.id, position: { x: bb.x, y: bb.y }, width: bb.w, height: bb.h, style: CLICKABLE, data: { id: b.id }, draggable: false, selectable: false });
         for (const d of b.deps) {
           const id = `${d.id}->${b.id}`;
           edges.push({ id, type: `route`, source: d.id, target: b.id, className: `dep`, focusable: false, data: { points: L.routes.get(id) ?? [] } });
         }
       }
+    }
+    const a = p.blocks?.find((b) => b.after);
+    const ab = a && L.blocks.get(a.id);
+    if (ab) {
+      const id = `${p.id}=>${a.id}`;
+      nodes.push({ id: a.id, type: `block`, position: { x: ab.x, y: ab.y }, width: ab.w, height: ab.h, style: CLICKABLE, data: { id: a.id }, draggable: false, selectable: false });
+      edges.push({ id, type: `route`, source: p.id, sourceHandle: `out`, target: a.id, className: `after`, focusable: false, data: { points: L.routes.get(id) ?? [] } });
     }
     if (p.parent && L.pipelines.has(p.parent.id)) {
       const kind = p.trigger === `AUTO_PROMOTION` ? `auto` : p.trigger === `PIPELINE_PARTIAL_RERUN` ? `rerun` : `manual`;
@@ -299,7 +306,8 @@ export function structureKey(wf: Workflow, open: Set<string>, openB: Set<string>
     .map((p) => {
       const blocks = open.has(p.id) && p.blocks ? p.blocks.map((b) => `${b.name}:${b.deps.length}:${openB.has(b.id) ? b.jobs.length : `-`}`).join(`,`) : `closed`;
       const promotions = p.promotions?.map((promotion) => `${promotion.name}:${promotion.pipelines.length}`).join(`,`) ?? ``;
-      return `${p.id}<${p.parent?.id ?? ``}>${blocks}[${promotions}]`;
+      const after = p.blocks?.find((b) => b.after);
+      return `${p.id}<${p.parent?.id ?? ``}>${blocks}[${promotions}]${after ? `+${openB.has(after.id) ? after.jobs.length : `-`}` : ``}`;
     })
     .join(`|`);
 }
@@ -310,6 +318,7 @@ function boxOf(wf: Workflow, L: MapLayout, id: string) {
   const block = wf.blocks.get(id);
   const p = block && L.pipelines.get(block.pipeline.id);
   const bb = L.blocks.get(id);
+  if (block?.after) return bb;
   return p && bb && { x: p.x + bb.x, y: p.y + bb.y, w: bb.w, h: bb.h };
 }
 

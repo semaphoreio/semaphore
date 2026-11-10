@@ -49,7 +49,7 @@ export function initLayout(workerUrl: string, onWorkerError: () => void) {
 }
 
 function inner(p: Pipeline, size: (b: Block) => { w: number, h: number, }) {
-  const blocks = p.blocks ?? [];
+  const blocks = (p.blocks ?? []).filter((b) => !b.after);
   const sizes = blocks.map(size);
   const key = `${p.id}|${blocks.map((b, i) => `${b.name}:${b.deps.map((d) => d.name).join(`+`)}:${sizes[i].w}x${sizes[i].h}`).join(`,`)}`;
   if (!innerCache.has(key)) {
@@ -83,7 +83,9 @@ export async function layoutMap(
   blockSize: (b: Block) => { w: number, h: number, },
   closed: { w: number, h: number, }
 ): Promise<MapLayout> {
-  const inners = await Promise.all(wf.pipelines.map((p) => (isOpen(p) && p.blocks?.length ? inner(p, blockSize) : null)));
+  const inners = await Promise.all(wf.pipelines.map((p) => (isOpen(p) && p.blocks?.some((b) => !b.after) ? inner(p, blockSize) : null)));
+  const afters = wf.pipelines.map((p) => p.blocks?.find((b) => b.after)).filter(Boolean);
+  const afterIds = new Set(afters.map((a) => a.id));
   const outer = await elk.layout({
     id: `workflow`,
     layoutOptions: {
@@ -95,25 +97,33 @@ export async function layoutMap(
       "elk.layered.considerModelOrder.strategy": `NODES_AND_EDGES`,
       "elk.layered.nodePlacement.strategy": `BRANDES_KOEPF`,
     },
-    children: wf.pipelines.map((p, i) => {
+    children: wf.pipelines.flatMap((p, i) => {
       const g = inners[i];
-      return { id: p.id, width: g ? Math.max(closed.w, g.width) : closed.w, height: g ? g.height : closed.h };
+      const a = afters.find((x) => x.pipeline === p);
+      const node = { id: p.id, width: g ? Math.max(closed.w, g.width) : closed.w, height: g ? g.height : closed.h };
+      return a ? [node, { id: a.id, width: blockSize(a).w, height: blockSize(a).h }] : [node];
     }),
-    edges: wf.pipelines
-      .filter((p) => p.parent)
-      .map((p): ElkExtendedEdge => {
-        const label = promotionLabel(p);
-        return {
-          id: `${p.parent.id}=>${p.id}`,
-          sources: [p.parent.id],
-          targets: [p.id],
-          labels: label ? [{ text: label, ...LABEL }] : [],
-        };
-      }),
+    edges: [
+      ...afters.map((a): ElkExtendedEdge => ({ id: `${a.pipeline.id}=>${a.id}`, sources: [a.pipeline.id], targets: [a.id] })),
+      ...wf.pipelines
+        .filter((p) => p.parent)
+        .map((p): ElkExtendedEdge => {
+          const label = promotionLabel(p);
+          return {
+            id: `${p.parent.id}=>${p.id}`,
+            sources: [p.parent.id],
+            targets: [p.id],
+            labels: label ? [{ text: label, ...LABEL }] : [],
+          };
+        }),
+    ],
   });
 
   const layout: MapLayout = { pipelines: new Map(), blocks: new Map(), routes: new Map(), labels: new Map() };
-  for (const c of outer.children ?? []) layout.pipelines.set(c.id, { x: c.x, y: c.y, w: c.width, h: c.height, open: false });
+  for (const c of outer.children ?? []) {
+    if (afterIds.has(c.id)) layout.blocks.set(c.id, { x: c.x, y: c.y, w: c.width, h: c.height });
+    else layout.pipelines.set(c.id, { x: c.x, y: c.y, w: c.width, h: c.height, open: false });
+  }
   for (const e of outer.edges ?? []) {
     layout.routes.set(e.id, sectionPoints(e, 0, 0));
     const l = e.labels?.[0];

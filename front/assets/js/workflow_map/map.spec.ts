@@ -26,4 +26,12 @@ describe(`structureKey`, () => {
     const after = structureKey(workflowWith([`passed`, `passed`]), open, new Set([`b`]));
     expect(after).to.not.equal(before);
   });
+
+  test(`changes when the after-pipeline node of a closed pipeline opens`, () => {
+    const wf = workflowWith([`passed`]);
+    wf.pipelines[0].blocks.push({ id: `a`, name: `After pipeline`, deps: [], jobs: [job(`passed`)], after: true } as Block);
+    const before = structureKey(wf, new Set(), new Set());
+    const after = structureKey(wf, new Set(), new Set([`a`]));
+    expect(after).to.not.equal(before);
+  });
 });
