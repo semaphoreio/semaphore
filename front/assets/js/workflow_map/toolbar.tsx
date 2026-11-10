@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { install, uninstall } from "@github/hotkey";
 import { STATUSES, STATUS_LABEL, countJobs } from "./model";
 import { SearchResult, clearFilters, cursor, focusOn, hits, query, queryJobs, results, scope, selected, showSkipped, statuses, step, toggleStatus, workflow } from "./store";
-import { Highlight, PipelineTitle, StatusIcon } from "./ui";
+import { Highlight, Name, PipelineTitle, StatusIcon } from "./ui";
 
 const MAX_RESULTS = 60;
 
@@ -97,10 +97,10 @@ export const Search = () => {
                 <button role="option" aria-selected={i === active} className={`wf-map-result ${i === active ? `active` : ``}`} onMouseEnter={() => setActive(i)} onClick={() => choose(x)}>
                   <StatusIcon status={x.status} size={14}/>
                   <span className="wf-map-result-kind">{x.kind}</span>
-                  <span className="wf-map-result-label">
+                  <Name className="wf-map-result-label">
                     <Highlight text={x.label}/>
-                  </span>
-                  <span className="wf-map-result-context">{x.context}</span>
+                  </Name>
+                  <Name className="wf-map-result-context">{x.context}</Name>
                 </button>
               </Fragment>
             );
