@@ -403,7 +403,6 @@
   white-space: nowrap;
   -webkit-user-select: text;
   user-select: text;
-  cursor: text;
 }
 
 .wf-map-name:hover {
@@ -631,6 +630,10 @@
   flex: 1;
   font-size: 13px;
   color: #677278;
+}
+
+.wf-map-pipeline-head {
+  cursor: pointer;
 }
 
 .wf-map-collapse {
@@ -927,6 +930,7 @@ a.wf-map-job:hover {
 
 .wf-map-edge-label .wf-map-name {
   display: block;
+  cursor: text;
 }
 
 .wf-map-actions {
