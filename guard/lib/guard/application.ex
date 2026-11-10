@@ -75,6 +75,9 @@ defmodule Guard.Application do
     cli_auth_code_cleaner = System.get_env("START_CLI_AUTH_CODE_CLEANER") || "false"
     owner_backfill = System.get_env("START_SERVICE_ACCOUNT_OWNER_BACKFILL") || "false"
 
+    federated_identity_sync_drainer =
+      System.get_env("START_FEDERATED_IDENTITY_SYNC_DRAINER") || "false"
+
     services
     |> add_grpc_service(grpc)
     |> add_test_grpc_service(grpc, @guard_env)
@@ -84,6 +87,7 @@ defmodule Guard.Application do
     |> add_organization_cleaner(organization_cleaner)
     |> add_mcp_auth_code_cleaner(mcp_auth_code_cleaner)
     |> add_cli_auth_code_cleaner(cli_auth_code_cleaner)
+    |> add_federated_identity_sync_drainer(federated_identity_sync_drainer)
     |> add_owner_backfill(owner_backfill)
   end
 
@@ -150,6 +154,12 @@ defmodule Guard.Application do
   end
 
   defp add_cli_auth_code_cleaner(services, _), do: services
+
+  defp add_federated_identity_sync_drainer(services, "true") do
+    services ++ [{Guard.FederatedIdentitySyncDrainer, []}]
+  end
+
+  defp add_federated_identity_sync_drainer(services, _), do: services
 
   defp add_owner_backfill(services, "true") do
     services ++ [{Guard.ServiceAccount.OwnerBackfill, []}]

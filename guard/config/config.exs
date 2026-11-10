@@ -147,6 +147,18 @@ config :guard, Guard.CLIAuth.AuthCodeCleaner,
     {"*/30 * * * *", {Guard.CLIAuth.AuthCodeCleaner, :process, []}}
   ]
 
+config :guard, Guard.FederatedIdentitySyncDrainer,
+  # A batch leases its rows for a fixed window but processes them serially, so
+  # a slow Keycloak lets the leases expire while the batch is still running.
+  # Overlapping runs would then re-lease those rows and pile concurrent passes
+  # onto the already-failing dependency. Quantum tracks this per node, so each
+  # pod still drains, one run at a time.
+  overlap: false,
+  jobs: [
+    # Every minute
+    {"* * * * *", {Guard.FederatedIdentitySyncDrainer, :process, []}}
+  ]
+
 config :guard, Guard.ServiceAccount.OwnerBackfill,
   jobs: [
     # Every 15 minutes
