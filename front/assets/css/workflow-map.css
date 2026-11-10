@@ -294,12 +294,6 @@
   stroke-dasharray: 2 5;
 }
 
-.wf-map .react-flow__edge.after .react-flow__edge-path {
-  stroke: #96A0A6;
-  stroke-width: 1.5;
-  stroke-dasharray: 3 4;
-}
-
 .wf-map .react-flow__minimap {
   border-radius: 6px;
   overflow: hidden;
@@ -641,6 +635,49 @@
 
 .wf-map-pipeline-head {
   cursor: pointer;
+}
+
+.wf-map-after-band {
+  margin: 0 12px;
+  border-top: 1px dashed #C9D0D4;
+}
+
+.wf-map-after-band:has(.wf-map-job) {
+  padding-bottom: 6px;
+}
+
+.wf-map-after-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 31px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font-size: 13px;
+  color: #495358;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.wf-map-after-head:hover {
+  background: #F3F5F6;
+}
+
+.wf-map-after-title {
+  font-weight: 500;
+  color: #202B30;
+}
+
+.wf-map-after-sep {
+  color: #96A0A6;
+}
+
+.wf-map-after-head .wf-map-time {
+  margin-left: auto;
 }
 
 .wf-map-collapse {

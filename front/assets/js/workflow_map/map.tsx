@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { computed, signal } from "@preact/signals";
 import { BaseEdge, Background, Controls, Edge, EdgeLabelRenderer, EdgeProps, Handle, MiniMap, Node, NodeProps, Panel, Position, ReactFlow, ReactFlowProvider, useReactFlow, useStore } from "@xyflow/react";
-import { Pipeline, Workflow, blockStatus, pipelineJobs } from "./model";
+import { Block, Pipeline, Workflow, blockStatus, pipelineJobs } from "./model";
 import { focus, hits, layoutError, popover, rerunPipeline, selected, stopPipeline, togglePopover, workflow } from "./store";
 import { MapLayout, Point, layoutMap, promotionLabel } from "./layout";
 import { PromoteButton } from "./promote";
 import { Chips, Search, Stepper } from "./toolbar";
-import { BlockCard, BlockSummary, Chevron, Counts, Duration, Name, PipelineTitle, StatusBar, StatusIcon, plainClick } from "./ui";
+import { BlockCard, BlockSummary, Chevron, Counts, Duration, JobRow, Name, PipelineTitle, StatusBar, StatusIcon, plainClick } from "./ui";
 import { JOB_ROW_H, blockSize, jobTop } from "./lines";
 
 const CARD = { w: 300, h: 72 };
@@ -146,10 +146,40 @@ const CardNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
   );
 };
 
+export const AFTER_HEAD_H = 32;
+
+export const afterBand = (p: Pipeline, open: Set<string>) => {
+  const a = p.blocks?.find((b) => b.after);
+  return a ? AFTER_HEAD_H + (open.has(a.id) ? a.jobs.length * JOB_ROW_H + 6 : 0) : 0;
+};
+
+export const AfterBand = ({ block }: { block: Block, }) => {
+  const open = openBlocks.value.has(block.id);
+  const starts = block.jobs.map((j) => j.startedAt).filter(Boolean);
+  const ends = block.jobs.map((j) => j.finishedAt);
+  const running = block.jobs.some((j) => j.status === `running`);
+  return (
+    <div className="wf-map-after-band">
+      <button className="wf-map-after-head" aria-expanded={open} onClick={(e) => plainClick(e, () => toggle(openBlocks, block.id))}>
+        <Chevron open={open}/>
+        <span className="wf-map-after-title">After pipeline</span>
+        <span className="wf-map-after-sep">·</span>
+        <StatusIcon status={blockStatus(block)}/>
+        <span className="wf-map-after-count">
+          {block.jobs.length} {block.jobs.length === 1 ? `job` : `jobs`}
+        </span>
+        <Duration start={starts.length ? Math.min(...starts) : null} end={ends.every(Boolean) && ends.length ? Math.max(...ends) : null} running={running}/>
+      </button>
+      {open && block.jobs.map((j) => <JobRow key={j.key} job={j}/>)}
+    </div>
+  );
+};
+
 const PipelineNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
   const p = workflow.value?.pipelineById.get(data.id);
   const h = hits.value;
   if (!p) return null;
+  const after = p.blocks?.find((b) => b.after);
   return (
     <div className={`wf-map-pipeline ${selected.value === p.id ? `selected` : ``} ${h.active && !h.pipelines.has(p) ? `dim` : ``}`} onClick={(e) => plainClick(e, () => (selected.value = p.id))}>
       <Handle type="target" id="in" position={Position.Left} isConnectable={false} style={{ top: 34 }}/>
@@ -184,6 +214,7 @@ const PipelineNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
           <PipelineActions p={p}/>
         </div>
       </div>
+      {after && <AfterBand block={after}/>}
       <Handle type="source" id="out" position={Position.Right} isConnectable={false} style={{ top: 34 }}/>
     </div>
   );
@@ -279,13 +310,6 @@ function build(wf: Workflow, L: MapLayout) {
         }
       }
     }
-    const a = p.blocks?.find((b) => b.after);
-    const ab = a && L.blocks.get(a.id);
-    if (ab) {
-      const id = `${p.id}=>${a.id}`;
-      nodes.push({ id: a.id, type: `block`, position: { x: ab.x, y: ab.y }, width: ab.w, height: ab.h, style: CLICKABLE, data: { id: a.id }, draggable: false, selectable: false });
-      edges.push({ id, type: `route`, source: p.id, sourceHandle: `out`, target: a.id, className: `after`, focusable: false, data: { points: L.routes.get(id) ?? [] } });
-    }
     if (p.parent && L.pipelines.has(p.parent.id)) {
       const kind = p.trigger === `AUTO_PROMOTION` ? `auto` : p.trigger === `PIPELINE_PARTIAL_RERUN` ? `rerun` : `manual`;
       const id = `${p.parent.id}=>${p.id}`;
@@ -322,7 +346,7 @@ function boxOf(wf: Workflow, L: MapLayout, id: string) {
   const block = wf.blocks.get(id);
   const p = block && L.pipelines.get(block.pipeline.id);
   const bb = L.blocks.get(id);
-  if (block?.after) return bb;
+  if (block?.after) return p;
   return p && bb && { x: p.x + bb.x, y: p.y + bb.y, w: bb.w, h: bb.h };
 }
 
@@ -372,7 +396,7 @@ const WorkflowMap = () => {
     if (!wf) return;
     let alive = true;
     document.fonts.ready
-      .then(() => layoutMap(wf, (p) => P.has(p.id), (b) => blockSize(b, B.has(b.id)), CARD))
+      .then(() => layoutMap(wf, (p) => P.has(p.id), (b) => blockSize(b, B.has(b.id)), CARD, (p) => afterBand(p, B)))
       .then((L) => alive && setLayout(L))
       .catch(() => {
         if (alive) layoutError.value = `Couldn't lay out this workflow. Reload the page to try again.`;

@@ -48,10 +48,10 @@ export function initLayout(workerUrl: string, onWorkerError: () => void) {
   innerCache.clear();
 }
 
-function inner(p: Pipeline, size: (b: Block) => { w: number, h: number, }) {
+function inner(p: Pipeline, size: (b: Block) => { w: number, h: number, }, top: number) {
   const blocks = (p.blocks ?? []).filter((b) => !b.after);
   const sizes = blocks.map(size);
-  const key = `${p.id}|${blocks.map((b, i) => `${b.name}:${b.deps.map((d) => d.name).join(`+`)}:${sizes[i].w}x${sizes[i].h}`).join(`,`)}`;
+  const key = `${p.id}|${top}|${blocks.map((b, i) => `${b.name}:${b.deps.map((d) => d.name).join(`+`)}:${sizes[i].w}x${sizes[i].h}`).join(`,`)}`;
   if (!innerCache.has(key)) {
     const layout = elk.layout({
       id: p.id,
@@ -63,7 +63,7 @@ function inner(p: Pipeline, size: (b: Block) => { w: number, h: number, }) {
         "elk.spacing.edgeNode": `14`,
         "elk.layered.spacing.nodeNodeBetweenLayers": `64`,
         "elk.layered.nodePlacement.bk.fixedAlignment": `BALANCED`,
-        "elk.padding": `[top=${PIPE_PAD.top},left=${PIPE_PAD.side},bottom=${PIPE_PAD.bottom},right=${PIPE_PAD.side}]`,
+        "elk.padding": `[top=${top},left=${PIPE_PAD.side},bottom=${PIPE_PAD.bottom},right=${PIPE_PAD.side}]`,
       },
       children: blocks.map((b, i) => ({ id: b.id, width: sizes[i].w, height: sizes[i].h })),
       edges: blocks.flatMap((b) => b.deps.map((d) => ({ id: `${d.id}->${b.id}`, sources: [d.id], targets: [b.id] }))),
@@ -81,11 +81,10 @@ export async function layoutMap(
   wf: Workflow,
   isOpen: (p: Pipeline) => boolean,
   blockSize: (b: Block) => { w: number, h: number, },
-  closed: { w: number, h: number, }
+  closed: { w: number, h: number, },
+  band: (p: Pipeline) => number
 ): Promise<MapLayout> {
-  const inners = await Promise.all(wf.pipelines.map((p) => (isOpen(p) && p.blocks?.some((b) => !b.after) ? inner(p, blockSize) : null)));
-  const afters = wf.pipelines.map((p) => p.blocks?.find((b) => b.after)).filter(Boolean);
-  const afterIds = new Set(afters.map((a) => a.id));
+  const inners = await Promise.all(wf.pipelines.map((p) => (isOpen(p) && p.blocks?.some((b) => !b.after) ? inner(p, blockSize, PIPE_PAD.top + band(p)) : null)));
   const outer = await elk.layout({
     id: `workflow`,
     layoutOptions: {
@@ -97,14 +96,11 @@ export async function layoutMap(
       "elk.layered.considerModelOrder.strategy": `NODES_AND_EDGES`,
       "elk.layered.nodePlacement.strategy": `BRANDES_KOEPF`,
     },
-    children: wf.pipelines.flatMap((p, i) => {
+    children: wf.pipelines.map((p, i) => {
       const g = inners[i];
-      const a = afters.find((x) => x.pipeline === p);
-      const node = { id: p.id, width: g ? Math.max(closed.w, g.width) : closed.w, height: g ? g.height : closed.h };
-      return a ? [node, { id: a.id, width: blockSize(a).w, height: blockSize(a).h }] : [node];
+      return { id: p.id, width: g ? Math.max(closed.w, g.width) : closed.w, height: g ? g.height : closed.h };
     }),
     edges: [
-      ...afters.map((a): ElkExtendedEdge => ({ id: `${a.pipeline.id}=>${a.id}`, sources: [a.pipeline.id], targets: [a.id] })),
       ...wf.pipelines
         .filter((p) => p.parent)
         .map((p): ElkExtendedEdge => {
@@ -120,10 +116,7 @@ export async function layoutMap(
   });
 
   const layout: MapLayout = { pipelines: new Map(), blocks: new Map(), routes: new Map(), labels: new Map() };
-  for (const c of outer.children ?? []) {
-    if (afterIds.has(c.id)) layout.blocks.set(c.id, { x: c.x, y: c.y, w: c.width, h: c.height });
-    else layout.pipelines.set(c.id, { x: c.x, y: c.y, w: c.width, h: c.height, open: false });
-  }
+  for (const c of outer.children ?? []) layout.pipelines.set(c.id, { x: c.x, y: c.y, w: c.width, h: c.height, open: false });
   for (const e of outer.edges ?? []) {
     layout.routes.set(e.id, sectionPoints(e, 0, 0));
     const l = e.labels?.[0];
