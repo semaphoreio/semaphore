@@ -380,9 +380,9 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
           return
         end
 
-        # Skip ready_for_review events when build_draft_pr is enabled
-        # (the PR was already building as a draft)
-        if draft_pr_allowed?(workflow.project) && workflow.payload.pull_request_ready_for_review?
+        # The draft already built, so skip ready_for_review when building drafts,
+        # unless /sem-approve unblocked this hook: a blocked fork PR never built.
+        if approved_head_sha.blank? && draft_pr_allowed?(workflow.project) && workflow.payload.pull_request_ready_for_review?
           logger.info("skip-ready-for-review-when-building-drafts")
           workflow.update(:state => Workflow::STATE_SKIP_DRAFT_PR)
           return

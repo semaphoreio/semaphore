@@ -13,6 +13,13 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       allow(described_class).to receive(:webhook_signature_valid?).and_return(true)
     end
 
+    def pull_request_payload(action:, draft: false)
+      payload = JSON.parse(RepoHost::Github::Responses::Payload.post_receive_hook_pull_request)
+      payload["action"] = action
+      payload["pull_request"]["draft"] = draft
+      payload.to_json
+    end
+
     context "when request should not be processed" do
       before do
         allow(@workflow.payload).to receive(:includes_ci_skip?).and_return(true)
@@ -106,14 +113,12 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       # A blocked forked-PR workflow whose payload is a real pull_request
       # event, so the shared pull_request? launch path — and the SHA-binding
       # guard — is exercised end to end.
-      def build_blocked_pr_workflow(project_id:, pr_number: 1, created_at: before_comment)
+      def build_blocked_pr_workflow(project_id:, pr_number: 1, created_at: before_comment, payload: RepoHost::Github::Responses::Payload.post_receive_hook_pull_request)
         wf = FactoryBot.create(
           :workflow,
           :project_id => project_id,
           :state => Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR,
-          :request => ActionController::Parameters.new(
-            "payload" => RepoHost::Github::Responses::Payload.post_receive_hook_pull_request
-          )
+          :request => ActionController::Parameters.new("payload" => payload)
         )
         wf.update(:git_ref => "refs/pull/#{pr_number}/merge", :created_at => created_at)
         wf
@@ -787,6 +792,63 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         end
       end
 
+      context "when a draft PR was marked ready for review while blocked, on a project that builds drafts", :aggregate_failures do
+        let(:opened) do
+          build_blocked_pr_workflow(project_id: @workflow.project_id, created_at: before_comment - 1.hour, payload: pull_request_payload(:action => "opened", :draft => true))
+        end
+        let(:ready_for_review) do
+          build_blocked_pr_workflow(project_id: @workflow.project_id, created_at: before_comment, payload: pull_request_payload(:action => "ready_for_review"))
+        end
+
+        before do
+          allow(@logger).to receive(:info)
+          allow(Watchman).to receive(:increment)
+          allow(Semaphore::RepoHost::Hooks::Handler::Worker).to receive(:perform_in)
+          allow(described_class).to receive(:can_approve_forked_pr?).and_return(true)
+          allow(described_class).to receive(:launch_pipeline).and_call_original
+          allow_any_instance_of(InternalApi::PlumberWF::WorkflowService::Stub).to receive(:schedule).and_return(
+            InternalApi::PlumberWF::ScheduleResponse.new(
+              :status => InternalApi::Status.new(:code => Google::Rpc::Code::OK),
+              :wf_id => "1",
+              :ppl_id => "7054527d-21ff-4424-877f-f0c20e51c025"
+            )
+          )
+
+          @workflow.project.update!(:build_draft_pr => true)
+          opened
+          allow(@workflow.payload).to receive_messages(
+            issue_number: 1,
+            pr_approval?: true,
+            pr_approval_sha: ready_for_review.commit_sha,
+            comment_author: "maintainer",
+            comment_created_at: approval_comment_time
+          )
+        end
+
+        it "launches the approved ready_for_review workflow instead of skipping it" do
+          allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(ready_for_review))
+
+          described_class.run(@workflow, @logger)
+
+          expect(Workflow.find(ready_for_review.id).state).to eq(Workflow::STATE_LAUNCHING)
+          expect(Workflow.find(opened.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+        end
+
+        it "launches it on the rescheduled run when mergeability was unknown at approval" do
+          allow(described_class).to receive(:update_pr_data).and_return(
+            [:mergeable_unknown, { :rate_limit_remaining => 5000 }, ""],
+            ok_pr_data(ready_for_review)
+          )
+
+          described_class.run(@workflow, @logger)
+          expect(Workflow.find(ready_for_review.id).state).to eq(Workflow::STATE_PR_APPROVAL_IN_PROGRESS)
+
+          described_class.run(Workflow.find(ready_for_review.id), @logger, "", "", 1)
+          expect(@logger).to have_received(:info).with("pr-approval-resumed", :workflow_id => ready_for_review.id)
+          expect(Workflow.find(ready_for_review.id).state).to eq(Workflow::STATE_LAUNCHING)
+        end
+      end
+
       context "when no Semaphore ref can be created (without_reference)" do
         def without_reference_data(workflow, head_sha: nil)
           [:without_reference, { :mergeable => true, :commit_author => "octocat", :head_sha => head_sha || workflow.commit_sha }, ""]
@@ -1186,6 +1248,22 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             described_class.run(@workflow, @logger)
 
             expect(@workflow.reload.state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+          end
+        end
+
+        context "and it was marked ready for review on a project that builds drafts" do
+          before do
+            allow(@workflow).to receive(:payload).and_return(RepoHost::Github::Payload.new(pull_request_payload(:action => "ready_for_review")))
+            allow(@workflow.project).to receive(:build_draft_pr).and_return(true)
+          end
+
+          it "skips the event without launching" do
+            expect(described_class).not_to receive(:update_pr_data)
+            expect(described_class).not_to receive(:launch_pipeline)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.state).to eq(Workflow::STATE_SKIP_DRAFT_PR)
           end
         end
 
