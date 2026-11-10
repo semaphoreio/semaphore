@@ -164,6 +164,34 @@ defmodule Zebra.Workers.JobRequestFactory.JobRequest do
     end
   end
 
+  @finished_env_var_keys ["env_vars", "environment_variables"]
+
+  @doc """
+  The part of a request kept once the job is finished: only the
+  SEMAPHORE_GIT_* env vars, in their original shape and under their original
+  key ("environment_variables" for jobs created before 2019-04-30). A request
+  without any of them becomes an empty map.
+  """
+  def finished_payload(request) when not is_map(request), do: request
+
+  def finished_payload(request) do
+    Enum.reduce(@finished_env_var_keys, %{}, fn key, acc ->
+      case git_env_vars(request[key]) do
+        [] -> acc
+        env_vars -> Map.put(acc, key, env_vars)
+      end
+    end)
+  end
+
+  defp git_env_vars(env_vars) when is_list(env_vars) do
+    Enum.filter(env_vars, fn
+      %{"name" => "SEMAPHORE_GIT_" <> _} -> true
+      _ -> false
+    end)
+  end
+
+  defp git_env_vars(_), do: []
+
   def sanitize(request) when not is_map(request), do: request
 
   def sanitize(request) do

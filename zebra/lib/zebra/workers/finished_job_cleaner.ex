@@ -7,6 +7,8 @@ defmodule Zebra.Workers.FinishedJobCleaner do
       after the job finishes, so it is not cleared at finish.
     - private_ssh_key: already cleared when the job finishes; cleared here
       too for rows written before that.
+    - request: reduced to its SEMAPHORE_GIT_* env vars, the only part still
+      read once the job is finished (see JobRequest.finished_payload/1).
 
   The worker walks jobs in (finished_at, id) order, which is served by the
   jobs (finished_at, id) index, one batch per tick. Progress is stored in
@@ -23,8 +25,12 @@ defmodule Zebra.Workers.FinishedJobCleaner do
 
   alias Zebra.LegacyRepo, as: Repo
   alias Zebra.Models.Job
+  alias Zebra.Apis.PublicJobApi.Serializer
+  alias Zebra.Workers.JobRequestFactory.JobRequest
 
-  @cursor_name "finished_job_cleaner"
+  # A new name starts a new pass from the oldest finished job; bump it when
+  # the worker starts cleaning something it did not clean before.
+  @cursor_name "finished_job_cleaner_v2"
   @start_finished_at ~N[1970-01-01 00:00:00]
   @start_job_id "00000000-0000-0000-0000-000000000000"
 
@@ -61,7 +67,8 @@ defmodule Zebra.Workers.FinishedJobCleaner do
   def naptime(worker, _), do: worker.longnaptime
 
   @doc """
-  Processes one batch. Returns {:ok, %{scanned: n, cleaned: m}}, or
+  Processes one batch. Returns
+  {:ok, %{scanned: n, cleaned: m, trimmed: t, trim_skipped: s}}, or
   {:ok, :locked} when another instance holds the cursor.
   """
   def tick(worker) do
@@ -98,13 +105,15 @@ defmodule Zebra.Workers.FinishedJobCleaner do
         batch = next_batch(cursor_finished_at, cursor_id, cutoff, worker.batch_size)
 
         cleaned = clean(batch)
+        %{trimmed: trimmed, skipped: skipped} = trim_requests(batch)
 
         case List.last(batch) do
           nil -> :ok
           {finished_at, id} -> move_cursor(worker.cursor_name, finished_at, id)
         end
 
-        {:ok, %{scanned: length(batch), cleaned: cleaned}}
+        {:ok,
+         %{scanned: length(batch), cleaned: cleaned, trimmed: trimmed, trim_skipped: skipped}}
     end
   end
 
@@ -148,6 +157,67 @@ defmodule Zebra.Workers.FinishedJobCleaner do
       |> Repo.update_all(set: [agent_auth_token: nil, private_ssh_key: nil])
 
     cleaned
+  end
+
+  defp trim_requests([]), do: %{trimmed: 0, skipped: 0}
+
+  defp trim_requests(batch) do
+    ids = Enum.map(batch, fn {_, id} -> id end)
+
+    from(j in Job,
+      where: j.id in ^ids,
+      where: j.aasm_state == ^Job.state_finished(),
+      where: not is_nil(j.request),
+      select: {j.id, j.request}
+    )
+    |> Repo.all()
+    |> Enum.map(fn {id, request} -> trim_request(id, request) end)
+    |> then(fn results ->
+      %{
+        trimmed: Enum.count(results, &(&1 == :trimmed)),
+        skipped: Enum.count(results, &(&1 == :skipped))
+      }
+    end)
+  end
+
+  defp trim_request(id, request) do
+    case JobRequest.finished_payload(request) do
+      ^request ->
+        :unchanged
+
+      trimmed ->
+        if same_git_vars?(request, trimmed) do
+          write_trimmed_request(id, trimmed)
+        else
+          Logger.warning(
+            "FinishedJobCleaner: not trimming request of #{id}, git env vars would change"
+          )
+
+          :skipped
+        end
+    end
+  end
+
+  # The trim cannot be undone, so it is only written when the public job API
+  # would serve exactly the same git env vars from the trimmed request.
+  defp same_git_vars?(request, trimmed) do
+    Serializer.request_git_vars(request) == Serializer.request_git_vars(trimmed)
+  rescue
+    _ -> false
+  end
+
+  # The row may have been deleted (retention) or changed since it was read:
+  # the update then matches nothing and the row is simply skipped.
+  defp write_trimmed_request(id, trimmed) do
+    from(j in Job,
+      where: j.id == ^id,
+      where: j.aasm_state == ^Job.state_finished()
+    )
+    |> Repo.update_all(set: [request: trimmed])
+    |> case do
+      {1, _} -> :trimmed
+      {0, _} -> :gone
+    end
   end
 
   defp ensure_cursor(name) do
@@ -201,9 +271,11 @@ defmodule Zebra.Workers.FinishedJobCleaner do
 
   defp now, do: NaiveDateTime.truncate(NaiveDateTime.utc_now(), :second)
 
-  defp submit_metrics(%{scanned: scanned, cleaned: cleaned}) do
+  defp submit_metrics(stats = %{scanned: scanned, cleaned: cleaned, trimmed: trimmed}) do
     Watchman.submit("finished_job_cleaner.scanned", scanned, :count)
     Watchman.submit("finished_job_cleaner.cleaned", cleaned, :count)
+    Watchman.submit("finished_job_cleaner.trimmed", trimmed, :count)
+    Watchman.submit("finished_job_cleaner.trim_skipped", stats.trim_skipped, :count)
   end
 
   #
