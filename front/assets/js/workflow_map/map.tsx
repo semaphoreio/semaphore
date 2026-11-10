@@ -6,8 +6,8 @@ import { focus, hits, layoutError, popover, rerunPipeline, selected, stopPipelin
 import { MapLayout, Point, layoutMap, promotionLabel } from "./layout";
 import { PromoteButton } from "./promote";
 import { Chips, Search, Stepper } from "./toolbar";
-import { BlockCard, BlockSummary, Chevron, Counts, Duration, JobRow, Name, PipelineTitle, StatusBar, StatusIcon, plainClick } from "./ui";
-import { JOB_ROW_H, blockSize, jobTop } from "./lines";
+import { BlockCard, BlockSummary, Chevron, Counts, Duration, Name, PipelineTitle, StatusBar, StatusIcon, plainClick } from "./ui";
+import { BLOCK_GAP, JOB_ROW_H, blockSize, jobTop } from "./lines";
 
 const CARD = { w: 300, h: 72 };
 
@@ -146,31 +146,19 @@ const CardNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
   );
 };
 
-export const AFTER_HEAD_H = 32;
-
 export const afterBand = (p: Pipeline, open: Set<string>) => {
   const a = p.blocks?.find((b) => b.after);
-  return a ? AFTER_HEAD_H + (open.has(a.id) ? a.jobs.length * JOB_ROW_H + 6 : 0) : 0;
+  return a ? blockSize(a, open.has(a.id)).h + BLOCK_GAP : 0;
 };
 
 export const AfterBand = ({ block }: { block: Block, }) => {
   const open = openBlocks.value.has(block.id);
-  const starts = block.jobs.map((j) => j.startedAt).filter(Boolean);
-  const ends = block.jobs.map((j) => j.finishedAt);
-  const running = block.jobs.some((j) => j.status === `running`);
+  const h = hits.value;
+  const flip = () => toggle(openBlocks, block.id);
+  const { w, h: height } = blockSize(block, open);
   return (
-    <div className="wf-map-after-band">
-      <button className="wf-map-after-head" aria-expanded={open} onClick={(e) => plainClick(e, () => toggle(openBlocks, block.id))}>
-        <Chevron open={open}/>
-        <span className="wf-map-after-title">After pipeline</span>
-        <span className="wf-map-after-sep">·</span>
-        <StatusIcon status={blockStatus(block)}/>
-        <span className="wf-map-after-count">
-          {block.jobs.length} {block.jobs.length === 1 ? `job` : `jobs`}
-        </span>
-        <Duration start={starts.length ? Math.min(...starts) : null} end={ends.every(Boolean) && ends.length ? Math.max(...ends) : null} running={running}/>
-      </button>
-      {open && block.jobs.map((j) => <JobRow key={j.key} job={j}/>)}
+    <div className={`wf-map-after ${h.active && !h.blocks.has(block) ? `dim` : ``}`} style={{ width: w, height }}>
+      {open ? <BlockCard block={block} onHeaderClick={flip}/> : <BlockSummary block={block} onClick={flip}/>}
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import ElkConstructor, { ELK, ElkExtendedEdge, ElkNode } from "elkjs/lib/elk-api";
 import { Block, Pipeline, Workflow } from "./model";
+import { BLOCK_GAP } from "./lines";
 
 export interface Box {
   x: number;
@@ -59,7 +60,7 @@ function inner(p: Pipeline, size: (b: Block) => { w: number, h: number, }, top: 
         "elk.algorithm": `layered`,
         "elk.direction": `RIGHT`,
         "elk.edgeRouting": `ORTHOGONAL`,
-        "elk.spacing.nodeNode": `24`,
+        "elk.spacing.nodeNode": `${BLOCK_GAP}`,
         "elk.spacing.edgeNode": `14`,
         "elk.layered.spacing.nodeNodeBetweenLayers": `64`,
         "elk.layered.nodePlacement.bk.fixedAlignment": `BALANCED`,
