@@ -130,16 +130,16 @@ describe(`names the map may shorten`, () => {
   });
   describe(`the copy button on a name`, () => {
     let copied: string[];
-    const realClipboard = Object.getOwnPropertyDescriptor(window.navigator, `clipboard`);
+    const realClipboard = Object.getOwnPropertyDescriptor(navigator, `clipboard`);
 
     beforeEach(() => {
       copied = [];
-      Object.defineProperty(window.navigator, `clipboard`, { configurable: true, value: { writeText: (t: string) => (copied.push(t), Promise.resolve()) } });
+      Object.defineProperty(navigator, `clipboard`, { configurable: true, value: { writeText: (t: string) => (copied.push(t), Promise.resolve()) } });
     });
 
     afterEach(() => {
-      if (realClipboard) Object.defineProperty(window.navigator, `clipboard`, realClipboard);
-      else delete (window.navigator as { clipboard?: unknown, }).clipboard;
+      if (realClipboard) Object.defineProperty(navigator, `clipboard`, realClipboard);
+      else delete (navigator as { clipboard?: unknown, }).clipboard;
     });
 
     test(`copies the full name, says so, and never toggles the block`, async () => {
