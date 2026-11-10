@@ -7,6 +7,11 @@ defmodule Front.ActivityMonitor.Repo do
 
   @max_activity_monitor_pages 10
 
+  # Most active jobs one load collects from zebra, the same as the previous
+  # single lookup (10 pages of 500).
+  @max_activity_monitor_jobs 5_000
+  @jobs_page_size 500
+
   defmodule Data do
     use TypedStruct
 
@@ -126,8 +131,33 @@ defmodule Front.ActivityMonitor.Repo do
     kind, reason -> {:error, {kind, reason}}
   end
 
+  # Set from ACTIVITY_MONITOR_FETCH_TIMEOUT_MS. Anything that isn't a positive
+  # integer falls back to the default.
   defp org_activity_timeout do
-    Application.get_env(:front, :activity_monitor_fetch_timeout_ms, @org_activity_timeout)
+    case Application.get_env(:front, :activity_monitor_fetch_timeout_ms) do
+      ms when is_integer(ms) and ms > 0 ->
+        ms
+
+      ms when is_binary(ms) ->
+        case Integer.parse(String.trim(ms)) do
+          {parsed, ""} when parsed > 0 -> parsed
+          _ -> invalid_fetch_timeout(ms)
+        end
+
+      nil ->
+        @org_activity_timeout
+
+      ms ->
+        invalid_fetch_timeout(ms)
+    end
+  end
+
+  defp invalid_fetch_timeout(value) do
+    Logger.warning(
+      "Invalid activity monitor fetch timeout #{inspect(value)}, using #{@org_activity_timeout}ms"
+    )
+
+    @org_activity_timeout
   end
 
   # Every task started for one fetch runs under a supervisor owned by that
@@ -140,8 +170,15 @@ defmodule Front.ActivityMonitor.Repo do
     try do
       fun.(sup)
     after
-      Supervisor.stop(sup)
+      stop_task_supervisor(sup)
     end
+  end
+
+  # A supervisor that is already gone has nothing left to stop.
+  defp stop_task_supervisor(sup) do
+    Supervisor.stop(sup)
+  catch
+    :exit, _ -> :ok
   end
 
   defp start_task(sup, fun) do
@@ -163,7 +200,7 @@ defmodule Front.ActivityMonitor.Repo do
     with {:ok, org} <- await(fetch_organization),
          {:ok, projects} <- await(fetch_projects),
          {:ok, active_pipelines, job_tasks} <-
-           start_pipelines_and_jobs(sup, org_id, tracing_headers, new_job_page_budget()),
+           start_pipelines_and_jobs(sup, org_id, tracing_headers, new_job_budget()),
          {:ok, detailed_debugs} <- await(fetch_debugs, @debugs_timeout),
          # Users are looked up while the job lookups are still running.
          fetch_users <-
@@ -304,7 +341,7 @@ defmodule Front.ActivityMonitor.Repo do
   def list_pipelines_and_jobs(org_id, tracing_headers) do
     with_task_supervisor(fn sup ->
       with {:ok, pipelines, job_tasks} <-
-             start_pipelines_and_jobs(sup, org_id, tracing_headers, new_job_page_budget()),
+             start_pipelines_and_jobs(sup, org_id, tracing_headers, new_job_budget()),
            {:ok, jobs} <- await_jobs(job_tasks) do
         {:ok, {pipelines, jobs}}
       end
@@ -338,20 +375,32 @@ defmodule Front.ActivityMonitor.Repo do
 
   defp ppl_ids_of(pipelines), do: Enum.map(pipelines, fn %{ppl_id: id} -> id end)
 
-  defp new_job_page_budget, do: :atomics.new(1, signed: false)
+  # Shared by the job lookups of one load: slot 1 counts the jobs received,
+  # slot 2 records that the budget ran out (logged once).
+  defp new_job_budget, do: :atomics.new(2, signed: false)
 
-  # Takes one zebra page from the budget shared by the job lookups of a load.
-  defp take_job_page(nil), do: true
+  # A lookup's first page is always fetched, so no pipeline page goes without
+  # jobs; further pages only while the load has fewer than
+  # @max_activity_monitor_jobs jobs.
+  defp take_job_page(nil, _page_token), do: true
+  defp take_job_page(_budget, ""), do: true
 
-  defp take_job_page(budget) do
-    taken = :atomics.add_get(budget, 1, 1)
+  defp take_job_page(budget, _page_token) do
+    if :atomics.get(budget, 1) < @max_activity_monitor_jobs do
+      true
+    else
+      if :atomics.compare_exchange(budget, 2, 0, 1) == :ok do
+        Logger.error(
+          "Activity monitor job lookup stopped: reached max job count (max_jobs=#{@max_activity_monitor_jobs})"
+        )
+      end
 
-    if taken == @max_activity_monitor_pages + 1 do
-      log_pagination_stop(:max_pages, "")
+      false
     end
-
-    taken <= @max_activity_monitor_pages
   end
+
+  defp count_jobs(nil, _jobs), do: :ok
+  defp count_jobs(budget, jobs), do: :atomics.add(budget, 1, length(jobs))
 
   defp await_jobs(job_tasks) do
     results =
@@ -374,11 +423,26 @@ defmodule Front.ActivityMonitor.Repo do
     |> case do
       {:ok, pages} ->
         # Duplicated pipelines across pages would fetch the same jobs twice.
-        {:ok, pages |> Enum.reverse() |> Enum.concat() |> Enum.uniq_by(&Map.get(&1, :id))}
+        {:ok, pages |> Enum.reverse() |> cap_jobs() |> Enum.uniq_by(&Map.get(&1, :id))}
 
       error ->
         error
     end
+  end
+
+  # Lookups running in parallel can overshoot the job budget by a page each.
+  # Keep every lookup's first page, then fill the rest of the budget with the
+  # later pages, in pipeline page order.
+  defp cap_jobs(jobs_per_lookup) do
+    {first_pages, later_pages} =
+      jobs_per_lookup
+      |> Enum.map(&Enum.split(&1, @jobs_page_size))
+      |> Enum.unzip()
+
+    first_pages = Enum.concat(first_pages)
+    room = max(@max_activity_monitor_jobs - length(first_pages), 0)
+
+    first_pages ++ Enum.take(Enum.concat(later_pages), room)
   end
 
   defp list_pipeline_pages(org_id, tracing_headers, on_page) do
@@ -537,8 +601,12 @@ defmodule Front.ActivityMonitor.Repo do
       options = [timeout: 30_000, metadata: tracing_headers]
 
       list_all_pages(fn page_token ->
-        if take_job_page(budget) do
-          fetch_jobs_page(channel, options, org_id, ppl_ids, page_token)
+        if take_job_page(budget, page_token) do
+          with {:ok, jobs, next_page_token} <-
+                 fetch_jobs_page(channel, options, org_id, ppl_ids, page_token) do
+            count_jobs(budget, jobs)
+            {:ok, jobs, next_page_token}
+          end
         else
           {:ok, [], ""}
         end
@@ -552,7 +620,7 @@ defmodule Front.ActivityMonitor.Repo do
 
     request =
       %{
-        page_size: 500,
+        page_size: @jobs_page_size,
         page_token: page_token,
         order: :BY_CREATION_TIME_DESC,
         organization_id: org_id,

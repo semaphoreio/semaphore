@@ -8,6 +8,8 @@ defmodule Front.ActivityMonitor.RepoLoadTest do
 
   setup do
     Cachex.clear(Repo.cache_name())
+    # Front.ActivityMonitor.load/2 below caches the org's machines.
+    on_exit(fn -> Cachex.clear(:feature_provider_cache) end)
     Support.Stubs.init()
     Support.Stubs.build_shared_factories()
 
@@ -230,24 +232,62 @@ defmodule Front.ActivityMonitor.RepoLoadTest do
     end
   end
 
-  describe "zebra page budget" do
-    test "the job lookups of one load share a single page budget", ctx do
+  describe "zebra job budget" do
+    test "a big org is capped at 5000 jobs", ctx do
       stub_pipeline_pages(ctx.counters, Enum.map(1..10, &[pipeline(&1)]))
       zebra_calls = :counters.new(1, [])
 
       GrpcMock.stub(InternalJobMock, :list, fn req, _stream ->
         :counters.add(zebra_calls, 1, 1)
-
-        InternalApi.ServerFarm.Job.ListResponse.new(
-          status:
-            InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
-          jobs: [job(hd(req.ppl_ids), "Job 1", 0)],
-          next_page_token: "next-#{System.unique_integer([:positive])}"
-        )
+        jobs_page(hd(req.ppl_ids), 500, "next-#{System.unique_integer([:positive])}")
       end)
 
-      assert {:ok, _} = Repo.load(@org_id, "admin", %{})
-      assert :counters.get(zebra_calls, 1) == 10
+      assert {:ok, {_pipelines, jobs}} = Repo.list_pipelines_and_jobs(@org_id, %{})
+
+      assert length(jobs) == 5_000
+      # Ten first pages, plus at most one extra page per lookup in flight
+      # when the budget ran out.
+      assert :counters.get(zebra_calls, 1) <= 20
+    end
+
+    test "every lookup gets its first page, even when one pipeline page has many jobs", ctx do
+      # Slow plumber pages: the first lookup runs far ahead of the others.
+      stub_pipeline_pages(ctx.counters, Enum.map(1..10, &[pipeline(&1)]), delay: 50)
+
+      GrpcMock.stub(InternalJobMock, :list, fn req, _stream ->
+        case hd(req.ppl_ids) do
+          "ppl_1" -> jobs_page("ppl_1", 500, "next-#{System.unique_integer([:positive])}")
+          ppl_id -> jobs_page(ppl_id, 1, "")
+        end
+      end)
+
+      assert {:ok, {_pipelines, jobs}} = Repo.list_pipelines_and_jobs(@org_id, %{})
+
+      ppl_ids = jobs |> Enum.map(& &1.ppl_id) |> Enum.uniq() |> Enum.sort()
+      assert ppl_ids == Enum.sort(Enum.map(1..10, &"ppl_#{&1}"))
+      assert length(jobs) <= 5_000
+    end
+  end
+
+  describe "fetch timeout setting" do
+    setup do
+      on_exit(fn -> Application.delete_env(:front, :activity_monitor_fetch_timeout_ms) end)
+    end
+
+    test "a valid value from the environment is used", ctx do
+      Application.put_env(:front, :activity_monitor_fetch_timeout_ms, " 200 ")
+      stub_pipeline_pages(ctx.counters, [[pipeline(1)]], delay: 1_000)
+
+      assert {:error, :timeout} = Repo.load(@org_id, "admin", %{})
+    end
+
+    test "an invalid value falls back to the default instead of failing every load" do
+      for value <- ["90s", "-5", "0", "", :soon] do
+        Application.put_env(:front, :activity_monitor_fetch_timeout_ms, value)
+        Cachex.clear(Repo.cache_name())
+
+        assert {:ok, _} = Repo.load(@org_id, "admin", %{})
+      end
     end
   end
 
@@ -375,7 +415,11 @@ defmodule Front.ActivityMonitor.RepoLoadTest do
     end)
   end
 
+  # A request sent just before the fetch was stopped can still be handled by
+  # the mock server right after load/3 returns. Let those settle, then require
+  # silence: a lookup still running would keep paging every 50-100 ms.
   defp assert_no_backend_calls_after_return do
+    Process.sleep(200)
     flush_backend_calls()
     refute_receive {:backend_call, _}, 500
   end
@@ -641,5 +685,27 @@ defmodule Front.ActivityMonitor.RepoLoadTest do
         }
       ]
     }
+  end
+
+  defp jobs_page(ppl_id, count, next_page_token) do
+    jobs =
+      for _ <- 1..count do
+        n = System.unique_integer([:positive])
+
+        Job.new(
+          id: "#{ppl_id}-job_#{n}",
+          ppl_id: ppl_id,
+          name: "Job #{n}",
+          index: n,
+          machine_type: "e1-standard-2",
+          state: Job.State.value(:STARTED)
+        )
+      end
+
+    InternalApi.ServerFarm.Job.ListResponse.new(
+      status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+      jobs: jobs,
+      next_page_token: next_page_token
+    )
   end
 end
