@@ -31,6 +31,7 @@ export function promotionLabel(p: Pipeline) {
 }
 
 const PIPE_PAD = { top: 88, side: 28, bottom: 28 };
+export const MIN_OPEN_W = 460;
 const LABEL = { width: 160, height: 20 };
 
 let elk: ELK | null = null;
@@ -99,7 +100,7 @@ export async function layoutMap(
     },
     children: wf.pipelines.map((p, i) => {
       const g = inners[i];
-      return { id: p.id, width: g ? Math.max(closed.w, g.width) : closed.w, height: g ? g.height : closed.h };
+      return { id: p.id, width: g ? Math.max(MIN_OPEN_W, g.width) : closed.w, height: g ? g.height : closed.h };
     }),
     edges: [
       ...wf.pipelines
