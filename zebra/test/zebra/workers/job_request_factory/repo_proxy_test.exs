@@ -140,5 +140,67 @@ defmodule Zebra.Workers.JobRequestFactory.RepoProxyTest do
 
       assert RepoProxy.find(Factories.Task.hook_id()) == {:ok, @hook}
     end
+
+    test "a failed lookup is not cached => the next call fetches again" do
+      hook_id = Ecto.UUID.generate()
+      calls = :counters.new(1, [])
+
+      GrpcMock.stub(Support.FakeServers.RepoProxyApi, :describe, fn _, _ ->
+        :counters.add(calls, 1, 1)
+
+        if :counters.get(calls, 1) == 1, do: raise("unavailable"), else: ok_response()
+      end)
+
+      assert RepoProxy.find(hook_id) == {:error, :communication_error}
+      assert RepoProxy.find(hook_id) == {:ok, @hook}
+      assert :counters.get(calls, 1) == 2
+    end
+
+    test "a not-found hook is not cached => the next call fetches again" do
+      hook_id = Ecto.UUID.generate()
+      calls = :counters.new(1, [])
+
+      GrpcMock.stub(Support.FakeServers.RepoProxyApi, :describe, fn _, _ ->
+        :counters.add(calls, 1, 1)
+
+        if :counters.get(calls, 1) == 1 do
+          status =
+            InternalApi.ResponseStatus.new(
+              code: InternalApi.ResponseStatus.Code.value(:BAD_PARAM)
+            )
+
+          %InternalApi.RepoProxy.DescribeResponse{status: status, hook: nil}
+        else
+          ok_response()
+        end
+      end)
+
+      assert RepoProxy.find(hook_id) == {:stop_job_processing, "Hook #{hook_id} not found"}
+      assert RepoProxy.find(hook_id) == {:ok, @hook}
+      assert :counters.get(calls, 1) == 2
+    end
+
+    test "a found hook is cached with a bounded TTL" do
+      hook_id = Ecto.UUID.generate()
+      calls = :counters.new(1, [])
+
+      GrpcMock.stub(Support.FakeServers.RepoProxyApi, :describe, fn _, _ ->
+        :counters.add(calls, 1, 1)
+        ok_response()
+      end)
+
+      assert RepoProxy.find(hook_id) == {:ok, @hook}
+      assert RepoProxy.find(hook_id) == {:ok, @hook}
+      assert :counters.get(calls, 1) == 1
+
+      assert {:ok, ttl} = Cachex.ttl(:zebra_cache, "repo_proxy-#{hook_id}")
+      assert is_integer(ttl) and ttl > 0 and ttl <= :timer.minutes(15)
+    end
+  end
+
+  defp ok_response do
+    status = InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK))
+
+    %InternalApi.RepoProxy.DescribeResponse{status: status, hook: @hook}
   end
 end
