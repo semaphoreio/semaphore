@@ -69,6 +69,7 @@ defmodule Ppl.Mixfile do
       {:block, path: "../block"},
       {:job_matrix, path: "../job_matrix"},
       {:feature_provider, path: "../../feature_provider"},
+      {:env_var_policy, path: "../../env_var_policy"},
       # feature_provider requests yaml_elixir >= 2.0, but plumber's
       # definition_validator (pipeline YAML validation) pins ~> 1.1. config/runtime.exs
       # gives feature_provider's YamlProvider a 1.x reader, so pin the existing 1.3
