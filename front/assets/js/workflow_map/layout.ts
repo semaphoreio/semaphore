@@ -1,5 +1,6 @@
 import ElkConstructor, { ELK, ElkExtendedEdge, ElkNode } from "elkjs/lib/elk-api";
 import { Block, Pipeline, Workflow } from "./model";
+import { BLOCK_GAP } from "./lines";
 
 export interface Box {
   x: number;
@@ -29,8 +30,8 @@ export function promotionLabel(p: Pipeline) {
   return [name, by].filter(Boolean).join(` · `) || null;
 }
 
-const PIPE_PAD = { top: 72, side: 28, bottom: 28 };
-const MIN_OPEN_W = 460;
+const PIPE_PAD = { top: 88, side: 28, bottom: 28 };
+const LABEL = { width: 160, height: 20 };
 
 let elk: ELK | null = null;
 const innerCache = new Map<string, Promise<ElkNode>>();
@@ -48,10 +49,10 @@ export function initLayout(workerUrl: string, onWorkerError: () => void) {
   innerCache.clear();
 }
 
-function inner(p: Pipeline, size: (b: Block) => { w: number, h: number, }) {
-  const blocks = p.blocks ?? [];
+function inner(p: Pipeline, size: (b: Block) => { w: number, h: number, }, top: number) {
+  const blocks = (p.blocks ?? []).filter((b) => !b.after);
   const sizes = blocks.map(size);
-  const key = `${p.id}|${blocks.map((b, i) => `${b.name}:${b.deps.map((d) => d.name).join(`+`)}:${sizes[i].w}x${sizes[i].h}`).join(`,`)}`;
+  const key = `${p.id}|${top}|${blocks.map((b, i) => `${b.name}:${b.deps.map((d) => d.name).join(`+`)}:${sizes[i].w}x${sizes[i].h}`).join(`,`)}`;
   if (!innerCache.has(key)) {
     const layout = elk.layout({
       id: p.id,
@@ -59,11 +60,11 @@ function inner(p: Pipeline, size: (b: Block) => { w: number, h: number, }) {
         "elk.algorithm": `layered`,
         "elk.direction": `RIGHT`,
         "elk.edgeRouting": `ORTHOGONAL`,
-        "elk.spacing.nodeNode": `24`,
+        "elk.spacing.nodeNode": `${BLOCK_GAP}`,
         "elk.spacing.edgeNode": `14`,
         "elk.layered.spacing.nodeNodeBetweenLayers": `64`,
         "elk.layered.nodePlacement.bk.fixedAlignment": `BALANCED`,
-        "elk.padding": `[top=${PIPE_PAD.top},left=${PIPE_PAD.side},bottom=${PIPE_PAD.bottom},right=${PIPE_PAD.side}]`,
+        "elk.padding": `[top=${top},left=${PIPE_PAD.side},bottom=${PIPE_PAD.bottom},right=${PIPE_PAD.side}]`,
       },
       children: blocks.map((b, i) => ({ id: b.id, width: sizes[i].w, height: sizes[i].h })),
       edges: blocks.flatMap((b) => b.deps.map((d) => ({ id: `${d.id}->${b.id}`, sources: [d.id], targets: [b.id] }))),
@@ -81,9 +82,10 @@ export async function layoutMap(
   wf: Workflow,
   isOpen: (p: Pipeline) => boolean,
   blockSize: (b: Block) => { w: number, h: number, },
-  closed: { w: number, h: number, }
+  closed: { w: number, h: number, },
+  band: (p: Pipeline) => number
 ): Promise<MapLayout> {
-  const inners = await Promise.all(wf.pipelines.map((p) => (isOpen(p) && p.blocks?.length ? inner(p, blockSize) : null)));
+  const inners = await Promise.all(wf.pipelines.map((p) => (isOpen(p) && p.blocks?.some((b) => !b.after) ? inner(p, blockSize, PIPE_PAD.top + band(p)) : null)));
   const outer = await elk.layout({
     id: `workflow`,
     layoutOptions: {
@@ -97,19 +99,21 @@ export async function layoutMap(
     },
     children: wf.pipelines.map((p, i) => {
       const g = inners[i];
-      return { id: p.id, width: g ? Math.max(MIN_OPEN_W, g.width) : closed.w, height: g ? g.height : closed.h };
+      return { id: p.id, width: g ? Math.max(closed.w, g.width) : closed.w, height: g ? g.height : closed.h };
     }),
-    edges: wf.pipelines
-      .filter((p) => p.parent)
-      .map((p): ElkExtendedEdge => {
-        const label = promotionLabel(p);
-        return {
-          id: `${p.parent.id}=>${p.id}`,
-          sources: [p.parent.id],
-          targets: [p.id],
-          labels: label ? [{ text: label, width: label.length * 6.5 + 18, height: 20 }] : [],
-        };
-      }),
+    edges: [
+      ...wf.pipelines
+        .filter((p) => p.parent)
+        .map((p): ElkExtendedEdge => {
+          const label = promotionLabel(p);
+          return {
+            id: `${p.parent.id}=>${p.id}`,
+            sources: [p.parent.id],
+            targets: [p.id],
+            labels: label ? [{ text: label, ...LABEL }] : [],
+          };
+        }),
+    ],
   });
 
   const layout: MapLayout = { pipelines: new Map(), blocks: new Map(), routes: new Map(), labels: new Map() };
