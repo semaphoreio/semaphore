@@ -72,7 +72,16 @@ ignore {
 		#   pkg/database/advisorylock.go:39 -> gorm.DB.Begin -> norm.Form.Transform
 		# Remove this by bumping x/text to v0.39.0.
 		#
-		"CVE-2026-56852"
+		"CVE-2026-56852",
+		#
+		# Dead code: the advisory is in golang.org/x/net/html, which the
+		# service does not build. `go mod why golang.org/x/net/html` reports
+		# "main module does not need package", and govulncheck reports
+		# GO-2026-6860 at module level only, with no package or symbol path.
+		# Fixed in x/net v0.62.0, which requires Go 1.26 while the builder is
+		# golang:1.24.
+		#
+		"CVE-2026-78661"
 	}
 
 	input.VulnerabilityID = deny_vulnerability_ids[_]
