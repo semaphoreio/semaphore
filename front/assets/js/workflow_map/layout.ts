@@ -126,8 +126,11 @@ export async function layoutMap(
   }
   inners.forEach((g, i) => {
     if (!g) return;
-    const box = layout.pipelines.get(wf.pipelines[i].id);
+    const p = wf.pipelines[i];
+    const box = layout.pipelines.get(p.id);
     box.open = true;
+    const after = p.blocks.find((b) => b.after);
+    if (after) layout.blocks.set(after.id, { x: PIPE_PAD.side, y: PIPE_PAD.top, ...blockSize(after) });
     for (const c of g.children ?? []) layout.blocks.set(c.id, { x: c.x, y: c.y, w: c.width, h: c.height });
     for (const e of g.edges ?? []) layout.routes.set(e.id, sectionPoints(e, box.x, box.y));
   });

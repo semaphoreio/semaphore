@@ -334,7 +334,6 @@ function boxOf(wf: Workflow, L: MapLayout, id: string) {
   const block = wf.blocks.get(id);
   const p = block && L.pipelines.get(block.pipeline.id);
   const bb = L.blocks.get(id);
-  if (block?.after) return p;
   return p && bb && { x: p.x + bb.x, y: p.y + bb.y, w: bb.w, h: bb.h };
 }
 

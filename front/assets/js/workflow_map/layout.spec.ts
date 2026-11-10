@@ -8,12 +8,13 @@ import { MIN_OPEN_W, initLayout, layoutMap } from "./layout";
 const CLOSED = { w: 300, h: 72 };
 const SIZE = { w: 240, h: 80 };
 
-const workflowWith = (names: string[], chain: boolean) => {
+const workflowWith = (names: string[], chain: boolean, after = false) => {
   const pipeline = { id: `p`, name: `Build`, parent: null, blocks: [], promotions: [] } as unknown as Pipeline;
   names.forEach((name, i) => {
     const deps = chain && i > 0 ? [pipeline.blocks[i - 1]] : [];
     pipeline.blocks.push({ id: name, name, deps, jobs: [], pipeline } as Block);
   });
+  if (after) pipeline.blocks.push({ id: `after`, name: `After pipeline`, deps: [], jobs: [], pipeline, after: true } as Block);
   return { pipelines: [pipeline] } as unknown as Workflow;
 };
 
@@ -60,5 +61,11 @@ describe(`layoutMap`, () => {
     const banded = await layout(wf, true, 50);
     expect(banded.blocks.get(`build`).y - plain.blocks.get(`build`).y).to.equal(50);
     expect(banded.pipelines.get(`p`).h - plain.pipelines.get(`p`).h).to.equal(50);
+  });
+
+  test(`places the after block in its band, above the other blocks`, async () => {
+    const L = await layout(workflowWith([`build`], false, true), true, SIZE.h + 20);
+    expect(L.blocks.get(`after`)).to.deep.equal({ x: 28, y: 88, ...SIZE });
+    expect(L.blocks.get(`build`).y).to.equal(88 + SIZE.h + 20);
   });
 });
