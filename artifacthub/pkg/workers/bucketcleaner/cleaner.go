@@ -2,10 +2,12 @@ package bucketcleaner
 
 import (
 	"context"
+	"errors"
 	"log"
 	"time"
 
 	"github.com/renderedtext/go-watchman"
+	"github.com/semaphoreio/semaphore/artifacthub/pkg/db"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/models"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/storage"
 	"gorm.io/gorm"
@@ -24,7 +26,14 @@ type BatchCleaner struct {
 	deletedObjectCount int
 	paginationEnded    bool
 	artifactDeleted    bool
+	purgeCompleted     bool
 	pages              int
+
+	// Decided once when the run starts, so every page in it is handled the same way.
+	purging bool
+
+	// Set when the storage's own bucket no longer exists, so there is nothing to delete.
+	bucketGone bool
 }
 
 func NewBatchCleaner(c storage.Client, cleanRequest *CleanRequest, pages int) *BatchCleaner {
@@ -56,7 +65,9 @@ func (c *BatchCleaner) Run(tx *gorm.DB) (string, error) {
 		return "", err
 	}
 
-	if c.retentionPolicy.IsCleanedInLast24Hours() {
+	// A storage being purged is not held back by the once-a-day rule. That rule paces
+	// routine retention work; a purge is meant to happen now.
+	if !c.isPurging() && c.retentionPolicy.IsCleanedInLast24Hours() {
 		return "", ErrBucketAlreadyCleanedToday
 	}
 
@@ -79,6 +90,15 @@ func (c *BatchCleaner) Run(tx *gorm.DB) (string, error) {
 	// we mark the cleaning as done, as stop.
 	if nextPageToken == "" {
 		c.paginationEnded = true
+
+		// Only a run that started on the first page has seen the whole bucket. The last
+		// message of a longer chain leaves the mark, and the next pass from page one clears it.
+		if c.isPurging() && !c.artifactBucket.IsMarkedForDestruction() && c.cleanRequest.PaginationToken == "" {
+			if err := c.finishPurge(); err != nil {
+				return "", err
+			}
+		}
+
 		return "", c.saveThatCleaningIsDone(tx)
 	}
 
@@ -116,6 +136,30 @@ func (c *BatchCleaner) loadRecords() error {
 		return err
 	}
 	c.artifactBucket = artifact
+
+	// A project delete's mark is honoured only while purging is enabled; destruction always is.
+	c.purging = artifact.IsMarkedForDestruction() || (PurgeEnabled && artifact.IsPurgeDue(PurgeGracePeriod))
+
+	return nil
+}
+
+// isPurging reports whether this run deletes everything, rather than applying the
+// retention policy. A marked storage is not purged until its grace period is up.
+func (c *BatchCleaner) isPurging() bool {
+	return c.purging
+}
+
+// finishPurge takes the mark off once the storage has been emptied. The storage
+// itself stays, so a restored project has somewhere to push to.
+func (c *BatchCleaner) finishPurge() error {
+	if err := c.artifactBucket.ClearPurgeMark(db.Conn()); err != nil {
+		return err
+	}
+
+	c.purgeCompleted = true
+	_ = watchman.Increment("bucketcleaner.worker.purge_completed")
+
+	log.Printf("Artifact storage %s is purged, its contents are gone", c.artifactBucket.ID.String())
 
 	return nil
 }
@@ -174,9 +218,12 @@ func (c *BatchCleaner) destroyArtifact() error {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Minute)
 	defer cancelFunc()
 
-	if err := c.client.DestroyBucket(ctx, options); err != nil {
-		log.Printf("Error deleting bucket %s for %s: %v", c.artifactBucket.BucketName, c.artifactBucket.ID.String(), err)
-		return err
+	// A bucket that is already gone leaves only the row to remove.
+	if !c.bucketGone {
+		if err := c.client.DestroyBucket(ctx, options); err != nil {
+			log.Printf("Error deleting bucket %s for %s: %v", c.artifactBucket.BucketName, c.artifactBucket.ID.String(), err)
+			return err
+		}
 	}
 
 	if err := c.artifactBucket.Destroy(); err != nil {
@@ -192,12 +239,23 @@ func (c *BatchCleaner) destroyArtifact() error {
 func (c *BatchCleaner) cleanupOnePage() (string, error) {
 	_ = watchman.Increment("bucketcleaner.worker.page_visits")
 	objects, nextPageToken, err := c.pager.NextPage()
+
+	// A storage whose own bucket is gone holds nothing, so it reads as an empty last page.
+	if errors.Is(err, storage.ErrBucketGone) {
+		log.Printf("Bucket %s of artifact storage %s no longer exists", c.artifactBucket.BucketName, c.artifactBucket.ID.String())
+		c.bucketGone = true
+		objects, nextPageToken, err = nil, "", nil
+	}
+
 	if err != nil {
 		return "", err
 	}
 
-	// If the bucket is already empty, and it was marked for deletion, we delete it.
-	if len(objects) == 0 && c.cleanRequest.PaginationToken == "" && c.artifactBucket.DeletedAt != nil {
+	// An empty bucket whose project is gone for good is destroyed here. nextPageToken
+	// has to be empty too: a listing can return a page with no objects and still have
+	// more to come, and that would destroy a storage which is not empty at all.
+	if len(objects) == 0 && nextPageToken == "" && c.cleanRequest.PaginationToken == "" &&
+		c.artifactBucket.IsMarkedForDestruction() {
 		if err := c.destroyArtifact(); err != nil {
 			return "", err
 		}
@@ -210,16 +268,35 @@ func (c *BatchCleaner) cleanupOnePage() (string, error) {
 	for _, object := range objects {
 		c.visitedObjectCount++
 
-		if c.retentionPolicy.IsMatching(object.Path, *object.Age) {
+		// A marked storage loses everything, whatever the rules say and however young
+		// the object is.
+		if c.isPurging() || c.retentionPolicy.IsMatching(object.Path, *object.Age) {
 			c.deletedObjectCount++
 			results = append(results, object.Path)
 		}
 	}
 
+	if len(results) == 0 {
+		return nextPageToken, nil
+	}
+
+	purging := c.isPurging()
+
 	_ = watchman.IncrementBy("bucketcleaner.worker.delete_objects", len(results))
-	err = c.bucket.DeleteObjects(results)
-	if err != nil {
-		return "", err
+
+	if err = c.bucket.DeleteObjects(results); err != nil {
+		_ = watchman.Increment("bucketcleaner.worker.delete_failures")
+
+		// A purge stops here, because it decides it is finished by reaching the end of
+		// the pages: a delete that quietly did not happen would leave the storage
+		// recorded as purged while it is still full.
+		if purging {
+			return "", err
+		}
+
+		// Routine retention carries on: the next pass tries again, and one bad object
+		// must not stop a whole bucket being cleaned.
+		log.Printf("Failed to delete some objects in bucket %s: %v", c.artifactBucket.BucketName, err)
 	}
 
 	return nextPageToken, nil

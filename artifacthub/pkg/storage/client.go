@@ -75,3 +75,7 @@ type ObjectPager interface {
 
 var ErrNoMoreObjects = fmt.Errorf("no more objects in the storage")
 var ErrMissingBucket = fmt.Errorf("storage: bucket doesn't exist")
+
+// ErrBucketGone is returned only where every storage has a bucket of its own, so it means
+// that storage holds nothing, never that a bucket shared by all of them is missing.
+var ErrBucketGone = fmt.Errorf("storage: the storage's own bucket no longer exists")

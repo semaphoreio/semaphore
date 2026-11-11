@@ -2,6 +2,7 @@ package privateapi
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/api/descriptors/artifacthub"
@@ -13,6 +14,7 @@ import (
 	pathutil "github.com/semaphoreio/semaphore/artifacthub/pkg/util/path"
 	"github.com/semaphoreio/semaphore/artifacthub/pkg/util/retry"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
 	"gorm.io/gorm"
 )
 
@@ -34,37 +36,103 @@ func CreateArtifact(ctx context.Context, client storage.Client, idempotencyToken
 	return models.CreateArtifact(bucketName, idempotencyToken)
 }
 
-// DestroyArtifact destroys an artifact by it's id and everything connected to it.
+// DestroyArtifact marks an artifact so the bucket cleaners empty it and then remove
+// the storage itself. The work is asynchronous because a bucket can hold more files
+// than one request can delete; the configured retention rules are left untouched.
 func DestroyArtifact(ctx context.Context, client storage.Client, artifactID string) error {
-	// Since buckets may have more files than we can delete
-	// before this request times out, we need to delete artifacts async.
-	// For that, we use the built-in mechanism for applying retention policies.
-	// Here, we update the retention policies used to
-	// delete all objects that are older than the minimum age allowed (1 day),
-	// and we will let the bucket cleaners do the work of deleting this artifact storage.
-	rules := models.RetentionPolicyRules{
-		Rules: []models.RetentionPolicyRuleItem{
-			{Selector: "/**/*", Age: models.MinRetentionPolicyAge},
-		},
-	}
-
 	return db.Conn().Transaction(func(tx *gorm.DB) error {
 		a, err := models.FindArtifactByIDWithTx(tx, artifactID)
 		if err != nil {
 			return err
 		}
 
-		err = a.UpdateDeleteAt(tx, time.Now())
-		if err != nil {
+		if err := a.UpdateDeleteAt(tx, time.Now()); err != nil {
 			return err
 		}
 
-		_, err = models.UpdateRetentionPolicyWithTx(tx, a.ID, rules, rules, rules)
-		if err != nil {
+		if err := models.ScheduleForCleaningWithTx(tx, a.ID); err != nil {
 			return err
 		}
 
-		log.Info("added retention policy for bucket destruction", zap.Reflect("artifact", a))
+		log.Info("marked artifact storage for destruction", zap.Reflect("artifact", a))
+
+		return nil
+	})
+}
+
+// PurgeArtifactContents marks a project's storage to be emptied once the grace period
+// after deletedAt is up. Only the contents go, so a restored project can push again.
+// A restore at or after deletedAt wins, whichever of the two is handled first.
+func PurgeArtifactContents(projectID string, deletedAt time.Time) error {
+	return db.Conn().Transaction(func(tx *gorm.DB) error {
+		a, err := models.FindArtifactByIdempotencyTokenForUpdate(tx, projectID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				log.Info("no artifact storage for project, nothing to purge",
+					zap.String("project_id", projectID))
+
+				return nil
+			}
+
+			return log.ErrorCode(codes.Internal, "Finding Artifact row to purge", err)
+		}
+
+		// Re-marking would push the grace period back.
+		if a.IsPurgeMarked() {
+			return nil
+		}
+
+		if a.ProjectRestoredAt != nil && !deletedAt.After(*a.ProjectRestoredAt) {
+			log.Info("ignoring a delete that is not newer than the project's restore",
+				zap.String("project_id", projectID), zap.String("artifact_id", a.ID.String()))
+
+			return nil
+		}
+
+		if err := a.RequestPurge(tx, deletedAt); err != nil {
+			return err
+		}
+
+		if err := models.ScheduleForCleaningWithTx(tx, a.ID); err != nil {
+			return err
+		}
+
+		log.Info("marked artifact storage for purging",
+			zap.String("project_id", projectID), zap.String("artifact_id", a.ID.String()))
+
+		return nil
+	})
+}
+
+// CancelArtifactPurge records the restore even when nothing is marked yet, so a delete
+// handled after it is ignored, and clears any mark left by a delete that is not newer.
+func CancelArtifactPurge(projectID string, restoredAt time.Time) error {
+	return db.Conn().Transaction(func(tx *gorm.DB) error {
+		a, err := models.FindArtifactByIdempotencyTokenForUpdate(tx, projectID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil
+			}
+
+			return log.ErrorCode(codes.Internal, "Finding Artifact row to restore", err)
+		}
+
+		if err := a.RecordProjectRestored(tx, restoredAt); err != nil {
+			return err
+		}
+
+		// A mark can be finer than the whole-second event times, so compare to the second.
+		if a.PurgeRequestedAt == nil || a.PurgeRequestedAt.Truncate(time.Second).After(restoredAt) {
+			return nil
+		}
+
+		if err := a.ClearPurgeMark(tx); err != nil {
+			return err
+		}
+
+		log.Info("stopped purging artifact storage, its project was restored",
+			zap.String("project_id", projectID), zap.String("artifact_id", a.ID.String()))
+
 		return nil
 	})
 }
