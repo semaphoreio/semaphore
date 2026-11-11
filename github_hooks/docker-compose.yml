@@ -10,7 +10,7 @@ services:
       target: dev
       args:
         - BUILD_ENV=development
-    command: "bundle exec spring server"
+    command: "bundle exec rails server -b 0.0.0.0"
     ports:
       - "3000:3000"
     volumes:
