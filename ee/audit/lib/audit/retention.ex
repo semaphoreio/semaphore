@@ -2,7 +2,9 @@ defmodule Audit.Retention do
   @moduledoc """
   Audit log retention is enabled per organization by the `audit_logs_retention`
   feature. The policy marker checks it before marking events and the deleter
-  checks it again before deleting them. A failed lookup counts as disabled.
+  checks it again before deleting them. A failed lookup counts as disabled when
+  nothing is cached; if only the refresh after a feature change fails, the last
+  known value is kept until the cache expires.
 
   Events younger than the retention floor (`min_retention_days`, at least 400)
   are never marked, and never deleted.

@@ -14,9 +14,10 @@ defmodule Audit.Retention.Deleter do
   Before deleting, the `:audit_logs_retention` feature of each organization in a
   batch is checked again, and so is the retention floor (`Audit.Retention.floor/0`).
   Expired events of an organization with the feature off, or younger than the
-  floor, are unmarked instead of deleted. So turning the feature off stops
-  deletion of events marked earlier once the feature change event arrives, and
-  raising the floor keeps events marked under the old one. The next policy event
+  floor, are unmarked instead of deleted. Turning the feature off therefore stops
+  deletion of events marked earlier once the feature change event arrives, or
+  once the feature cache expires if refreshing the features fails at that moment.
+  Raising the floor keeps events marked under the old one. The next policy event
   marks them again with a new grace period if they are still due.
 
   ## Configuration

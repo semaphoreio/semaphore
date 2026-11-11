@@ -16,9 +16,11 @@ defmodule Audit.Retention.PolicyMarker do
 
   Processing is gated per org by the `:audit_logs_retention` feature flag. When a
   policy event arrives its org is checked against the flag; if the flag is not
-  enabled the event is ignored, and nothing is marked or unmarked. The check is
-  fail-closed: a Feature service error is treated as "disabled", so a lookup
-  failure never marks audit logs for deletion. This is orthogonal to the
+  enabled the event is ignored, and nothing is marked or unmarked. When nothing
+  is cached, a Feature service error is treated as "disabled", so a lookup
+  failure never marks audit logs for deletion; if only the refresh after a
+  feature change fails, the last known value is kept until the cache expires
+  (see `Audit.Retention`). This is orthogonal to the
   service-level `RETENTION_CONSUMER_ENABLED` switch (which decides whether the
   consumer runs at all); the flag decides which organizations it acts on.
   `Audit.Retention.Deleter` checks the flag again before deleting, so turning it

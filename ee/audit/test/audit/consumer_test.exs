@@ -49,6 +49,30 @@ defmodule Audit.ConsumerTest do
     assert length(Audit.Event.all(%{org_id: org_id})) == 1
   end
 
+  test "keeps the cached features when the feature service refuses connections during a reload" do
+    stub_feature()
+
+    org_id = Ecto.UUID.generate()
+    assert FeatureProvider.feature_enabled?(:audit_logs, param: org_id)
+
+    with_feature_endpoint("localhost:1", fn ->
+      assert :ok = organization_features_changed(org_id)
+    end)
+
+    assert FeatureProvider.feature_enabled?(:audit_logs, param: org_id)
+  end
+
+  defp with_feature_endpoint(endpoint, fun) do
+    original = Application.fetch_env!(:audit, :feature_api_endpoint)
+    Application.put_env(:audit, :feature_api_endpoint, endpoint)
+
+    try do
+      fun.()
+    after
+      Application.put_env(:audit, :feature_api_endpoint, original)
+    end
+  end
+
   defp organization_features_changed(org_id) do
     [org_id: org_id]
     |> IA.Feature.OrganizationFeaturesChanged.new()

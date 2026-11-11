@@ -230,6 +230,33 @@ defmodule Audit.Retention.QueriesTest do
       assert {:ok, %{deleted: 1}} = Queries.delete_expired_batch(10, enabled?, floor)
       assert_received {:in_transaction, false}
     end
+
+    test "leaves events alone that were unmarked or marked again after the read" do
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      floor = DateTime.add(now, -400 * 86_400, :second)
+      org_id = Ecto.UUID.generate()
+
+      [unmarked_later, marked_again_later] =
+        for _ <- 1..2 do
+          RetentionFixtures.insert_event(%{
+            org_id: org_id,
+            timestamp: DateTime.add(now, -500 * 86_400, :second),
+            expires_at: DateTime.add(now, -60, :second)
+          })
+        end
+
+      # The flag lookup runs after the read and before the delete.
+      enabled? = fn _org_id ->
+        set_expires_at(unmarked_later.id, nil)
+        set_expires_at(marked_again_later.id, DateTime.add(now, 15 * 86_400, :second))
+        true
+      end
+
+      assert {:ok, %{deleted: 0, unmarked: 0}} = Queries.delete_expired_batch(10, enabled?, floor)
+
+      assert is_nil(get_event(unmarked_later.id).expires_at)
+      refute is_nil(get_event(marked_again_later.id).expires_at)
+    end
   end
 
   defp set_expires_at(event_id, expires_at) do
