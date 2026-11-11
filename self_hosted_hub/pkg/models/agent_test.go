@@ -1,10 +1,12 @@
 package models
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
+	uuid "github.com/google/uuid"
 	database "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/database"
 	securetoken "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/securetoken"
 	require "github.com/stretchr/testify/require"
@@ -312,6 +314,85 @@ func Test__Disconnect(t *testing.T) {
 		agent, err = FindAgentByToken(orgID.String(), agent.TokenHash)
 		require.NoError(t, err)
 		require.Equal(t, agent.State, AgentStateDisconnected)
+	})
+
+	t.Run("clears the job of an agent that reported it as finished", func(t *testing.T) {
+		agent := disconnectAgentWithJob(t, orgID, &requesterID, "s1-test-3", AgentSyncStateFinishedJob)
+
+		require.Equal(t, AgentStateDisconnected, agent.State)
+		require.Nil(t, agent.AssignedJobID)
+		require.Nil(t, agent.JobAssignedAt)
+	})
+
+	t.Run("keeps the job of an agent that did not report it as finished", func(t *testing.T) {
+		agent := disconnectAgentWithJob(t, orgID, &requesterID, "s1-test-4", "running-job")
+
+		require.Equal(t, AgentStateDisconnected, agent.State)
+		require.NotNil(t, agent.AssignedJobID)
+	})
+}
+
+func disconnectAgentWithJob(t *testing.T, orgID uuid.UUID, requesterID *uuid.UUID, agentTypeName, syncState string) *Agent {
+	_, _, err := CreateAgentTypeWithSettings(
+		orgID, requesterID, agentTypeName, AgentNameSettings{ReleaseNameAfter: 60},
+	)
+	require.NoError(t, err)
+
+	agent, _, err := RegisterAgent(orgID, agentTypeName, "with-job-"+agentTypeName, AgentMetadata{})
+	require.NoError(t, err)
+
+	jobID, err := ForcefullyOccupyAgentWithJobID(agent)
+	require.NoError(t, err)
+
+	agent, err = SyncAgent(orgID.String(), agent.TokenHash, syncState, jobID.String(), 0)
+	require.NoError(t, err)
+	require.NoError(t, agent.Disconnect())
+
+	agent, err = FindAgentByToken(orgID.String(), agent.TokenHash)
+	require.NoError(t, err)
+
+	return agent
+}
+
+func Test__CountAgentsInState(t *testing.T) {
+	database.TruncateTables()
+
+	orgID := database.UUID()
+	requesterID := database.UUID()
+
+	_, _, err := CreateAgentTypeWithSettings(
+		orgID, &requesterID, "s1-count", AgentNameSettings{ReleaseNameAfter: 60},
+	)
+	require.NoError(t, err)
+
+	_, _, err = RegisterAgent(orgID, "s1-count", "idle", AgentMetadata{})
+	require.NoError(t, err)
+
+	busy, _, err := RegisterAgent(orgID, "s1-count", "busy", AgentMetadata{})
+	require.NoError(t, err)
+	_, err = ForcefullyOccupyAgentWithJobID(busy)
+	require.NoError(t, err)
+
+	disconnectedIdle, _, err := RegisterAgent(orgID, "s1-count", "disconnected-idle", AgentMetadata{})
+	require.NoError(t, err)
+	require.NoError(t, disconnectedIdle.Disconnect())
+
+	disconnectedBusy, _, err := RegisterAgent(orgID, "s1-count", "disconnected-busy", AgentMetadata{})
+	require.NoError(t, err)
+	_, err = ForcefullyOccupyAgentWithJobID(disconnectedBusy)
+	require.NoError(t, err)
+	require.NoError(t, disconnectedBusy.Disconnect())
+
+	t.Run("counts only registered agents of the agent type", func(t *testing.T) {
+		counts, err := CountAgentsInStateForType(context.Background(), orgID.String(), "s1-count")
+		require.NoError(t, err)
+		require.Equal(t, AgentsInState{Idle: 1, Busy: 1}, *counts)
+	})
+
+	t.Run("counts only registered agents overall", func(t *testing.T) {
+		counts, err := CountAllAgentsInState()
+		require.NoError(t, err)
+		require.Equal(t, AgentsInState{Idle: 1, Busy: 1}, *counts)
 	})
 }
 
