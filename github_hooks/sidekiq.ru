@@ -1,3 +1,4 @@
+require 'rack/session'
 require 'sidekiq'
 require 'sidekiq-unique-jobs'
 
