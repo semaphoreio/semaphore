@@ -3,6 +3,7 @@ defmodule RepositoryHub.Server.Github.CreateActionTest do
   use RepositoryHub.ServerActionCase, async: false
 
   alias RepositoryHub.Adapters
+  alias RepositoryHub.Model.RepositoryQuery
   alias RepositoryHub.Server.CreateAction
   alias RepositoryHub.InternalApiFactory
   alias InternalApi
@@ -12,35 +13,69 @@ defmodule RepositoryHub.Server.Github.CreateActionTest do
   alias InternalApi.Repository.CreateResponse
   import Mock
 
+  @org_id "ca5ea1a0-0000-4000-8000-0000000000a1"
+  @owner_id "ca5ea1a0-0000-4000-8000-0000000000a2"
+  @loginless_owner_id "ca5ea1a0-0000-4000-8000-0000000000a3"
+  @pushless_owner_id "ca5ea1a0-0000-4000-8000-0000000000a4"
+  @pushless_login "reader-only"
+
+  @service_accounts %{
+    "service-account-user-id" => %{owner_id: @owner_id, owner_active: true},
+    "ownerless-service-account-id" => %{owner_id: "", owner_active: false},
+    "departed-owner-service-account-id" => %{owner_id: @owner_id, owner_active: false},
+    "loginless-owner-service-account-id" => %{owner_id: @loginless_owner_id, owner_active: true},
+    "pushless-owner-service-account-id" => %{owner_id: @pushless_owner_id, owner_active: true}
+  }
+
   setup_with_mocks(
-    GithubClientFactory.mocks() ++
+    github_mocks() ++
       [
         {RepositoryHub.UserClient, [:passthrough],
          [
            describe: fn user_id ->
              # Return regular user by default, service account for specific test user
-             if user_id == "service-account-user-id" do
-               {:ok,
-                %{
-                  user_id: user_id,
-                  user: %{creation_source: :SERVICE_ACCOUNT}
-                }}
-             else
-               {:ok,
-                %{
-                  user_id: user_id,
-                  user: %{creation_source: :NOT_SET}
-                }}
+             source = if Map.has_key?(@service_accounts, user_id), do: :SERVICE_ACCOUNT, else: :NOT_SET
+
+             {:ok, %{user_id: user_id, user: %{creation_source: source, org_id: @org_id}}}
+           end,
+           get_repository_provider_logins: fn _, user_id ->
+             case user_id do
+               @loginless_owner_id -> {:ok, []}
+               @pushless_owner_id -> {:ok, [@pushless_login]}
+               _ -> {:ok, ["radwo"]}
              end
            end,
-           get_repository_provider_logins: fn _, _ -> {:ok, ["radwo"]} end,
            get_repository_token: fn _integration_type, _user_id ->
              {:ok, "mock-oauth-token"}
+           end
+         ]},
+        {RepositoryHub.ServiceAccountClient, [:passthrough],
+         [
+           describe: fn service_account_id, _org_id ->
+             owner = Map.get(@service_accounts, service_account_id, %{owner_id: @owner_id, owner_active: true})
+
+             {:ok, %{service_account: owner}}
            end
          ]}
       ]
   ) do
     %{github_app_adapter: Adapters.github_app(), github_oauth_adapter: Adapters.github_oauth()}
+  end
+
+  # The shared factory grants push to every login. What the owner rule turns on is the
+  # owner's own permission, so one login here answers without it.
+  defp github_mocks do
+    Enum.map(GithubClientFactory.mocks(), fn
+      {RepositoryHub.GithubClient, opts, functions} ->
+        {RepositoryHub.GithubClient, opts,
+         Keyword.put(functions, :repository_permissions, fn
+           %{username: @pushless_login}, _opts -> {:ok, %{"admin" => false, "push" => false}}
+           params, opts -> GithubClientFactory.repository_permissions(params, opts)
+         end)}
+
+      mock ->
+        mock
+    end)
   end
 
   describe "Github CreateAction" do
@@ -143,6 +178,53 @@ defmodule RepositoryHub.Server.Github.CreateActionTest do
         )
 
       assert {:ok, %CreateResponse{repository: _repository}} = CreateAction.execute(adapter, request)
+    end
+
+    test "refuses a service account that has no owner", %{github_app_adapter: adapter} do
+      request =
+        InternalApiFactory.create_request(
+          integration_type: :GITHUB_APP,
+          user_id: "ownerless-service-account-id"
+        )
+
+      assert {:error, %{message: message}} = CreateAction.execute(adapter, request)
+      assert message =~ "no owner in the organization"
+      assert [] = RepositoryQuery.list_by_project(request.project_id)
+    end
+
+    test "refuses a service account whose owner is no longer a member", %{github_app_adapter: adapter} do
+      request =
+        InternalApiFactory.create_request(
+          integration_type: :GITHUB_APP,
+          user_id: "departed-owner-service-account-id"
+        )
+
+      assert {:error, %{message: message}} = CreateAction.execute(adapter, request)
+      assert message =~ "no owner in the organization"
+      assert [] = RepositoryQuery.list_by_project(request.project_id)
+    end
+
+    test "refuses a service account whose owner has no GitHub account connected", %{github_app_adapter: adapter} do
+      request =
+        InternalApiFactory.create_request(
+          integration_type: :GITHUB_APP,
+          user_id: "loginless-owner-service-account-id"
+        )
+
+      assert {:error, %{message: message}} = CreateAction.execute(adapter, request)
+      assert message =~ "owner of this service account has no GitHub account"
+      assert [] = RepositoryQuery.list_by_project(request.project_id)
+    end
+
+    test "refuses a service account whose owner cannot push to the repository", %{github_app_adapter: adapter} do
+      request =
+        InternalApiFactory.create_request(
+          integration_type: :GITHUB_APP,
+          user_id: "pushless-owner-service-account-id"
+        )
+
+      assert {:error, _} = CreateAction.execute(adapter, request)
+      assert [] = RepositoryQuery.list_by_project(request.project_id)
     end
 
     test "should fail with clear error for service account with github_oauth_token", %{
