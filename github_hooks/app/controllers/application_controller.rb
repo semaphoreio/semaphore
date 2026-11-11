@@ -1,10 +1,6 @@
-class ApplicationController < ActionController::Base
+class ApplicationController < ActionController::API
 
   def render404
-    if request.format.json?
-      render :json => { "error" => "Not found." }, :status => :not_found
-    else
-      render "errors/not_found", :status => :not_found, :layout => false
-    end
+    render :json => { "error" => "Not found." }, :status => :not_found
   end
 end
