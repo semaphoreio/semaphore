@@ -6,7 +6,6 @@ gem "bundler", ">= 1.8.4"
 gem "pg", "~> 1.1"
 gem "rails", ">= 8.1.0", "< 8.2"
 gem "rack", ">= 3.0", "< 4"
-# gem "sprockets-rails"
 
 gem "excon", "~> 1.5"
 gem "app"
