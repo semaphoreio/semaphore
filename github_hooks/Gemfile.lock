@@ -442,9 +442,6 @@ GEM
     sorted_set (1.0.3)
       rbtree
       set (~> 1.0)
-    spring (4.4.0)
-    spring-commands-rspec (1.0.4)
-      spring (>= 0.9.1)
     thin (2.0.1)
       daemons (~> 1.0, >= 1.0.9)
       eventmachine (~> 1.0, >= 1.0.4)
@@ -542,8 +539,6 @@ DEPENDENCIES
   sidekiq (= 7.3.10)
   sidekiq-scheduler
   sidekiq-unique-jobs (~> 8.0)
-  spring (~> 4.1)
-  spring-commands-rspec
   thin
   timecop
   uri (~> 1.0, >= 1.0.4)
