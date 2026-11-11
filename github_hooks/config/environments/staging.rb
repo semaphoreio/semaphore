@@ -48,15 +48,7 @@ Semaphore::Application.configure do
   # Send deprecation notices to registered listeners
   config.active_support.deprecation = :notify
 
-  # Compress both stylesheets and JavaScripts
-  config.assets.js_compressor = Uglifier.new(:mangle => false, :output => { :comments => :none })
-  config.assets.compress = true
-  # config.assets.css_compressor = :scss
-
-  # Generate digests for assets URLs
-  config.assets.digest = true
   config.action_controller.asset_host = App.asset_host
-  config.action_mailer.asset_host = config.action_controller.asset_host
 
   config.lograge.enabled = true
 
