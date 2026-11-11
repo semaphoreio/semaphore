@@ -4,10 +4,11 @@ defmodule Rbac.Repo.IdpGroupMapping do
 
   @timestamps_opts [type: :utc_datetime]
 
+  # group_mapping and role_mapping are embeds_many, which default to [] and are
+  # cast with required: false - validate_required never had an effect on them,
+  # and since ecto 3.12 saying so emits a warning that fails --warnings-as-errors.
   @required_fields [
     :organization_id,
-    :group_mapping,
-    :role_mapping,
     :default_role_id
   ]
 
