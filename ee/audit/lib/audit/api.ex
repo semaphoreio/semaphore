@@ -36,10 +36,11 @@ defmodule Audit.Api do
 
   defp paginated_list(req) do
     {:ok, page_size} = non_empty_value_or_default(req, :page_size, 500)
+    {from_timestamp, to_timestamp} = time_range(req)
 
     {events, next_token, previous_token} =
       Audit.Event.paginated(
-        %{org_id: req.org_id},
+        %{org_id: req.org_id, from_timestamp: from_timestamp, to_timestamp: to_timestamp},
         %{
           page_size: min(page_size, @max_page_size),
           page_token: req.page_token,
@@ -54,6 +55,32 @@ defmodule Audit.Api do
       next_page_token: next_token,
       previous_page_token: previous_token
     )
+  end
+
+  defp time_range(req) do
+    from_timestamp = proto_timestamp_to_datetime(req.from_timestamp, "from_timestamp")
+    to_timestamp = proto_timestamp_to_datetime(req.to_timestamp, "to_timestamp")
+
+    if from_timestamp && to_timestamp && DateTime.compare(from_timestamp, to_timestamp) != :lt do
+      raise RPCError.exception(
+              Status.invalid_argument(),
+              "from_timestamp must be before to_timestamp"
+            )
+    end
+
+    {from_timestamp, to_timestamp}
+  end
+
+  defp proto_timestamp_to_datetime(nil, _name), do: nil
+
+  defp proto_timestamp_to_datetime(%{seconds: seconds}, name) do
+    case DateTime.from_unix(seconds) do
+      {:ok, datetime} ->
+        datetime
+
+      {:error, _} ->
+        raise RPCError.exception(Status.invalid_argument(), "#{name} is out of range")
+    end
   end
 
   defp valid_stream(stream = %{provider: :S3, s3_config: _s3_config})
