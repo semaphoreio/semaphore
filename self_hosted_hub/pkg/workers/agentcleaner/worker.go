@@ -25,13 +25,24 @@ func Start(publisher *amqp.Publisher) {
 }
 
 func Tick(publisher *amqp.Publisher) {
-	// The advisory lock makes sure that only one cleaner is working at a time
-	_ = database.WithAdvisoryLock(CleanerName, func(db *gorm.DB) error {
-		return deleteStuckAgents(db, publisher)
-	})
+	for {
+		found, deleted := 0, 0
+
+		// The advisory lock makes sure that only one cleaner is working at a time
+		err := database.WithAdvisoryLock(CleanerName, func(db *gorm.DB) error {
+			var err error
+			found, deleted, err = deleteStuckAgents(db, publisher)
+			return err
+		})
+
+		// A batch that deleted nothing would be selected again, so it ends the tick.
+		if err != nil || found < batchSize || deleted == 0 {
+			return
+		}
+	}
 }
 
-func deleteStuckAgents(db *gorm.DB, publisher *amqp.Publisher) error {
+func deleteStuckAgents(db *gorm.DB, publisher *amqp.Publisher) (int, int, error) {
 	oneMinAgo := time.Now().Add(-1 * time.Minute)
 	threeMinsAgo := time.Now().Add(-3 * time.Minute)
 	fifteenMinsAgo := time.Now().Add(-15 * time.Minute)
@@ -45,20 +56,23 @@ func deleteStuckAgents(db *gorm.DB, publisher *amqp.Publisher) error {
 	var agents []AgentInfo
 	err := db.Model(&models.Agent{}).
 		Select("id, assigned_job_id::text as assigned_job_id").
-		Where("(last_sync_at IS NULL AND created_at < ?)", oneMinAgo).
-		Or("(last_sync_at < ? AND assigned_job_id IS NULL)", threeMinsAgo).
-		Or("(last_sync_at < ?)", fifteenMinsAgo).
+		Where("state = ? OR assigned_job_id IS NOT NULL", models.AgentStateRegistered).
+		Where(
+			"(last_sync_at IS NULL AND created_at < ?) OR (last_sync_at < ? AND assigned_job_id IS NULL) OR (last_sync_at < ?)",
+			oneMinAgo, threeMinsAgo, fifteenMinsAgo,
+		).
+		Order("last_sync_at ASC NULLS FIRST").
 		Limit(batchSize).
 		Scan(&agents).Error
 
 	if err != nil {
 		log.Printf("[%s] Error while querying agents for cleanup: %s", CleanerName, err.Error())
-		return err
+		return 0, 0, err
 	}
 
 	if len(agents) == 0 {
 		log.Printf("[%s] No agents to clean up", CleanerName)
-		return nil
+		return 0, 0, nil
 	}
 
 	log.Printf("[%s] Found %d agents to clean up", CleanerName, len(agents))
@@ -87,7 +101,7 @@ func deleteStuckAgents(db *gorm.DB, publisher *amqp.Publisher) error {
 
 	if len(idsToDelete) == 0 {
 		log.Printf("[%s] No agents to delete after processing", CleanerName)
-		return nil
+		return len(agents), 0, nil
 	}
 
 	// Delete only the agents we've processed successfully
@@ -95,9 +109,10 @@ func deleteStuckAgents(db *gorm.DB, publisher *amqp.Publisher) error {
 	err = db.Where("id IN (?)", idsToDelete).Delete(&models.Agent{}).Error
 	if err != nil {
 		log.Printf("[%s] Error while deleting agents: %s", CleanerName, err.Error())
+		return len(agents), 0, err
 	}
 
-	return err
+	return len(agents), len(idsToDelete), nil
 }
 
 func initialDelay() {
