@@ -73,6 +73,11 @@ describe(`nextView`, () => {
     expect(nextView(`focus`, block, 1.6, { x: -600, y: 0, zoom: 1 }, vw, vh)).to.deep.equal({ x: -50, y: 50, zoom: 1 });
   });
 
+  test(`treats a box within 40 px of an edge, where the map's own controls sit, as off-screen`, () => {
+    expect(nextView(`focus`, block, 1.6, { x: -380, y: 0, zoom: 1 }, vw, vh)).to.deep.equal({ x: -50, y: 50, zoom: 1 });
+    expect(nextView(`focus`, block, 1.6, { x: 0, y: 280, zoom: 1 }, vw, vh)).to.deep.equal({ x: -50, y: 50, zoom: 1 });
+  });
+
   test(`zooms a far-out map in only up to 75%, and never out`, () => {
     expect(nextView(`focus`, block, 1.6, { x: 0, y: 0, zoom: 0.3 }, vw, vh).zoom).to.equal(0.75);
     expect(nextView(`focus`, { x: 0, y: 0, w: 4000, h: 3000 }, 1.6, { x: 0, y: 0, zoom: 0.5 }, vw, vh).zoom).to.equal(0.5);

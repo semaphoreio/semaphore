@@ -58,7 +58,7 @@ export function nextView(how: `fit` | `focus` | `keep` | `open`, box: Box, pad: 
   const zoom = how === `fit` ? fit : Math.max(v.zoom, Math.min(READABLE, fit));
   const left = box.x * v.zoom + v.x;
   const top = box.y * v.zoom + v.y;
-  const shown = left >= 0 && top >= 0 && left + box.w * v.zoom <= vw && top + box.h * v.zoom <= vh;
+  const shown = left >= EDGE && top >= EDGE && left + box.w * v.zoom <= vw - EDGE && top + box.h * v.zoom <= vh - EDGE;
   if (how === `focus` && zoom === v.zoom && shown) return null;
   const place = (start: number, size: number, room: number) => (how === `focus` && size * zoom > room - 2 * EDGE ? EDGE - start * zoom : room / 2 - (start + size / 2) * zoom);
   return { x: place(box.x, box.w, vw), y: place(box.y, box.h, vh), zoom };
