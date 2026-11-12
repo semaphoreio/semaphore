@@ -1,6 +1,7 @@
 defmodule Zebra.Workers.JobRequestFactory.Cache do
   require Logger
   alias InternalApi.Cache.DescribeRequest, as: Request
+  alias InternalApi.Cache.{GetS3CredentialsRequest, GetS3CredentialsResponse}
   alias InternalApi.Cache.CacheService.Stub
 
   alias Zebra.Workers.JobRequestFactory.JobRequest
@@ -53,6 +54,93 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
     do: Stub.describe(channel, req, timeout: 30_000),
     after: GRPC.Stub.disconnect(channel)
 
+  @doc """
+  Temporary S3 credentials for the job's project prefix in the cache bucket.
+  Like find/5, it never fails the job: without credentials, the job gets no cache.
+  """
+  def find_s3(job, project, repo_proxy, job_type, min_validity_seconds)
+
+  def find_s3(_job, %{cache_id: nil}, _repo_proxy, _job_type, _min_validity_seconds) do
+    skipped_s3(:no_cache_id)
+    {:ok, nil}
+  end
+
+  def find_s3(job, project, repo_proxy, job_type, min_validity_seconds) do
+    Watchman.benchmark("external.cachehub.get_s3_credentials", fn ->
+      req =
+        GetS3CredentialsRequest.new(
+          project_id: job.project_id,
+          min_validity_seconds: min_validity_seconds
+        )
+
+      with false <- skip_s3_cache?(repo_proxy, job.organization_id, job_type, project),
+           {:ok, endpoint} <- Application.fetch_env(:zebra, :cachehub_api_endpoint),
+           {:ok, channel} <- GRPC.Stub.connect(endpoint),
+           {:ok, response} <- grpc_get_s3_credentials(channel, req) do
+        handle_s3_credentials_response(response, job.project_id)
+      else
+        true ->
+          skipped_s3(:forked_pr)
+          {:ok, nil}
+
+        e ->
+          Logger.warning(
+            "Failed to fetch S3 credentials from cachehub. project_id=#{job.project_id} error=#{inspect(e)}"
+          )
+
+          failed_s3(:grpc_error)
+          {:ok, nil}
+      end
+    end)
+  end
+
+  defp grpc_get_s3_credentials(channel, req),
+    do: Stub.get_s3_credentials(channel, req, timeout: 30_000),
+    after: GRPC.Stub.disconnect(channel)
+
+  defp handle_s3_credentials_response(response, project_id) do
+    required = [
+      response.bucket,
+      response.region,
+      response.access_key_id,
+      response.secret_access_key,
+      response.session_token
+    ]
+
+    cond do
+      not ok?(response) ->
+        Logger.warning(
+          "Cachehub returned non-OK status for S3 credentials. project_id=#{project_id} status_code=#{inspect(status_code(response))}"
+        )
+
+        failed_s3(:non_ok_response)
+        {:ok, nil}
+
+      Enum.any?(required, &blank?/1) ->
+        Logger.warning("Cachehub returned incomplete S3 credentials. project_id=#{project_id}")
+
+        failed_s3(:incomplete_credentials)
+        {:ok, nil}
+
+      true ->
+        {:ok, response}
+    end
+  end
+
+  # Forked pull requests get no S3 credentials, whatever disable_forked_pr_cache says,
+  # unless their approval enabled the cache. Debug jobs never take that approval.
+  defp skip_s3_cache?(repo_proxy, _org_id, :debug_job, _project),
+    do: forked_pr_without_approval_override?(repo_proxy)
+
+  defp skip_s3_cache?(repo_proxy, org_id, _job_type, project),
+    do: forked_pr?(repo_proxy, org_id, project)
+
+  defp ok?(%{status: %{code: code}}), do: code == InternalApi.ResponseStatus.Code.value(:OK)
+  defp ok?(_response), do: false
+
+  defp status_code(%{status: %{code: code}}), do: code
+  defp status_code(_response), do: nil
+
   defp handle_describe_response(response, cache_id) do
     ok_code = InternalApi.ResponseStatus.Code.value(:OK)
 
@@ -87,7 +175,16 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
     Watchman.increment({"external.cachehub.describe.skipped", [to_string(reason)]})
   end
 
+  defp failed_s3(reason) do
+    Watchman.increment({"external.cachehub.get_s3_credentials.failed", [to_string(reason)]})
+  end
+
+  defp skipped_s3(reason) do
+    Watchman.increment({"external.cachehub.get_s3_credentials.skipped", [to_string(reason)]})
+  end
+
   def files(_, nil), do: {:ok, []}
+  def files(_job, %GetS3CredentialsResponse{}), do: {:ok, []}
 
   def files(job, cache) do
     path = "#{Machine.home_path(job)}/.ssh/semaphore_cache_key"
@@ -98,9 +195,32 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
      ]}
   end
 
-  def env_vars(_, nil, _), do: {:ok, []}
+  @doc """
+  With S3 credentials, a job that sets any SEMAPHORE_CACHE_* variable itself
+  gets none of these, so its own cache settings are never mixed with them.
+  """
+  def env_vars(job, cache, organization_id, job_env_var_names \\ [])
 
-  def env_vars(job, cache, organization_id) do
+  def env_vars(_, nil, _, _), do: {:ok, []}
+
+  def env_vars(_job, credentials = %GetS3CredentialsResponse{}, organization_id, names) do
+    if Enum.any?(names, &cache_env_var?/1) do
+      {:ok, []}
+    else
+      vars = [
+        JobRequest.env_var("SEMAPHORE_CACHE_BACKEND", "s3"),
+        JobRequest.env_var("SEMAPHORE_CACHE_S3_BUCKET", credentials.bucket),
+        JobRequest.env_var("SEMAPHORE_CACHE_S3_REGION", credentials.region),
+        JobRequest.env_var("SEMAPHORE_CACHE_S3_KEY", credentials.access_key_id),
+        JobRequest.env_var("SEMAPHORE_CACHE_S3_SECRET", credentials.secret_access_key),
+        JobRequest.env_var("SEMAPHORE_CACHE_S3_SESSION_TOKEN", credentials.session_token)
+      ]
+
+      {:ok, vars ++ archive_method_env_vars(organization_id)}
+    end
+  end
+
+  def env_vars(job, cache, organization_id, _job_env_var_names) do
     path = "#{Machine.home_path(job)}/.ssh/semaphore_cache_key"
     user = String.replace(cache.id, "-", "")
 
@@ -112,18 +232,23 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
       JobRequest.env_var("SEMAPHORE_CACHE_URL", cache.url)
     ]
 
+    {:ok, vars ++ archive_method_env_vars(organization_id)}
+  end
+
+  defp archive_method_env_vars(organization_id) do
     if FeatureProvider.feature_enabled?(:cache_cli_parallel_archive_method,
          param: organization_id
        ) do
-      {:ok,
-       vars ++
-         [
-           JobRequest.env_var("SEMAPHORE_CACHE_ARCHIVE_METHOD", "native-parallel")
-         ]}
+      [JobRequest.env_var("SEMAPHORE_CACHE_ARCHIVE_METHOD", "native-parallel")]
     else
-      {:ok, vars}
+      []
     end
   end
+
+  defp cache_env_var?(name) when is_binary(name),
+    do: String.starts_with?(String.upcase(name), "SEMAPHORE_CACHE_")
+
+  defp cache_env_var?(_name), do: false
 
   def forked_pr?(repo, org_id \\ nil, project \\ nil)
   def forked_pr?(_repo = %{pr_slug: ""}, _org_id, _project), do: false

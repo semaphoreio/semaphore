@@ -127,7 +127,8 @@ defmodule Zebra.Workers.Agent.HostedAgent do
     }
   end
 
-  defp provider_for(job) do
+  @doc "The provider that serves the job's hosted agent: the secondary one, or nil for the default."
+  def provider_for(job) do
     if secondary_endpoint() && secondary_provider_enabled?(job.organization_id) do
       @secondary_provider
     else

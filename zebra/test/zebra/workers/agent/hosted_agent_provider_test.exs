@@ -143,6 +143,23 @@ defmodule Zebra.Workers.Agent.HostedAgentProviderTest do
     end
   end
 
+  describe ".provider_for" do
+    test "names the secondary provider only for organizations with the feature" do
+      Application.put_env(:zebra, :chmura_secondary_endpoint, @secondary_endpoint)
+      {:ok, job} = create_job(:pending, org_with_feature())
+      {:ok, other_job} = Support.Factories.Job.create(:pending)
+
+      assert HostedAgent.provider_for(job) == HostedAgent.secondary_provider()
+      assert HostedAgent.provider_for(other_job) == nil
+    end
+
+    test "names the default provider when no secondary endpoint is configured" do
+      {:ok, job} = create_job(:pending, org_with_feature())
+
+      assert HostedAgent.provider_for(job) == nil
+    end
+  end
+
   defp org_with_feature, do: @org_with_feature
 
   defp create_job(state, org_id),
