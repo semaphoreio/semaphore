@@ -101,6 +101,11 @@ describe(`layoutMap`, () => {
     expect(moves(before, after)).to.deep.include({ a2: [0, 0], b1: [0, 220], b2: [0, 220], c: [0, 220], d: [0, 220], f1: [0, 220], f2: [0, 220], f3: [0, 220] });
   });
 
+  test(`places the groups in the order of the pipeline's YAML, not by size`, async () => {
+    const L = await layout(workflowOf([[`f1`, []], [`f2`, [`f1`]], [`f3`, [`f1`]], [`c`, []]]), true);
+    expect(L.blocks.get(`c`).y).to.be.greaterThan(L.blocks.get(`f3`).y);
+  });
+
   test(`places the after block in its band, above the other blocks`, async () => {
     const L = await layout(workflowWith([`build`], false, true), true, SIZE.h + 20);
     expect(L.blocks.get(`after`)).to.deep.equal({ x: 28, y: 88, ...SIZE });

@@ -90,7 +90,6 @@ async function inner(p: Pipeline, size: (b: Block) => { w: number, h: number, },
   const groups = [...parts.values()];
   const now = await Promise.all(groups.map((c) => component(p, c, size)));
   const closed = await Promise.all(groups.map((c) => component(p, c, () => BLOCK)));
-  const order = closed.map((_, i) => i).sort((a, b) => closed[a].height - closed[b].height);
   const area = closed.reduce((sum, g) => sum + (g.width + LAYER_GAP) * (g.height + BLOCK_GAP), 0);
   const rowWidth = Math.max(...closed.map((g) => g.width), Math.sqrt(area * ASPECT));
   const out = { width: 0, height: 0, blocks: new Map<string, Box>(), routes: new Map<string, Point[]>() };
@@ -98,8 +97,7 @@ async function inner(p: Pipeline, size: (b: Block) => { w: number, h: number, },
   let y = top;
   let slot = 0;
   let rowH = 0;
-  order.forEach((i) => {
-    const g = now[i];
+  now.forEach((g, i) => {
     if (slot && slot + closed[i].width > rowWidth) {
       x = 0;
       y += rowH + BLOCK_GAP;
