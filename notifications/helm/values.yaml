@@ -8,6 +8,9 @@ logging: info
 db:
   poolSize: 2
 
+webhooks:
+  blockInternalEndpoints: true
+
 resources:
   limits:
     cpu: '0.2'

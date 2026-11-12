@@ -1,3 +1,8 @@
+export interface Person {
+  id: string;
+  name: string;
+}
+
 export interface ServiceAccount {
   id: string;
   name: string;
@@ -5,6 +10,9 @@ export interface ServiceAccount {
   created_at: string;
   updated_at: string;
   deactivated: boolean;
+  owner?: Person;
+  owner_active: boolean;
+  creator?: Person;
   roles: Role[];
 }
 
@@ -50,11 +58,14 @@ export interface AppState {
 export interface Config {
   organizationId: string;
   projectId?: string;
+  userId: string;
   isOrgScope: boolean;
   permissions: {
     canView: boolean;
     canManage: boolean;
   };
+  showOwnership: boolean;
+  ownershipEnforced: boolean;
   roles: Role[];
   urls: {
     list: string;
@@ -63,6 +74,8 @@ export interface Config {
     update: (id: string) => string;
     delete: (id: string) => string;
     regenerateToken: (id: string) => string;
+    takeOwnership: (id: string) => string;
+    releaseOwnership: (id: string) => string;
     assignRole?: string;
   };
 }
