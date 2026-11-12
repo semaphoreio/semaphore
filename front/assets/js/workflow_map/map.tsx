@@ -34,8 +34,25 @@ const lineage = computed(() => {
   return { chain, pipelineId: start.pipeline.id };
 });
 
-interface Target { id: string, how: `fit` | `all` | `keep`, job?: number, at?: Point, }
+interface Target { id: string, how: `fit` | `focus` | `all` | `keep`, job?: number, at?: Point, }
 let target: Target | null = null;
+
+const READABLE = 0.75;
+const GLIDE_MS = 250;
+
+interface Box { x: number, y: number, w: number, h: number, }
+export interface View { x: number, y: number, zoom: number, }
+
+export function nextView(how: `fit` | `focus` | `keep`, box: Box, pad: number, v: View, vw: number, vh: number, at?: Point): View | null {
+  if (how === `keep`) return { x: v.x - (box.x - at.x) * v.zoom, y: v.y - (box.y - at.y) * v.zoom, zoom: v.zoom };
+  const fit = Math.max(0.1, Math.min(1, vw / (box.w * pad), vh / (box.h * pad)));
+  const zoom = how === `fit` ? fit : Math.max(v.zoom, Math.min(READABLE, fit));
+  const left = box.x * v.zoom + v.x;
+  const top = box.y * v.zoom + v.y;
+  const shown = left >= 0 && top >= 0 && left + box.w * v.zoom <= vw && top + box.h * v.zoom <= vh;
+  if (how === `focus` && zoom === v.zoom && shown) return null;
+  return { x: vw / 2 - (box.x + box.w / 2) * zoom, y: vh / 2 - (box.y + box.h / 2) * zoom, zoom };
+}
 
 export const aim = (next: Target | null) => {
   target = next;
@@ -359,7 +376,7 @@ const WorkflowMap = () => {
     if (!vw || !vh) return false;
     const p = wf.pipelineById.get(t.id);
     if (t.how === `all` || (!p && !wf.blocks.has(t.id))) {
-      void rf.fitView({ padding: 0.06, maxZoom: 1, duration: 400 });
+      void rf.fitView({ padding: 0.06, maxZoom: 1 });
       return true;
     }
     const laidOpen = p && L.pipelines.get(p.id)?.open;
@@ -367,17 +384,10 @@ const WorkflowMap = () => {
     const b = boxOf(wf, L, t.id);
     const blk = t.job === undefined ? undefined : wf.blocks.get(t.id);
     if (!b || (blk && (!blk.jobs[t.job] || b.h < jobTop(t.job)))) return false;
-    const cx = b.x + b.w / 2;
-    if (t.how === `keep`) {
-      const v = rf.getViewport();
-      void rf.setViewport({ x: v.x - (b.x - t.at.x) * v.zoom, y: v.y - (b.y - t.at.y) * v.zoom, zoom: v.zoom });
-    } else if (blk) {
-      void rf.setCenter(cx, b.y + jobTop(t.job) + JOB_ROW_H / 2, { zoom: Math.max(rf.getZoom(), 1), duration: 450 });
-    } else {
-      const pad = p ? 1.12 : 1.6;
-      const z = Math.max(0.1, Math.min(1, vw / (b.w * pad), vh / (b.h * pad)));
-      void rf.setViewport({ x: vw / 2 - cx * z, y: vh / 2 - (b.y + b.h / 2) * z, zoom: z }, { duration: 450 });
-    }
+    const box = blk ? { x: b.x, y: b.y + jobTop(t.job), w: b.w, h: JOB_ROW_H } : b;
+    const next = nextView(t.how, box, p ? 1.12 : 1.6, rf.getViewport(), vw, vh, t.at);
+    const glide = t.how === `focus` && !window.matchMedia(`(prefers-reduced-motion: reduce)`).matches;
+    if (next) void rf.setViewport(next, { duration: glide ? GLIDE_MS : 0 });
     return true;
   };
 
@@ -412,7 +422,7 @@ const WorkflowMap = () => {
     if (!p) return;
     handledSeq.current = f.seq;
     const job = f.kind === `job` ? wf.jobs.get(f.id).block.jobs.findIndex((j) => j.key === f.id) : undefined;
-    aim({ id: blockId ?? p.id, how: `fit`, job });
+    aim({ id: blockId ?? p.id, how: `focus`, job });
     if (!P.has(p.id)) toggle(openPipelines, p.id, true);
     if (f.kind === `job` && !B.has(blockId)) toggle(openBlocks, blockId, true);
     if (layout) settle(layout);
@@ -460,7 +470,7 @@ const WorkflowMap = () => {
       />
       <Panel position="top-right">
         <div className="wf-map-tools">
-          <button className="btn btn-secondary btn-small" onClick={() => void rf.fitView({ duration: 400, padding: 0.06 })}>
+          <button className="btn btn-secondary btn-small" onClick={() => void rf.fitView({ padding: 0.06 })}>
             Fit workflow
           </button>
           <button className="btn btn-secondary btn-small" onClick={() => (aim({ id: ``, how: `all` }), (openPipelines.value = new Set(wf.pipelines.map((p) => p.id))))}>
