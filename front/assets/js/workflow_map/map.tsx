@@ -34,7 +34,7 @@ const lineage = computed(() => {
   return { chain, pipelineId: start.pipeline.id };
 });
 
-interface Target { id: string, how: `fit` | `focus` | `all` | `keep` | `open`, job?: number, at?: Point, }
+interface Target { id: string, how: `fit` | `focus` | `all` | `keep` | `keepRight` | `open`, job?: number, at?: Point, }
 let target: Target | null = null;
 
 const READABLE = 0.75;
@@ -44,10 +44,11 @@ const EDGE = 40;
 interface Box { x: number, y: number, w: number, h: number, }
 export interface View { x: number, y: number, zoom: number, }
 
-export function nextView(how: `fit` | `focus` | `keep` | `open`, box: Box, pad: number, v: View, vw: number, vh: number, at?: Point): View | null {
-  if (how === `keep` || how === `open`) {
-    const kept = { x: v.x - (box.x - at.x) * v.zoom, y: v.y - (box.y - at.y) * v.zoom, zoom: v.zoom };
-    if (how === `keep`) return kept;
+export function nextView(how: `fit` | `focus` | `keep` | `keepRight` | `open`, box: Box, pad: number, v: View, vw: number, vh: number, at?: Point): View | null {
+  if (how !== `fit` && how !== `focus`) {
+    const x = how === `keepRight` ? box.x + box.w : box.x;
+    const kept = { x: v.x - (x - at.x) * v.zoom, y: v.y - (box.y - at.y) * v.zoom, zoom: v.zoom };
+    if (how !== `open`) return kept;
     const into = (start: number, size: number, room: number) => {
       const end = start + size * v.zoom;
       return start < EDGE ? EDGE - start : end > room - EDGE ? Math.max(room - EDGE - end, EDGE - start) : 0;
@@ -193,7 +194,29 @@ export const AfterBand = ({ block, at }: { block: Block, at: Point, }) => {
   );
 };
 
-const PipelineNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node<{ id: string, }>>) => {
+export const BlocksToggle = ({ p, at }: { p: Pipeline, at: Point, }) => {
+  if (!p.blocks || p.blocks.length < 2) return null;
+  const open = p.blocks.every((b) => openBlocks.value.has(b.id));
+  const label = `${open ? `Collapse` : `Expand`} all blocks`;
+  return (
+    <button
+      className="wf-map-collapse wf-map-blocks-toggle"
+      aria-label={`${label} of ${p.name}`}
+      data-tippy-content={label}
+      onClick={(e) => {
+        e.stopPropagation();
+        aim({ id: p.id, how: `keepRight`, at });
+        const next = new Set(openBlocks.value);
+        p.blocks.forEach((b) => (open ? next.delete(b.id) : next.add(b.id)));
+        openBlocks.value = next;
+      }}
+    >
+      <span className="material-symbols-outlined" aria-hidden="true">{open ? `unfold_less` : `unfold_more`}</span>
+    </button>
+  );
+};
+
+const PipelineNode = ({ data, width, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node<{ id: string, }>>) => {
   const p = workflow.value?.pipelineById.get(data.id);
   const h = hits.value;
   if (!p) return null;
@@ -221,6 +244,7 @@ const PipelineNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<
             <PipelineTitle p={p}/>
           </span>
           <Duration start={p.runningAt} end={p.doneAt} running={p.status === `running`}/>
+          <BlocksToggle p={p} at={{ x: at.x + width, y: at.y }}/>
         </div>
         <div className="wf-map-pipeline-row wf-map-pipeline-sub">
           <Name className="wf-map-pipeline-meta">{p.yamlFile}</Name>

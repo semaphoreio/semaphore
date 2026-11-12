@@ -687,6 +687,16 @@
   background: #EEF1F2;
 }
 
+.wf-map-blocks-toggle {
+  flex: none;
+  color: #677278;
+}
+
+.wf-map-blocks-toggle .material-symbols-outlined {
+  font-size: 18px;
+  line-height: 1;
+}
+
 .wf-map-chevron {
   display: block;
   flex: none;

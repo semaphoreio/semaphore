@@ -46,6 +46,11 @@ describe(`nextView`, () => {
     expect(nextView(`keep`, block, 1.6, v, vw, vh, { x: 380, y: 260 })).to.deep.equal({ x: 0, y: 50, zoom: 0.5 });
   });
 
+  test(`keeping the right edge, moves the map by how far the box's top-right corner moved`, () => {
+    const v = { x: 10, y: 20, zoom: 0.5 };
+    expect(nextView(`keepRight`, block, 1.6, v, vw, vh, { x: 640, y: 200 })).to.deep.equal({ x: -20, y: 20, zoom: 0.5 });
+  });
+
   test(`after anchoring an opened box, moves the map only as far as it takes to show the box`, () => {
     const v = { x: 0, y: 0, zoom: 1 };
     expect(nextView(`open`, block, 1, v, vw, vh, { x: 400, y: 200 })).to.deep.equal(v);
