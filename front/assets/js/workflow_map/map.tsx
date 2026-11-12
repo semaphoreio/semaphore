@@ -195,19 +195,20 @@ export const AfterBand = ({ block, at }: { block: Block, at: Point, }) => {
 };
 
 export const BlocksToggle = ({ p, at }: { p: Pipeline, at: Point, }) => {
-  if (!p.blocks || p.blocks.length < 2) return null;
-  const open = p.blocks.every((b) => openBlocks.value.has(b.id));
+  const blocks = p.blocks ?? [];
+  const open = blocks.length > 0 && blocks.every((b) => openBlocks.value.has(b.id));
   const label = `${open ? `Collapse` : `Expand`} all blocks`;
   return (
     <button
       className="wf-map-collapse wf-map-blocks-toggle"
       aria-label={`${label} of ${p.name}`}
       data-tippy-content={label}
+      disabled={blocks.length === 0}
       onClick={(e) => {
         e.stopPropagation();
         aim({ id: p.id, how: `keepRight`, at });
         const next = new Set(openBlocks.value);
-        p.blocks.forEach((b) => (open ? next.delete(b.id) : next.add(b.id)));
+        blocks.forEach((b) => (open ? next.delete(b.id) : next.add(b.id)));
         openBlocks.value = next;
       }}
     >

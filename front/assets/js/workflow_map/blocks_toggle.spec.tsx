@@ -31,11 +31,27 @@ describe(`the expand / collapse all blocks control`, () => {
     });
   };
 
-  test(`is not shown while blocks load or for a pipeline with fewer than two blocks`, async () => {
-    for (const q of [pipeline(`a`, null), pipeline(`b`, []), pipeline(`c`, [block(`c`, `only`)])]) {
+  test(`is shown but disabled while blocks load and for a pipeline without blocks`, async () => {
+    for (const q of [pipeline(`a`, null), pipeline(`b`, [])]) {
       await act(() => render(<BlocksToggle p={q} at={{ x: 0, y: 0 }}/>, root));
-      expect(root.querySelector(`.wf-map-blocks-toggle`)).to.equal(null);
+      const button = root.querySelector<HTMLButtonElement>(`.wf-map-blocks-toggle`);
+      expect(button.disabled).to.equal(true);
+      expect(button.getAttribute(`aria-label`)).to.equal(`Expand all blocks of Pipeline ${q.id}`);
     }
+  });
+
+  test(`opens and closes the only block of a one-block pipeline`, async () => {
+    const q = pipeline(`c`, [block(`c`, `only`)]);
+    await act(() => render(<BlocksToggle p={q} at={{ x: 0, y: 0 }}/>, root));
+    const button = root.querySelector<HTMLButtonElement>(`.wf-map-blocks-toggle`);
+    expect(button.disabled).to.equal(false);
+
+    await click();
+    expect([...openBlocks.value]).to.deep.equal([`c/only`]);
+    expect(button.getAttribute(`aria-label`)).to.equal(`Collapse all blocks of Pipeline c`);
+
+    await click();
+    expect([...openBlocks.value]).to.deep.equal([]);
   });
 
   test(`opens every block of its pipeline, then closes them again, and leaves other pipelines' blocks alone`, async () => {

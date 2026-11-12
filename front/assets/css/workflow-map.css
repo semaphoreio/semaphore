@@ -692,6 +692,12 @@
   color: #677278;
 }
 
+.wf-map-blocks-toggle:disabled {
+  background: none;
+  cursor: default;
+  opacity: 0.4;
+}
+
 .wf-map-blocks-toggle .material-symbols-outlined {
   font-size: 18px;
   line-height: 1;
