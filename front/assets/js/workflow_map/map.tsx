@@ -34,7 +34,7 @@ const lineage = computed(() => {
   return { chain, pipelineId: start.pipeline.id };
 });
 
-interface Target { id: string, how: `fit` | `center` | `all` | `keep`, job?: number, at?: Point, }
+interface Target { id: string, how: `fit` | `all` | `keep`, job?: number, at?: Point, }
 let target: Target | null = null;
 
 export const aim = (next: Target | null) => {
@@ -87,7 +87,7 @@ const PipelineActions = ({ p, compact }: { p: Pipeline, compact?: boolean, }) =>
   );
 };
 
-const CardNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
+const CardNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node<{ id: string, }>>) => {
   const p = workflow.value?.pipelineById.get(data.id);
   const h = hits.value;
   if (!p) return null;
@@ -96,7 +96,7 @@ const CardNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
   const open = (card: Element) => {
     selected.value = p.id;
     if (p.errorHtml) return togglePopover(`error`, p.id, card);
-    aim({ id: p.id, how: `fit` });
+    aim({ id: p.id, how: `keep`, at: { x: positionAbsoluteX, y: positionAbsoluteY } });
     toggle(openPipelines, p.id, true);
   };
   return (
@@ -151,10 +151,13 @@ export const afterBand = (p: Pipeline, open: Set<string>) => {
   return a ? blockSize(a, open.has(a.id)).h + BLOCK_GAP : 0;
 };
 
-export const AfterBand = ({ block }: { block: Block, }) => {
+export const AfterBand = ({ block, at }: { block: Block, at: Point, }) => {
   const open = openBlocks.value.has(block.id);
   const h = hits.value;
-  const flip = () => toggle(openBlocks, block.id);
+  const flip = () => {
+    aim({ id: block.pipeline.id, how: `keep`, at });
+    toggle(openBlocks, block.id);
+  };
   const { w, h: height } = blockSize(block, open);
   return (
     <div className={`wf-map-after ${h.active && !h.blocks.has(block) ? `dim` : ``}`} style={{ width: w, height }}>
@@ -163,11 +166,12 @@ export const AfterBand = ({ block }: { block: Block, }) => {
   );
 };
 
-const PipelineNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
+const PipelineNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node<{ id: string, }>>) => {
   const p = workflow.value?.pipelineById.get(data.id);
   const h = hits.value;
   if (!p) return null;
   const after = p.blocks?.find((b) => b.after);
+  const at = { x: positionAbsoluteX, y: positionAbsoluteY };
   return (
     <div className={`wf-map-pipeline ${selected.value === p.id ? `selected` : ``} ${h.active && !h.pipelines.has(p) ? `dim` : ``}`} onClick={(e) => plainClick(e, () => (selected.value = p.id))}>
       <Handle type="target" id="in" position={Position.Left} isConnectable={false} style={{ top: 34 }}/>
@@ -179,7 +183,7 @@ const PipelineNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
             aria-expanded={true}
             onClick={(e) => {
               e.stopPropagation();
-              aim({ id: p.id, how: `center` });
+              aim({ id: p.id, how: `keep`, at });
               toggle(openPipelines, p.id, false);
             }}
           >
@@ -202,7 +206,7 @@ const PipelineNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
           <PipelineActions p={p}/>
         </div>
       </div>
-      {after && <AfterBand block={after}/>}
+      {after && <AfterBand block={after} at={at}/>}
       <Handle type="source" id="out" position={Position.Right} isConnectable={false} style={{ top: 34 }}/>
     </div>
   );
@@ -358,7 +362,8 @@ const WorkflowMap = () => {
       void rf.fitView({ padding: 0.06, maxZoom: 1, duration: 400 });
       return true;
     }
-    if (p && P.has(p.id) && (p.blocks === null || (p.blocks.length && !L.pipelines.get(p.id)?.open))) return false;
+    const laidOpen = p && L.pipelines.get(p.id)?.open;
+    if (p && (P.has(p.id) ? p.blocks === null || (p.blocks.length && !laidOpen) : laidOpen)) return false;
     const b = boxOf(wf, L, t.id);
     const blk = t.job === undefined ? undefined : wf.blocks.get(t.id);
     if (!b || (blk && (!blk.jobs[t.job] || b.h < jobTop(t.job)))) return false;
@@ -366,8 +371,6 @@ const WorkflowMap = () => {
     if (t.how === `keep`) {
       const v = rf.getViewport();
       void rf.setViewport({ x: v.x - (b.x - t.at.x) * v.zoom, y: v.y - (b.y - t.at.y) * v.zoom, zoom: v.zoom });
-    } else if (t.how === `center`) {
-      void rf.setCenter(cx, b.y + b.h / 2, { zoom: rf.getZoom(), duration: 350 });
     } else if (blk) {
       void rf.setCenter(cx, b.y + jobTop(t.job) + JOB_ROW_H / 2, { zoom: Math.max(rf.getZoom(), 1), duration: 450 });
     } else {
