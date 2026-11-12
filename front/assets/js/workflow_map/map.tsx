@@ -398,7 +398,7 @@ const WorkflowMap = () => {
     if (t.how === `open`) void rf.setViewport(nextView(`keep`, box, 1, v, vw, vh, t.at));
     const next = nextView(t.how, box, p ? 1.12 : 1.6, v, vw, vh, t.at);
     const glide = (t.how === `focus` || t.how === `open`) && !window.matchMedia(`(prefers-reduced-motion: reduce)`).matches;
-    if (next) void rf.setViewport(next, { duration: glide ? GLIDE_MS : 0 });
+    if (next) void rf.setViewport(next, { duration: glide ? GLIDE_MS : 0, interpolate: `linear` });
     return true;
   };
 
