@@ -1124,7 +1124,6 @@ a.wf-map-job:hover {
 .wf-map .react-flow .react-flow__edge .react-flow__edge-path.wf-map-edge-queued {
   stroke-width: 2;
   stroke-dasharray: 6 6;
-  animation: wf-map-flow .8s linear infinite;
 }
 
 .wf-map .react-flow .react-flow__edge .react-flow__edge-path.wf-map-edge-running {
@@ -1133,11 +1132,6 @@ a.wf-map-job:hover {
 
 .wf-map .react-flow .react-flow__edge .react-flow__edge-path.wf-map-edge-queued {
   stroke: var(--wf-map-queued);
-  animation-duration: 1.6s;
-}
-
-@keyframes wf-map-flow {
-  to { stroke-dashoffset: -12; }
 }
 
 .wf-map-bar-running {
@@ -1159,8 +1153,6 @@ a.wf-map-job:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wf-map .react-flow .react-flow__edge .react-flow__edge-path.wf-map-edge-running,
-  .wf-map .react-flow .react-flow__edge .react-flow__edge-path.wf-map-edge-queued,
   .wf-map-bar-running,
   .wf-map-bar-queued {
     animation: none;
