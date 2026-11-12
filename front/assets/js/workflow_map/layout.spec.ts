@@ -63,6 +63,16 @@ describe(`layoutMap`, () => {
     expect(banded.pipelines.get(`p`).h - plain.pipelines.get(`p`).h).to.equal(50);
   });
 
+  test(`keeps the blocks before a growing block in place when the pipeline has unconnected blocks`, async () => {
+    const names = [`a`, `b`, `c`, `d`, `e`, `f`, `g`, `h`];
+    const wf = workflowWith(names, false);
+    const sized = (grown: string | null) => layoutMap(wf, () => true, (b) => (b.name === grown ? { w: 260, h: 500 } : SIZE), CLOSED, () => 0);
+    const before = await sized(null);
+    const after = await sized(`f`);
+    for (const name of [`a`, `b`, `c`, `d`, `e`]) expect(after.blocks.get(name), name).to.deep.equal(before.blocks.get(name));
+    expect(after.blocks.get(`f`)).to.include({ x: before.blocks.get(`f`).x, y: before.blocks.get(`f`).y });
+  });
+
   test(`places the after block in its band, above the other blocks`, async () => {
     const L = await layout(workflowWith([`build`], false, true), true, SIZE.h + 20);
     expect(L.blocks.get(`after`)).to.deep.equal({ x: 28, y: 88, ...SIZE });
