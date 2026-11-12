@@ -46,6 +46,13 @@ describe(`nextView`, () => {
     expect(nextView(`keep`, block, 1.6, v, vw, vh, { x: 380, y: 260 })).to.deep.equal({ x: 0, y: 50, zoom: 0.5 });
   });
 
+  test(`after anchoring an opened box, moves the map only as far as it takes to show the box`, () => {
+    const v = { x: 0, y: 0, zoom: 1 };
+    expect(nextView(`open`, block, 1, v, vw, vh, { x: 400, y: 200 })).to.deep.equal(v);
+    expect(nextView(`open`, { x: 400, y: 200, w: 300, h: 500 }, 1, v, vw, vh, { x: 400, y: 200 })).to.deep.equal({ x: 0, y: -140, zoom: 1 });
+    expect(nextView(`open`, { x: 400, y: 200, w: 900, h: 900 }, 1, v, vw, vh, { x: 400, y: 200 })).to.deep.equal({ x: -340, y: -160, zoom: 1 });
+  });
+
   test(`fits the box on the screen, never past 100%`, () => {
     expect(nextView(`fit`, { x: 0, y: 0, w: 2000, h: 1000 }, 1, { x: 0, y: 0, zoom: 1 }, vw, vh)).to.deep.equal({ x: 0, y: 50, zoom: 0.5 });
     expect(nextView(`fit`, block, 1.6, { x: 0, y: 0, zoom: 0.2 }, vw, vh).zoom).to.equal(1);

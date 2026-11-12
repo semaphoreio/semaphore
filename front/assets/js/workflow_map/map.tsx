@@ -34,17 +34,26 @@ const lineage = computed(() => {
   return { chain, pipelineId: start.pipeline.id };
 });
 
-interface Target { id: string, how: `fit` | `focus` | `all` | `keep`, job?: number, at?: Point, }
+interface Target { id: string, how: `fit` | `focus` | `all` | `keep` | `open`, job?: number, at?: Point, }
 let target: Target | null = null;
 
 const READABLE = 0.75;
 const GLIDE_MS = 250;
+const EDGE = 40;
 
 interface Box { x: number, y: number, w: number, h: number, }
 export interface View { x: number, y: number, zoom: number, }
 
-export function nextView(how: `fit` | `focus` | `keep`, box: Box, pad: number, v: View, vw: number, vh: number, at?: Point): View | null {
-  if (how === `keep`) return { x: v.x - (box.x - at.x) * v.zoom, y: v.y - (box.y - at.y) * v.zoom, zoom: v.zoom };
+export function nextView(how: `fit` | `focus` | `keep` | `open`, box: Box, pad: number, v: View, vw: number, vh: number, at?: Point): View | null {
+  if (how === `keep` || how === `open`) {
+    const kept = { x: v.x - (box.x - at.x) * v.zoom, y: v.y - (box.y - at.y) * v.zoom, zoom: v.zoom };
+    if (how === `keep`) return kept;
+    const into = (start: number, size: number, room: number) => {
+      const end = start + size * v.zoom;
+      return end > room - EDGE ? Math.max(room - EDGE - end, EDGE - start) : 0;
+    };
+    return { x: kept.x + into(box.x * v.zoom + kept.x, box.w, vw), y: kept.y + into(box.y * v.zoom + kept.y, box.h, vh), zoom: v.zoom };
+  }
   const fit = Math.max(0.1, Math.min(1, vw / (box.w * pad), vh / (box.h * pad)));
   const zoom = how === `fit` ? fit : Math.max(v.zoom, Math.min(READABLE, fit));
   const left = box.x * v.zoom + v.x;
@@ -113,7 +122,7 @@ const CardNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node
   const open = (card: Element) => {
     selected.value = p.id;
     if (p.errorHtml) return togglePopover(`error`, p.id, card);
-    aim({ id: p.id, how: `keep`, at: { x: positionAbsoluteX, y: positionAbsoluteY } });
+    aim({ id: p.id, how: `open`, at: { x: positionAbsoluteX, y: positionAbsoluteY } });
     toggle(openPipelines, p.id, true);
   };
   return (
@@ -385,8 +394,10 @@ const WorkflowMap = () => {
     const blk = t.job === undefined ? undefined : wf.blocks.get(t.id);
     if (!b || (blk && (!blk.jobs[t.job] || b.h < jobTop(t.job)))) return false;
     const box = blk ? { x: b.x, y: b.y + jobTop(t.job), w: b.w, h: JOB_ROW_H } : b;
-    const next = nextView(t.how, box, p ? 1.12 : 1.6, rf.getViewport(), vw, vh, t.at);
-    const glide = t.how === `focus` && !window.matchMedia(`(prefers-reduced-motion: reduce)`).matches;
+    const v = rf.getViewport();
+    if (t.how === `open`) void rf.setViewport(nextView(`keep`, box, 1, v, vw, vh, t.at));
+    const next = nextView(t.how, box, p ? 1.12 : 1.6, v, vw, vh, t.at);
+    const glide = (t.how === `focus` || t.how === `open`) && !window.matchMedia(`(prefers-reduced-motion: reduce)`).matches;
     if (next) void rf.setViewport(next, { duration: glide ? GLIDE_MS : 0 });
     return true;
   };
