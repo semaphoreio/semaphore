@@ -50,7 +50,7 @@ export function nextView(how: `fit` | `focus` | `keep` | `open`, box: Box, pad: 
     if (how === `keep`) return kept;
     const into = (start: number, size: number, room: number) => {
       const end = start + size * v.zoom;
-      return end > room - EDGE ? Math.max(room - EDGE - end, EDGE - start) : 0;
+      return start < EDGE ? EDGE - start : end > room - EDGE ? Math.max(room - EDGE - end, EDGE - start) : 0;
     };
     return { x: kept.x + into(box.x * v.zoom + kept.x, box.w, vw), y: kept.y + into(box.y * v.zoom + kept.y, box.h, vh), zoom: v.zoom };
   }

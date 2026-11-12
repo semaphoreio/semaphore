@@ -53,6 +53,12 @@ describe(`nextView`, () => {
     expect(nextView(`open`, { x: 400, y: 200, w: 900, h: 900 }, 1, v, vw, vh, { x: 400, y: 200 })).to.deep.equal({ x: -340, y: -160, zoom: 1 });
   });
 
+  test(`brings an opened box whose corner sat past the top or left edge back in, 40 px from the edge`, () => {
+    const tall = { x: 400, y: 200, w: 300, h: 500 };
+    expect(nextView(`open`, tall, 1, { x: 0, y: -180, zoom: 1 }, vw, vh, { x: 400, y: 200 })).to.deep.equal({ x: 0, y: -160, zoom: 1 });
+    expect(nextView(`open`, block, 1, { x: -390, y: 0, zoom: 1 }, vw, vh, { x: 400, y: 200 })).to.deep.equal({ x: -360, y: 0, zoom: 1 });
+  });
+
   test(`fits the box on the screen, never past 100%`, () => {
     expect(nextView(`fit`, { x: 0, y: 0, w: 2000, h: 1000 }, 1, { x: 0, y: 0, zoom: 1 }, vw, vh)).to.deep.equal({ x: 0, y: 50, zoom: 0.5 });
     expect(nextView(`fit`, block, 1.6, { x: 0, y: 0, zoom: 0.2 }, vw, vh).zoom).to.equal(1);
