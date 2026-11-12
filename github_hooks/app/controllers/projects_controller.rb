@@ -1,6 +1,4 @@
 class ProjectsController < ApplicationController
-  skip_before_action :verify_authenticity_token
-
   def repo_host_post_commit_hook
     return head :forbidden if App.ee? && !LicenseVerifier.verify
 
