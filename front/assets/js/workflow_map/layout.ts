@@ -87,20 +87,32 @@ async function inner(p: Pipeline, size: (b: Block) => { w: number, h: number, },
   blocks.forEach((b) => b.deps.forEach((d) => group.has(d) && group.set(find(b), find(d))));
   const parts = new Map<Block, Block[]>();
   blocks.forEach((b) => parts.set(find(b), [...(parts.get(find(b)) ?? []), b]));
-  const [now, closed] = await Promise.all([size, () => BLOCK].map((s) => Promise.all([...parts.values()].map((c) => component(p, c, s)))));
-  const order = closed.map((g, i) => i).sort((a, b) => closed[a].height - closed[b].height);
+  const groups = [...parts.values()];
+  const now = await Promise.all(groups.map((c) => component(p, c, size)));
+  const closed = await Promise.all(groups.map((c) => component(p, c, () => BLOCK)));
+  const order = closed.map((_, i) => i).sort((a, b) => closed[a].height - closed[b].height);
   const area = closed.reduce((sum, g) => sum + (g.width + LAYER_GAP) * (g.height + BLOCK_GAP), 0);
   const rowWidth = Math.max(...closed.map((g) => g.width), Math.sqrt(area * ASPECT));
   const out = { width: 0, height: 0, blocks: new Map<string, Box>(), routes: new Map<string, Point[]>() };
-  let [x, y, slot, rowH] = [0, top, 0, 0];
+  let x = 0;
+  let y = top;
+  let slot = 0;
+  let rowH = 0;
   order.forEach((i) => {
     const g = now[i];
-    if (slot && slot + closed[i].width > rowWidth) [x, y, slot, rowH] = [0, y + rowH + BLOCK_GAP, 0, 0];
+    if (slot && slot + closed[i].width > rowWidth) {
+      x = 0;
+      y += rowH + BLOCK_GAP;
+      slot = 0;
+      rowH = 0;
+    }
     const dx = PIPE_PAD.side + x;
     for (const c of g.children) out.blocks.set(c.id, { x: c.x + dx, y: c.y + y, w: c.width, h: c.height });
     for (const e of g.edges) out.routes.set(e.id, sectionPoints(e, dx, y));
     out.width = Math.max(out.width, dx + g.width + PIPE_PAD.side);
-    [x, slot, rowH] = [x + g.width + LAYER_GAP, slot + closed[i].width + LAYER_GAP, Math.max(rowH, g.height)];
+    x += g.width + LAYER_GAP;
+    slot += closed[i].width + LAYER_GAP;
+    rowH = Math.max(rowH, g.height);
   });
   out.height = y + rowH + PIPE_PAD.bottom;
   return out;
