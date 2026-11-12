@@ -71,4 +71,9 @@ describe(`nextView`, () => {
     expect(nextView(`focus`, block, 1.6, { x: 0, y: 0, zoom: 0.3 }, vw, vh).zoom).to.equal(0.75);
     expect(nextView(`focus`, { x: 0, y: 0, w: 4000, h: 3000 }, 1.6, { x: 0, y: 0, zoom: 0.5 }, vw, vh).zoom).to.equal(0.5);
   });
+
+  test(`puts the top of a focused box taller than the screen near the top edge instead of centring it`, () => {
+    const tall = { x: 400, y: 0, w: 300, h: 3000 };
+    expect(nextView(`focus`, tall, 1.12, { x: 0, y: -5000, zoom: 0.75 }, vw, vh)).to.deep.equal({ x: 87.5, y: 40, zoom: 0.75 });
+  });
 });
