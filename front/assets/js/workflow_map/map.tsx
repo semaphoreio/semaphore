@@ -34,7 +34,7 @@ const lineage = computed(() => {
   return { chain, pipelineId: start.pipeline.id };
 });
 
-interface Target { id: string, how: `fit` | `center` | `all`, job?: number, }
+interface Target { id: string, how: `fit` | `center` | `all` | `keep`, job?: number, at?: Point, }
 let target: Target | null = null;
 
 export const aim = (next: Target | null) => {
@@ -208,12 +208,12 @@ const PipelineNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
   );
 };
 
-const BlockNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
+const BlockNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node<{ id: string, }>>) => {
   const b = workflow.value?.blocks.get(data.id);
   const h = hits.value;
   if (!b) return null;
   const flip = () => {
-    aim({ id: b.id, how: `center` });
+    aim({ id: b.id, how: `keep`, at: { x: positionAbsoluteX, y: positionAbsoluteY } });
     toggle(openBlocks, b.id);
   };
   const l = lineage.value;
@@ -363,7 +363,10 @@ const WorkflowMap = () => {
     const blk = t.job === undefined ? undefined : wf.blocks.get(t.id);
     if (!b || (blk && (!blk.jobs[t.job] || b.h < jobTop(t.job)))) return false;
     const cx = b.x + b.w / 2;
-    if (t.how === `center`) {
+    if (t.how === `keep`) {
+      const v = rf.getViewport();
+      void rf.setViewport({ x: v.x - (b.x - t.at.x) * v.zoom, y: v.y - (b.y - t.at.y) * v.zoom, zoom: v.zoom });
+    } else if (t.how === `center`) {
       void rf.setCenter(cx, b.y + b.h / 2, { zoom: rf.getZoom(), duration: 350 });
     } else if (blk) {
       void rf.setCenter(cx, b.y + jobTop(t.job) + JOB_ROW_H / 2, { zoom: Math.max(rf.getZoom(), 1), duration: 450 });
