@@ -11,6 +11,7 @@ include/internal_api/response_status
 loghub2
 organization
 projecthub
+registry
 repo_proxy
 repository
 repository_integrator
