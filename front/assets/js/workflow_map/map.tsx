@@ -375,11 +375,10 @@ function build(wf: Workflow, L: MapLayout) {
 export function seedBlocks(pipelines: Pipeline[], open: Set<string>, seeded: Set<string>, blocks: Set<string>): Set<string> | null {
   let next: Set<string> | null = null;
   for (const p of pipelines) {
-    if (!open.has(p.id) || !p.blocks || seeded.has(p.id)) continue;
+    if (!open.has(p.id) || !p.blocks?.length || seeded.has(p.id)) continue;
     seeded.add(p.id);
     for (const b of p.blocks) {
-      const st = blockStatus(b);
-      if ((st === `failed` || st === `running`) && !blocks.has(b.id)) (next ??= new Set(blocks)).add(b.id);
+      if ((!p.done || blockStatus(b) === `failed`) && !blocks.has(b.id)) (next ??= new Set(blocks)).add(b.id);
     }
   }
   return next;

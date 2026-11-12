@@ -38,29 +38,37 @@ describe(`structureKey`, () => {
 
 describe(`seedBlocks`, () => {
   const blk = (p: string, name: string, statuses: string[]) => ({ id: `${p}/${name}`, name, deps: [], jobs: statuses.map(job) }) as Block;
-  const pipe = (id: string, blocks: Block[] | null) => ({ id, blocks }) as unknown as Pipeline;
-  const p = pipe(`p`, [blk(`p`, `lint`, [`passed`]), blk(`p`, `unit`, [`failed`, `passed`]), blk(`p`, `e2e`, [`running`, `queued`]), blk(`p`, `docs`, [`queued`]), blk(`p`, `deploy`, [`pending`])]);
+  const pipe = (id: string, done: boolean, blocks: Block[] | null) => ({ id, done, blocks }) as unknown as Pipeline;
+  const blocksOf = (p: string) => [blk(p, `lint`, [`passed`]), blk(p, `unit`, [`failed`, `passed`]), blk(p, `e2e`, [`running`, `queued`]), blk(p, `docs`, [`queued`])];
+  const ids = (s: Set<string> | null) => [...(s ?? [])].sort();
 
-  test(`opens only the failed and running blocks of an open pipeline`, () => {
+  test(`opens every block of a pipeline that has not finished`, () => {
     const seeded = new Set<string>();
-    expect([...seedBlocks([p], new Set([`p`]), seeded, new Set([`q/x`]))].sort()).to.deep.equal([`p/e2e`, `p/unit`, `q/x`]);
+    expect(ids(seedBlocks([pipe(`p`, false, blocksOf(`p`))], new Set([`p`]), seeded, new Set([`q/x`])))).to.deep.equal([`p/docs`, `p/e2e`, `p/lint`, `p/unit`, `q/x`]);
     expect([...seeded]).to.deep.equal([`p`]);
   });
 
-  test(`seeds a pipeline once, so a block the user collapsed stays collapsed`, () => {
+  test(`opens only the failed blocks of a finished pipeline`, () => {
+    const done = pipe(`p`, true, [blk(`p`, `lint`, [`passed`]), blk(`p`, `unit`, [`failed`, `passed`]), blk(`p`, `docs`, [`stopped`])]);
+    expect(ids(seedBlocks([done], new Set([`p`]), new Set(), new Set()))).to.deep.equal([`p/unit`]);
+  });
+
+  test(`seeds a pipeline once, so a block the user closed stays closed, also after the pipeline finishes`, () => {
     const seeded = new Set<string>();
-    seedBlocks([p], new Set([`p`]), seeded, new Set());
-    expect(seedBlocks([p], new Set([`p`]), seeded, new Set([`p/e2e`]))).to.equal(null);
+    seedBlocks([pipe(`p`, false, blocksOf(`p`))], new Set([`p`]), seeded, new Set());
+    const closed = new Set([`p/lint`, `p/e2e`, `p/docs`]);
+    expect(seedBlocks([pipe(`p`, false, blocksOf(`p`))], new Set([`p`]), seeded, closed)).to.equal(null);
+    expect(seedBlocks([pipe(`p`, true, blocksOf(`p`))], new Set([`p`]), seeded, closed)).to.equal(null);
   });
 
   test(`waits for a pipeline to be open and its blocks loaded`, () => {
     const seeded = new Set<string>();
-    expect(seedBlocks([p, pipe(`q`, null)], new Set([`q`]), seeded, new Set())).to.equal(null);
+    expect(seedBlocks([pipe(`p`, false, blocksOf(`p`)), pipe(`q`, false, null), pipe(`r`, false, [])], new Set([`q`, `r`]), seeded, new Set())).to.equal(null);
     expect(seeded.size).to.equal(0);
   });
 
-  test(`changes nothing when no block is failed or running`, () => {
-    expect(seedBlocks([pipe(`r`, [blk(`r`, `lint`, [`passed`])])], new Set([`r`]), new Set(), new Set())).to.equal(null);
+  test(`changes nothing for a finished pipeline with no failed block`, () => {
+    expect(seedBlocks([pipe(`r`, true, [blk(`r`, `lint`, [`passed`])])], new Set([`r`]), new Set(), new Set())).to.equal(null);
   });
 });
 
