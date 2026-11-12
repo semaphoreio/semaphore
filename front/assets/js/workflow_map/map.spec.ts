@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { describe, test } from "mocha";
 
 import { Block, Job, Pipeline, Workflow } from "./model";
-import { nextView, structureKey } from "./map";
+import { nextView, seedBlocks, structureKey } from "./map";
 
 const job = (status: string) => ({ key: status, id: null, name: status, status, startedAt: null, finishedAt: null, reused: false }) as Job;
 
@@ -33,6 +33,34 @@ describe(`structureKey`, () => {
     const before = structureKey(wf, new Set(), new Set());
     const after = structureKey(wf, new Set(), new Set([`a`]));
     expect(after).to.not.equal(before);
+  });
+});
+
+describe(`seedBlocks`, () => {
+  const blk = (p: string, name: string, statuses: string[]) => ({ id: `${p}/${name}`, name, deps: [], jobs: statuses.map(job) }) as Block;
+  const pipe = (id: string, blocks: Block[] | null) => ({ id, blocks }) as unknown as Pipeline;
+  const p = pipe(`p`, [blk(`p`, `lint`, [`passed`]), blk(`p`, `unit`, [`failed`, `passed`]), blk(`p`, `e2e`, [`running`, `queued`]), blk(`p`, `docs`, [`queued`]), blk(`p`, `deploy`, [`pending`])]);
+
+  test(`opens only the failed and running blocks of an open pipeline`, () => {
+    const seeded = new Set<string>();
+    expect([...seedBlocks([p], new Set([`p`]), seeded, new Set([`q/x`]))].sort()).to.deep.equal([`p/e2e`, `p/unit`, `q/x`]);
+    expect([...seeded]).to.deep.equal([`p`]);
+  });
+
+  test(`seeds a pipeline once, so a block the user collapsed stays collapsed`, () => {
+    const seeded = new Set<string>();
+    seedBlocks([p], new Set([`p`]), seeded, new Set());
+    expect(seedBlocks([p], new Set([`p`]), seeded, new Set([`p/e2e`]))).to.equal(null);
+  });
+
+  test(`waits for a pipeline to be open and its blocks loaded`, () => {
+    const seeded = new Set<string>();
+    expect(seedBlocks([p, pipe(`q`, null)], new Set([`q`]), seeded, new Set())).to.equal(null);
+    expect(seeded.size).to.equal(0);
+  });
+
+  test(`changes nothing when no block is failed or running`, () => {
+    expect(seedBlocks([pipe(`r`, [blk(`r`, `lint`, [`passed`])])], new Set([`r`]), new Set(), new Set())).to.equal(null);
   });
 });
 

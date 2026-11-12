@@ -372,6 +372,19 @@ function build(wf: Workflow, L: MapLayout) {
   return { nodes, edges };
 }
 
+export function seedBlocks(pipelines: Pipeline[], open: Set<string>, seeded: Set<string>, blocks: Set<string>): Set<string> | null {
+  let next: Set<string> | null = null;
+  for (const p of pipelines) {
+    if (!open.has(p.id) || !p.blocks || seeded.has(p.id)) continue;
+    seeded.add(p.id);
+    for (const b of p.blocks) {
+      const st = blockStatus(b);
+      if ((st === `failed` || st === `running`) && !blocks.has(b.id)) (next ??= new Set(blocks)).add(b.id);
+    }
+  }
+  return next;
+}
+
 export function structureKey(wf: Workflow, open: Set<string>, openB: Set<string>) {
   return wf.pipelines
     .map((p) => {
@@ -404,7 +417,13 @@ const WorkflowMap = () => {
   const vh = useStore((s) => s.height);
   const [layout, setLayout] = useState<MapLayout | null>(null);
   const handledSeq = useRef(0);
+  const seeded = useRef(new Set<string>());
   const key = wf ? structureKey(wf, P, B) : ``;
+
+  useEffect(() => {
+    const next = wf && seedBlocks(wf.pipelines, P, seeded.current, openBlocks.value);
+    if (next) openBlocks.value = next;
+  }, [wf, P]);
 
   const go = (L: MapLayout, t: Target) => {
     if (!vw || !vh) return false;
