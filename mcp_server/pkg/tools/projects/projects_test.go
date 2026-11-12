@@ -2,6 +2,7 @@ package projects
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
@@ -416,6 +417,107 @@ func TestSearchProjectsScopeMismatch(t *testing.T) {
 	msg := requireErrorText(t, res)
 	if !strings.Contains(msg, "outside the authorized organization scope") {
 		t.Fatalf("expected scope mismatch message, got %q", msg)
+	}
+}
+
+func TestSummarizeRepositoryPullRequestCommit(t *testing.T) {
+	cases := []struct {
+		value projecthubpb.Project_Spec_Repository_PullRequestCommit
+		want  string
+	}{
+		{projecthubpb.Project_Spec_Repository_PULL_REQUEST_COMMIT_UNSPECIFIED, ""},
+		{projecthubpb.Project_Spec_Repository_MERGE_COMMIT, "merge commit"},
+		{projecthubpb.Project_Spec_Repository_HEAD_COMMIT, "head commit"},
+	}
+
+	for _, tc := range cases {
+		summary := summarizeRepository(&projecthubpb.Project_Spec_Repository{PullRequestCommit: tc.value})
+		if summary.PullRequestCommit != tc.want {
+			t.Errorf("%s: expected %q, got %q", tc.value, tc.want, summary.PullRequestCommit)
+		}
+
+		raw, err := json.Marshal(summary)
+		if err != nil {
+			t.Fatalf("%s: marshal: %v", tc.value, err)
+		}
+		var keys map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &keys); err != nil {
+			t.Fatalf("%s: unmarshal: %v", tc.value, err)
+		}
+		encoded, present := keys["pullRequestCommit"]
+		if tc.want == "" {
+			if present {
+				t.Errorf("%s: expected pullRequestCommit to be omitted, got %s", tc.value, encoded)
+			}
+			continue
+		}
+		var value string
+		if err := json.Unmarshal(encoded, &value); err != nil || value != tc.want {
+			t.Errorf("%s: expected pullRequestCommit %q, got %s", tc.value, tc.want, encoded)
+		}
+	}
+}
+
+func TestListProjectsPullRequestCommit(t *testing.T) {
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	headCommit := makeProject("proj-1", "API Service", orgID, "https://github.com/example/api", "main")
+	headCommit.Spec.Repository.PullRequestCommit = projecthubpb.Project_Spec_Repository_HEAD_COMMIT
+	unset := makeProject("proj-2", "Marketing Site", orgID, "https://github.com/example/marketing", "main")
+
+	provider := &support.MockProvider{
+		ProjectClient: &projectClientStub{
+			keysetResponses: map[string]*projecthubpb.ListKeysetResponse{
+				"": {
+					Metadata: okMetadata(),
+					Projects: []*projecthubpb.Project{headCommit, unset},
+				},
+			},
+		},
+		RBACClient: newRBACStub("organization.view", "project.view"),
+	}
+
+	for _, mode := range []string{"summary", "detailed"} {
+		req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+			"organization_id": orgID,
+			"mode":            mode,
+		}}}
+		header := http.Header{}
+		header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+		req.Header = header
+
+		res, err := listHandler(provider)(context.Background(), req)
+		if err != nil {
+			t.Fatalf("%s: unexpected error: %v", mode, err)
+		}
+		if res.IsError {
+			t.Fatalf("%s: expected success, got error result: %+v", mode, res)
+		}
+
+		out, ok := res.StructuredContent.(listResult)
+		if !ok || len(out.Projects) != 2 {
+			t.Fatalf("%s: unexpected structured content: %#v", mode, res.StructuredContent)
+		}
+		if got := out.Projects[0].Repository.PullRequestCommit; got != "head commit" {
+			t.Errorf("%s: expected head commit for proj-1, got %q", mode, got)
+		}
+		if got := out.Projects[1].Repository.PullRequestCommit; got != "" {
+			t.Errorf("%s: expected no value for proj-2, got %q", mode, got)
+		}
+
+		text, ok := res.Content[0].(mcp.TextContent)
+		if !ok {
+			t.Fatalf("%s: expected text content, got %T", mode, res.Content[0])
+		}
+		wantLines := 0
+		if mode == "detailed" {
+			wantLines = 1
+			if !strings.Contains(text.Text, "- **Pull Request Commit**: head commit\n") {
+				t.Errorf("%s: expected the Pull Request Commit line, got:\n%s", mode, text.Text)
+			}
+		}
+		if got := strings.Count(text.Text, "Pull Request Commit"); got != wantLines {
+			t.Errorf("%s: expected %d Pull Request Commit line(s), got %d:\n%s", mode, wantLines, got, text.Text)
+		}
 	}
 }
 

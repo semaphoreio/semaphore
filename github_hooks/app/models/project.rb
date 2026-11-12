@@ -95,6 +95,12 @@ class Project < ActiveRecord::Base
     (repository.whitelist.presence || {}).fetch("tags", [])
   end
 
+  def pull_request_head_commit?
+    return @pull_request_head_commit if defined?(@pull_request_head_commit)
+
+    @pull_request_head_commit = pull_request_commit == "head_commit" && Semaphore::FeatureFlags.enabled?(:pr_head_builds, organization_id)
+  end
+
   def enforce_whitelist?
     organization.enforce_whitelist?
   end

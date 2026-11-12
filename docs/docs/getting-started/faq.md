@@ -544,7 +544,7 @@ The [auto-cancel](../using-semaphore/pipelines#auto-cancel) can stop running wor
 
 ### Why aren't workflows triggering on pull requests?
 
-Check that [pull request triggers](../using-semaphore/workflows#project-triggers) are enabled for the project. If they are, check if the pull request can be merged. Since Semaphore uses the merge commit to run the workflows, merge conflicts can prevent workflows from starting.
+Check that [pull request triggers](../using-semaphore/workflows#project-triggers) are enabled for the project. If they are, check if the pull request can be merged. By default, Semaphore uses the merge commit to run the workflows, so merge conflicts can prevent workflows from starting. On GitHub projects, you can [build the head commit](../using-semaphore/workflows#pr-commit) of pull requests instead, which also builds pull requests with merge conflicts.
 
 ### Why does my code contain tags that have already been deleted?
 

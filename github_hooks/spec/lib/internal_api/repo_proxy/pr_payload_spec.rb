@@ -49,7 +49,7 @@ RSpec.describe InternalApi::RepoProxy::PrPayload do
       html_url: "https://github.com/owner/repo/pull/1"
     }
   end
-  let(:meta) { { pr: pr, ref: ref, merge_commit_sha: "abc123", commit_author: "Alice" } }
+  let(:meta) { { pr: pr, ref: ref, commit_sha: "abc123", commit_author: "Alice" } }
 
   before do
     allow(::RepoHost::Factory).to receive(:create_from_project).and_return(repo_host)
@@ -83,6 +83,23 @@ RSpec.describe InternalApi::RepoProxy::PrPayload do
       expect(commit["author"]["username"]).to eq("alice")
       expect(commit["id"]).to eq("abc123")
       expect(commit["message"]).to eq("PR commit")
+    end
+  end
+
+  describe "#call when the head ref can't be pinned" do
+    subject(:payload) { described_class.new(ref, number).call(project, user) }
+
+    let(:meta) { { pr: pr, ref: "refs/pull/1/head", commit_sha: "abc123", head_sha: "abc123", commit_author: "Alice" } }
+
+    before do
+      allow(Semaphore::RepoHost::Hooks::Handler)
+        .to receive(:update_pr_data)
+        .and_return([:without_reference, meta, ""])
+    end
+
+    it "carries the head commit and the pull request head ref" do
+      expect(payload["commit_sha"]).to eq("abc123")
+      expect(payload["semaphore_ref"]).to eq("refs/pull/1/head")
     end
   end
 
