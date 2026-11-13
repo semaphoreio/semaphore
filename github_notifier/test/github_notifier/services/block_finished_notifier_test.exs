@@ -96,4 +96,45 @@ defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
       assert Cachex.get!(:store, key) == nil
     end
   end
+
+  describe "concurrent consumption" do
+    test "takes more than one delivery at a time" do
+      assert GithubNotifier.Services.BlockFinishedNotifier.prefetch_count() == 10
+    end
+
+    test "the same block event handled concurrently delivers its status once" do
+      test_pid = self()
+
+      GrpcMock.stub(RepositoryHubMock, :create_build_status, fn req, _stream ->
+        send(test_pid, {:build_status, req.status, req.context})
+        Support.Factories.create_build_status_response()
+      end)
+
+      GrpcMock.stub(PipelineMock, :describe, Support.Factories.pipeline_describe_response())
+      GrpcMock.stub(RepoProxyMock, :describe, Support.Factories.repo_proxy_describe_response())
+      GrpcMock.stub(ProjecthubMock, :describe, Support.Factories.project_describe_response())
+
+      GrpcMock.stub(
+        OrganizationMock,
+        :describe,
+        Support.Factories.organization_describe_response()
+      )
+
+      message =
+        InternalApi.Plumber.PipelineBlockEvent.encode(
+          struct(InternalApi.Plumber.PipelineBlockEvent, pipeline_id: "123", block_id: "1")
+        )
+
+      1..5
+      |> Enum.map(fn _ ->
+        Task.async(fn ->
+          GithubNotifier.Services.BlockFinishedNotifier.handle_message(message)
+        end)
+      end)
+      |> Task.await_many(10_000)
+
+      assert_received {:build_status, :PENDING, "ci/semaphoreci/push: Block 1"}
+      refute_received {:build_status, _, _}
+    end
+  end
 end
