@@ -34,8 +34,36 @@ const lineage = computed(() => {
   return { chain, pipelineId: start.pipeline.id };
 });
 
-interface Target { id: string, how: `fit` | `center` | `all`, job?: number, }
+interface Target { id: string, how: `fit` | `focus` | `all` | `keep` | `keepRight` | `open`, job?: number, at?: Point, }
 let target: Target | null = null;
+
+const READABLE = 0.75;
+const GLIDE_MS = 250;
+const EDGE = 40;
+
+interface Box { x: number, y: number, w: number, h: number, }
+export interface View { x: number, y: number, zoom: number, }
+
+export function nextView(how: `fit` | `focus` | `keep` | `keepRight` | `open`, box: Box, pad: number, v: View, vw: number, vh: number, at?: Point): View | null {
+  if (how !== `fit` && how !== `focus`) {
+    const x = how === `keepRight` ? box.x + box.w : box.x;
+    const kept = { x: v.x - (x - at.x) * v.zoom, y: v.y - (box.y - at.y) * v.zoom, zoom: v.zoom };
+    if (how !== `open`) return kept;
+    const into = (start: number, size: number, room: number) => {
+      const end = start + size * v.zoom;
+      return start < EDGE ? EDGE - start : end > room - EDGE ? Math.max(room - EDGE - end, EDGE - start) : 0;
+    };
+    return { x: kept.x + into(box.x * v.zoom + kept.x, box.w, vw), y: kept.y + into(box.y * v.zoom + kept.y, box.h, vh), zoom: v.zoom };
+  }
+  const fit = Math.max(0.1, Math.min(1, vw / (box.w * pad), vh / (box.h * pad)));
+  const zoom = how === `fit` ? fit : Math.max(v.zoom, Math.min(READABLE, fit));
+  const left = box.x * v.zoom + v.x;
+  const top = box.y * v.zoom + v.y;
+  const shown = left >= EDGE && top >= EDGE && left + box.w * v.zoom <= vw - EDGE && top + box.h * v.zoom <= vh - EDGE;
+  if (how === `focus` && zoom === v.zoom && shown) return null;
+  const place = (start: number, size: number, room: number) => (how === `focus` && size * zoom > room - 2 * EDGE ? EDGE - start * zoom : room / 2 - (start + size / 2) * zoom);
+  return { x: place(box.x, box.w, vw), y: place(box.y, box.h, vh), zoom };
+}
 
 export const aim = (next: Target | null) => {
   target = next;
@@ -87,7 +115,7 @@ const PipelineActions = ({ p, compact }: { p: Pipeline, compact?: boolean, }) =>
   );
 };
 
-const CardNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
+const CardNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node<{ id: string, }>>) => {
   const p = workflow.value?.pipelineById.get(data.id);
   const h = hits.value;
   if (!p) return null;
@@ -96,7 +124,7 @@ const CardNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
   const open = (card: Element) => {
     selected.value = p.id;
     if (p.errorHtml) return togglePopover(`error`, p.id, card);
-    aim({ id: p.id, how: `fit` });
+    aim({ id: p.id, how: `open`, at: { x: positionAbsoluteX, y: positionAbsoluteY } });
     toggle(openPipelines, p.id, true);
   };
   return (
@@ -151,10 +179,13 @@ export const afterBand = (p: Pipeline, open: Set<string>) => {
   return a ? blockSize(a, open.has(a.id)).h + BLOCK_GAP : 0;
 };
 
-export const AfterBand = ({ block }: { block: Block, }) => {
+export const AfterBand = ({ block, at }: { block: Block, at: Point, }) => {
   const open = openBlocks.value.has(block.id);
   const h = hits.value;
-  const flip = () => toggle(openBlocks, block.id);
+  const flip = () => {
+    aim({ id: block.pipeline.id, how: `keep`, at });
+    toggle(openBlocks, block.id);
+  };
   const { w, h: height } = blockSize(block, open);
   return (
     <div className={`wf-map-after ${h.active && !h.blocks.has(block) ? `dim` : ``}`} style={{ width: w, height }}>
@@ -163,11 +194,35 @@ export const AfterBand = ({ block }: { block: Block, }) => {
   );
 };
 
-const PipelineNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
+export const BlocksToggle = ({ p, at }: { p: Pipeline, at: Point, }) => {
+  const blocks = p.blocks ?? [];
+  const open = blocks.length > 0 && blocks.every((b) => openBlocks.value.has(b.id));
+  const label = `${open ? `Collapse` : `Expand`} all blocks`;
+  return (
+    <button
+      className="wf-map-collapse wf-map-blocks-toggle"
+      aria-label={`${label} of ${p.name}`}
+      data-tippy-content={label}
+      disabled={blocks.length === 0}
+      onClick={(e) => {
+        e.stopPropagation();
+        aim({ id: p.id, how: `keepRight`, at });
+        const next = new Set(openBlocks.value);
+        blocks.forEach((b) => (open ? next.delete(b.id) : next.add(b.id)));
+        openBlocks.value = next;
+      }}
+    >
+      <span className="material-symbols-outlined" aria-hidden="true">{open ? `unfold_less` : `unfold_more`}</span>
+    </button>
+  );
+};
+
+const PipelineNode = ({ data, width, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node<{ id: string, }>>) => {
   const p = workflow.value?.pipelineById.get(data.id);
   const h = hits.value;
   if (!p) return null;
   const after = p.blocks?.find((b) => b.after);
+  const at = { x: positionAbsoluteX, y: positionAbsoluteY };
   return (
     <div className={`wf-map-pipeline ${selected.value === p.id ? `selected` : ``} ${h.active && !h.pipelines.has(p) ? `dim` : ``}`} onClick={(e) => plainClick(e, () => (selected.value = p.id))}>
       <Handle type="target" id="in" position={Position.Left} isConnectable={false} style={{ top: 34 }}/>
@@ -179,7 +234,7 @@ const PipelineNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
             aria-expanded={true}
             onClick={(e) => {
               e.stopPropagation();
-              aim({ id: p.id, how: `center` });
+              aim({ id: p.id, how: `keep`, at });
               toggle(openPipelines, p.id, false);
             }}
           >
@@ -190,6 +245,7 @@ const PipelineNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
             <PipelineTitle p={p}/>
           </span>
           <Duration start={p.runningAt} end={p.doneAt} running={p.status === `running`}/>
+          <BlocksToggle p={p} at={{ x: at.x + width, y: at.y }}/>
         </div>
         <div className="wf-map-pipeline-row wf-map-pipeline-sub">
           <Name className="wf-map-pipeline-meta">{p.yamlFile}</Name>
@@ -202,18 +258,18 @@ const PipelineNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
           <PipelineActions p={p}/>
         </div>
       </div>
-      {after && <AfterBand block={after}/>}
+      {after && <AfterBand block={after} at={at}/>}
       <Handle type="source" id="out" position={Position.Right} isConnectable={false} style={{ top: 34 }}/>
     </div>
   );
 };
 
-const BlockNode = ({ data }: NodeProps<Node<{ id: string, }>>) => {
+const BlockNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node<{ id: string, }>>) => {
   const b = workflow.value?.blocks.get(data.id);
   const h = hits.value;
   if (!b) return null;
   const flip = () => {
-    aim({ id: b.id, how: `center` });
+    aim({ id: b.id, how: `keep`, at: { x: positionAbsoluteX, y: positionAbsoluteY } });
     toggle(openBlocks, b.id);
   };
   const l = lineage.value;
@@ -317,6 +373,18 @@ function build(wf: Workflow, L: MapLayout) {
   return { nodes, edges };
 }
 
+export function seedBlocks(pipelines: Pipeline[], open: Set<string>, seeded: Set<string>, blocks: Set<string>): Set<string> | null {
+  let next: Set<string> | null = null;
+  for (const p of pipelines) {
+    if (!open.has(p.id) || !p.blocks?.length || seeded.has(p.id)) continue;
+    seeded.add(p.id);
+    for (const b of p.blocks) {
+      if ((!p.done || blockStatus(b) === `failed`) && !blocks.has(b.id)) (next ??= new Set(blocks)).add(b.id);
+    }
+  }
+  return next;
+}
+
 export function structureKey(wf: Workflow, open: Set<string>, openB: Set<string>) {
   return wf.pipelines
     .map((p) => {
@@ -349,29 +417,32 @@ const WorkflowMap = () => {
   const vh = useStore((s) => s.height);
   const [layout, setLayout] = useState<MapLayout | null>(null);
   const handledSeq = useRef(0);
+  const seeded = useRef(new Set<string>());
   const key = wf ? structureKey(wf, P, B) : ``;
+
+  useEffect(() => {
+    const next = wf && seedBlocks(wf.pipelines, P, seeded.current, openBlocks.value);
+    if (next) openBlocks.value = next;
+  }, [wf, P]);
 
   const go = (L: MapLayout, t: Target) => {
     if (!vw || !vh) return false;
     const p = wf.pipelineById.get(t.id);
     if (t.how === `all` || (!p && !wf.blocks.has(t.id))) {
-      void rf.fitView({ padding: 0.06, maxZoom: 1, duration: 400 });
+      void rf.fitView({ padding: 0.06, maxZoom: 1 });
       return true;
     }
-    if (p && P.has(p.id) && (p.blocks === null || (p.blocks.length && !L.pipelines.get(p.id)?.open))) return false;
+    const laidOpen = p && L.pipelines.get(p.id)?.open;
+    if (p && (P.has(p.id) ? p.blocks === null || (p.blocks.length && !laidOpen) : laidOpen)) return false;
     const b = boxOf(wf, L, t.id);
     const blk = t.job === undefined ? undefined : wf.blocks.get(t.id);
     if (!b || (blk && (!blk.jobs[t.job] || b.h < jobTop(t.job)))) return false;
-    const cx = b.x + b.w / 2;
-    if (t.how === `center`) {
-      void rf.setCenter(cx, b.y + b.h / 2, { zoom: rf.getZoom(), duration: 350 });
-    } else if (blk) {
-      void rf.setCenter(cx, b.y + jobTop(t.job) + JOB_ROW_H / 2, { zoom: Math.max(rf.getZoom(), 1), duration: 450 });
-    } else {
-      const pad = p ? 1.12 : 1.6;
-      const z = Math.max(0.1, Math.min(1, vw / (b.w * pad), vh / (b.h * pad)));
-      void rf.setViewport({ x: vw / 2 - cx * z, y: vh / 2 - (b.y + b.h / 2) * z, zoom: z }, { duration: 450 });
-    }
+    const box = blk ? { x: b.x, y: b.y + jobTop(t.job), w: b.w, h: JOB_ROW_H } : b;
+    const v = rf.getViewport();
+    if (t.how === `open`) void rf.setViewport(nextView(`keep`, box, 1, v, vw, vh, t.at));
+    const next = nextView(t.how, box, p ? 1.12 : 1.6, v, vw, vh, t.at);
+    const glide = (t.how === `focus` || t.how === `open`) && !window.matchMedia(`(prefers-reduced-motion: reduce)`).matches;
+    if (next) void rf.setViewport(next, { duration: glide ? GLIDE_MS : 0, interpolate: `linear` });
     return true;
   };
 
@@ -406,7 +477,7 @@ const WorkflowMap = () => {
     if (!p) return;
     handledSeq.current = f.seq;
     const job = f.kind === `job` ? wf.jobs.get(f.id).block.jobs.findIndex((j) => j.key === f.id) : undefined;
-    aim({ id: blockId ?? p.id, how: `fit`, job });
+    aim({ id: blockId ?? p.id, how: `focus`, job });
     if (!P.has(p.id)) toggle(openPipelines, p.id, true);
     if (f.kind === `job` && !B.has(blockId)) toggle(openBlocks, blockId, true);
     if (layout) settle(layout);
@@ -454,7 +525,7 @@ const WorkflowMap = () => {
       />
       <Panel position="top-right">
         <div className="wf-map-tools">
-          <button className="btn btn-secondary btn-small" onClick={() => void rf.fitView({ duration: 400, padding: 0.06 })}>
+          <button className="btn btn-secondary btn-small" onClick={() => void rf.fitView({ padding: 0.06 })}>
             Fit workflow
           </button>
           <button className="btn btn-secondary btn-small" onClick={() => (aim({ id: ``, how: `all` }), (openPipelines.value = new Set(wf.pipelines.map((p) => p.id))))}>
