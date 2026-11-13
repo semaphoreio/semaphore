@@ -4,6 +4,7 @@ defmodule Front.ActivityMonitor.Repo.Test do
   alias Front.ActivityMonitor.Repo
 
   setup do
+    Cachex.clear(Repo.cache_name())
     Support.Stubs.init()
     Support.Stubs.build_shared_factories()
   end
@@ -28,40 +29,6 @@ defmodule Front.ActivityMonitor.Repo.Test do
               owner_id: "78114608-be8a-465a-b9cd-81970fb802c7",
               suspended: false
             }} = Repo.describe_organization("org_1", %{})
-  end
-
-  test "list_projects() returns only projects accessable to current user" do
-    projects = [
-      Support.Factories.listed_project(),
-      Support.Factories.listed_project(name: "hello-world", id: "123")
-    ]
-
-    project_list_response =
-      InternalApi.Projecthub.ListResponse.new(
-        metadata: Support.Factories.response_meta(),
-        projects: projects,
-        pagination: InternalApi.Projecthub.PaginationResponse.new(total_pages: 3)
-      )
-
-    GrpcMock.stub(ProjecthubMock, :list, project_list_response)
-
-    GrpcMock.stub(
-      RBACMock,
-      :list_accessible_projects,
-      InternalApi.RBAC.ListAccessibleProjectsResponse.new(
-        project_ids: [Support.Factories.listed_project().metadata.id]
-      )
-    )
-
-    assert Repo.list_projects("78114608-be8a-465a-b9cd-81970fb802c7", "123", %{}) ==
-             {:ok,
-              [
-                %{
-                  name: "octocat",
-                  description: "The coolest project",
-                  id: "78114608-be8a-465a-b9cd-81970fb802c6"
-                }
-              ]}
   end
 
   test "list_active_debugs() returns active debug sessions data" do
@@ -238,8 +205,9 @@ defmodule Front.ActivityMonitor.Repo.Test do
     assert {:ok, %{status: %{code: 0, message: ""}}} = Repo.stop_job(request)
   end
 
-  test "list_pipeline_activity() returns details of active pipelines" do
+  test "list_pipelines_and_jobs() returns details of active pipelines" do
     GrpcMock.stub(PipelineMock, :list_activity, mock_responses())
+    stub_no_jobs()
 
     timestamp = DateTime.from_unix!(1_522_754_270_000_000, :microsecond)
 
@@ -247,10 +215,12 @@ defmodule Front.ActivityMonitor.Repo.Test do
             [
               %{ppl_id: "ppl_1", created_at: ^timestamp},
               %{ppl_id: "ppl_2", created_at: ^timestamp}
-            ]} = Repo.list_pipeline_activity("org_1", %{})
+            ]} = list_pipelines("org_1")
   end
 
-  test "list_pipeline_activity() collects all pages" do
+  test "list_pipelines_and_jobs() collects all pages" do
+    stub_no_jobs()
+
     GrpcMock.stub(PipelineMock, :list_activity, fn req, _stream ->
       case req.page_token do
         "" ->
@@ -271,11 +241,11 @@ defmodule Front.ActivityMonitor.Repo.Test do
       end
     end)
 
-    assert {:ok, pipelines} = Repo.list_pipeline_activity("org_1", %{})
+    assert {:ok, pipelines} = list_pipelines("org_1")
     assert Enum.map(pipelines, & &1.ppl_id) == ["ppl_1", "ppl_2"]
   end
 
-  test "when list_pipeline_activity() returns empty set Repo returns empty Data struct" do
+  test "when ListActivity returns an empty set Repo returns empty Data struct" do
     # Organization
 
     organization_describe_response =
@@ -342,6 +312,24 @@ defmodule Front.ActivityMonitor.Repo.Test do
     assert [] == map.active_jobs
     assert [] == map.active_debug_sessions
     assert [] == map.users
+  end
+
+  defp list_pipelines(org_id) do
+    with {:ok, {pipelines, _jobs}} <- Repo.list_pipelines_and_jobs(org_id, %{}) do
+      {:ok, pipelines}
+    end
+  end
+
+  defp stub_no_jobs do
+    GrpcMock.stub(
+      InternalJobMock,
+      :list,
+      InternalApi.ServerFarm.Job.ListResponse.new(
+        status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+        jobs: [],
+        next_page_token: ""
+      )
+    )
   end
 
   defp mock_responses do
