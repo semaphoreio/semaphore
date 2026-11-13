@@ -56,6 +56,8 @@ spec:
               value: "false"
             - name: LOG_LEVEL
               value: {{ .Values.consumer.logs.level | quote }}
+            - name: BLOCK_FINISHED_PREFETCH_COUNT
+              value: {{ .Values.consumer.blockFinishedPrefetchCount | quote }}
             - name: BASE_DOMAIN
               valueFrom:
                 configMapKeyRef:
