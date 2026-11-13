@@ -130,8 +130,8 @@ defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
       :ok
     end
 
-    test "prefetch defaults to 10" do
-      assert BlockFinishedNotifier.prefetch_count() == 10
+    test "prefetch defaults to 1" do
+      assert BlockFinishedNotifier.prefetch_count() == 1
     end
 
     test "prefetch is read from BLOCK_FINISHED_PREFETCH_COUNT" do
@@ -144,7 +144,7 @@ defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
       for value <- ["0", "-3", "ten", "5x", ""] do
         System.put_env("BLOCK_FINISHED_PREFETCH_COUNT", value)
 
-        assert BlockFinishedNotifier.prefetch_count() == 10, "accepted #{inspect(value)}"
+        assert BlockFinishedNotifier.prefetch_count() == 1, "accepted #{inspect(value)}"
       end
     end
 
@@ -183,9 +183,8 @@ defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
         %{response | pipeline: %{response.pipeline | ppl_id: req.ppl_id}}
       end)
 
-      if Process.whereis(BlockFinishedNotifier) == nil do
-        start_supervised!(BlockFinishedNotifier)
-      end
+      System.put_env("BLOCK_FINISHED_PREFETCH_COUNT", "10")
+      start_supervised!({BlockFinishedNotifier, [process_name: :concurrent_block_consumer]})
 
       pipeline_ids =
         for index <- 1..10, do: "broker-#{index}-#{System.unique_integer([:positive])}"

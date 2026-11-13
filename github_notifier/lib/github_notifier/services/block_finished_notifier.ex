@@ -11,7 +11,7 @@ defmodule GithubNotifier.Services.BlockFinishedNotifier do
   # Tackle handles each delivery in its own process, so prefetch is the
   # concurrency. Per-check ordering is enforced downstream by StatusSender.
   @prefetch_count_env "BLOCK_FINISHED_PREFETCH_COUNT"
-  @default_prefetch_count 10
+  @default_prefetch_count 1
 
   use Tackle.Consumer,
     url: Application.get_env(:github_notifier, :amqp_url),
