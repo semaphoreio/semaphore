@@ -1,6 +1,6 @@
 import ElkConstructor, { ELK, ElkExtendedEdge, ElkNode } from "elkjs/lib/elk-api";
 import { Block, Pipeline, Workflow } from "./model";
-import { BLOCK_GAP } from "./lines";
+import { BLOCK, BLOCK_GAP } from "./lines";
 
 export interface Box {
   x: number;
@@ -33,6 +33,8 @@ export function promotionLabel(p: Pipeline) {
 const PIPE_PAD = { top: 88, side: 28, bottom: 28 };
 export const MIN_OPEN_W = 460;
 const LABEL = { width: 160, height: 20 };
+const LAYER_GAP = 64;
+const ASPECT = 2.4;
 
 let elk: ELK | null = null;
 const innerCache = new Map<string, Promise<ElkNode>>();
@@ -50,10 +52,9 @@ export function initLayout(workerUrl: string, onWorkerError: () => void) {
   innerCache.clear();
 }
 
-function inner(p: Pipeline, size: (b: Block) => { w: number, h: number, }, top: number) {
-  const blocks = (p.blocks ?? []).filter((b) => !b.after);
+function component(p: Pipeline, blocks: Block[], size: (b: Block) => { w: number, h: number, }) {
   const sizes = blocks.map(size);
-  const key = `${p.id}|${top}|${blocks.map((b, i) => `${b.name}:${b.deps.map((d) => d.name).join(`+`)}:${sizes[i].w}x${sizes[i].h}`).join(`,`)}`;
+  const key = `${p.id}|${blocks.map((b, i) => `${b.name}:${b.deps.map((d) => d.name).join(`+`)}:${sizes[i].w}x${sizes[i].h}`).join(`,`)}`;
   if (!innerCache.has(key)) {
     const layout = elk.layout({
       id: p.id,
@@ -63,9 +64,9 @@ function inner(p: Pipeline, size: (b: Block) => { w: number, h: number, }, top: 
         "elk.edgeRouting": `ORTHOGONAL`,
         "elk.spacing.nodeNode": `${BLOCK_GAP}`,
         "elk.spacing.edgeNode": `14`,
-        "elk.layered.spacing.nodeNodeBetweenLayers": `64`,
+        "elk.layered.spacing.nodeNodeBetweenLayers": `${LAYER_GAP}`,
         "elk.layered.nodePlacement.bk.fixedAlignment": `BALANCED`,
-        "elk.padding": `[top=${top},left=${PIPE_PAD.side},bottom=${PIPE_PAD.bottom},right=${PIPE_PAD.side}]`,
+        "elk.padding": `[top=0,left=0,bottom=0,right=0]`,
       },
       children: blocks.map((b, i) => ({ id: b.id, width: sizes[i].w, height: sizes[i].h })),
       edges: blocks.flatMap((b) => b.deps.map((d) => ({ id: `${d.id}->${b.id}`, sources: [d.id], targets: [b.id] }))),
@@ -78,6 +79,42 @@ function inner(p: Pipeline, size: (b: Block) => { w: number, h: number, }, top: 
 
 const sectionPoints = (e: ElkExtendedEdge, dx: number, dy: number): Point[] =>
   (e.sections ?? []).flatMap((s) => [s.startPoint, ...(s.bendPoints ?? []), s.endPoint]).map((pt) => ({ x: pt.x + dx, y: pt.y + dy }));
+
+async function inner(p: Pipeline, size: (b: Block) => { w: number, h: number, }, top: number) {
+  const blocks = (p.blocks ?? []).filter((b) => !b.after);
+  const group = new Map(blocks.map((b) => [b, b]));
+  const find = (b: Block): Block => (group.get(b) === b ? b : find(group.get(b)));
+  blocks.forEach((b) => b.deps.forEach((d) => group.has(d) && group.set(find(b), find(d))));
+  const parts = new Map<Block, Block[]>();
+  blocks.forEach((b) => parts.set(find(b), [...(parts.get(find(b)) ?? []), b]));
+  const groups = [...parts.values()];
+  const now = await Promise.all(groups.map((c) => component(p, c, size)));
+  const closed = await Promise.all(groups.map((c) => component(p, c, () => BLOCK)));
+  const area = closed.reduce((sum, g) => sum + (g.width + LAYER_GAP) * (g.height + BLOCK_GAP), 0);
+  const rowWidth = Math.max(...closed.map((g) => g.width), Math.sqrt(area * ASPECT));
+  const out = { width: 0, height: 0, blocks: new Map<string, Box>(), routes: new Map<string, Point[]>() };
+  let x = 0;
+  let y = top;
+  let slot = 0;
+  let rowH = 0;
+  now.forEach((g, i) => {
+    if (slot && slot + closed[i].width > rowWidth) {
+      x = 0;
+      y += rowH + BLOCK_GAP;
+      slot = 0;
+      rowH = 0;
+    }
+    const dx = PIPE_PAD.side + x;
+    for (const c of g.children) out.blocks.set(c.id, { x: c.x + dx, y: c.y + y, w: c.width, h: c.height });
+    for (const e of g.edges) out.routes.set(e.id, sectionPoints(e, dx, y));
+    out.width = Math.max(out.width, dx + g.width + PIPE_PAD.side);
+    x += g.width + LAYER_GAP;
+    slot += closed[i].width + LAYER_GAP;
+    rowH = Math.max(rowH, g.height);
+  });
+  out.height = y + rowH + PIPE_PAD.bottom;
+  return out;
+}
 
 export async function layoutMap(
   wf: Workflow,
@@ -131,8 +168,8 @@ export async function layoutMap(
     box.open = true;
     const after = p.blocks.find((b) => b.after);
     if (after) layout.blocks.set(after.id, { x: PIPE_PAD.side, y: PIPE_PAD.top, ...blockSize(after) });
-    for (const c of g.children ?? []) layout.blocks.set(c.id, { x: c.x, y: c.y, w: c.width, h: c.height });
-    for (const e of g.edges ?? []) layout.routes.set(e.id, sectionPoints(e, box.x, box.y));
+    g.blocks.forEach((b, id) => layout.blocks.set(id, b));
+    g.routes.forEach((pts, id) => layout.routes.set(id, pts.map((pt) => ({ x: pt.x + box.x, y: pt.y + box.y }))));
   });
   return layout;
 }
