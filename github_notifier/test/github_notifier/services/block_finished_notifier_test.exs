@@ -1,6 +1,8 @@
 defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
   use ExUnit.Case
 
+  alias GithubNotifier.Services.BlockFinishedNotifier
+
   setup do
     Cachex.clear(:store)
 
@@ -98,21 +100,23 @@ defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
   end
 
   describe "concurrent consumption" do
-    test "takes more than one delivery at a time" do
-      assert GithubNotifier.Services.BlockFinishedNotifier.prefetch_count() == 10
-    end
+    @pipeline_context "ci/semaphoreci/push: Pipeline"
 
-    test "the same block event handled concurrently delivers its status once" do
+    setup do
       test_pid = self()
 
       GrpcMock.stub(RepositoryHubMock, :create_build_status, fn req, _stream ->
-        send(test_pid, {:build_status, req.status, req.context})
+        send(test_pid, {:build_status, req.status, req.context, req.source_id})
         Support.Factories.create_build_status_response()
       end)
 
-      GrpcMock.stub(PipelineMock, :describe, Support.Factories.pipeline_describe_response())
       GrpcMock.stub(RepoProxyMock, :describe, Support.Factories.repo_proxy_describe_response())
-      GrpcMock.stub(ProjecthubMock, :describe, Support.Factories.project_describe_response())
+
+      GrpcMock.stub(
+        ProjecthubMock,
+        :describe,
+        Support.Factories.project_describe_response([:BLOCK, :PIPELINE])
+      )
 
       GrpcMock.stub(
         OrganizationMock,
@@ -120,21 +124,96 @@ defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
         Support.Factories.organization_describe_response()
       )
 
-      message =
-        InternalApi.Plumber.PipelineBlockEvent.encode(
-          struct(InternalApi.Plumber.PipelineBlockEvent, pipeline_id: "123", block_id: "1")
-        )
+      :ok
+    end
 
-      1..5
-      |> Enum.map(fn _ ->
-        Task.async(fn ->
-          GithubNotifier.Services.BlockFinishedNotifier.handle_message(message)
-        end)
+    test "prefetch is set to 10" do
+      assert BlockFinishedNotifier.prefetch_count() == 10
+    end
+
+    test "a block event that read a running pipeline cannot overwrite the terminal pipeline status" do
+      {:ok, gate} = Agent.start_link(fn -> %{pipeline_reads: 0, held: nil, release: false} end)
+
+      # The first read sees the pipeline running, every later one sees it done.
+      GrpcMock.stub(PipelineMock, :describe, fn _req, _stream ->
+        reads = Agent.get_and_update(gate, &{&1.pipeline_reads, bump(&1)})
+        state = if reads == 0, do: :RUNNING, else: :DONE
+        Support.Factories.pipeline_describe_response(state: state, result: :PASSED)
       end)
-      |> Task.await_many(10_000)
 
-      assert_received {:build_status, :PENDING, "ci/semaphoreci/push: Block 1"}
-      refute_received {:build_status, _, _}
+      # Holds the first handler after its pipeline read until the second one is done.
+      GrpcMock.stub(RepoProxyMock, :describe, fn _req, _stream ->
+        if Agent.get_and_update(gate, &hold_first/1), do: wait_for_release(gate)
+        Support.Factories.repo_proxy_describe_response()
+      end)
+
+      stale = Task.async(fn -> GithubNotifier.Notifier.notify("stale", "123", "1") end)
+      wait_until(fn -> Agent.get(gate, & &1.held) end)
+
+      GithubNotifier.Notifier.notify("fresh", "123", "2")
+      assert_received {:build_status, :SUCCESS, @pipeline_context, _}
+
+      Agent.update(gate, &%{&1 | release: true})
+      Task.await(stale)
+
+      assert_received {:build_status, :PENDING, "ci/semaphoreci/push: Block 1", _}
+      refute_received {:build_status, :PENDING, @pipeline_context, _}
+    end
+
+    test "deliveries from the broker are handled concurrently" do
+      GrpcMock.stub(PipelineMock, :describe, fn req, _stream ->
+        response = Support.Factories.pipeline_describe_response()
+        %{response | pipeline: %{response.pipeline | ppl_id: req.ppl_id}}
+      end)
+
+      if Process.whereis(BlockFinishedNotifier) == nil do
+        start_supervised!(BlockFinishedNotifier)
+      end
+
+      pipeline_ids =
+        for index <- 1..10, do: "broker-#{index}-#{System.unique_integer([:positive])}"
+
+      started_at = System.monotonic_time(:millisecond)
+
+      for pipeline_id <- pipeline_ids do
+        Tackle.publish(
+          InternalApi.Plumber.PipelineBlockEvent.encode(
+            struct(InternalApi.Plumber.PipelineBlockEvent,
+              pipeline_id: pipeline_id,
+              block_id: "1"
+            )
+          ),
+          %{
+            url: Application.get_env(:github_notifier, :amqp_url),
+            exchange: "pipeline_block_state_exchange",
+            routing_key: "done"
+          }
+        )
+      end
+
+      for pipeline_id <- pipeline_ids do
+        assert_receive {:build_status, :PENDING, @pipeline_context, ^pipeline_id}, 15_000
+      end
+
+      # Each delivery waits a second before working, so one at a time takes 10s+.
+      assert System.monotonic_time(:millisecond) - started_at < 5_000
+    end
+
+    defp bump(gate), do: %{gate | pipeline_reads: gate.pipeline_reads + 1}
+
+    defp hold_first(%{held: nil} = gate), do: {true, %{gate | held: true}}
+    defp hold_first(gate), do: {false, gate}
+
+    defp wait_for_release(gate) do
+      wait_until(fn -> Agent.get(gate, & &1.release) end)
+    end
+
+    defp wait_until(condition, attempts \\ 200) do
+      cond do
+        condition.() -> :ok
+        attempts == 0 -> flunk("condition was not met in time")
+        true -> Process.sleep(10) && wait_until(condition, attempts - 1)
+      end
     end
   end
 end
