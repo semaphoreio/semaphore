@@ -412,6 +412,47 @@ defmodule DeploymentTrigger.Model.HistoryPageTest do
     end
   end
 
+  describe "load/1 count queries" do
+    setup ctx do
+      insert_triggers_for_past(ctx, 14, :days)
+
+      test_pid = self()
+      handler_id = {__MODULE__, make_ref()}
+
+      :telemetry.attach(
+        handler_id,
+        [:gofer, :ecto_repo, :query],
+        fn _event, _measurements, metadata, _config ->
+          if self() == test_pid, do: send(test_pid, {:query, metadata.query})
+        end,
+        nil
+      )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
+    end
+
+    test "the first page runs no count", ctx do
+      load_page_with_cursor(ctx, :FIRST)
+
+      assert [_ | _] = queries = received_queries()
+      refute Enum.any?(queries, &(&1 =~ "count("))
+    end
+
+    test "a page before a cursor runs no unbounded count", ctx do
+      load_page_with_cursor(ctx, {:BEFORE, cursor_ago(ctx, 6, :days)})
+
+      assert [_ | _] = counts = Enum.filter(received_queries(), &(&1 =~ "count("))
+      assert Enum.all?(counts, &(&1 =~ "LIMIT"))
+    end
+
+    test "a page after a cursor runs no unbounded count", ctx do
+      load_page_with_cursor(ctx, {:AFTER, cursor_ago(ctx, 13, :days)})
+
+      assert [_, _] = counts = Enum.filter(received_queries(), &(&1 =~ "count("))
+      assert Enum.all?(counts, &(&1 =~ "LIMIT"))
+    end
+  end
+
   describe "load/1 with filters" do
     setup ctx do
       {:ok, switch: switch} = setup_switch(ctx, git_ref_type: "branch", label: "master")
@@ -636,6 +677,14 @@ defmodule DeploymentTrigger.Model.HistoryPageTest do
         target_name: "Target#{i}",
         triggered_at: ago(ctx.now, i, unit)
       )
+    end
+  end
+
+  defp received_queries(queries \\ []) do
+    receive do
+      {:query, query} -> received_queries([query | queries])
+    after
+      0 -> Enum.reverse(queries)
     end
   end
 
