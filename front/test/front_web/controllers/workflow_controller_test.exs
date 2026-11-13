@@ -767,6 +767,42 @@ defmodule FrontWeb.WorkflowControllerTest do
       assert id == pipeline.id
     end
 
+    test "renders the map for logged-out visitors of a public project", %{
+      conn: conn,
+      project: project,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      Support.Stubs.Project.switch_project_visibility(project, "public")
+      PermissionPatrol.remove_all_permissions()
+      anonymous = ["x-semaphore-org-id", "x-semaphore-user-anonymous"]
+
+      conn =
+        conn
+        |> put_req_header("x-semaphore-user-anonymous", "true")
+        |> delete_req_header("x-semaphore-user-id")
+        |> get("/workflows/#{workflow.id}?new_workflow_ui=true")
+
+      assert conn.assigns.anonymous == true
+      assert html_response(conn, 200) =~ ~s(id="workflow-map")
+      refute html_response(conn, 200) =~ ~s(id="diagram")
+
+      conn = recycle(conn, anonymous)
+      json = conn |> get("/workflows/#{workflow.id}/map") |> json_response(200)
+      assert [%{"stop_url" => nil}] = json["pipelines"]
+
+      conn = recycle(conn, anonymous)
+
+      assert %{"pipelines" => [%{"id" => id}]} =
+               conn
+               |> get(
+                 "/workflows/#{workflow.id}/map/pipelines?ids=#{pipeline.id}&promotions=#{pipeline.id}"
+               )
+               |> json_response(200)
+
+      assert id == pipeline.id
+    end
+
     test "doesn't open the map data to someone who can't see the workflow", %{
       conn: conn,
       organization: organization,
