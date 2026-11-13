@@ -4,6 +4,7 @@ imageTag: latest
 
 consumer:
   replicas: 1
+  blockFinishedPrefetchCount: 10
   logs:
     level: info
   resources:

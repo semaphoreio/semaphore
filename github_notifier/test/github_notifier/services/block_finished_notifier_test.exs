@@ -124,11 +124,28 @@ defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
         Support.Factories.organization_describe_response()
       )
 
+      System.delete_env("BLOCK_FINISHED_PREFETCH_COUNT")
+      on_exit(fn -> System.delete_env("BLOCK_FINISHED_PREFETCH_COUNT") end)
+
       :ok
     end
 
-    test "prefetch is set to 10" do
+    test "prefetch defaults to 10" do
       assert BlockFinishedNotifier.prefetch_count() == 10
+    end
+
+    test "prefetch is read from BLOCK_FINISHED_PREFETCH_COUNT" do
+      System.put_env("BLOCK_FINISHED_PREFETCH_COUNT", "5")
+
+      assert BlockFinishedNotifier.prefetch_count() == 5
+    end
+
+    test "an invalid prefetch falls back to the default" do
+      for value <- ["0", "-3", "ten", "5x", ""] do
+        System.put_env("BLOCK_FINISHED_PREFETCH_COUNT", value)
+
+        assert BlockFinishedNotifier.prefetch_count() == 10, "accepted #{inspect(value)}"
+      end
     end
 
     test "a block event that read a running pipeline cannot overwrite the terminal pipeline status" do
