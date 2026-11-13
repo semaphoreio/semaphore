@@ -134,6 +134,46 @@ defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
 
       assert task1.id == task2.id
     end
+
+    test "the schedule request payload is not persisted on the task" do
+      req = construct_example_schedule_request(Ecto.UUID.generate())
+
+      assert {:ok, task} = Schedule.schedule(req)
+
+      # stored as an empty map, never NULL: the column is NOT NULL in production
+      assert Repo.reload(task).request == %{}
+
+      # the jobs still carry everything they need to run
+      task = Repo.preload(task, [:jobs])
+      assert Enum.count(task.jobs) == 2
+      assert Enum.all?(task.jobs, fn job -> job.spec["commands"] != [] end)
+    end
+
+    test "a task scheduled without a stored payload can be partially rebuilt" do
+      req = construct_example_schedule_request(Ecto.UUID.generate())
+      assert {:ok, orig_task} = Schedule.schedule(req)
+      assert Repo.reload(orig_task).request == %{}
+
+      {:ok, member} =
+        Factories.Job.create(:finished, %{
+          build_id: orig_task.id,
+          result: "passed",
+          organization_id: Factories.Job.org_id(),
+          project_id: Factories.Job.project_id()
+        })
+
+      rebuild =
+        copy_request(orig_task,
+          jobs: [run_job_spec("rerun"), copy_job_spec("copied", member.id)]
+        )
+
+      assert {:ok, task} = Schedule.schedule(rebuild)
+      task = Repo.preload(task, [:jobs])
+
+      assert Enum.count(task.jobs) == 2
+      assert Enum.any?(task.jobs, fn j -> j.original_job_id == member.id end)
+      assert Repo.reload(task).request == %{}
+    end
   end
 
   describe ".schedule with job-level lightweight copies" do

@@ -103,10 +103,14 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
   # Inserts the task row. A losing concurrent insert on the same request_token
   # surfaces as a changeset error (via the build_request_id unique_constraint);
   # roll back so the winning task is re-read outside the transaction.
+  #
+  # The schedule request is not persisted: nothing reads builds.request back,
+  # the jobs carry everything they need, and the payload is the largest part
+  # of the row. The column is NOT NULL, so an empty map is stored instead.
   defp insert_task(req) do
     case Zebra.Models.Task.create(
            version: "v0.0",
-           request: Zebra.Models.Task.encode_request(req),
+           request: %{},
            hook_id: req.hook_id,
            workflow_id: req.wf_id,
            ppl_id: req.ppl_id,
