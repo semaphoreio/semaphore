@@ -131,6 +131,19 @@ defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
       assert BlockFinishedNotifier.prefetch_count() == 10
     end
 
+    test "handles a block event without waiting" do
+      GrpcMock.stub(PipelineMock, :describe, Support.Factories.pipeline_describe_response())
+
+      message =
+        InternalApi.Plumber.PipelineBlockEvent.encode(
+          struct(InternalApi.Plumber.PipelineBlockEvent, pipeline_id: "123", block_id: "1")
+        )
+
+      {micros, _} = :timer.tc(fn -> BlockFinishedNotifier.handle_message(message) end)
+
+      assert micros < 500_000
+    end
+
     test "a block event that read a running pipeline cannot overwrite the terminal pipeline status" do
       {:ok, gate} = Agent.start_link(fn -> %{pipeline_reads: 0, held: nil, release: false} end)
 
@@ -162,6 +175,7 @@ defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
 
     test "deliveries from the broker are handled concurrently" do
       GrpcMock.stub(PipelineMock, :describe, fn req, _stream ->
+        Process.sleep(500)
         response = Support.Factories.pipeline_describe_response()
         %{response | pipeline: %{response.pipeline | ppl_id: req.ppl_id}}
       end)
@@ -195,8 +209,8 @@ defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
         assert_receive {:build_status, :PENDING, @pipeline_context, ^pipeline_id}, 15_000
       end
 
-      # Each delivery waits a second before working, so one at a time takes 10s+.
-      assert System.monotonic_time(:millisecond) - started_at < 5_000
+      # Each pipeline read takes half a second, so one at a time takes 5s+.
+      assert System.monotonic_time(:millisecond) - started_at < 3_000
     end
 
     defp bump(gate), do: %{gate | pipeline_reads: gate.pipeline_reads + 1}

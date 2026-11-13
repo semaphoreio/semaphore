@@ -31,11 +31,6 @@ defmodule GithubNotifier.Services.BlockFinishedNotifier do
 
   def handle_message(message) do
     Watchman.benchmark("block_finished_notifier.duration", fn ->
-      # we are waiting for pipeline to update the status
-      # this event updates the status just after the pipeline event,
-      # but pipeline here may still be running.
-      Process.sleep(1000)
-
       request_id = Utils.RandomString.random_string(30)
       event = InternalApi.Plumber.PipelineBlockEvent.decode(message)
 
