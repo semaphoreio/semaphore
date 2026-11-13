@@ -44,12 +44,13 @@ defmodule Support.Factories do
                   url: "git@github.com:renderedtext/github_notifier.git",
                   status:
                     struct(Repository.Status,
-                      pipeline_files: [
-                        struct(Repository.Status.PipelineFile,
-                          path: ".semaphore/semaphore.yml",
-                          level: Repository.Status.PipelineFile.Level.value(level)
-                        )
-                      ]
+                      pipeline_files:
+                        for level <- List.wrap(level) do
+                          struct(Repository.Status.PipelineFile,
+                            path: ".semaphore/semaphore.yml",
+                            level: Repository.Status.PipelineFile.Level.value(level)
+                          )
+                        end
                     )
                 )
             )
