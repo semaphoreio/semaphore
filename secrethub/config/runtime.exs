@@ -15,6 +15,7 @@ config :secrethub, amqp_url: System.get_env("AMQP_URL") || "amqp://rabbitmq:5672
 
 config :secrethub, Secrethub.Repo,
   adapter: Ecto.Adapters.Postgres,
+  prepare: :unnamed,
   database: System.get_env("POSTGRES_DB_NAME") || "secrethub",
   username: System.get_env("POSTGRES_DB_USER") || "postgres",
   password: System.get_env("POSTGRES_DB_PASSWORD") || "the-cake-is-a-lie",
