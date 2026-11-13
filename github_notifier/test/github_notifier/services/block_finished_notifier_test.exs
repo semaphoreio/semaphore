@@ -95,5 +95,35 @@ defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
 
       assert Cachex.get!(:store, key) == nil
     end
+
+    test "handles a block event without waiting" do
+      GrpcMock.stub(
+        RepositoryHubMock,
+        :create_build_status,
+        Support.Factories.create_build_status_response()
+      )
+
+      GrpcMock.stub(PipelineMock, :describe, Support.Factories.pipeline_describe_response())
+      GrpcMock.stub(RepoProxyMock, :describe, Support.Factories.repo_proxy_describe_response())
+      GrpcMock.stub(ProjecthubMock, :describe, Support.Factories.project_describe_response())
+
+      GrpcMock.stub(
+        OrganizationMock,
+        :describe,
+        Support.Factories.organization_describe_response()
+      )
+
+      message =
+        InternalApi.Plumber.PipelineBlockEvent.encode(
+          struct(InternalApi.Plumber.PipelineBlockEvent, pipeline_id: "123", block_id: "1")
+        )
+
+      {micros, _} =
+        :timer.tc(fn ->
+          GithubNotifier.Services.BlockFinishedNotifier.handle_message(message)
+        end)
+
+      assert micros < 500_000
+    end
   end
 end
