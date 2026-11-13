@@ -47,7 +47,22 @@ defmodule FrontWeb.WorkflowController do
   plug(PageAccess, [permissions: "project.job.rerun"] when action in [:rebuild])
 
   plug(Header when action in [:show, :edit])
-  plug(FeatureEnabled, [:ui_workflow_map] when action in [:map, :map_pipelines])
+  plug(:remember_new_workflow_ui when action in [:show])
+  plug(:require_workflow_map when action in [:map, :map_pipelines])
+
+  defp remember_new_workflow_ui(conn, _opts) do
+    case conn.params["new_workflow_ui"] do
+      "true" -> put_session(conn, :new_workflow_ui, true)
+      "false" -> delete_session(conn, :new_workflow_ui)
+      _ -> conn
+    end
+  end
+
+  defp require_workflow_map(conn, _opts) do
+    if get_session(conn, :new_workflow_ui),
+      do: conn,
+      else: FeatureEnabled.call(conn, [:ui_workflow_map])
+  end
 
   def edit(conn, _params) do
     Watchman.benchmark("workflow.edit.duration", fn ->
