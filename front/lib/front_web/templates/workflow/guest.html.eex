@@ -42,7 +42,7 @@
         class: Front.Decorators.Header.Workflow.tab_class(@conn, test_results_path(@conn, :pipeline_summary, @workflow.id)) %>
   </div>
 
-<%= unless FeatureProvider.feature_enabled?(:ui_workflow_map, param: @conn.assigns[:organization_id]) do %>
+<%= unless workflow_map?(@conn) do %>
   <div
       data-poll-background
       data-poll-state="poll"

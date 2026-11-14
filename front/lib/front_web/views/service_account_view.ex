@@ -28,8 +28,17 @@ defmodule FrontWeb.ServiceAccountView do
       created_at: format_datetime(service_account.created_at),
       updated_at: format_datetime(service_account.updated_at),
       deactivated: service_account.deactivated,
+      owner: person_json(service_account.owner),
+      owner_active: service_account.owner_active || false,
+      creator: person_json(service_account.creator),
       roles: Enum.map(service_account.roles, &role_json/1)
     }
+  end
+
+  defp person_json(nil), do: nil
+
+  defp person_json(person) do
+    %{id: person.id, name: person.name}
   end
 
   defp role_json(role) do

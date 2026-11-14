@@ -36,3 +36,5 @@ config FeatureProvider,
           yaml_path: Path.join([__DIR__, "../test/support/fixtures/features.yaml"]),
           agent_name: :feature_provider_agent
         ]}
+
+config :repository_hub, :enforce_service_account_owner?, true

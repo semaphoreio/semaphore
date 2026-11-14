@@ -85,6 +85,12 @@ if config_env() == :prod do
     end
 
   config FeatureProvider, :provider, feature_provider
+
+  # A service account's projects take their owner's access to the repository. Off until
+  # the accounts already there have owners, since without one they cannot add projects.
+  config :repository_hub,
+         :enforce_service_account_owner?,
+         System.get_env("ENFORCE_SERVICE_ACCOUNT_OWNER") == "true"
 end
 
 on_prem? = if(System.get_env("ON_PREM") == "true", do: true, else: false)

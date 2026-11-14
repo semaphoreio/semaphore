@@ -323,7 +323,8 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
   def regenerate_token(
         %ServiceAccountPB.RegenerateTokenRequest{
           service_account_id: service_account_id,
-          org_id: org_id
+          org_id: org_id,
+          requester_id: requester_id
         },
         _stream
       ) do
@@ -334,7 +335,15 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
         validate_uuid!(service_account_id)
         validate_uuid!(org_id)
 
-        case Guard.ServiceAccount.Actions.regenerate_token(service_account_id, org_id) do
+        # A caller that names nobody is nobody, which is what an owner is then measured
+        # against. The request is not refused over it, so the account keeps working.
+        requester_id = requester_id || ""
+
+        case Guard.ServiceAccount.Actions.regenerate_token(
+               service_account_id,
+               org_id,
+               requester_id
+             ) do
           {:ok, api_token} ->
             ServiceAccountPB.RegenerateTokenResponse.new(api_token: api_token)
 
@@ -352,6 +361,107 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
     )
   end
 
+  @spec set_owner(ServiceAccountPB.SetOwnerRequest.t(), GRPC.Server.Stream.t()) ::
+          ServiceAccountPB.SetOwnerResponse.t()
+  def set_owner(
+        %ServiceAccountPB.SetOwnerRequest{
+          service_account_id: service_account_id,
+          org_id: org_id,
+          owner_id: owner_id,
+          requester_id: requester_id
+        },
+        _stream
+      ) do
+    observe_and_log(
+      "grpc.service_account.set_owner",
+      %{service_account_id: service_account_id, org_id: org_id, owner_id: owner_id},
+      fn ->
+        validate_uuid!(service_account_id)
+        validate_uuid!(org_id)
+        validate_uuid!(owner_id)
+        validate_uuid!(requester_id)
+
+        # A member takes an account on for themselves, since it is their own access it
+        # borrows. The caller names who is asking, and a request that would hand the
+        # account to somebody else is refused rather than left to each caller to check.
+        if requester_id != owner_id do
+          grpc_error!(
+            :permission_denied,
+            "A service account can only be taken on by the member making the request"
+          )
+        end
+
+        case Guard.ServiceAccount.Actions.set_owner(service_account_id, org_id, owner_id) do
+          {:ok, service_account} ->
+            ServiceAccountPB.SetOwnerResponse.new(
+              service_account: map_service_account(service_account)
+            )
+
+          {:error, :not_found} ->
+            grpc_error!(:not_found, "Service account #{service_account_id} not found")
+
+          {:error, :invalid_owner} ->
+            grpc_error!(
+              :failed_precondition,
+              "An owner has to be a member of the organization who is not a service account"
+            )
+
+          {:error, reason} ->
+            Logger.error(
+              "Failed to set owner of service account #{service_account_id}: #{inspect(reason)}"
+            )
+
+            grpc_error!(:internal, "Failed to set the owner")
+        end
+      end
+    )
+  end
+
+  @spec release_owner(ServiceAccountPB.ReleaseOwnerRequest.t(), GRPC.Server.Stream.t()) ::
+          ServiceAccountPB.ReleaseOwnerResponse.t()
+  def release_owner(
+        %ServiceAccountPB.ReleaseOwnerRequest{
+          service_account_id: service_account_id,
+          org_id: org_id,
+          requester_id: requester_id
+        },
+        _stream
+      ) do
+    observe_and_log(
+      "grpc.service_account.release_owner",
+      %{service_account_id: service_account_id, org_id: org_id, requester_id: requester_id},
+      fn ->
+        validate_uuid!(service_account_id)
+        validate_uuid!(org_id)
+        validate_uuid!(requester_id)
+
+        case Guard.ServiceAccount.Actions.release_owner(
+               service_account_id,
+               org_id,
+               requester_id
+             ) do
+          {:ok, service_account} ->
+            ServiceAccountPB.ReleaseOwnerResponse.new(
+              service_account: map_service_account(service_account)
+            )
+
+          {:error, :not_found} ->
+            grpc_error!(:not_found, "Service account #{service_account_id} not found")
+
+          {:error, :not_the_owner} ->
+            grpc_error!(:failed_precondition, "Only the owner can give up ownership")
+
+          {:error, reason} ->
+            Logger.error(
+              "Failed to release service account #{service_account_id}: #{inspect(reason)}"
+            )
+
+            grpc_error!(:internal, "Failed to give up ownership")
+        end
+      end
+    )
+  end
+
   # Helper functions
 
   def map_service_account(service_account) do
@@ -363,7 +473,9 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
       creator_id: service_account.creator_id || "",
       created_at: grpc_timestamp(service_account.created_at),
       updated_at: grpc_timestamp(service_account.updated_at),
-      deactivated: service_account.deactivated || false
+      deactivated: service_account.deactivated || false,
+      owner_id: Map.get(service_account, :owner_id) || "",
+      owner_active: Map.get(service_account, :owner_active) || false
     )
   end
 

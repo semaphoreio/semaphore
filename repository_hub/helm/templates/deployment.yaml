@@ -125,6 +125,8 @@ spec:
             - name: METRICS_NAMESPACE
               value: {{ .Values.global.statsd.metricsNamespace }}
 {{- end }}
+            - name: ON_PREM
+              value: "true"
 {{- if .Values.resources }}
           resources:
 {{ toYaml .Values.resources | indent 13 }}
