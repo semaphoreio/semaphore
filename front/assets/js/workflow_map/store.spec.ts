@@ -26,6 +26,7 @@ const pipeline = (id: string, name: string, parent_id: string | null) => ({
   result: `PASSED`,
   parent_id,
   trigger: `AUTO_PROMOTION`,
+  triggerer: { text: `Auto promoted`, link: null, owner: null, stopped: false, stopped_by: null },
   switch_id: null,
   created_at: 1,
   running_at: 1,

@@ -597,7 +597,7 @@
   flex-direction: column;
   justify-content: center;
   gap: 4px;
-  height: 66px;
+  height: 88px;
   padding: 0 12px;
   border-bottom: 1px solid #D3DADE;
   border-radius: 10.5px 10.5px 0 0;
@@ -635,6 +635,42 @@
 
 .wf-map-pipeline-head {
   cursor: pointer;
+}
+
+.wf-map-triggered {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: #677278;
+  white-space: nowrap;
+}
+
+.wf-map-triggered-how {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wf-map-triggered-how a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.wf-map-triggered-when {
+  flex: none;
+}
+
+.wf-map-pipeline-head .wf-map-triggered-when::before {
+  content: " · ";
+  white-space: pre;
+}
+
+.wf-map-card .wf-map-triggered {
+  flex: none;
+  flex-direction: column;
+  gap: 4px;
+  line-height: 16px;
 }
 
 .wf-map-after {

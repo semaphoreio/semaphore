@@ -11,6 +11,7 @@ const apiPipeline = (id: string, overrides: Partial<ApiPipeline> = {}): ApiPipel
   result: `PASSED`,
   parent_id: null,
   trigger: `INITIAL_WORKFLOW`,
+  triggerer: { text: `Triggered by push`, link: null, owner: `Ana`, stopped: false, stopped_by: null },
   switch_id: null,
   created_at: 1,
   running_at: 10,
@@ -155,5 +156,13 @@ describe(`formatDuration`, () => {
     expect(formatDuration(65)).to.eq(`01:05`);
     expect(formatDuration(3600 + 61)).to.eq(`01:01:01`);
     expect(formatDuration(86400 * 2 + 5)).to.eq(`2d 00:00:05`);
+  });
+
+  test(`carries how and by whom each pipeline was triggered`, () => {
+    const stopped = { text: `Manual promotion`, link: null, owner: `Bo`, stopped: true, stopped_by: `Cy` };
+    const wf = buildWorkflow({ root_pipeline_id: `ci`, pipelines: [apiPipeline(`ci`), apiPipeline(`deploy`, { parent_id: `ci`, triggerer: stopped })] }, {});
+
+    expect(wf.root.triggerer.owner).to.eq(`Ana`);
+    expect(wf.pipelineById.get(`deploy`).triggerer).to.deep.eq(stopped);
   });
 });

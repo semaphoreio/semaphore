@@ -12,6 +12,14 @@ export const STATUS_LABEL: Record<Status, string> = {
   passed: `Passed`,
 };
 
+export interface ApiTriggerer {
+  text: string;
+  link: { label: string, url: string, } | null;
+  owner: string | null;
+  stopped: boolean;
+  stopped_by: string | null;
+}
+
 export interface ApiPipeline {
   id: string;
   name: string;
@@ -20,6 +28,7 @@ export interface ApiPipeline {
   result: string;
   parent_id: string | null;
   trigger: string;
+  triggerer: ApiTriggerer;
   switch_id: string | null;
   created_at: number | null;
   running_at: number | null;
@@ -123,6 +132,7 @@ export interface Pipeline {
   status: Status;
   done: boolean;
   trigger: string;
+  triggerer: ApiTriggerer;
   switchId: string | null;
   stopUrl: string | null;
   rebuildUrl: string | null;
@@ -214,6 +224,7 @@ export function buildWorkflow(tree: ApiWorkflow, details: Record<string, ApiPipe
       status: pipelineStatus(a.state, a.result),
       done: a.state === `DONE`,
       trigger: a.trigger,
+      triggerer: a.triggerer,
       switchId: a.switch_id,
       stopUrl: a.stop_url,
       rebuildUrl: a.rebuild_url,

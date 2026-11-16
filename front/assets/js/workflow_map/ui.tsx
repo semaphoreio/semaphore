@@ -1,4 +1,5 @@
 import { ComponentChildren } from "preact";
+import type {} from "../custom_types/time_ago";
 import { useState } from "preact/hooks";
 import { Block, Job, Pipeline, STATUSES, STATUS_LABEL, Status, blockStatus, blockSummary, countJobs, formatDuration } from "./model";
 import { focus, hits, now, query } from "./store";
@@ -212,6 +213,39 @@ export const PipelineTitle = ({ p }: { p: Pipeline, }) => (
     {p.attempt > 1 && <span className="wf-map-attempt">#{p.attempt}</span>}
   </span>
 );
+
+export const TimeAgo = ({ at }: { at: number, }) => {
+  const datetime = new Date(at * 1000).toISOString();
+  return <time-ago key={datetime} datetime={datetime}/>;
+};
+
+export const Triggered = ({ p }: { p: Pipeline, }) => {
+  const t = p.triggerer;
+  const by = t.owner && `by ${t.owner}`;
+  const stop = t.stopped && (t.stopped_by ? `- Stopped by ${t.stopped_by}` : `- Stopped`);
+  return (
+    <span className="wf-map-triggered">
+      <span className="wf-map-triggered-how" title={[t.text, t.link?.label, by, stop].filter(Boolean).join(` `)}>
+        {t.text}
+        {t.link && (
+          <>
+            {` `}
+            <a href={t.link.url} onClick={(e) => e.stopPropagation()}>
+              {t.link.label}
+            </a>
+          </>
+        )}
+        {by && ` ${by}`}
+        {stop && ` ${stop}`}
+      </span>
+      {p.createdAt && (
+        <span className="wf-map-triggered-when">
+          <TimeAgo at={p.createdAt}/>
+        </span>
+      )}
+    </span>
+  );
+};
 
 export const Counts = ({ jobs }: { jobs: Job[], }) => {
   const c = countJobs(jobs);

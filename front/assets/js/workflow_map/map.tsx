@@ -6,10 +6,10 @@ import { focus, hits, layoutError, popover, rerunPipeline, selected, stopPipelin
 import { MapLayout, Point, layoutMap, promotionLabel } from "./layout";
 import { PromoteButton } from "./promote";
 import { Chips, Search, Stepper } from "./toolbar";
-import { BlockCard, BlockSummary, Chevron, Counts, Duration, Name, PipelineTitle, StatusBar, StatusIcon, plainClick } from "./ui";
+import { BlockCard, BlockSummary, Chevron, Counts, Duration, Name, PipelineTitle, StatusBar, StatusIcon, Triggered, plainClick } from "./ui";
 import { BLOCK_GAP, JOB_ROW_H, blockSize, jobTop } from "./lines";
 
-const CARD = { w: 300, h: 72 };
+const CARD = { w: 300, h: 114 };
 
 const CLICKABLE = { pointerEvents: `all` as const };
 
@@ -169,6 +169,7 @@ const CardNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node
           <Duration start={p.runningAt} end={p.doneAt} running={p.status === `running`}/>
         </span>
       </span>
+      <Triggered p={p}/>
       <Handle type="source" id="out" position={Position.Right} isConnectable={false}/>
     </div>
   );
@@ -256,6 +257,9 @@ const PipelineNode = ({ data, width, positionAbsoluteX, positionAbsoluteY }: Nod
           )}
           <Counts jobs={pipelineJobs(p)}/>
           <PipelineActions p={p}/>
+        </div>
+        <div className="wf-map-pipeline-row wf-map-pipeline-sub">
+          <Triggered p={p}/>
         </div>
       </div>
       {after && <AfterBand block={after} at={at}/>}

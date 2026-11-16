@@ -1,10 +1,11 @@
 import { expect } from "chai";
-import { afterEach, beforeEach, describe, test } from "mocha";
+import { afterEach, before, beforeEach, describe, test } from "mocha";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 
-import { Block, Job, Pipeline } from "./model";
-import { BlockCard, BlockSummary, DOUBLE_CLICK_MS, JobRow, PipelineTitle } from "./ui";
+import { defineTimeAgoElement } from "../time_ago";
+import { ApiTriggerer, Block, Job, Pipeline } from "./model";
+import { BlockCard, BlockSummary, DOUBLE_CLICK_MS, JobRow, PipelineTitle, TimeAgo, Triggered } from "./ui";
 
 describe(`names the map may shorten`, () => {
   let root: HTMLElement;
@@ -202,5 +203,77 @@ describe(`names the map may shorten`, () => {
       expect(head.hasAttribute(`data-tippy-content`)).to.equal(false);
       expect(head.querySelector(`.wf-map-chevron`).getAttribute(`aria-hidden`)).to.equal(`true`);
     });
+  });
+});
+
+describe(`how and when a pipeline was triggered`, () => {
+  let root: HTMLElement;
+  const triggerer = (over: Partial<ApiTriggerer> = {}): ApiTriggerer => ({ text: `Manual promotion`, link: null, owner: `Ana`, stopped: false, stopped_by: null, ...over });
+  const show = (t: ApiTriggerer, createdAt: number | null = 1700000000) => act(() => render(<Triggered p={{ triggerer: t, createdAt } as Pipeline}/>, root));
+  const how = () => root.querySelector(`.wf-map-triggered-how`);
+  const time = () => root.querySelector<HTMLElement & { datetime: string, }>(`time-ago`);
+
+  before(() => {
+    globalThis.customElements = document.defaultView.customElements;
+    defineTimeAgoElement();
+  });
+
+  beforeEach(() => {
+    root = document.createElement(`div`);
+    document.body.appendChild(root);
+  });
+
+  afterEach(() => {
+    render(null, root);
+    root.remove();
+  });
+
+  test(`says how and by whom, with the full text on hover, and when as an exact time-ago`, async () => {
+    await show(triggerer());
+    expect(how().textContent).to.equal(`Manual promotion by Ana`);
+    expect(how().getAttribute(`title`)).to.equal(`Manual promotion by Ana`);
+    expect(root.querySelector(`.wf-map-triggered-when`).textContent).to.equal(`Tue 14th Nov 2023 at 22:13`);
+    expect(time().datetime).to.equal(`2023-11-14T22:13:20.000Z`);
+    expect(time().title).to.contain(`2023`);
+  });
+
+  test(`says nothing about who when the pipeline has no owner`, async () => {
+    await show(triggerer({ text: `Auto promoted`, owner: null }));
+    expect(how().textContent).to.equal(`Auto promoted`);
+  });
+
+  test(`links what it was a rerun of, and the link does not open the pipeline`, async () => {
+    let opened = 0;
+    root.addEventListener(`click`, () => opened++);
+    await show(triggerer({ text: `Triggered by rerun of a`, link: { label: `Workflow`, url: `/workflows/w1` } }));
+    expect(how().textContent).to.equal(`Triggered by rerun of a Workflow by Ana`);
+    const link = how().querySelector(`a`);
+    expect(link.getAttribute(`href`)).to.equal(`/workflows/w1`);
+    link.addEventListener(`click`, (e) => e.preventDefault());
+    link.click();
+    expect(opened).to.equal(0);
+  });
+
+  test(`says who stopped it, or only that it was stopped`, async () => {
+    await show(triggerer({ text: `Triggered by push`, stopped: true, stopped_by: `Bo` }));
+    expect(how().textContent).to.equal(`Triggered by push by Ana - Stopped by Bo`);
+    await show(triggerer({ text: `Triggered by push`, stopped: true }));
+    expect(how().textContent).to.equal(`Triggered by push by Ana - Stopped`);
+  });
+
+  test(`shows no time before the pipeline has one`, async () => {
+    await show(triggerer(), null);
+    expect(time()).to.equal(null);
+    expect(root.querySelector(`.wf-map-triggered-when`)).to.equal(null);
+  });
+
+  test(`a new time replaces the time-ago element, which reads its time only once`, async () => {
+    await act(() => render(<TimeAgo at={1700000000}/>, root));
+    const first = time();
+    await act(() => render(<TimeAgo at={1700000000}/>, root));
+    expect(time()).to.equal(first);
+    await act(() => render(<TimeAgo at={1700003600}/>, root));
+    expect(time()).to.not.equal(first);
+    expect(time().datetime).to.equal(`2023-11-14T23:13:20.000Z`);
   });
 });
