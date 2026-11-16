@@ -23,10 +23,17 @@ defmodule GithubNotifier.Services.BlockFinishedNotifier do
     dead_letter_queue: Application.get_env(:github_notifier, :tackle_dead_letter_queue, true),
     retry_delay: @retry_delay,
     retry_limit: @retry_limit,
-    prefetch_count: __MODULE__.prefetch_count()
+    prefetch_count: __MODULE__.starting_prefetch_count()
 
   @doc false
   def retry_config, do: %{retry_delay: @retry_delay, retry_limit: @retry_limit}
+
+  @doc false
+  def starting_prefetch_count do
+    count = prefetch_count()
+    Logger.info("Block finished consumer starting with a prefetch of #{count}")
+    count
+  end
 
   @doc false
   def prefetch_count do

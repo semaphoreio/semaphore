@@ -140,6 +140,17 @@ defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
       assert BlockFinishedNotifier.prefetch_count() == 5
     end
 
+    test "the prefetch in effect is logged when the consumer starts" do
+      System.put_env("BLOCK_FINISHED_PREFETCH_COUNT", "7")
+
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          assert BlockFinishedNotifier.starting_prefetch_count() == 7
+        end)
+
+      assert log =~ "Block finished consumer starting with a prefetch of 7"
+    end
+
     test "prefetch accepts the upper bound" do
       System.put_env("BLOCK_FINISHED_PREFETCH_COUNT", "50")
 
