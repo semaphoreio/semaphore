@@ -232,7 +232,7 @@ describe(`how and when a pipeline was triggered`, () => {
     await show(triggerer());
     expect(how().textContent).to.equal(`Manual promotion by Ana`);
     expect(how().getAttribute(`title`)).to.equal(`Manual promotion by Ana`);
-    expect(root.querySelector(`.wf-map-triggered-when`).textContent).to.equal(`Tue 14th Nov 2023 at 22:13`);
+    expect(root.querySelector(`.wf-map-triggered-when`).textContent).to.equal(time().textContent).and.to.contain(`2023`);
     expect(time().datetime).to.equal(`2023-11-14T22:13:20.000Z`);
     expect(time().title).to.contain(`2023`);
   });

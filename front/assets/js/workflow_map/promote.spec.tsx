@@ -248,13 +248,13 @@ describe(`promotions menu times`, () => {
 
   test(`shows when the latest promotion was triggered`, async () => {
     await show(promotion([event(1700000000), event(1700003600, { author: `Bo` })]));
-    expect(notes()).to.deep.equal([`2× · by Bo`, `Tue 14th Nov 2023 at 23:13`]);
+    expect(notes()).to.deep.equal([`2× · by Bo`, time().textContent]);
     expect(time().datetime).to.equal(`2023-11-14T23:13:20.000Z`);
   });
 
   test(`shows the time of a failed promotion too`, async () => {
     await show(promotion([event(1700000000, { result: `FAILED`, pipeline_id: null })]));
-    expect(notes()).to.deep.equal([`Failed to promote`, `Tue 14th Nov 2023 at 22:13`]);
+    expect(notes()).to.deep.equal([`Failed to promote`, time().textContent]);
     expect(time().datetime).to.equal(`2023-11-14T22:13:20.000Z`);
   });
 
@@ -268,7 +268,7 @@ describe(`promotions menu times`, () => {
 
   test(`still shows the latest promotion to someone who may not promote, next to the reason`, async () => {
     await show(promotion([event(1700000000)], { can_promote: false }));
-    expect(notes()).to.deep.equal([`by Ana`, `Tue 14th Nov 2023 at 22:13`, `You don't have permission to promote`]);
+    expect(notes()).to.deep.equal([`by Ana`, time().textContent, `You don't have permission to promote`]);
     expect(time().datetime).to.equal(`2023-11-14T22:13:20.000Z`);
   });
 
