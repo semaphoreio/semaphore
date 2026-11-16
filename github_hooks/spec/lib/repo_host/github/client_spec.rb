@@ -481,7 +481,7 @@ RSpec.describe RepoHost::Github::Client do
     context "account allowing public access to the GitHub API",
             :vcr => {
               :allow_playback_repeats => true,
-              :cassette_name => "Github/Client/public_repositories"
+              :cassette_name => "GitHub/Client/public_repositories"
             } do
 
       before do
