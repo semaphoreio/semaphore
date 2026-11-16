@@ -159,7 +159,7 @@ defmodule RepositoryHub.BitbucketConnector do
     params = %{
       repo_owner: git_repository.owner,
       repo_name: git_repository.repo,
-      url: BitbucketClient.Webhook.url(repository.project_id, organization_name),
+      url: BitbucketClient.Webhook.url(organization_name, repository.id),
       events: BitbucketClient.Webhook.events()
     }
 
