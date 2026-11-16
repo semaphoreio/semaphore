@@ -35,9 +35,6 @@ Semaphore::Application.configure do
   # In production, Apache or nginx will already do this
   config.public_file_server.enabled = false
 
-  # Enable serving of images, stylesheets, and javascripts from an asset server
-  # config.action_controller.asset_host = "http://assets.example.com"
-
   # Enable threaded mode
   # config.threadsafe!
 
@@ -47,8 +44,6 @@ Semaphore::Application.configure do
 
   # Send deprecation notices to registered listeners
   config.active_support.deprecation = :notify
-
-  config.action_controller.asset_host = App.asset_host
 
   config.lograge.enabled = true
 

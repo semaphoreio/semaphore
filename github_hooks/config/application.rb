@@ -4,9 +4,6 @@ require "rails"
 require "active_model/railtie"
 require "active_record/railtie"
 require "action_controller/railtie"
-# require "action_mailer/railtie"
-# require "action_view/railtie"
-# require "sprockets/railtie"
 
 Bundler.require(*Rails.groups)
 
@@ -37,13 +34,6 @@ module Semaphore
     # config.i18n.load_path += Dir[Rails.root.join('my', 'locales', '*.{rb,yml}').to_s]
     # config.i18n.default_locale = :de
 
-    # JavaScript files you want as :defaults (application.js is always included).
-    # config.action_view.javascript_expansions[:defaults] = %w(jquery rails)
-
-    # Can be set to invalidate the whole cache
-    # config.assets.version = "1.3"
-    # Serving static assets and setting cache headers
-    # # which will be used by cloudfront as well
     config.public_file_server.enabled = true
     config.public_file_server.headers = { 'Cache-Control' => 'public, max-age=31536000' }
 
@@ -57,12 +47,6 @@ module Semaphore
 
     # Remove milliseconds from json serialized times to match rails 3 behaviour
     config.active_support.time_precision = 0
-
-    # https://guides.rubyonrails.org/upgrading_ruby_on_rails.html#expiry-in-signed-or-encrypted-cookie-is-now-embedded-in-the-cookies-values
-    config.action_dispatch.use_authenticated_cookie_encryption = false
-
-    # https://edgeguides.rubyonrails.org/upgrading_ruby_on_rails.html#purpose-and-expiry-metadata-is-now-embedded-inside-signed-and-encrypted-cookies-for-increased-security
-    config.action_dispatch.use_cookies_with_metadata = false
 
     config.action_dispatch.trusted_proxies = App.trusted_proxies
   end
