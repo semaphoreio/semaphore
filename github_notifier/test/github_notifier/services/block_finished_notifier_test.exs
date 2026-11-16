@@ -1,6 +1,8 @@
 defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
   use ExUnit.Case
 
+  alias GithubNotifier.Services.BlockFinishedNotifier
+
   setup do
     Cachex.clear(:store)
 
@@ -94,6 +96,80 @@ defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
       key = Base.encode16(:erlang.md5(key), case: :lower)
 
       assert Cachex.get!(:store, key) == nil
+    end
+  end
+
+  describe "concurrent consumption" do
+    @pipeline_context "ci/semaphoreci/push: Pipeline"
+
+    setup do
+      test_pid = self()
+
+      GrpcMock.stub(RepositoryHubMock, :create_build_status, fn req, _stream ->
+        send(test_pid, {:build_status, req.status, req.context, req.source_id})
+        Support.Factories.create_build_status_response()
+      end)
+
+      GrpcMock.stub(RepoProxyMock, :describe, Support.Factories.repo_proxy_describe_response())
+
+      GrpcMock.stub(
+        ProjecthubMock,
+        :describe,
+        Support.Factories.project_describe_response([:BLOCK, :PIPELINE])
+      )
+
+      GrpcMock.stub(
+        OrganizationMock,
+        :describe,
+        Support.Factories.organization_describe_response()
+      )
+
+      :ok
+    end
+
+    test "a block event reports its block and leaves the pipeline status alone" do
+      GrpcMock.stub(PipelineMock, :describe, Support.Factories.pipeline_describe_response())
+
+      GithubNotifier.Notifier.notify("asd", "123", "1")
+
+      assert_received {:build_status, :PENDING, "ci/semaphoreci/push: Block 1", _}
+      refute_received {:build_status, _, _, _}
+    end
+
+    test "a block event sends nothing when the project reports only the pipeline level" do
+      GrpcMock.stub(PipelineMock, :describe, Support.Factories.pipeline_describe_response())
+
+      GrpcMock.stub(
+        ProjecthubMock,
+        :describe,
+        Support.Factories.project_describe_response(:PIPELINE)
+      )
+
+      assert GithubNotifier.Notifier.notify("asd", "123", "1") == nil
+
+      refute_received {:build_status, _, _, _}
+    end
+
+    test "a pipeline event still reports every block and the pipeline" do
+      GrpcMock.stub(PipelineMock, :describe, Support.Factories.pipeline_describe_response())
+
+      GithubNotifier.Notifier.notify("asd", "123")
+
+      assert_received {:build_status, _, "ci/semaphoreci/push: Block 1", _}
+      assert_received {:build_status, _, @pipeline_context, _}
+    end
+
+    test "handle_message reports the block status" do
+      GrpcMock.stub(PipelineMock, :describe, Support.Factories.pipeline_describe_response())
+
+      message =
+        InternalApi.Plumber.PipelineBlockEvent.encode(
+          struct(InternalApi.Plumber.PipelineBlockEvent, pipeline_id: "123", block_id: "1")
+        )
+
+      BlockFinishedNotifier.handle_message(message)
+
+      assert_received {:build_status, :PENDING, "ci/semaphoreci/push: Block 1", _}
     end
   end
 end
