@@ -12,6 +12,7 @@ defmodule GithubNotifier.Services.BlockFinishedNotifier do
   # concurrency. Per-check ordering is enforced downstream by StatusSender.
   @prefetch_count_env "BLOCK_FINISHED_PREFETCH_COUNT"
   @default_prefetch_count 1
+  @max_prefetch_count 50
 
   use Tackle.Consumer,
     url: Application.get_env(:github_notifier, :amqp_url),
@@ -38,7 +39,7 @@ defmodule GithubNotifier.Services.BlockFinishedNotifier do
   # A prefetch of 0 means unlimited to the broker, so it is rejected too.
   defp parse_prefetch_count(value) do
     case Integer.parse(value) do
-      {count, ""} when count > 0 ->
+      {count, ""} when count in 1..@max_prefetch_count ->
         count
 
       _ ->

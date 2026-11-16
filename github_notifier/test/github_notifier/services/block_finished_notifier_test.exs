@@ -140,8 +140,14 @@ defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
       assert BlockFinishedNotifier.prefetch_count() == 5
     end
 
+    test "prefetch accepts the upper bound" do
+      System.put_env("BLOCK_FINISHED_PREFETCH_COUNT", "50")
+
+      assert BlockFinishedNotifier.prefetch_count() == 50
+    end
+
     test "an invalid prefetch falls back to the default" do
-      for value <- ["0", "-3", "ten", "5x", ""] do
+      for value <- ["0", "-3", "ten", "5x", "", "51", "100000"] do
         System.put_env("BLOCK_FINISHED_PREFETCH_COUNT", value)
 
         assert BlockFinishedNotifier.prefetch_count() == 1, "accepted #{inspect(value)}"
