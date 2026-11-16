@@ -329,26 +329,28 @@ defmodule FrontWeb.PipelineView do
   end
 
   defp format_triggered_by(conn, triggerer, workflow) do
-    triggerer.triggered_by
-    |> case do
+    case triggered_by_link(conn, triggerer, workflow) do
+      %{label: label, url: url} -> link(label, to: url) |> raw_safe_string()
+      nil -> ""
+    end
+  end
+
+  def triggered_by_link(conn, triggerer, workflow) do
+    case triggerer.triggered_by do
       {:workflow, workflow_id} ->
-        link("Workflow", to: workflow_path(conn, :show, workflow_id))
-        |> raw_safe_string()
+        %{label: "Workflow", url: workflow_path(conn, :show, workflow_id)}
 
       {:pipeline, pipeline_id} ->
-        link("Pipeline",
-          to: workflow_path(conn, :show, workflow.id, pipeline_id: pipeline_id)
-        )
-        |> raw_safe_string()
+        %{
+          label: "Pipeline",
+          url: workflow_path(conn, :show, workflow.id, pipeline_id: pipeline_id)
+        }
 
       {:task, {task_id, _}} ->
-        link("Task",
-          to: schedulers_path(conn, :show, workflow.project_name, task_id)
-        )
-        |> raw_safe_string()
+        %{label: "Task", url: schedulers_path(conn, :show, workflow.project_name, task_id)}
 
       _ ->
-        ""
+        nil
     end
   end
 
@@ -383,25 +385,15 @@ defmodule FrontWeb.PipelineView do
     end
   end
 
-  defp format_user(user) do
-    user
-    |> case do
-      {:user, {_user_id, ""}} ->
-        "[Deleted User]"
+  defp format_user(user), do: escape_unsafe_string(trigger_user_name(user) || "N/A")
 
-      {:user, {_user_id, user_name}} ->
-        escape_unsafe_string(user_name)
-
-      {:name, name} ->
-        escape_unsafe_string(name)
-
-      _ ->
-        "N/A"
-    end
-  end
+  def trigger_user_name({:user, {_user_id, ""}}), do: "[Deleted User]"
+  def trigger_user_name({:user, {_user_id, user_name}}), do: user_name
+  def trigger_user_name({:name, name}), do: name
+  def trigger_user_name(_), do: nil
 
   @spec format_trigger_type(any(), Front.Models.Pipeline.Triggerer.t()) :: String.t()
-  defp format_trigger_type(_conn, triggerer) do
+  def format_trigger_type(_conn, triggerer) do
     case triggerer.trigger_type do
       :INITIAL_WORKFLOW ->
         "Triggered by push"
