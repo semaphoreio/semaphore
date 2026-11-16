@@ -124,7 +124,45 @@ defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
         Support.Factories.organization_describe_response()
       )
 
+      System.delete_env("BLOCK_FINISHED_PREFETCH_COUNT")
+      on_exit(fn -> System.delete_env("BLOCK_FINISHED_PREFETCH_COUNT") end)
+
       :ok
+    end
+
+    test "prefetch defaults to 1" do
+      assert BlockFinishedNotifier.prefetch_count() == 1
+    end
+
+    test "prefetch is read from BLOCK_FINISHED_PREFETCH_COUNT" do
+      System.put_env("BLOCK_FINISHED_PREFETCH_COUNT", "5")
+
+      assert BlockFinishedNotifier.prefetch_count() == 5
+    end
+
+    test "the prefetch in effect is logged when the consumer starts" do
+      System.put_env("BLOCK_FINISHED_PREFETCH_COUNT", "7")
+
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          assert BlockFinishedNotifier.starting_prefetch_count() == 7
+        end)
+
+      assert log =~ "Block finished consumer starting with a prefetch of 7"
+    end
+
+    test "prefetch accepts the upper bound" do
+      System.put_env("BLOCK_FINISHED_PREFETCH_COUNT", "50")
+
+      assert BlockFinishedNotifier.prefetch_count() == 50
+    end
+
+    test "an invalid prefetch falls back to the default" do
+      for value <- ["0", "-3", "ten", "5x", "", "51", "100000"] do
+        System.put_env("BLOCK_FINISHED_PREFETCH_COUNT", value)
+
+        assert BlockFinishedNotifier.prefetch_count() == 1, "accepted #{inspect(value)}"
+      end
     end
 
     test "a block event reports its block and leaves the pipeline status alone" do
@@ -170,6 +208,48 @@ defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
       BlockFinishedNotifier.handle_message(message)
 
       assert_received {:build_status, :PENDING, "ci/semaphoreci/push: Block 1", _}
+    end
+
+    test "deliveries from the broker are handled concurrently" do
+      {:ok, in_flight} = Agent.start_link(fn -> %{now: 0, max: 0} end)
+
+      GrpcMock.stub(PipelineMock, :describe, fn req, _stream ->
+        Agent.update(in_flight, &%{now: &1.now + 1, max: max(&1.max, &1.now + 1)})
+        Process.sleep(200)
+        Agent.update(in_flight, &%{&1 | now: &1.now - 1})
+
+        response = Support.Factories.pipeline_describe_response()
+        %{response | pipeline: %{response.pipeline | ppl_id: req.ppl_id}}
+      end)
+
+      System.put_env("BLOCK_FINISHED_PREFETCH_COUNT", "10")
+      start_supervised!({BlockFinishedNotifier, [process_name: :concurrent_block_consumer]})
+
+      pipeline_ids =
+        for index <- 1..10, do: "broker-#{index}-#{System.unique_integer([:positive])}"
+
+      for pipeline_id <- pipeline_ids do
+        Tackle.publish(
+          InternalApi.Plumber.PipelineBlockEvent.encode(
+            struct(InternalApi.Plumber.PipelineBlockEvent,
+              pipeline_id: pipeline_id,
+              block_id: "1"
+            )
+          ),
+          %{
+            url: Application.get_env(:github_notifier, :amqp_url),
+            exchange: "pipeline_block_state_exchange",
+            routing_key: "done"
+          }
+        )
+      end
+
+      for pipeline_id <- pipeline_ids do
+        assert_receive {:build_status, :PENDING, "ci/semaphoreci/push: Block 1", ^pipeline_id},
+                       15_000
+      end
+
+      assert Agent.get(in_flight, & &1.max) > 1
     end
   end
 end
