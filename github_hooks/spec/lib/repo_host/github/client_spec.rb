@@ -494,7 +494,6 @@ RSpec.describe RepoHost::Github::Client do
       #
       describe "#repositories" do
         before do
-          pending("for some reason failing after moving project to alles")
           @repositories = @github_client.repositories
           @repo = @repositories.first
         end
@@ -518,7 +517,6 @@ RSpec.describe RepoHost::Github::Client do
       #
       describe "#group_repositories" do
         before do
-          pending("for some reason failing after moving project to alles")
           @repositories = @github_client.group_repositories
           @repo = @repositories.first
         end
