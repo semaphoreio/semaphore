@@ -4,15 +4,16 @@ require "rails"
 require "active_model/railtie"
 require "active_record/railtie"
 require "action_controller/railtie"
-require "action_mailer/railtie"
-require "action_view/railtie"
-require "sprockets/railtie"
+# require "action_mailer/railtie"
+# require "action_view/railtie"
+# require "sprockets/railtie"
 
 Bundler.require(*Rails.groups)
 
 module Semaphore
   class Application < Rails::Application
     config.load_defaults "7.2"
+    config.api_only = true
 
     config.autoload_paths << "#{root}/lib"
 
@@ -39,28 +40,18 @@ module Semaphore
     # JavaScript files you want as :defaults (application.js is always included).
     # config.action_view.javascript_expansions[:defaults] = %w(jquery rails)
 
-    # Enable the asset pipeline
-    config.assets.enabled = true
     # Can be set to invalidate the whole cache
-    config.assets.version = "1.3"
+    # config.assets.version = "1.3"
     # Serving static assets and setting cache headers
     # # which will be used by cloudfront as well
     config.public_file_server.enabled = true
     config.public_file_server.headers = { 'Cache-Control' => 'public, max-age=31536000' }
-
-    if ENV["SEMAPHORE_CACHE_DIR"]
-      config.assets.configure do |env|
-        env.cache = ActiveSupport::Cache::FileStore.new("#{ENV["SEMAPHORE_CACHE_DIR"]}/assets-cache")
-      end
-    end
 
     # Configure the default encoding used in templates for Ruby 1.9.
     config.encoding = "utf-8"
 
     # Configure sensitive parameters which will be filtered from the log file.
     config.filter_parameters += [:password, :credentials, :token, :refresh_token]
-
-    config.action_view.field_error_proc = proc { |html_tag, _instance| %Q(<div class="error">#{html_tag}</div>).html_safe }
 
     config.active_record.dump_schema_after_migration = false
 
