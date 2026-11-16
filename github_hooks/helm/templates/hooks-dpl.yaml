@@ -99,6 +99,9 @@ spec:
               value: "true"
 {{- end }}
 
+            - name: RABBITMQ_HOOK_INTAKE
+              value: {{ .Values.hooks.rabbitmqIntake | quote }}
+
           startupProbe:
             httpGet:
               path: /is_alive

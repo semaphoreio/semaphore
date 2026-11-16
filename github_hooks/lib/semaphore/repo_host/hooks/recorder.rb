@@ -15,6 +15,36 @@ class Semaphore::RepoHost::Hooks::Recorder
     Exceptions.notify(ex, :project_hash_id => project.id)
   end
 
+  # Records a hook whose signature was verified, under the id it was accepted with,
+  # together with its delivery. Nil when that id was recorded already.
+  def self.record_verified_hook(id, request, project, received_at)
+    return if Workflow.exists?(id)
+
+    Workflow.transaction(:requires_new => true) do
+      workflow = Workflow.create!(
+        :id => id,
+        :project_id => project.id,
+        :repository_id => project.repository.id,
+        :organization_id => project.organization_id,
+        :request => request,
+        :provider => "github",
+        :state => Workflow::STATE_PROCESSING,
+        :result => Workflow::RESULT_OK,
+        :received_at => received_at,
+        # Hooks are compared by created_at as the order they arrived in, not recorded in.
+        :created_at => received_at
+      )
+
+      set_commit_sha(workflow)
+      set_commit_author(workflow)
+      set_git_ref(workflow)
+
+      [workflow, HookDelivery.start(workflow.id)]
+    end
+  rescue ActiveRecord::RecordNotUnique
+    nil
+  end
+
   def self.create_post_commit_request(params, project)
     Workflow.create!(
       :project_id => project.id,

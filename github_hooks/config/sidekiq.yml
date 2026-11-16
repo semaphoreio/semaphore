@@ -14,3 +14,7 @@ production:
       queue: github_app
       cron: '*/5 * * * *'
       class: "RecurringTasks::GithubApiRateLimitMetric"
+    HookDeliverySweeper:
+      queue: job_pipeline
+      cron: '* * * * *'
+      class: "RecurringTasks::HookDeliverySweeper"

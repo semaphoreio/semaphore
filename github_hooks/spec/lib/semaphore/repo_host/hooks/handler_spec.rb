@@ -20,6 +20,17 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       payload.to_json
     end
 
+    context "with a stored delivery" do
+      it "does not check the signature again" do
+        allow(@workflow.payload).to receive(:includes_ci_skip?).and_return(true)
+
+        described_class.run(@workflow, @logger, :delivery => HookDelivery.start(@workflow.id))
+
+        expect(described_class).not_to have_received(:webhook_signature_valid?)
+        expect(@workflow.reload.state).to eq(Workflow::STATE_SKIP_CI)
+      end
+    end
+
     context "when request should not be processed" do
       before do
         allow(@workflow.payload).to receive(:includes_ci_skip?).and_return(true)
@@ -486,6 +497,19 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             described_class.run(@workflow, @logger)
 
             expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_PR_APPROVAL_IN_PROGRESS)
+          end
+
+          it "hands a resumed approval from a stored delivery to the approved workflow's delivery" do
+            Sidekiq::Worker.clear_all
+            workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+            approve_bare
+            allow(described_class).to receive(:update_pr_data).and_return([:mergeable_unknown, { :rate_limit_remaining => 5000 }, ""])
+
+            described_class.run(@workflow, @logger, :delivery => HookDelivery.start(@workflow.id))
+
+            delivery = HookDelivery.find(workflow.id)
+            expect(delivery.retries).to eq(1)
+            expect(Semaphore::RepoHost::Hooks::Handler::DeliveryWorker.jobs.map { |job| [job["args"], job["jid"]] }).to eq([[[workflow.id], delivery.job_id]])
           end
 
           it "ignores a late reschedule once the workflow was launched by another approval" do
@@ -1716,6 +1740,17 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             allow(described_class).to receive(:sleep) # skip get_pr_data poll backoff
           end
 
+          it "reschedules a stored delivery with a job that carries only the workflow id" do
+            Sidekiq::Worker.clear_all
+
+            described_class.run(@workflow, @logger, :delivery => HookDelivery.start(@workflow.id))
+
+            delivery = HookDelivery.find(@workflow.id)
+            expect(delivery.retries).to eq(1)
+            expect(Semaphore::RepoHost::Hooks::Handler::DeliveryWorker.jobs.map { |job| [job["args"], job["jid"]] }).to eq([[[@workflow.id], delivery.job_id]])
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker.jobs).to be_empty
+          end
+
           it "reschedules the hook with an incremented retry count instead of building" do
             expect(described_class).not_to receive(:launch_pipeline)
             expect(Semaphore::RepoHost::Hooks::Handler::Worker)
@@ -2474,6 +2509,29 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       whitelist = ["/*/"]
 
       expect(described_class.whitelisted?(ref, whitelist, @logger)).to be(false)
+    end
+  end
+
+  describe ".webhook_signature_valid?" do
+    let(:client) { instance_double(InternalApi::Repository::RepositoryService::Stub) }
+
+    before do
+      allow(InternalApi::Repository::RepositoryService::Stub).to receive(:new).and_return(client)
+    end
+
+    it "bounds the check with a deadline" do
+      allow(client).to receive(:verify_webhook_signature)
+        .and_return(InternalApi::Repository::VerifyWebhookSignatureResponse.new(:valid => true))
+
+      expect(described_class.webhook_signature_valid?(@logger, "org-1", "repo-1", "payload", "signature")).to eq(:ok)
+      expect(client).to have_received(:verify_webhook_signature)
+        .with(kind_of(InternalApi::Repository::VerifyWebhookSignatureRequest), :deadline => be_within(1).of(Time.now + described_class::VERIFY_SIGNATURE_DEADLINE_SECONDS))
+    end
+
+    it "asks for a retry when the check times out" do
+      allow(client).to receive(:verify_webhook_signature).and_raise(GRPC::DeadlineExceeded)
+
+      expect(described_class.webhook_signature_valid?(@logger, "org-1", "repo-1", "payload", "signature")).to eq(:retry)
     end
   end
 end

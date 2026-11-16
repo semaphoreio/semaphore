@@ -66,6 +66,8 @@ class ProjectsController < ApplicationController
         head :not_found and return
       end
 
+      webhooks = []
+
       projects.each do |project|
         organization = project.organization
 
@@ -119,6 +121,13 @@ class ProjectsController < ApplicationController
           next
         end
 
+        if Semaphore::RepoHost::Hooks::Intake.enabled?
+          webhook = accept_webhook(project, new_request, webhook_filter, signature, logger)
+          webhooks << webhook if webhook
+
+          next
+        end
+
         workflow = Semaphore::RepoHost::Hooks::Recorder.record_hook(hook_params, project)
         logger.add(:post_commit_request_id => workflow.id)
         logger.info("Saved Request")
@@ -133,13 +142,7 @@ class ProjectsController < ApplicationController
           next
         end
 
-        repository_comparator = RepoHost::Github::RepositoryComparator.new(project.repository, webhook_filter.repository)
-        if repository_comparator.different?
-          logger.info("Repository Changed", :changes => repository_comparator.changes)
-          Watchman.increment("repo_host_post_commit_hooks.controller.repository_changed")
-
-          Semaphore::Events::RemoteRepositoryChanged.emit(project.repository.id)
-        end
+        notify_repository_changes(project, webhook_filter, logger)
 
         workflow.update_attribute(:result, Workflow::RESULT_OK)
 
@@ -150,11 +153,62 @@ class ProjectsController < ApplicationController
         logger.info("Enqueud in Sidekiq", :sidekiq_job_id => sidekiq_job_id)
       end
 
-      head :ok
+      head(publish_webhooks(webhooks, logger) ? :ok : :service_unavailable)
     end
   end
 
   private
+
+  # The workflow is recorded by the intake consumer once the signature is verified;
+  # the id is chosen here so a hook delivered twice by the broker is recorded once.
+  def accept_webhook(project, new_request, webhook_filter, signature, logger)
+    if webhook_filter.unavailable_payload?
+      Watchman.increment("repo_host_post_commit_hooks.controller.no_payload")
+      logger.error("No Payload")
+
+      return
+    end
+
+    notify_repository_changes(project, webhook_filter, logger)
+    Watchman.increment("IncommingHooks.processed", { external: true })
+
+    Semaphore::RepoHost::Hooks::Intake::Webhook.new(
+      :workflow_id => SecureRandom.uuid,
+      :project_id => project.id,
+      :body => repo_host_request.raw_post,
+      :signature => signature,
+      :content_type => repo_host_request.media_type,
+      :received_at => Time.current,
+      :hash_id => repo_host_request_params["hash_id"],
+      :event => new_request.event,
+      :delivery_id => new_request.delivery_id
+    )
+  end
+
+  # GitHub gets 200 only once the broker has stored every hook of the request.
+  def publish_webhooks(webhooks, logger)
+    return true if webhooks.empty?
+
+    Semaphore::RepoHost::Hooks::Intake::Publisher.publish(webhooks)
+    webhooks.each { |webhook| logger.info("Published Request", :post_commit_request_id => webhook.workflow_id, :project_id => webhook.project_id) }
+
+    true
+  rescue Semaphore::RepoHost::Hooks::Intake::Publisher::Error => e
+    Watchman.increment("repo_host_post_commit_hooks.controller.publish_failed")
+    logger.error("Publishing failed", :error => e.message)
+
+    false
+  end
+
+  def notify_repository_changes(project, webhook_filter, logger)
+    repository_comparator = RepoHost::Github::RepositoryComparator.new(project.repository, webhook_filter.repository)
+    return unless repository_comparator.different?
+
+    logger.info("Repository Changed", :changes => repository_comparator.changes)
+    Watchman.increment("repo_host_post_commit_hooks.controller.repository_changed")
+
+    Semaphore::Events::RemoteRepositoryChanged.emit(project.repository.id)
+  end
 
   # Sync a repo's collaborators on a GitHub "member" webhook. When
   # DISABLE_COLLABORATOR_WEBHOOK_SYNC is set, the sync and the changed event are

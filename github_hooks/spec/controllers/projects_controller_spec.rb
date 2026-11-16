@@ -82,7 +82,7 @@ RSpec.describe ProjectsController, :type => :controller do
                  "X-Github-Event" => event,
                  "X-GitHub-Hook-Installation-Target-Type" => installation_target_type,
                  "X-Hub-Signature-256" => signature
-               }, :body => body, :raw_post => "Hello, World!")
+               }, :body => body, :raw_post => "Hello, World!", :media_type => "application/json")
       end
 
       before do
@@ -136,6 +136,40 @@ RSpec.describe ProjectsController, :type => :controller do
 
       context "when push event occurs" do
         let(:event) { "push" }
+
+        context "when hooks go through the RabbitMQ intake" do
+          include IntakeQueueHelper
+
+          let(:publisher) { Semaphore::RepoHost::Hooks::Intake::Publisher }
+
+          before do
+            allow(App).to receive(:rabbitmq_hook_intake).and_return(true)
+          end
+
+          after { publisher.disconnect }
+
+          it "answers once the broker stored the hook as received, without recording a workflow" do
+            purge_intake_queues
+            expect(Semaphore::RepoHost::Hooks::Recorder).not_to receive(:record_hook)
+
+            post_payload(payload)
+
+            expect(response).to be_ok
+            _properties, message = pop_intake_message
+            webhook = Semaphore::RepoHost::Hooks::Intake::Webhook.from_message(message)
+            expect(webhook).to have_attributes(:body => "Hello, World!", :project_id => @project.id, :signature => signature)
+            expect(Workflow.exists?(webhook.workflow_id)).to be(false)
+          end
+
+          it "answers 503 when the broker did not store the hook" do
+            allow(publisher).to receive(:publish).and_raise(publisher::Error, "publishing failed: Bunny::TCPConnectionFailed")
+
+            post_payload(payload)
+
+            expect(response).to have_http_status(:service_unavailable)
+            expect(Watchman).to have_received(:increment).with("repo_host_post_commit_hooks.controller.publish_failed")
+          end
+        end
 
         it "doesn't required authenticated_user" do
           expect(controller).not_to receive(:authenticate_user!)

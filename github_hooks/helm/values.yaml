@@ -6,6 +6,8 @@ hooks:
   replicas: 1
   dbPoolSize: 2
   disableCollaboratorWebhookSync: false
+  # Requires the hooksIntake consumer below.
+  rabbitmqIntake: false
   resources:
     limits:
       cpu: 500m
@@ -24,6 +26,18 @@ repoProxyApi:
       memory: 400Mi
     requests:
       cpu: '0.3'
+      memory: 150Mi
+
+hooksIntake:
+  replicas: 1
+  threads: 5
+  dbPoolSize: 6
+  resources:
+    limits:
+      cpu: '0.5'
+      memory: 500Mi
+    requests:
+      cpu: '0.05'
       memory: 150Mi
 
 sidekiq:

@@ -9,6 +9,9 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   # worker; GRPC::DeadlineExceeded is caught below and treated as a denial.
   PR_APPROVAL_RBAC_DEADLINE_SECONDS = 5
 
+  # A timed-out signature check counts as a failed request and is retried.
+  VERIFY_SIGNATURE_DEADLINE_SECONDS = 5
+
   # A bare /sem-approve keeps the long-standing project.view bar; options that
   # hand secrets or cache to fork code need the pipeline-start permission.
   PR_APPROVAL_PERMISSION = "project.view"
@@ -42,7 +45,13 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   SUPERSEDING_HOOK_WINDOW = 30.minutes
 
   # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
-  def self.run(workflow, logger, hook_payload = "", signature = "", retries = 0, stale_attempts = 0) # rubocop:disable Metrics/ParameterLists
+  def self.run(workflow, logger, hook_payload = "", signature = "", retries = 0, stale_attempts = 0, delivery: nil) # rubocop:disable Metrics/ParameterLists
+    # Either a stored delivery, verified before it was stored, or a job that carries the
+    # hook body and signature in its arguments.
+    attempt = delivery || JobArguments.new(hook_payload, signature, retries, stale_attempts)
+    retries = attempt.retries
+    stale_attempts = attempt.stale_attempts
+
     # stops hooks from deleted projects from generating exceptions
     # should not be necessary when project deletion cleans up hooks
     if workflow.project.nil?
@@ -52,30 +61,32 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       return
     end
 
-    verification_result = webhook_signature_valid?(logger, workflow.project.organization_id, workflow.project.repository.id, hook_payload, signature)
+    unless attempt.verified?
+      verification_result = webhook_signature_valid?(logger, workflow.project.organization_id, workflow.project.repository.id, attempt.body, attempt.signature)
 
-    if verification_result == :retry
-      if retries < 10
-        sidekiq_job_id = Semaphore::RepoHost::Hooks::Handler::Worker.perform_in(2.minutes, workflow.id, hook_payload, signature, retries + 1, *Array(stale_attempts.nonzero?))
-        logger.info("Rescheduled in Sidekiq", :sidekiq_job_id => sidekiq_job_id)
-      else
-        logger.info("Too many retries, skipping hook")
-        workflow.update(:state => Workflow::STATE_HOOK_VERIFICATION_FAILED)
+      if verification_result == :retry
+        if retries < 10
+          sidekiq_job_id = attempt.reschedule(workflow.id, 2.minutes, retries + 1, stale_attempts)
+          logger.info("Rescheduled in Sidekiq", :sidekiq_job_id => sidekiq_job_id)
+        else
+          logger.info("Too many retries, skipping hook")
+          workflow.update(:state => Workflow::STATE_HOOK_VERIFICATION_FAILED)
+        end
+        return
       end
-      return
-    end
 
-    if verification_result == :not_verified
-      logger.info("request-not-verified")
-      workflow.update(:state => Workflow::STATE_HOOK_VERIFICATION_FAILED)
+      if verification_result == :not_verified
+        logger.info("request-not-verified")
+        workflow.update(:state => Workflow::STATE_HOOK_VERIFICATION_FAILED)
 
-      return
+        return
+      end
     end
 
     if support_sequential_runs?(workflow) && with_predecessors?(workflow)
       Watchman.increment("hook.processing.not_in_sequence")
 
-      sidekiq_job_id = Semaphore::RepoHost::Hooks::Handler::Worker.perform_async(workflow.id, hook_payload, signature, retries + 1, *Array(stale_attempts.nonzero?))
+      sidekiq_job_id = attempt.reschedule(workflow.id, 0, retries + 1, stale_attempts)
 
       logger.info("Rescheduled in Sidekiq", :sidekiq_job_id => sidekiq_job_id)
 
@@ -442,7 +453,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
           # No merge ref exists until GitHub's async test-merge resolves, so
           # retry rather than treat unknown as a conflict and skip the build.
           if retries < App.mergeable_unknown_max_retries && !below_rate_limit_reserve?(meta[:rate_limit_remaining])
-            sidekiq_job_id = Semaphore::RepoHost::Hooks::Handler::Worker.perform_in(2.minutes, workflow.id, hook_payload, signature, retries + 1, *Array(stale_attempts.nonzero?))
+            sidekiq_job_id = attempt.reschedule(workflow.id, 2.minutes, retries + 1, stale_attempts)
             logger.info("pr-mergeable-unknown-rescheduled", :sidekiq_job_id => sidekiq_job_id)
           else
             # Persistent unknown past the retry budget is a stuck/degraded state,
@@ -456,7 +467,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
           return
         when :stale_merge_commit
-          handle_stale_merge_commit(workflow, meta, logger, hook_payload, signature, retries, stale_attempts, approved_head_sha)
+          handle_stale_merge_commit(workflow, meta, logger, attempt, retries, stale_attempts, approved_head_sha)
 
           return
         when :skip_ci
@@ -730,7 +741,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     [author, skip_ci]
   end
 
-  def self.handle_stale_merge_commit(workflow, meta, logger, hook_payload, signature, retries, stale_attempts, approved_head_sha)
+  def self.handle_stale_merge_commit(workflow, meta, logger, attempt, retries, stale_attempts, approved_head_sha)
     tags = [meta[:stale_reason]]
     log_fields = {
       :reason => meta[:stale_reason],
@@ -753,7 +764,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       Watchman.increment("hook.processing.pr_stale_merge_commit_attempt", :tags => tags)
 
       if stale_attempts < App.stale_merge_commit_max_retries && !below_rate_limit_reserve?(meta[:rate_limit_remaining])
-        sidekiq_job_id = Semaphore::RepoHost::Hooks::Handler::Worker.perform_in(1.minute, workflow.id, hook_payload, signature, retries + 1, stale_attempts + 1)
+        sidekiq_job_id = attempt.reschedule(workflow.id, 1.minute, retries + 1, stale_attempts + 1)
         logger.info("pr-stale-merge-commit-rescheduled", log_fields.merge(:sidekiq_job_id => sidekiq_job_id))
       else
         Watchman.increment("hook.processing.pr_stale_merge_commit_giving_up", :tags => tags)
@@ -1151,7 +1162,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       :signature => signature
     )
 
-    response = client.verify_webhook_signature(request)
+    response = client.verify_webhook_signature(request, :deadline => Time.now + VERIFY_SIGNATURE_DEADLINE_SECONDS)
     if response.valid
       logger.info("Webhook signature verification passed", repository_id: repository_id)
       Watchman.increment("hooks.processing.verify_signature.success", tags: ["github"])
