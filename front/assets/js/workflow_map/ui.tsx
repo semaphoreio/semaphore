@@ -221,6 +221,7 @@ export const TimeAgo = ({ at }: { at: number, }) => {
 
 export const Triggered = ({ p }: { p: Pipeline, }) => {
   const t = p.triggerer;
+  if (!t) return null;
   const by = t.owner && `by ${t.owner}`;
   const stop = t.stopped && (t.stopped_by ? `- Stopped by ${t.stopped_by}` : `- Stopped`);
   return (

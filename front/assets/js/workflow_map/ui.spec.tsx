@@ -261,6 +261,11 @@ describe(`how and when a pipeline was triggered`, () => {
     expect(how().textContent).to.equal(`Triggered by push by Ana - Stopped`);
   });
 
+  test(`shows nothing when the map data has no triggerer`, async () => {
+    await show(undefined);
+    expect(root.querySelector(`.wf-map-triggered`)).to.equal(null);
+  });
+
   test(`shows no time before the pipeline has one`, async () => {
     await show(triggerer(), null);
     expect(time()).to.equal(null);
