@@ -108,7 +108,7 @@ describe(`layoutMap`, () => {
 
   test(`places the after block in its band, above the other blocks`, async () => {
     const L = await layout(workflowWith([`build`], false, true), true, SIZE.h + 20);
-    expect(L.blocks.get(`after`)).to.deep.equal({ x: 28, y: 110, ...SIZE });
-    expect(L.blocks.get(`build`).y).to.equal(110 + SIZE.h + 20);
+    expect(L.blocks.get(`after`)).to.deep.equal({ x: 28, y: 88, ...SIZE });
+    expect(L.blocks.get(`build`).y).to.equal(88 + SIZE.h + 20);
   });
 });

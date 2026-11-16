@@ -1,7 +1,7 @@
 import { ComponentChildren } from "preact";
 import type {} from "../custom_types/time_ago";
 import { useState } from "preact/hooks";
-import { Block, Job, Pipeline, STATUSES, STATUS_LABEL, Status, blockStatus, blockSummary, countJobs, formatDuration } from "./model";
+import { Block, Job, Pipeline, STATUSES, STATUS_LABEL, Status, blockStatus, blockSummary, countJobs, formatDuration, shortName } from "./model";
 import { focus, hits, now, query } from "./store";
 
 export const StatusIcon = ({ status, size = 16 }: { status: Status, size?: number, }) => {
@@ -216,28 +216,36 @@ export const PipelineTitle = ({ p }: { p: Pipeline, }) => (
 
 export const TimeAgo = ({ at }: { at: number, }) => {
   const datetime = new Date(at * 1000).toISOString();
-  return <time-ago key={datetime} datetime={datetime}/>;
+  return <time-ago key={datetime} datetime={datetime} always-relative/>;
+};
+
+const TRIGGER_VERB: Record<string, string> = {
+  INITIAL_WORKFLOW: `Pushed`,
+  WORKFLOW_RERUN: `Rerun`,
+  API: `API call`,
+  SCHEDULED_RUN: `Scheduled run`,
+  SCHEDULED_MANUAL_RUN: `Manual run`,
+  PIPELINE_PARTIAL_RERUN: `Partial rerun`,
+  MANUAL_PROMOTION: `Promoted`,
+  AUTO_PROMOTION: `Auto-promoted`,
 };
 
 export const Triggered = ({ p }: { p: Pipeline, }) => {
   const t = p.triggerer;
   if (!t) return null;
-  const by = t.owner && `by ${t.owner}`;
-  const stop = t.stopped && (t.stopped_by ? `- Stopped by ${t.stopped_by}` : `- Stopped`);
+  const verb = TRIGGER_VERB[p.trigger] ?? t.text;
+  const full = [
+    t.text,
+    t.link?.label,
+    t.owner && `by ${t.owner}`,
+    t.stopped && (t.stopped_by ? `- Stopped by ${t.stopped_by}` : `- Stopped`),
+  ];
   return (
     <span className="wf-map-triggered">
-      <span className="wf-map-triggered-how" title={[t.text, t.link?.label, by, stop].filter(Boolean).join(` `)}>
-        {t.text}
-        {t.link && (
-          <>
-            {` `}
-            <a href={t.link.url} onClick={(e) => e.stopPropagation()}>
-              {t.link.label}
-            </a>
-          </>
-        )}
-        {by && ` ${by}`}
-        {stop && ` ${stop}`}
+      <span className="wf-map-triggered-how" title={full.filter(Boolean).join(` `)}>
+        {t.link ? <a href={t.link.url} onClick={(e) => e.stopPropagation()}>{verb}</a> : verb}
+        {t.owner && ` by ${shortName(t.owner)}`}
+        {t.stopped && (t.stopped_by ? ` · Stopped by ${shortName(t.stopped_by)}` : ` · Stopped`)}
       </span>
       {p.createdAt && (
         <span className="wf-map-triggered-when">

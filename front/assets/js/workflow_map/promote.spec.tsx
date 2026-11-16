@@ -225,7 +225,7 @@ describe(`promotions menu reasons`, () => {
 
 describe(`promotions menu times`, () => {
   let root: HTMLElement;
-  const event = (triggered_at: number, over: Partial<ApiPromotionEvent> = {}): ApiPromotionEvent => ({ pipeline_id: `p${triggered_at}`, processed: true, result: `PASSED`, auto: false, triggered_at, author: `Ana`, ...over });
+  const event = (triggered_at: number, over: Partial<ApiPromotionEvent> = {}): ApiPromotionEvent => ({ pipeline_id: `p${triggered_at}`, processed: true, result: `PASSED`, auto: false, triggered_at, author: `Ana Kowalska`, ...over });
   const promotion = (events: ApiPromotionEvent[], over: Partial<Promotion> = {}) => ({ name: `Production`, events, can_promote: true, deployment: null, parameters: [], starting: false, ...over }) as unknown as Promotion;
   const show = (...promotions: Promotion[]) => act(() => render(<Promotions p={{ id: `ci`, name: `Build`, promotions } as unknown as Pipeline}/>, root));
   const notes = () => [...root.querySelectorAll(`.wf-map-promotion-note`)].map((n) => n.textContent);
@@ -246,15 +246,22 @@ describe(`promotions menu times`, () => {
     root.remove();
   });
 
-  test(`shows when the latest promotion was triggered`, async () => {
-    await show(promotion([event(1700000000), event(1700003600, { author: `Bo` })]));
-    expect(notes()).to.deep.equal([`2× · by Bo`, time().textContent]);
+  test(`shows who promoted last and how long ago, on one line, with the full name on hover`, async () => {
+    await show(promotion([event(1700000000), event(1700003600, { author: `Bo Svensson` })]));
+    expect(notes()).to.deep.equal([`Bo S. · ${time().textContent}`]);
+    expect(time().textContent).to.match(/ago$/);
     expect(time().datetime).to.equal(`2023-11-14T23:13:20.000Z`);
+    expect(root.querySelector(`.wf-map-promotion-note`).getAttribute(`title`)).to.equal(`Bo Svensson`);
+  });
+
+  test(`says auto-promoted for an automatic promotion`, async () => {
+    await show(promotion([event(1700000000, { auto: true, author: null })]));
+    expect(notes()).to.deep.equal([`Auto-promoted · ${time().textContent}`]);
   });
 
   test(`shows the time of a failed promotion too`, async () => {
     await show(promotion([event(1700000000, { result: `FAILED`, pipeline_id: null })]));
-    expect(notes()).to.deep.equal([`Failed to promote`, time().textContent]);
+    expect(notes()).to.deep.equal([`Failed to promote · ${time().textContent}`]);
     expect(time().datetime).to.equal(`2023-11-14T22:13:20.000Z`);
   });
 
@@ -268,7 +275,7 @@ describe(`promotions menu times`, () => {
 
   test(`still shows the latest promotion to someone who may not promote, next to the reason`, async () => {
     await show(promotion([event(1700000000)], { can_promote: false }));
-    expect(notes()).to.deep.equal([`by Ana`, time().textContent, `You don't have permission to promote`]);
+    expect(notes()).to.deep.equal([`Ana K. · ${time().textContent}`, `You don't have permission to promote`]);
     expect(time().datetime).to.equal(`2023-11-14T22:13:20.000Z`);
   });
 

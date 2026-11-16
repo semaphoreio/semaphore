@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe, test } from "mocha";
 
-import { AFTER_PIPELINE, ApiPipeline, ApiPipelineDetail, buildWorkflow, formatDuration, rollup } from "./model";
+import { AFTER_PIPELINE, ApiPipeline, ApiPipelineDetail, buildWorkflow, formatDuration, rollup, shortName } from "./model";
 
 const apiPipeline = (id: string, overrides: Partial<ApiPipeline> = {}): ApiPipeline => ({
   id,
@@ -147,6 +147,23 @@ describe(`rollup`, () => {
     expect(rollup([`passed`, `skipped`])).to.eq(`passed`);
     expect(rollup([`passed`, `pending`])).to.eq(`running`);
     expect(rollup([`failed`, `stopped`])).to.eq(`failed`);
+  });
+});
+
+describe(`shortName`, () => {
+  test(`keeps the first name and the last name's initial`, () => {
+    expect(shortName(`Michał Kowalski`)).to.eq(`Michał K.`);
+    expect(shortName(`Ludwig van Beethoven`)).to.eq(`Ludwig B.`);
+    expect(shortName(`Jean-Luc Picard`)).to.eq(`Jean-Luc P.`);
+    expect(shortName(`  Ana   Łukasiewicz `)).to.eq(`Ana Ł.`);
+    expect(shortName(`Ana \u0141ukasiewicz`)).to.eq(`Ana Ł.`);
+    expect(shortName(`Ana L\u0301opez`)).to.eq(`Ana Ĺ.`);
+  });
+
+  test(`leaves alone what is not a capitalised first and last name`, () => {
+    for (const name of [`octocat`, `dependabot[bot]`, `[Deleted User]`, `branch deletion`, `admin`, `John Doe (Acme)`, `john doe`, `山田 太郎`]) {
+      expect(shortName(name)).to.eq(name);
+    }
   });
 });
 

@@ -597,7 +597,7 @@
   flex-direction: column;
   justify-content: center;
   gap: 4px;
-  height: 88px;
+  height: 66px;
   padding: 0 12px;
   border-bottom: 1px solid #D3DADE;
   border-radius: 10.5px 10.5px 0 0;
@@ -628,7 +628,7 @@
 }
 
 .wf-map-pipeline-meta {
-  flex: 1;
+  flex: 0 1 auto;
   font-size: 13px;
   color: #677278;
 }
@@ -657,20 +657,23 @@
   text-decoration: underline;
 }
 
+.wf-map-triggered::before {
+  content: "·";
+  flex: none;
+  margin-right: 8px;
+}
+
 .wf-map-triggered-when {
   flex: none;
 }
 
-.wf-map-pipeline-head .wf-map-triggered-when::before {
+.wf-map-triggered-when::before {
   content: " · ";
   white-space: pre;
 }
 
-.wf-map-card .wf-map-triggered {
+.wf-map-card-size {
   flex: none;
-  flex-direction: column;
-  gap: 4px;
-  line-height: 16px;
 }
 
 .wf-map-after {

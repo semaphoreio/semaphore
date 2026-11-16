@@ -30,7 +30,7 @@ export function promotionLabel(p: Pipeline) {
   return [name, by].filter(Boolean).join(` · `) || null;
 }
 
-const PIPE_PAD = { top: 110, side: 28, bottom: 28 };
+const PIPE_PAD = { top: 88, side: 28, bottom: 28 };
 export const MIN_OPEN_W = 460;
 const LABEL = { width: 160, height: 20 };
 const LAYER_GAP = 64;

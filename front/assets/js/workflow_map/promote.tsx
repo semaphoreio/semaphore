@@ -1,6 +1,6 @@
 import { signal } from "@preact/signals";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { Pipeline, Promotion } from "./model";
+import { Pipeline, Promotion, shortName } from "./model";
 import { popover, promote, togglePopover } from "./store";
 import { Name, TimeAgo } from "./ui";
 
@@ -59,7 +59,7 @@ export const Promotions = ({ p }: { p: Pipeline, }) => {
             ? `Not promoted yet`
             : latest.processed && latest.result === `FAILED`
               ? `Failed to promote`
-              : `${promotion.events.length > 1 ? `${promotion.events.length}× · ` : ``}${latest.auto ? `auto-promoted` : `by ${latest.author ?? `someone`}`}`;
+              : latest.auto ? `Auto-promoted` : shortName(latest.author ?? `Someone`);
         const why = !promotion.can_promote && (promotion.deployment && !promotion.deployment.allowed
           ? promotion.deployment.message ?? `Blocked by the ${promotion.deployment.name} deployment target`
           : `You don't have permission to promote`);
@@ -70,10 +70,15 @@ export const Promotions = ({ p }: { p: Pipeline, }) => {
             </span>
             <span className="wf-map-promotion-text">
               <Name className="wf-map-promotion-name">{promotion.name}</Name>
-              {(latest || !why) && <span className={`wf-map-promotion-note ${latest?.result === `FAILED` ? `failed` : ``} ${latest ? `` : `fresh`}`}>{note}</span>}
-              {latest && !promotion.starting && (
-                <span className="wf-map-promotion-note">
-                  <TimeAgo at={latest.triggered_at}/>
+              {(latest || !why) && (
+                <span className={`wf-map-promotion-note ${latest?.result === `FAILED` ? `failed` : ``} ${latest ? `` : `fresh`}`} title={latest?.author ?? undefined}>
+                  {note}
+                  {latest && !promotion.starting && (
+                    <>
+                      {` · `}
+                      <TimeAgo at={latest.triggered_at}/>
+                    </>
+                  )}
                 </span>
               )}
               {why && <span className="wf-map-promotion-note blocked">{why}</span>}

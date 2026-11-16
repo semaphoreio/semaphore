@@ -208,8 +208,8 @@ describe(`names the map may shorten`, () => {
 
 describe(`how and when a pipeline was triggered`, () => {
   let root: HTMLElement;
-  const triggerer = (over: Partial<ApiTriggerer> = {}): ApiTriggerer => ({ text: `Manual promotion`, link: null, owner: `Ana`, stopped: false, stopped_by: null, ...over });
-  const show = (t: ApiTriggerer, createdAt: number | null = 1700000000) => act(() => render(<Triggered p={{ triggerer: t, createdAt } as Pipeline}/>, root));
+  const triggerer = (over: Partial<ApiTriggerer> = {}): ApiTriggerer => ({ text: `Manual promotion`, link: null, owner: `Ana Kowalska`, stopped: false, stopped_by: null, ...over });
+  const show = (t: ApiTriggerer, createdAt: number | null = 1700000000, trigger = `MANUAL_PROMOTION`) => act(() => render(<Triggered p={{ triggerer: t, createdAt, trigger } as Pipeline}/>, root));
   const how = () => root.querySelector(`.wf-map-triggered-how`);
   const time = () => root.querySelector<HTMLElement & { datetime: string, }>(`time-ago`);
 
@@ -228,26 +228,39 @@ describe(`how and when a pipeline was triggered`, () => {
     root.remove();
   });
 
-  test(`says how and by whom, with the full text on hover, and when as an exact time-ago`, async () => {
+  test(`says how and by whom in short, with the old page's full text on hover, and when as a relative time`, async () => {
     await show(triggerer());
-    expect(how().textContent).to.equal(`Manual promotion by Ana`);
-    expect(how().getAttribute(`title`)).to.equal(`Manual promotion by Ana`);
-    expect(root.querySelector(`.wf-map-triggered-when`).textContent).to.equal(time().textContent).and.to.contain(`2023`);
+    expect(how().textContent).to.equal(`Promoted by Ana K.`);
+    expect(how().getAttribute(`title`)).to.equal(`Manual promotion by Ana Kowalska`);
+    expect(root.querySelector(`.wf-map-triggered-when`).textContent).to.equal(time().textContent).and.to.match(/ago$/);
     expect(time().datetime).to.equal(`2023-11-14T22:13:20.000Z`);
     expect(time().title).to.contain(`2023`);
   });
 
-  test(`says nothing about who when the pipeline has no owner`, async () => {
-    await show(triggerer({ text: `Auto promoted`, owner: null }));
-    expect(how().textContent).to.equal(`Auto promoted`);
+  test(`has a short form for every trigger type, and falls back to the server's text`, async () => {
+    const shown: string[] = [];
+    for (const trigger of [`INITIAL_WORKFLOW`, `WORKFLOW_RERUN`, `API`, `SCHEDULED_RUN`, `SCHEDULED_MANUAL_RUN`, `PIPELINE_PARTIAL_RERUN`, `MANUAL_PROMOTION`, `AUTO_PROMOTION`, `SOMETHING_NEW`]) {
+      await show(triggerer({ text: `Server text`, owner: null }), 1700000000, trigger);
+      shown.push(how().textContent);
+    }
+    expect(shown).to.deep.equal([`Pushed`, `Rerun`, `API call`, `Scheduled run`, `Manual run`, `Partial rerun`, `Promoted`, `Auto-promoted`, `Server text`]);
   });
 
-  test(`links what it was a rerun of, and the link does not open the pipeline`, async () => {
+  test(`says nothing about who when the pipeline has no owner, and keeps a name that is not a person's`, async () => {
+    await show(triggerer({ text: `Auto promoted`, owner: null }), 1700000000, `AUTO_PROMOTION`);
+    expect(how().textContent).to.equal(`Auto-promoted`);
+    await show(triggerer({ text: `Triggered by push`, owner: `octocat` }), 1700000000, `INITIAL_WORKFLOW`);
+    expect(how().textContent).to.equal(`Pushed by octocat`);
+  });
+
+  test(`links what it was a rerun of from its verb, and the link does not open the pipeline`, async () => {
     let opened = 0;
     root.addEventListener(`click`, () => opened++);
-    await show(triggerer({ text: `Triggered by rerun of a`, link: { label: `Workflow`, url: `/workflows/w1` } }));
-    expect(how().textContent).to.equal(`Triggered by rerun of a Workflow by Ana`);
+    await show(triggerer({ text: `Triggered by rerun of a`, link: { label: `Workflow`, url: `/workflows/w1` } }), 1700000000, `WORKFLOW_RERUN`);
+    expect(how().textContent).to.equal(`Rerun by Ana K.`);
+    expect(how().getAttribute(`title`)).to.equal(`Triggered by rerun of a Workflow by Ana Kowalska`);
     const link = how().querySelector(`a`);
+    expect(link.textContent).to.equal(`Rerun`);
     expect(link.getAttribute(`href`)).to.equal(`/workflows/w1`);
     link.addEventListener(`click`, (e) => e.preventDefault());
     link.click();
@@ -255,10 +268,13 @@ describe(`how and when a pipeline was triggered`, () => {
   });
 
   test(`says who stopped it, or only that it was stopped`, async () => {
-    await show(triggerer({ text: `Triggered by push`, stopped: true, stopped_by: `Bo` }));
-    expect(how().textContent).to.equal(`Triggered by push by Ana - Stopped by Bo`);
-    await show(triggerer({ text: `Triggered by push`, stopped: true }));
-    expect(how().textContent).to.equal(`Triggered by push by Ana - Stopped`);
+    await show(triggerer({ text: `Triggered by push`, stopped: true, stopped_by: `Bo Svensson` }), 1700000000, `INITIAL_WORKFLOW`);
+    expect(how().textContent).to.equal(`Pushed by Ana K. · Stopped by Bo S.`);
+    expect(how().getAttribute(`title`)).to.equal(`Triggered by push by Ana Kowalska - Stopped by Bo Svensson`);
+    await show(triggerer({ text: `Triggered by push`, stopped: true, stopped_by: `branch deletion` }), 1700000000, `INITIAL_WORKFLOW`);
+    expect(how().textContent).to.equal(`Pushed by Ana K. · Stopped by branch deletion`);
+    await show(triggerer({ text: `Triggered by push`, stopped: true }), 1700000000, `INITIAL_WORKFLOW`);
+    expect(how().textContent).to.equal(`Pushed by Ana K. · Stopped`);
   });
 
   test(`shows nothing when the map data has no triggerer`, async () => {

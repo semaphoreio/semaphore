@@ -318,6 +318,14 @@ export function formatDuration(total: number): string {
   return `${two(minutes)}:${two(rest)}`;
 }
 
+export function shortName(name: string): string {
+  const words = name.trim().split(/\s+/);
+  const first = words[0];
+  const last = Array.from(words[words.length - 1].normalize());
+  if (words.length < 2 || !/^\p{Lu}/u.test(first) || !/^\p{Lu}/u.test(last[0])) return name;
+  return `${first} ${last[0]}.`;
+}
+
 export const blockSummary = (b: Block) => {
   const c = countJobs(b.jobs);
   return [

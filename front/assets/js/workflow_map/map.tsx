@@ -9,7 +9,7 @@ import { Chips, Search, Stepper } from "./toolbar";
 import { BlockCard, BlockSummary, Chevron, Counts, Duration, Name, PipelineTitle, StatusBar, StatusIcon, Triggered, plainClick } from "./ui";
 import { BLOCK_GAP, JOB_ROW_H, blockSize, jobTop } from "./lines";
 
-const CARD = { w: 300, h: 114 };
+const CARD = { w: 300, h: 72 };
 
 const CLICKABLE = { pointerEvents: `all` as const };
 
@@ -160,16 +160,16 @@ const CardNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node
             </a>
           </span>
         ) : (
-          <span>
+          <span className="wf-map-card-size">
             {p.blocks.length} blocks · {jobs.length} jobs
           </span>
         )}
+        <Triggered p={p}/>
         <span className="wf-map-card-end">
           {h.active ? <span className={`wf-map-match ${n ? `` : `zero`}`}>{n} matching</span> : <Counts jobs={jobs}/>}
           <Duration start={p.runningAt} end={p.doneAt} running={p.status === `running`}/>
         </span>
       </span>
-      <Triggered p={p}/>
       <Handle type="source" id="out" position={Position.Right} isConnectable={false}/>
     </div>
   );
@@ -250,6 +250,7 @@ const PipelineNode = ({ data, width, positionAbsoluteX, positionAbsoluteY }: Nod
         </div>
         <div className="wf-map-pipeline-row wf-map-pipeline-sub">
           <Name className="wf-map-pipeline-meta">{p.yamlFile}</Name>
+          <Triggered p={p}/>
           {p.initJob && (
             <a className={`wf-map-init-log ${p.initJob.status}`} href={p.initJob.url} onClick={(e) => e.stopPropagation()}>
               Init log
@@ -257,9 +258,6 @@ const PipelineNode = ({ data, width, positionAbsoluteX, positionAbsoluteY }: Nod
           )}
           <Counts jobs={pipelineJobs(p)}/>
           <PipelineActions p={p}/>
-        </div>
-        <div className="wf-map-pipeline-row wf-map-pipeline-sub">
-          <Triggered p={p}/>
         </div>
       </div>
       {after && <AfterBand block={after} at={at}/>}
