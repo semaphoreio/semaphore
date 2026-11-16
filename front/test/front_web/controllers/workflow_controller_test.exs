@@ -672,6 +672,153 @@ defmodule FrontWeb.WorkflowControllerTest do
     end
   end
 
+  describe "show with the new_workflow_ui param" do
+    @headers ["x-semaphore-org-id", "x-semaphore-user-id"]
+
+    test "renders the map when the feature is disabled and remembers it for the visit", %{
+      conn: conn,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      conn =
+        get(conn, "/workflows/#{workflow.id}?pipeline_id=#{pipeline.id}&new_workflow_ui=true")
+
+      html = html_response(conn, 200)
+      assert get_session(conn, :new_workflow_ui) == true
+      assert html =~ ~s(id="workflow-map")
+      assert html =~ "wf-compact-head"
+      refute html =~ ~s(id="diagram")
+      refute html =~ ~s(data-poll-href="/workflows/#{workflow.id}/status")
+
+      conn = recycle(conn, @headers)
+
+      assert conn |> get("/workflows/#{workflow.id}") |> html_response(200) =~
+               ~s(id="workflow-map")
+
+      conn = recycle(conn, @headers)
+
+      assert %{"pipelines" => [_]} =
+               conn |> get("/workflows/#{workflow.id}/map") |> json_response(200)
+
+      conn = recycle(conn, @headers)
+
+      assert %{"pipelines" => [_]} =
+               conn
+               |> get("/workflows/#{workflow.id}/map/pipelines?ids=#{pipeline.id}")
+               |> json_response(200)
+    end
+
+    test "false turns the map off again", %{conn: conn, workflow: workflow} do
+      conn = get(conn, "/workflows/#{workflow.id}?new_workflow_ui=true")
+      conn = conn |> recycle(@headers) |> get("/workflows/#{workflow.id}?new_workflow_ui=false")
+
+      assert get_session(conn, :new_workflow_ui) == nil
+      assert html_response(conn, 200) =~ ~s(id="diagram")
+      refute html_response(conn, 200) =~ ~s(id="workflow-map")
+
+      conn = conn |> recycle(@headers) |> get("/workflows/#{workflow.id}/map")
+      assert conn.status == 404
+    end
+
+    test "false leaves the map on when the feature is enabled", %{
+      conn: conn,
+      organization: organization,
+      workflow: workflow
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+
+      html =
+        conn
+        |> get("/workflows/#{workflow.id}?new_workflow_ui=false")
+        |> html_response(200)
+
+      assert html =~ ~s(id="workflow-map")
+    end
+
+    test "ignores values other than true and false", %{conn: conn, workflow: workflow} do
+      conn = get(conn, "/workflows/#{workflow.id}?new_workflow_ui=yes")
+
+      assert get_session(conn, :new_workflow_ui) == nil
+      assert html_response(conn, 200) =~ ~s(id="diagram")
+    end
+
+    test "renders the map for guests of a public project", %{
+      conn: conn,
+      project: project,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      Support.Stubs.Project.switch_project_visibility(project, "public")
+      PermissionPatrol.remove_all_permissions()
+
+      conn = get(conn, "/workflows/#{workflow.id}?new_workflow_ui=true")
+
+      assert conn.assigns.authorization == :guest
+      assert html_response(conn, 200) =~ ~s(id="workflow-map")
+      refute html_response(conn, 200) =~ ~s(id="diagram")
+
+      conn = recycle(conn, @headers)
+
+      assert %{"pipelines" => [%{"id" => id}]} =
+               conn
+               |> get("/workflows/#{workflow.id}/map/pipelines?ids=#{pipeline.id}")
+               |> json_response(200)
+
+      assert id == pipeline.id
+    end
+
+    test "renders the map for logged-out visitors of a public project", %{
+      conn: conn,
+      project: project,
+      workflow: workflow,
+      pipeline: pipeline
+    } do
+      Support.Stubs.Project.switch_project_visibility(project, "public")
+      PermissionPatrol.remove_all_permissions()
+      anonymous = ["x-semaphore-org-id", "x-semaphore-user-anonymous"]
+
+      conn =
+        conn
+        |> put_req_header("x-semaphore-user-anonymous", "true")
+        |> delete_req_header("x-semaphore-user-id")
+        |> get("/workflows/#{workflow.id}?new_workflow_ui=true")
+
+      assert conn.assigns.anonymous == true
+      assert html_response(conn, 200) =~ ~s(id="workflow-map")
+      refute html_response(conn, 200) =~ ~s(id="diagram")
+
+      conn = recycle(conn, anonymous)
+      json = conn |> get("/workflows/#{workflow.id}/map") |> json_response(200)
+      assert [%{"stop_url" => nil}] = json["pipelines"]
+
+      conn = recycle(conn, anonymous)
+
+      assert %{"pipelines" => [%{"id" => id}]} =
+               conn
+               |> get(
+                 "/workflows/#{workflow.id}/map/pipelines?ids=#{pipeline.id}&promotions=#{pipeline.id}"
+               )
+               |> json_response(200)
+
+      assert id == pipeline.id
+    end
+
+    test "doesn't open the map data to someone who can't see the workflow", %{
+      conn: conn,
+      organization: organization,
+      user: user,
+      workflow: workflow
+    } do
+      conn = get(conn, "/workflows/#{workflow.id}?new_workflow_ui=true")
+
+      PermissionPatrol.remove_all_permissions()
+      PermissionPatrol.allow_everything_except(organization.id, user.id, "project.view")
+
+      conn = conn |> recycle(@headers) |> get("/workflows/#{workflow.id}/map")
+      assert conn.status == 404
+    end
+  end
+
   describe "show" do
     test "when the user is authorized to view the workflow, it returns 200", %{
       conn: conn,
