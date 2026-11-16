@@ -1,9 +1,10 @@
 import { expect } from "chai";
-import { afterEach, beforeEach, describe, test } from "mocha";
+import { afterEach, before, beforeEach, describe, test } from "mocha";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 
-import { Pipeline, Promotion } from "./model";
+import { defineTimeAgoElement } from "../time_ago";
+import { ApiPromotionEvent, Pipeline, Promotion } from "./model";
 import { PromoteButton, PromoteDialog, Promotions, promoting } from "./promote";
 import { popover } from "./store";
 
@@ -219,5 +220,63 @@ describe(`promotions menu reasons`, () => {
       expect(note.classList.contains(`blocked`)).to.equal(false);
       expect(row(name).querySelector(`button`).disabled).to.equal(false);
     }
+  });
+});
+
+describe(`promotions menu times`, () => {
+  let root: HTMLElement;
+  const event = (triggered_at: number, over: Partial<ApiPromotionEvent> = {}): ApiPromotionEvent => ({ pipeline_id: `p${triggered_at}`, processed: true, result: `PASSED`, auto: false, triggered_at, author: `Ana`, ...over });
+  const promotion = (events: ApiPromotionEvent[], over: Partial<Promotion> = {}) => ({ name: `Production`, events, can_promote: true, deployment: null, parameters: [], starting: false, ...over }) as unknown as Promotion;
+  const show = (...promotions: Promotion[]) => act(() => render(<Promotions p={{ id: `ci`, name: `Build`, promotions } as unknown as Pipeline}/>, root));
+  const notes = () => [...root.querySelectorAll(`.wf-map-promotion-note`)].map((n) => n.textContent);
+  const time = () => root.querySelector<HTMLElement & { datetime: string, }>(`.wf-map-promotion-note time-ago`);
+
+  before(() => {
+    globalThis.customElements = document.defaultView.customElements;
+    defineTimeAgoElement();
+  });
+
+  beforeEach(() => {
+    root = document.createElement(`div`);
+    document.body.appendChild(root);
+  });
+
+  afterEach(() => {
+    render(null, root);
+    root.remove();
+  });
+
+  test(`shows when the latest promotion was triggered`, async () => {
+    await show(promotion([event(1700000000), event(1700003600, { author: `Bo` })]));
+    expect(notes()).to.deep.equal([`2× · by Bo`, `Tue 14th Nov 2023 at 23:13`]);
+    expect(time().datetime).to.equal(`2023-11-14T23:13:20.000Z`);
+  });
+
+  test(`shows the time of a failed promotion too`, async () => {
+    await show(promotion([event(1700000000, { result: `FAILED`, pipeline_id: null })]));
+    expect(notes()).to.deep.equal([`Failed to promote`, `Tue 14th Nov 2023 at 22:13`]);
+    expect(time().datetime).to.equal(`2023-11-14T22:13:20.000Z`);
+  });
+
+  test(`shows no time while a promotion is starting or before the first one`, async () => {
+    await show(promotion([event(1700000000), event(1700003600, { processed: false, result: `` })], { starting: true }));
+    expect(notes()).to.deep.equal([`Starting promotion…`]);
+    await show(promotion([]));
+    expect(notes()).to.deep.equal([`Not promoted yet`]);
+    expect(time()).to.equal(null);
+  });
+
+  test(`still shows the latest promotion to someone who may not promote, next to the reason`, async () => {
+    await show(promotion([event(1700000000)], { can_promote: false }));
+    expect(notes()).to.deep.equal([`by Ana`, `Tue 14th Nov 2023 at 22:13`, `You don't have permission to promote`]);
+    expect(time().datetime).to.equal(`2023-11-14T22:13:20.000Z`);
+  });
+
+  test(`moves to the new time when another promotion comes in`, async () => {
+    await show(promotion([event(1700000000)]));
+    const first = time();
+    await show(promotion([event(1700000000), event(1700007200)]));
+    expect(time()).to.not.equal(first);
+    expect(time().datetime).to.equal(`2023-11-15T00:13:20.000Z`);
   });
 });

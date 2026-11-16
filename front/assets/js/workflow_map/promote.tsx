@@ -2,7 +2,7 @@ import { signal } from "@preact/signals";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { Pipeline, Promotion } from "./model";
 import { popover, promote, togglePopover } from "./store";
-import { Name } from "./ui";
+import { Name, TimeAgo } from "./ui";
 
 export const promoting = signal<{ pipeline: Pipeline, promotion: Promotion, } | null>(null);
 
@@ -70,9 +70,13 @@ export const Promotions = ({ p }: { p: Pipeline, }) => {
             </span>
             <span className="wf-map-promotion-text">
               <Name className="wf-map-promotion-name">{promotion.name}</Name>
-              {why
-                ? <span className="wf-map-promotion-note blocked">{why}</span>
-                : <span className={`wf-map-promotion-note ${latest?.result === `FAILED` ? `failed` : ``} ${latest ? `` : `fresh`}`}>{note}</span>}
+              {(latest || !why) && <span className={`wf-map-promotion-note ${latest?.result === `FAILED` ? `failed` : ``} ${latest ? `` : `fresh`}`}>{note}</span>}
+              {latest && !promotion.starting && (
+                <span className="wf-map-promotion-note">
+                  <TimeAgo at={latest.triggered_at}/>
+                </span>
+              )}
+              {why && <span className="wf-map-promotion-note blocked">{why}</span>}
             </span>
             <button
               className="btn btn-secondary btn-small"
