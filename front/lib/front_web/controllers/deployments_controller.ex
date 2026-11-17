@@ -49,14 +49,22 @@ defmodule FrontWeb.DeploymentsController do
 
       maybe_target = Async.run(fetch_target(target_id, conn.assigns))
 
-      with {:ok, target} <- Async.await(maybe_target),
-           maybe_history <- Async.run(fetch_history(target_id, page_args)),
-           {:ok, history} <- Async.await(maybe_history) do
-        maybe_target_details = Async.run(fetch_target_details(target, history, conn.assigns))
-        {:ok, target_details} = Async.await(maybe_target_details)
+      case Async.await(maybe_target) do
+        {:ok, target} ->
+          maybe_history = Async.run(fetch_history(target_id, page_args))
 
-        render_page(conn, "show.html", target_details, %{page_args: page_args})
-      else
+          {conn, history} =
+            case Async.await(maybe_history) do
+              {:ok, history} -> {conn, history}
+              {:exit, {reason, _stacktrace}} -> history_failed(conn, target_id, reason)
+              nil -> history_failed(conn, target_id, :timeout)
+            end
+
+          maybe_target_details = Async.run(fetch_target_details(target, history, conn.assigns))
+          {:ok, target_details} = Async.await(maybe_target_details)
+
+          render_page(conn, "show.html", target_details, %{page_args: page_args})
+
         {:exit, {%GRPC.RPCError{status: @grpc_not_found}, _stacktrace}} ->
           Logger.warn("[DT] Target not found: target_id=#{target_id}")
           render_404(conn)
@@ -312,6 +320,14 @@ defmodule FrontWeb.DeploymentsController do
         {:error, error} -> raise error
       end
     end
+
+  defp history_failed(conn, target_id, reason) do
+    Watchman.increment(watchman_name(:show, :history_failure))
+    Logger.error("[DT] Failed to fetch history: target_id=#{target_id} reason=#{inspect(reason)}")
+
+    {put_flash(conn, :alert, "Failure: unable to load deployment history"),
+     Details.HistoryPage.construct([], 0, 0)}
+  end
 
   defp fetch_target_details(target, history, _assings),
     do: fn -> Details.load(target, history) end
