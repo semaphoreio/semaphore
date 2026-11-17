@@ -1,3 +1,4 @@
+{{- if .Values.hooks.rabbitmqIntake }}
 {{- $chartName := regexReplaceAll "_" .Chart.Name "-" }}
 
 apiVersion: apps/v1
@@ -130,4 +131,5 @@ spec:
             capabilities:
               drop:
                 - ALL
+{{- end }}
 {{- end }}

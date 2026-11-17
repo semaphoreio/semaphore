@@ -6,7 +6,7 @@ hooks:
   replicas: 1
   dbPoolSize: 2
   disableCollaboratorWebhookSync: false
-  # Requires the hooksIntake consumer below.
+  # Also deploys the hooksIntake consumer below.
   rabbitmqIntake: false
   resources:
     limits:
