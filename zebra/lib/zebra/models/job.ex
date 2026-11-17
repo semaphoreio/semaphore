@@ -622,19 +622,20 @@ defmodule Zebra.Models.Job do
       %{}
   end
 
-  def finish(job, result) do
+  def finish(job, result, extra_params \\ %{}) do
     if result == nil do
       {:error, :result_cant_be_nil}
     else
       if valid_transition?(job.aasm_state, state_finished()) do
         now = DateTime.utc_now() |> DateTime.truncate(:second)
 
-        params = %{
-          aasm_state: state_finished(),
-          finished_at: now,
-          result: result,
-          request: sanitized_request(job)
-        }
+        params =
+          Map.merge(extra_params, %{
+            aasm_state: state_finished(),
+            finished_at: now,
+            result: result,
+            request: sanitized_request(job)
+          })
 
         case update(job, params) do
           {:ok, job} ->
@@ -817,6 +818,23 @@ defmodule Zebra.Models.Job do
 
   def find(id) do
     case Zebra.LegacyRepo.get(__MODULE__, id) do
+      nil -> {:error, :not_found}
+      job -> {:ok, job}
+    end
+  end
+
+  @doc """
+  Like find/1, but locks the row until the surrounding transaction ends, so
+  concurrent finishes of the same job are serialized.
+  """
+  def find_for_update(id) do
+    import Ecto.Query, only: [where: 3, lock: 2]
+
+    __MODULE__
+    |> where([j], j.id == ^id)
+    |> lock("FOR UPDATE")
+    |> Zebra.LegacyRepo.one()
+    |> case do
       nil -> {:error, :not_found}
       job -> {:ok, job}
     end

@@ -136,6 +136,9 @@ defmodule Zebra.Workers.Agent.HostedAgent do
     end
   end
 
+  @doc "Whether an endpoint is configured for the secondary agent provider."
+  def secondary_endpoint_configured?, do: secondary_endpoint() != nil
+
   defp secondary_provider_enabled?(nil), do: false
 
   defp secondary_provider_enabled?(org_id) do
