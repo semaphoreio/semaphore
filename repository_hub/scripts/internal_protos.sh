@@ -11,6 +11,8 @@ projecthub
 organization
 health
 encryptor
+feature
+instance_config
 '
 
 for element in $list;do
