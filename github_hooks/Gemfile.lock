@@ -515,8 +515,8 @@ DEPENDENCIES
   pg (~> 1.1)
   pry-byebug (~> 3.10, >= 3.10.1)
   puma (~> 7.2.1)
-  rack (>= 3.0, < 4)
-  rails (>= 8.1.0, < 8.2)
+  rack (>= 3.2.8, < 4)
+  rails (>= 8.1.4.1, < 8.2)
   retryable
   rspec-benchmark
   rspec-its
