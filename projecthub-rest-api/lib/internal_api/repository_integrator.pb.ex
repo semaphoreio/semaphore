@@ -6,14 +6,16 @@ defmodule InternalApi.RepositoryIntegrator.GetTokenRequest do
           user_id: String.t(),
           repository_slug: String.t(),
           integration_type: integer,
-          project_id: String.t()
+          project_id: String.t(),
+          repository_remote_id: String.t()
         }
-  defstruct [:user_id, :repository_slug, :integration_type, :project_id]
+  defstruct [:user_id, :repository_slug, :integration_type, :project_id, :repository_remote_id]
 
   field(:user_id, 1, type: :string)
   field(:repository_slug, 2, type: :string)
   field(:integration_type, 3, type: InternalApi.RepositoryIntegrator.IntegrationType, enum: true)
   field(:project_id, 4, type: :string)
+  field(:repository_remote_id, 5, type: :string)
 end
 
 defmodule InternalApi.RepositoryIntegrator.GetTokenResponse do

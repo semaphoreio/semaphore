@@ -26,3 +26,5 @@ GHSA-hv23-4qp7-8c8r
 #   GHSA-w4f7-4cxr-rv3c — HTTP request/response splitting (shared cowboy/gun advisory)
 GHSA-r53j-fjj5-mv77
 GHSA-w4f7-4cxr-rv3c
+
+GHSA-q8gf-9rvj-gmgj

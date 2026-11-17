@@ -16,6 +16,7 @@ class App < Configurable # :nodoc:
   config.repository_hub_url      = SemaphoreConfig.internal_api_url_repository
   config.hooks_api_url           = SemaphoreConfig.internal_api_url_hooks
   config.user_api_url            = SemaphoreConfig.internal_api_url_user
+  config.feature_api_url         = SemaphoreConfig.internal_api_url_feature
   config.instance_config_url     = SemaphoreConfig.internal_api_url_instance_config
   config.encryptor_url           = SemaphoreConfig.encryptor_url
   config.license_checker_url     = SemaphoreConfig.license_checker_url || "license-checker:50051"
@@ -39,6 +40,17 @@ class App < Configurable # :nodoc:
   config.worker_base_delay     = (SemaphoreConfig.worker_base_delay || 900).to_i
   config.worker_jitter_max     = (SemaphoreConfig.worker_jitter_max || 300).to_i
   config.worker_max_delay      = (SemaphoreConfig.worker_max_delay || 7_200).to_i
+
+  # How often a PR with unknown mergeability is re-checked, and how many requests must
+  # be left in the GitHub rate-limit window to schedule a re-check (0 never blocks).
+  config.mergeable_unknown_max_retries        = (SemaphoreConfig.mergeable_unknown_max_retries.presence || 10).to_i
+  config.mergeable_unknown_rate_limit_reserve = (SemaphoreConfig.mergeable_unknown_rate_limit_reserve.presence || 0).to_i
+
+  # How often a PR whose merge commit does not contain the pushed head yet is re-checked.
+  config.stale_merge_commit_max_retries = (SemaphoreConfig.stale_merge_commit_max_retries.presence || 5).to_i
+
+  # Share GitHub results (merge commit per PR event, commit lookups) between hook workers through Redis.
+  config.github_shared_cache_enabled = (SemaphoreConfig.github_shared_cache_enabled.presence || "true") == "true"
 
   def self.ee?
     config.semaphore_edition == "ee"

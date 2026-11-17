@@ -5,17 +5,28 @@ class Workflow < ActiveRecord::Base
   STATE_PROCESSING = "processing"
   STATE_NO_PROJECT = "no_project"
   STATE_PR_APPROVAL = "pr_approval"
+  # A /sem-approve was accepted, but between approval and launch the fork
+  # pushed a new commit, so the live PR head no longer matches the reviewed
+  # SHA. We fail closed here rather than run unreviewed code (potentially
+  # with granted secrets/cache) — the approver must re-issue /sem-approve.
+  STATE_PR_APPROVAL_STALE = "pr_approval_stale"
+  # A /sem-approve claimed this blocked workflow and is processing it.
+  STATE_PR_APPROVAL_IN_PROGRESS = "pr_approval_in_progress"
   STATE_SKIP_CI = "skip_ci"
   STATE_DELETING_BRANCH = "deleting_branch"
   STATE_SKIP_PR = "skip_pr"
   STATE_SKIP_FORKED_PR = "skip_forked_pr"
   STATE_SKIP_DRAFT_PR = "skip_draft_pr"
+  # A hook received later for the same PR covers GitHub's current head.
+  STATE_SKIP_SUPERSEDED_PR = "skip_superseded_pr"
   STATE_SKIP_FILTERED_CONTRIBUTOR = "filtered_contributor"
   STATE_SKIP_TAG = "skip_tag"
   STATE_WHITELIST_TAG = "whitelist_tag"
   STATE_SKIP_BRANCH = "skip_branch"
   STATE_WHITELIST_BRANCH = "whitelist_branch"
   STATE_PR_NON_MERGEABLE = "pr_non_mergeable"
+  # GitHub kept serving a merge commit without the pushed head past the retry budget.
+  STATE_PR_STALE_MERGE_COMMIT = "pr_stale_merge_commit"
   STATE_PR_NOT_FOUND = "pr_not_found"
   STATE_LAUNCHING = "launching"
   STATE_LAUNCHING_FAILED = "launching_failed"
@@ -38,6 +49,7 @@ class Workflow < ActiveRecord::Base
   scope :recent, ->(limit) { order(:created_at => :desc).limit(limit) }
   scope :pr_number_in_git_ref, ->(number) { where(:git_ref => "refs/pull/#{number}/merge") }
   scope :initial_state, -> { where(:state => STATE_PROCESSING) }
+  scope :with_commit_sha_prefix, ->(sha) { where("commit_sha LIKE ?", "#{sanitize_sql_like(sha)}%") }
   scope :created_before, -> (datetime) { where(Workflow.arel_table[:created_at].lt(datetime)) }
   scope :created_after, -> (datetime) { where(Workflow.arel_table[:created_at].gt(datetime)) }
 

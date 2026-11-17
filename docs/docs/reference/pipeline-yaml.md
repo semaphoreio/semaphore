@@ -260,6 +260,12 @@ You can only either `hours` or `minutes`. Not both.
 
 This property is also available on [`blocks`](#blocks) and [`jobs`](#jobs), where a limit longer than the pipeline's is rejected when the pipeline is compiled. Jobs in an [`after_pipeline`](#after_pipeline) task instead inherit the pipeline limit unless they set their own.
 
+:::note
+
+When `execution_time_limit` is set on a block, the timer starts as soon as the block is scheduled, before a machine is even assigned. Time spent waiting for a machine counts toward the limit.
+
+:::
+
 ```yaml title="Example"
 version: v1.0
 name: Using execution_time_limit

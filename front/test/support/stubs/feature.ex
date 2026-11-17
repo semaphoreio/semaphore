@@ -124,6 +124,7 @@ defmodule Support.Stubs.Feature do
       {"bitbucket", state: :ENABLED, quantity: 1},
       {"gitlab", state: :ENABLED, quantity: 1},
       {"restrict_job_ssh_access", state: :HIDDEN, quantity: 0},
+      {"sem_approve_options", state: :HIDDEN, quantity: 0},
       {"pre_flight_checks", state: :HIDDEN, quantity: 0},
       {"permission_patrol", state: :HIDDEN, quantity: 0},
       {"project_level_roles", state: :HIDDEN, quantity: 0},
@@ -139,6 +140,7 @@ defmodule Support.Stubs.Feature do
       {"wf_editor_via_jobs", state: :HIDDEN, quantity: 0},
       {"ui_reports", state: :ENABLED, quantity: 1},
       {"ui_partial_ppl_rebuild", state: :ENABLED, quantity: 1},
+      {"ui_workflow_map", state: :HIDDEN, quantity: 0},
       {"service_accounts", state: :ENABLED, quantity: 1},
       {"rbac__project_roles", state: :ENABLED, quantity: 1}
     ]

@@ -73,4 +73,20 @@ export class ServiceAccountsAPI {
       this.config.urls.regenerateToken(id)
     );
   }
+
+  async takeOwnership(
+    id: string
+  ): Promise<toolbox.APIRequest.ApiResponse<ServiceAccount>> {
+    return toolbox.APIRequest.post<ServiceAccount>(
+      this.config.urls.takeOwnership(id)
+    );
+  }
+
+  async releaseOwnership(
+    id: string
+  ): Promise<toolbox.APIRequest.ApiResponse<ServiceAccount>> {
+    return toolbox.APIRequest.post<ServiceAccount>(
+      this.config.urls.releaseOwnership(id)
+    );
+  }
 }

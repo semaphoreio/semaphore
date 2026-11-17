@@ -58,6 +58,20 @@ if config_env() == :prod do
   end
 end
 
+# Scheduling of waiting pipeline blocks, see Ppl.PplBlocks.WaitingDrain.
+# How many pipelines can have their waiting blocks scheduled in parallel, 0
+# disables draining. Each drain task uses one Ppl.EctoRepo connection at a time.
+case Integer.parse(System.get_env("PPL_BLK_WAITING_DRAIN_MAX_TASKS") || "") do
+  {value, ""} when value >= 0 -> config :ppl, ppl_blk_waiting_drain_max_tasks: value
+  _ -> :ok
+end
+
+# Period in milliseconds of the periodic scan of all waiting blocks.
+case Integer.parse(System.get_env("PPL_BLK_WAITING_SP") || "") do
+  {value, ""} when value > 0 -> config :ppl, ppl_blk_waiting_sp: value
+  _ -> :ok
+end
+
 # Retention policy event consumer
 config :ppl, Ppl.Retention.Policy.Worker,
   enabled: System.get_env("RETENTION_CONSUMER_ENABLED", "false") == "true"

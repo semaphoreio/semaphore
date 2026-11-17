@@ -10,7 +10,9 @@ defmodule RepositoryHub.Server.Github.RegenerateDeployKeyActionTest do
 
   alias RepositoryHub.{
     Model,
+    GithubClient,
     GithubClientFactory,
+    RepositoryIntegratorClient,
     RepositoryModelFactory,
     DeployKeysModelFactory
   }
@@ -23,6 +25,23 @@ defmodule RepositoryHub.Server.Github.RegenerateDeployKeyActionTest do
   end
 
   describe "Github RegenerateDeployKeyAction" do
+    test "creates the key on the repository the row points at when the transaction starts", %{
+      github_app_adapter: adapter
+    } do
+      repository = RepositoryModelFactory.githubapp_repo()
+      request = InternalApiFactory.regenerate_deploy_key_request(repository_id: repository.id)
+
+      with_mock RepositoryIntegratorClient, [:passthrough],
+        get_token: fn _integration_type, _slug, _remote_id ->
+          {:ok, _} = Model.RepositoryQuery.update(repository, %{owner: "moved", name: "elsewhere"})
+          {:ok, "tok"}
+        end do
+        assert {:ok, %RegenerateDeployKeyResponse{}} = RegenerateDeployKeyAction.execute(adapter, request)
+      end
+
+      assert_called(GithubClient.create_deploy_key(%{repo_owner: "moved", repo_name: "elsewhere"}, token: "tok"))
+    end
+
     test "should create a deploy key if it doesnt exist", %{github_app_adapter: adapter} do
       {:ok, repository} =
         RepositoryModelFactory.create_repository(

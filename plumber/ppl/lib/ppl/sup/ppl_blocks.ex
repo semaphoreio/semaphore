@@ -8,6 +8,7 @@ defmodule Ppl.Sup.PplBlocks do
   alias Ppl.PplBlocks.Beholder, as: PplBlocksBeholder
   alias Ppl.PplBlocks.StateWatch, as: PplBlocksStateWatch
   alias Ppl.PplBlocks.STMHandler
+  alias Ppl.PplBlocks.WaitingDrain
 
   def start_link(arg) do
     Supervisor.start_link(__MODULE__, arg, name: __MODULE__)
@@ -17,6 +18,8 @@ defmodule Ppl.Sup.PplBlocks do
     Supervisor.init([
       PplBlocksBeholder,
       PplBlocksStateWatch,
+      {Task.Supervisor, name: WaitingDrain.task_supervisor()},
+      WaitingDrain,
       STMHandler.InitializingState,
       STMHandler.WaitingState,
       STMHandler.RunningState,

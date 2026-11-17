@@ -176,7 +176,7 @@ defmodule Front.Models.WorkflowTest do
         project_id: @project_id
       }
 
-      FunRegistry.set!(FS.RepoProxyService, :describe_many, sample_hook())
+      FunRegistry.set!(FS.RepoProxyService, :describe_many, sample_hooks())
 
       wf_with_hook_info = Workflow.preload_commit_data(workflow)
 
@@ -203,35 +203,48 @@ defmodule Front.Models.WorkflowTest do
     end
   end
 
-  defp sample_hook do
-    %InternalApi.RepoProxy.DescribeResponse{
-      hook: %InternalApi.RepoProxy.Hook{
-        branch_name: "ms/describing-preloading-commit-data",
-        commit_message: "wip",
-        commit_author: "radwo",
-        commit_range:
-          "e2f9050bddc171648cdb62ed187d74f03641c3f8...2d3e89c103a72ef950f1e5866c6df8917a747fdb",
-        git_ref: "refs/heads/ms/describing-preloading-commit-data",
-        git_ref_type: 0,
-        head_commit_sha: "2d3e89c103a72ef950f1e5866c6df8917a747fdb",
-        hook_id: @hook_id,
-        pr_mergeable: false,
-        pr_name: "",
-        pr_branch_name: "master",
-        pr_number: "",
-        pr_sha: "",
-        pr_slug: "",
-        repo_host_avatar_url: "https://avatars3.githubusercontent.com/u/0?v=4",
-        repo_host_email: "octocat@github.com",
-        repo_host_url: "https://github.com/octocat/front",
-        repo_host_username: "octocat",
-        repo_slug: "octocat/front",
-        repo_host_uid: "",
-        semaphore_email: "",
-        tag_name: "",
-        user_id: "test"
-      },
+  defp sample_hooks do
+    %InternalApi.RepoProxy.DescribeManyResponse{
+      hooks: [sample_hook_model()],
       status: %InternalApi.ResponseStatus{code: 0, message: ""}
     }
+  end
+
+  defp sample_hook do
+    %InternalApi.RepoProxy.DescribeResponse{
+      hook: sample_hook_model(),
+      status: %InternalApi.ResponseStatus{code: 0, message: ""}
+    }
+  end
+
+  defp sample_hook_model do
+    InternalApi.RepoProxy.Hook.new(
+      branch_name: "ms/describing-preloading-commit-data",
+      commit_message: "wip",
+      commit_author: "radwo",
+      commit_range:
+        "e2f9050bddc171648cdb62ed187d74f03641c3f8...2d3e89c103a72ef950f1e5866c6df8917a747fdb",
+      git_ref: "refs/heads/ms/describing-preloading-commit-data",
+      git_ref_type: 0,
+      head_commit_sha: "2d3e89c103a72ef950f1e5866c6df8917a747fdb",
+      hook_id: @hook_id,
+      pr_mergeable: false,
+      pr_name: "",
+      pr_branch_name: "master",
+      pr_number: "",
+      pr_sha: "",
+      pr_slug: "",
+      repo_host_avatar_url: "https://avatars3.githubusercontent.com/u/0?v=4",
+      repo_host_email: "octocat@github.com",
+      repo_host_url: "https://github.com/octocat/front",
+      repo_host_username: "octocat",
+      repo_slug: "octocat/front",
+      repo_host_uid: "",
+      semaphore_email: "",
+      tag_name: "",
+      user_id: "test",
+      approval_include_secrets: false,
+      approval_enable_cache: false
+    )
   end
 end

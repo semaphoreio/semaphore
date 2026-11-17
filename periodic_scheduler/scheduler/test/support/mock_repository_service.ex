@@ -23,6 +23,10 @@ defmodule Test.MockRepositoryService do
     raise GRPC.RPCError, status: GRPC.Status.failed_precondition(), message: "Failed precondition"
   end
 
+  defp respond("unavailable") do
+    raise GRPC.RPCError, status: GRPC.Status.unavailable(), message: "GitHub API temporarily unavailable"
+  end
+
   defp respond("timeout") do
     :timer.sleep(13_000)
 
