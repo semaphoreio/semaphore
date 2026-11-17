@@ -249,7 +249,8 @@ defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
                        15_000
       end
 
-      assert Agent.get(in_flight, & &1.max) > 1
+      # The application's own consumer may share the queue at a prefetch of 1.
+      assert Agent.get(in_flight, & &1.max) >= 5
     end
   end
 end
