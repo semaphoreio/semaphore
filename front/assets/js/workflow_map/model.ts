@@ -86,6 +86,8 @@ export interface ApiPromotion {
 export interface InitJob {
   url: string;
   status: Status;
+  started_at: number | null;
+  finished_at: number | null;
 }
 
 export interface ApiPipelineDetail {

@@ -514,15 +514,34 @@
   font-size: 13px;
 }
 
-.wf-map-init-log {
-  flex: none;
-  font-size: 13px;
-  color: #677278;
+.wf-map-init-tab {
+  position: absolute;
+  top: 66px;
+  left: 44px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 21px;
+  padding: 0 8px 0 4px;
+  border: 1px solid #D3DADE;
+  border-top: 0;
+  border-radius: 0 0 9px 9px;
+  background: #fff;
+  box-shadow: 0 2px 3px rgba(32, 43, 48, .08);
+  font-size: 12px;
+  color: #495358;
+  text-decoration: none;
   white-space: nowrap;
 }
 
-.wf-map-init-log.failed {
-  color: var(--wf-map-failed);
+.wf-map-init-tab:hover {
+  border-color: #96A0A6;
+  color: #202B30;
+}
+
+.wf-map-init-tab + .wf-map-after {
+  margin-top: 31px;
 }
 
 .wf-map-card {

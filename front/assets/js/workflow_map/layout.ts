@@ -35,6 +35,7 @@ export const MIN_OPEN_W = 460;
 const LABEL = { width: 160, height: 20 };
 const LAYER_GAP = 64;
 const ASPECT = 2.4;
+const INIT_TAB = 10;
 
 let elk: ELK | null = null;
 const innerCache = new Map<string, Promise<ElkNode>>();
@@ -123,7 +124,8 @@ export async function layoutMap(
   closed: { w: number, h: number, },
   band: (p: Pipeline) => number
 ): Promise<MapLayout> {
-  const inners = await Promise.all(wf.pipelines.map((p) => (isOpen(p) && p.blocks?.some((b) => !b.after) ? inner(p, blockSize, PIPE_PAD.top + band(p)) : null)));
+  const top = (p: Pipeline) => PIPE_PAD.top + (p.initJob ? INIT_TAB : 0);
+  const inners = await Promise.all(wf.pipelines.map((p) => (isOpen(p) && p.blocks?.some((b) => !b.after) ? inner(p, blockSize, top(p) + band(p)) : null)));
   const outer = await elk.layout({
     id: `workflow`,
     layoutOptions: {
@@ -167,7 +169,7 @@ export async function layoutMap(
     const box = layout.pipelines.get(p.id);
     box.open = true;
     const after = p.blocks.find((b) => b.after);
-    if (after) layout.blocks.set(after.id, { x: PIPE_PAD.side, y: PIPE_PAD.top, ...blockSize(after) });
+    if (after) layout.blocks.set(after.id, { x: PIPE_PAD.side, y: top(p), ...blockSize(after) });
     g.blocks.forEach((b, id) => layout.blocks.set(id, b));
     g.routes.forEach((pts, id) => layout.routes.set(id, pts.map((pt) => ({ x: pt.x + box.x, y: pt.y + box.y }))));
   });
