@@ -11,13 +11,14 @@ defmodule Guard.Store.McpOAuthClient do
   alias Guard.Repo.McpOAuthClient
 
   @doc """
-  Find an OAuth client by client_id.
+  Find an OAuth client by client_id: semaphore.computer's configured client, or
+  one registered through DCR.
   """
   @spec find_by_client_id(String.t()) :: {:ok, McpOAuthClient.t()} | {:error, :not_found}
   def find_by_client_id(client_id) when is_binary(client_id) do
     query = from(c in McpOAuthClient, where: c.client_id == ^client_id)
 
-    case Repo.one(query) do
+    case Guard.McpOAuth.Computers.client(client_id) || Repo.one(query) do
       nil -> {:error, :not_found}
       client -> {:ok, client}
     end
