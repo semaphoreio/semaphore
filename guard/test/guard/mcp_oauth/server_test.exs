@@ -379,7 +379,7 @@ defmodule Guard.McpOAuth.Server.Test do
       assert response.body =~ client.client_id
     end
 
-    test "valid params without authentication redirects to login" do
+    test "valid params without authentication redirects to login, and back" do
       client = create_test_client()
       query = authorize_query(client.client_id)
 
@@ -390,8 +390,38 @@ defmodule Guard.McpOAuth.Server.Test do
 
       assert response.status_code == 302
 
-      location = get_header(response, "location")
-      assert location =~ "/login"
+      location = response |> get_header("location") |> URI.parse()
+
+      assert "#{location.scheme}://#{location.host}#{location.path}" ==
+               "https://id.localhost/login"
+
+      back = location.query |> URI.decode_query() |> Map.fetch!("redirect_to") |> URI.parse()
+
+      assert "#{back.scheme}://#{back.host}#{back.path}" ==
+               "https://mcp.localhost/mcp/oauth/authorize"
+
+      assert URI.decode_query(back.query)["client_id"] == client.client_id
+    end
+
+    test "prompt=create without authentication redirects to signup, and back" do
+      client = create_test_client()
+      query = authorize_query(client.client_id) <> "&prompt=create"
+
+      {:ok, response} =
+        HTTPoison.get(mcp_oauth_url("/authorize#{query}"), default_headers(),
+          follow_redirect: false
+        )
+
+      assert response.status_code == 302
+
+      location = response |> get_header("location") |> URI.parse()
+
+      assert "#{location.scheme}://#{location.host}#{location.path}" ==
+               "https://id.localhost/signup"
+
+      back = location.query |> URI.decode_query() |> Map.fetch!("redirect_to") |> URI.parse()
+      assert back.path == "/mcp/oauth/authorize"
+      refute URI.decode_query(back.query)["prompt"]
     end
 
     test "an x-semaphore-user-id header alone, without a session, redirects to login", %{
@@ -697,6 +727,149 @@ defmodule Guard.McpOAuth.Server.Test do
       # identity and/or missing CSRF): never a 302 back to the client with a code.
       refute response.status_code == 302
       refute (get_header(response, "location") || "") =~ "code="
+    end
+  end
+
+  # ====================
+  # semaphore.computer's client
+  # ====================
+
+  @computers_client_id "semaphore-computer"
+  @computers_client_secret "computers-secret"
+  @computers_redirect_uri "https://semaphore.computer.test/auth/callback"
+  @computers_audience "https://api.semaphore.computer.test"
+
+  defp computers_authorize(user_id, redirect_uri \\ @computers_redirect_uri) do
+    query =
+      "?" <>
+        URI.encode_query(%{
+          "response_type" => "code",
+          "client_id" => @computers_client_id,
+          "redirect_uri" => redirect_uri,
+          "code_challenge" => PKCE.compute_challenge(@code_verifier),
+          "code_challenge_method" => "S256",
+          "state" => "computers-state"
+        })
+
+    {:ok, response} =
+      HTTPoison.get(mcp_oauth_url("/authorize#{query}"), session_headers(user_id),
+        follow_redirect: false
+      )
+
+    response
+  end
+
+  defp computers_token(code, params) do
+    body =
+      URI.encode_query(
+        Map.merge(
+          %{
+            "grant_type" => "authorization_code",
+            "code" => code,
+            "redirect_uri" => @computers_redirect_uri,
+            "client_id" => @computers_client_id,
+            "code_verifier" => @code_verifier
+          },
+          params
+        )
+      )
+
+    {:ok, response} = HTTPoison.post(mcp_oauth_url("/token"), body, form_headers())
+    response
+  end
+
+  describe "semaphore.computer's client" do
+    setup do
+      {_, pem} = {:rsa, 2048} |> JOSE.JWK.generate_key() |> JOSE.JWK.to_pem()
+
+      env = %{
+        "COMPUTERS_OAUTH_CLIENT_ID" => @computers_client_id,
+        "COMPUTERS_OAUTH_CLIENT_SECRET" => @computers_client_secret,
+        "COMPUTERS_OAUTH_REDIRECT_URIS" => @computers_redirect_uri,
+        "COMPUTERS_OAUTH_AUDIENCE" => @computers_audience,
+        "COMPUTERS_OAUTH_SIGNING_KEY" => String.replace(pem, "\n", "\\n")
+      }
+
+      System.put_env(env)
+      on_exit(fn -> env |> Map.keys() |> Enum.each(&System.delete_env/1) end)
+
+      :ok
+    end
+
+    test "signs people in without asking for consent", %{user_id: user_id} do
+      response = computers_authorize(user_id)
+
+      assert response.status_code == 302
+
+      location = get_header(response, "location")
+      assert String.starts_with?(location, @computers_redirect_uri <> "?")
+      assert extract_code(location)
+      assert location =~ "state=computers-state"
+    end
+
+    test "sends the browser nowhere it was not configured with", %{user_id: user_id} do
+      response = computers_authorize(user_id, "https://evil.example.com/callback")
+
+      assert response.status_code == 400
+      refute get_header(response, "location")
+    end
+
+    test "issues RS256 tokens for its API, which the key at /jwks checks", %{user_id: user_id} do
+      code = user_id |> computers_authorize() |> get_header("location") |> extract_code()
+
+      token_resp = computers_token(code, %{"client_secret" => @computers_client_secret})
+      assert token_resp.status_code == 200
+
+      result = Jason.decode!(token_resp.body)
+      assert result["scope"] == "computers"
+      assert result["expires_in"] == 3600
+
+      {:ok, jwks_resp} = HTTPoison.get(mcp_oauth_url("/jwks"), default_headers())
+      assert [key] = Jason.decode!(jwks_resp.body)["keys"]
+      assert key["kty"] == "RSA"
+      assert key["use"] == "sig"
+      refute Map.has_key?(key, "d")
+
+      assert {true, jwt, jws} =
+               JOSE.JWT.verify_strict(JOSE.JWK.from_map(key), ["RS256"], result["access_token"])
+
+      assert jws.fields["kid"] == key["kid"]
+      assert jwt.fields["iss"] == Guard.McpOAuth.JWT.issuer()
+      assert jwt.fields["aud"] == @computers_audience
+      assert jwt.fields["scope"] == "computers"
+      assert jwt.fields["semaphore_user_id"] == user_id
+      assert jwt.fields["exp"] > System.system_time(:second)
+    end
+
+    test "issues no token without the client secret, and keeps the code", %{user_id: user_id} do
+      code = user_id |> computers_authorize() |> get_header("location") |> extract_code()
+
+      for params <- [%{}, %{"client_secret" => "wrong"}] do
+        response = computers_token(code, params)
+
+        assert response.status_code == 400
+        assert Jason.decode!(response.body)["error"] == "invalid_client"
+      end
+
+      response = computers_token(code, %{"client_secret" => @computers_client_secret})
+      assert response.status_code == 200
+    end
+
+    test "is not there when its signing key is not an RSA private key", %{user_id: user_id} do
+      System.put_env("COMPUTERS_OAUTH_SIGNING_KEY", "not a key")
+
+      response = computers_authorize(user_id)
+      assert response.status_code == 400
+
+      {:ok, jwks_resp} = HTTPoison.get(mcp_oauth_url("/jwks"), default_headers())
+      assert Jason.decode!(jwks_resp.body)["keys"] == []
+    end
+
+    test "leaves MCP clients as they were: consent, and MCP tokens", %{user_id: user_id} do
+      claims = complete_oauth_flow(create_test_client(), user_id)
+
+      assert claims["scope"] == "mcp"
+      assert claims["aud"] == Guard.McpOAuth.JWT.audience()
     end
   end
 
