@@ -1,4 +1,6 @@
-import { Block, Job, Pipeline, STATUSES, STATUS_LABEL, Status, blockStatus, countJobs, formatDuration } from "./model";
+import { ComponentChildren } from "preact";
+import { useState } from "preact/hooks";
+import { Block, Job, Pipeline, STATUSES, STATUS_LABEL, Status, blockStatus, blockSummary, countJobs, formatDuration } from "./model";
 import { focus, hits, now, query } from "./store";
 
 export const StatusIcon = ({ status, size = 16 }: { status: Status, size?: number, }) => {
@@ -46,6 +48,66 @@ export const Highlight = ({ text }: { text: string, }) => {
   );
 };
 
+export const DOUBLE_CLICK_MS = 300;
+const pending = new WeakMap<Element, number>();
+let down = { x: 0, y: 0 };
+document.addEventListener(`pointerdown`, (e) => (down = { x: e.clientX, y: e.clientY }), true);
+
+export const plainClick = (e: MouseEvent, act: (el: Element) => void) => {
+  const el = e.currentTarget as Element;
+  window.clearTimeout(pending.get(el));
+  const s = window.getSelection();
+  const moved = e.detail > 0 && (Math.abs(e.clientX - down.x) > 3 || Math.abs(e.clientY - down.y) > 3);
+  if (e.detail > 1 || moved || (s && !s.isCollapsed && el.contains(s.anchorNode))) return;
+  if ((e.target as Element).closest(`.wf-map-name`)) pending.set(el, window.setTimeout(() => act(el), DOUBLE_CLICK_MS));
+  else act(el);
+};
+
+export const COPIED_MS = 1500;
+
+const CopyName = () => {
+  const [copied, setCopied] = useState(false);
+  return (
+    <span
+      role="button"
+      className={`wf-map-copy ${copied ? `copied` : ``}`}
+      aria-label={copied ? `Copied` : `Copy the name`}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        void navigator.clipboard.writeText(e.currentTarget.parentElement.textContent).then(() => {
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), COPIED_MS);
+        });
+      }}
+    >
+      <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+        {copied ? (
+          <path d="M13.8 3.7 6 11.5 2.2 7.7l1-1L6 9.4l6.8-6.8z"/>
+        ) : (
+          <path d="M5 1h8a1 1 0 0 1 1 1v9h-1.5V2.5H5zM3 4h7a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm.5 1.5v8h6v-8z"/>
+        )}
+      </svg>
+    </span>
+  );
+};
+
+export const Name = ({ className = ``, children }: { className?: string, children: ComponentChildren, }) => (
+  <span className={`wf-map-name nopan nodrag ${className}`}>
+    <span className="wf-map-name-text">
+      {children}
+      <CopyName/>
+    </span>
+  </span>
+);
+
+export const Chevron = ({ open }: { open: boolean, }) => (
+  <svg className={`wf-map-chevron ${open ? `open` : ``}`} viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+    <path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 export const Duration = ({ start, end, running }: { start: number | null, end: number | null, running: boolean, }) => {
   const seconds = start ? (end ?? (running ? now.value : start)) - start : null;
   return <span className="wf-map-time">{seconds === null ? `--:--` : formatDuration(seconds)}</span>;
@@ -59,14 +121,14 @@ export const JobRow = ({ job }: { job: Job, }) => {
   const body = (
     <>
       <StatusIcon status={job.status} size={14}/>
-      <span className="wf-map-job-name">
+      <Name className="wf-map-job-name">
         <Highlight text={job.name}/>
-      </span>
+      </Name>
       {job.reused ? <span className="wf-map-time">reused</span> : <Duration start={job.startedAt} end={job.finishedAt} running={job.status === `running`}/>}
     </>
   );
   return job.id ? (
-    <a className={cls} href={`/jobs/${job.id}`} key={flash ? `${job.key}:${f.seq}` : job.key}>
+    <a className={cls} href={`/jobs/${job.id}`} draggable={false} key={flash ? `${job.key}:${f.seq}` : job.key} onClick={(e) => e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || (e.preventDefault(), plainClick(e, () => window.location.assign(`/jobs/${job.id}`)))}>
       {body}
     </a>
   ) : (
@@ -88,6 +150,38 @@ export const StatusBar = ({ jobs }: { jobs: Job[], }) => {
   );
 };
 
+export const AFTER_INFO = `Runs after the pipeline completes`;
+
+const AfterInfo = () => (
+  <span
+    className="material-symbols-outlined wf-map-after-info"
+    role="img"
+    aria-label={AFTER_INFO}
+    data-tippy-content={AFTER_INFO}
+    onClick={(e) => e.stopPropagation()}
+  >
+    info
+  </span>
+);
+
+export const BlockSummary = ({ block, onClick }: { block: Block, onClick: () => void, }) => {
+  const f = focus.value;
+  return (
+    <button className={`wf-map-summary ${f && (f.id === block.id || f.id.startsWith(`${block.id}#`)) ? `focused` : ``}`} aria-expanded={false} onClick={(e) => plainClick(e, onClick)}>
+      <span className="wf-map-summary-name">
+        <Chevron open={false}/>
+        <StatusIcon status={blockStatus(block)}/>
+        <Name className="wf-map-block-name">
+          <Highlight text={block.name}/>
+        </Name>
+        {block.after && <AfterInfo/>}
+      </span>
+      <StatusBar jobs={block.jobs}/>
+      <span className="wf-map-summary-meta">{blockSummary(block)}</span>
+    </button>
+  );
+};
+
 export const BlockCard = ({ block, onHeaderClick }: { block: Block, onHeaderClick?: () => void, }) => {
   const h = hits.value;
   const f = focus.value;
@@ -95,11 +189,13 @@ export const BlockCard = ({ block, onHeaderClick }: { block: Block, onHeaderClic
   const st = blockStatus(block);
   return (
     <div className={`wf-map-block ${h.active && !h.blocks.has(block) ? `dim` : ``} ${focused ? `focused` : ``}`}>
-      <button className="wf-map-block-head" onClick={onHeaderClick} data-tippy-content="Collapse block">
+      <button className="wf-map-block-head" aria-expanded={true} onClick={(e) => plainClick(e, () => onHeaderClick?.())}>
+        <Chevron open/>
         <StatusIcon status={st}/>
-        <span className="wf-map-block-name">
+        <Name className="wf-map-block-name">
           <Highlight text={block.name}/>
-        </span>
+        </Name>
+        {block.after && <AfterInfo/>}
       </button>
       {block.jobs.map((j) => (
         <JobRow key={j.key} job={j}/>
@@ -110,7 +206,9 @@ export const BlockCard = ({ block, onHeaderClick }: { block: Block, onHeaderClic
 
 export const PipelineTitle = ({ p }: { p: Pipeline, }) => (
   <span className="wf-map-title">
-    <Highlight text={p.name}/>
+    <Name className="wf-map-title-name">
+      <Highlight text={p.name}/>
+    </Name>
     {p.attempt > 1 && <span className="wf-map-attempt">#{p.attempt}</span>}
   </span>
 );

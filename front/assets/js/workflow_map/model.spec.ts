@@ -93,6 +93,7 @@ describe(`buildWorkflow`, () => {
     expect(blocks.map((b) => b.name)).to.deep.eq([`Build`, `Unit`, `Lint`, AFTER_PIPELINE]);
     expect(blocks[1].deps.map((b) => b.name)).to.deep.eq([`Build`]);
     expect(blocks[3].deps.map((b) => b.name)).to.deep.eq([`Unit`, `Lint`]);
+    expect(blocks.map((b) => Boolean(b.after))).to.deep.eq([false, false, false, true]);
     expect(wf.jobs.get(`ci/Unit#1`).status).to.eq(`failed`);
     expect(wf.blocks.get(`ci/Lint`).pipeline).to.eq(wf.root);
   });

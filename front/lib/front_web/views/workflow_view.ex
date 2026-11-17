@@ -1,6 +1,11 @@
 defmodule FrontWeb.WorkflowView do
   use FrontWeb, :view
 
+  def workflow_map?(conn) do
+    Plug.Conn.get_session(conn, :new_workflow_ui) == true or
+      FeatureProvider.feature_enabled?(:ui_workflow_map, param: conn.assigns[:organization_id])
+  end
+
   def page_title(_conn, assigns) do
     "Push: #{assigns.hook.commit_message} - Semaphore"
   end

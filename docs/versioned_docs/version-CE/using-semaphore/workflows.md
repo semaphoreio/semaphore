@@ -229,7 +229,12 @@ Selecting **Run on** allows you to configure what triggers are enabled for the p
 
 :::note
 
-**Whitelisted only** only affects branches and tags created *after* enabling this setting. Branches and tags that existed before the setting is enabled are not affected and are always built.
+**Whitelisted only** only affects branches created *after* enabling this setting. Branches that existed before the setting is enabled are not affected and are always built.
+
+To apply the whitelist to existing branches, go to your organization's **Settings** page and
+click **Enforce Whitelist** under **Whitelist Enforcement**. This organization-wide setting makes
+existing branches follow each project's configured whitelist rules. You need permission to
+manage Organization Settings.
 
 :::
 

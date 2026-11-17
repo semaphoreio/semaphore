@@ -1,13 +1,14 @@
 import { signal } from "@preact/signals";
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { Pipeline, Promotion } from "./model";
 import { popover, promote, togglePopover } from "./store";
+import { Name } from "./ui";
 
 export const promoting = signal<{ pipeline: Pipeline, promotion: Promotion, } | null>(null);
 
 export const PromoteButton = ({ p, compact }: { p: Pipeline, compact?: boolean, }) => {
   if (!p.promotions?.length) return null;
-  const fresh = p.promotions.filter((promotion) => !promotion.events.length).length;
+  const n = p.promotions.length;
   return (
     <button
       className="btn btn-secondary btn-tiny wf-map-outline wf-map-outline-blue wf-map-promote"
@@ -15,53 +16,81 @@ export const PromoteButton = ({ p, compact }: { p: Pipeline, compact?: boolean, 
       aria-haspopup="menu"
       aria-expanded={popover.value?.kind === `promote` && popover.value.id === p.id}
       aria-label={compact ? `Promote ${p.name}` : undefined}
-      data-tippy-content={fresh ? `Promote: ${fresh} of ${p.promotions.length} promotions not run yet` : `Promote: all ${p.promotions.length} promotions have run`}
+      data-tippy-content={`Promote: ${n} ${n === 1 ? `promotion` : `promotions`}`}
       onClick={(e) => togglePopover(`promote`, p.id, e.currentTarget)}
     >
       {compact ? <span className="material-symbols-outlined" aria-hidden="true">rocket_launch</span> : `Promote ▾`}
-      {fresh > 0 && <span className="wf-map-promote-count">{fresh}</span>}
+      <span className="wf-map-promote-count">{n}</span>
     </button>
   );
 };
 
-export const Promotions = ({ p }: { p: Pipeline, }) => (
-  <div role="menu" aria-label={`Promotions of ${p.name}`}>
-    {p.promotions?.map((promotion) => {
-      const latest = promotion.events.reduce((a, e) => (!a || e.triggered_at > a.triggered_at ? e : a), null);
-      const note = promotion.starting
-        ? `Starting promotion…`
-        : !latest
-          ? `Not promoted yet`
-          : latest.processed && latest.result === `FAILED`
-            ? `Failed to promote`
-            : `${promotion.events.length > 1 ? `${promotion.events.length}× · ` : ``}${latest.auto ? `auto-promoted` : `by ${latest.author ?? `someone`}`}`;
-      const blocked = promotion.deployment && !promotion.deployment.allowed;
-      const why = blocked ? promotion.deployment.message ?? `Blocked by the ${promotion.deployment.name} deployment target` : `You don't have permission to promote`;
-      return (
-        <div key={promotion.name} className="wf-map-promotion" role="menuitem">
-          <span className="material-symbols-outlined wf-map-promotion-icon" aria-hidden="true">
-            {promotion.deployment ? (promotion.deployment.allowed ? `lock_open` : `lock`) : `rocket_launch`}
-          </span>
-          <span className="wf-map-promotion-text">
-            <span className="wf-map-promotion-name">{promotion.name}</span>
-            <span className={`wf-map-promotion-note ${latest?.result === `FAILED` ? `failed` : ``} ${latest ? `` : `fresh`}`}>{blocked ? promotion.deployment.name : note}</span>
-          </span>
-          <button
-            className="btn btn-secondary btn-small"
-            disabled={!promotion.can_promote || promotion.starting}
-            title={promotion.can_promote ? `Promote ${p.name} to ${promotion.name}` : why}
-            onClick={() => {
-              popover.value = null;
-              promoting.value = { pipeline: p, promotion };
-            }}
-          >
+export const Promotions = ({ p }: { p: Pipeline, }) => {
+  const [filter, setFilter] = useState(``);
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => input.current?.focus(), []);
+  const q = filter.trim().toLowerCase();
+  const shown = p.promotions?.filter((promotion) => promotion.name.toLowerCase().includes(q)) ?? [];
+  return (
+    <div role="menu" aria-label={`Promotions of ${p.name}`}>
+      <input
+        ref={input}
+        type="text"
+        className="form-control form-control-small wf-map-promotion-filter"
+        placeholder="Filter promotions"
+        aria-label="Filter promotions"
+        value={filter}
+        onInput={(e) => setFilter(e.currentTarget.value)}
+        onKeyDown={(e) => {
+          if (e.key === `Enter`) e.preventDefault();
+          if (e.key === `Escape` && filter) {
+            e.preventDefault();
+            e.stopPropagation();
+            setFilter(``);
+          }
+        }}
+      />
+      {!shown.length && <p className="wf-map-promotion-none">No promotion matches “{filter.trim()}”</p>}
+      {shown.map((promotion) => {
+        const latest = promotion.events.reduce((a, e) => (!a || e.triggered_at > a.triggered_at ? e : a), null);
+        const note = promotion.starting
+          ? `Starting promotion…`
+          : !latest
+            ? `Not promoted yet`
+            : latest.processed && latest.result === `FAILED`
+              ? `Failed to promote`
+              : `${promotion.events.length > 1 ? `${promotion.events.length}× · ` : ``}${latest.auto ? `auto-promoted` : `by ${latest.author ?? `someone`}`}`;
+        const why = !promotion.can_promote && (promotion.deployment && !promotion.deployment.allowed
+          ? promotion.deployment.message ?? `Blocked by the ${promotion.deployment.name} deployment target`
+          : `You don't have permission to promote`);
+        return (
+          <div key={promotion.name} className="wf-map-promotion" role="menuitem">
+            <span className="material-symbols-outlined wf-map-promotion-icon" aria-hidden="true">
+              {promotion.deployment ? (promotion.deployment.allowed ? `lock_open` : `lock`) : `rocket_launch`}
+            </span>
+            <span className="wf-map-promotion-text">
+              <Name className="wf-map-promotion-name">{promotion.name}</Name>
+              {why
+                ? <span className="wf-map-promotion-note blocked">{why}</span>
+                : <span className={`wf-map-promotion-note ${latest?.result === `FAILED` ? `failed` : ``} ${latest ? `` : `fresh`}`}>{note}</span>}
+            </span>
+            <button
+              className="btn btn-secondary btn-small"
+              disabled={!promotion.can_promote || promotion.starting}
+              title={why || `Promote ${p.name} to ${promotion.name}`}
+              onClick={() => {
+                popover.value = null;
+                promoting.value = { pipeline: p, promotion };
+              }}
+            >
             Promote
-          </button>
-        </div>
-      );
-    })}
-  </div>
-);
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 const PromoteForm = ({ pipeline, promotion }: { pipeline: Pipeline, promotion: Promotion, }) => {
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(promotion.parameters.map((p) => [p.name, p.default_value ?? ``])));
