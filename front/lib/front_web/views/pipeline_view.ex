@@ -587,7 +587,12 @@ defmodule FrontWeb.PipelineView do
   end
 
   defp map_init_job(%{present?: true, job_log_path: url} = task) when is_binary(url),
-    do: %{url: url, status: map_init_job_status(task)}
+    do: %{
+      url: url,
+      status: map_init_job_status(task),
+      started_at: Map.get(task, :started_at),
+      finished_at: Map.get(task, :done_at)
+    }
 
   defp map_init_job(_), do: nil
 
