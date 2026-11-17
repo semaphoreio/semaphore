@@ -269,6 +269,29 @@ defmodule GithubNotifier.NotifierTest do
     end
   end
 
+  describe "notify/3 when an upstream fetch outlives its budget" do
+    setup do
+      Application.put_env(:github_notifier, :fetch_timeout, 50)
+      on_exit(fn -> Application.delete_env(:github_notifier, :fetch_timeout) end)
+    end
+
+    test "raises a fetch error and stops the fetch" do
+      stub_services([])
+
+      GrpcMock.stub(PipelineMock, :describe, fn _req, _stream ->
+        Process.sleep(2_000)
+        Support.Factories.pipeline_describe_response()
+      end)
+
+      assert_raise GithubNotifier.Notifier.FetchError, ~r/pipeline fetch timed out/, fn ->
+        GithubNotifier.Notifier.notify("asd", "123", "1")
+      end
+
+      assert Task.Supervisor.children(GithubNotifier.TaskSupervisor) == []
+      refute_received {:build_status, _}
+    end
+  end
+
   defp collect_build_statuses(acc \\ []) do
     receive do
       {:build_status, request} -> collect_build_statuses([request | acc])

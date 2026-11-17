@@ -183,9 +183,17 @@ defmodule GithubNotifier.Services.BlockFinishedNotifierTest do
         Support.Factories.project_describe_response(:PIPELINE)
       )
 
+      test_pid = self()
+
+      GrpcMock.stub(RepoProxyMock, :describe, fn _req, _stream ->
+        send(test_pid, :repo_proxy_fetched)
+        Support.Factories.repo_proxy_describe_response()
+      end)
+
       assert GithubNotifier.Notifier.notify("asd", "123", "1") == nil
 
       refute_received {:build_status, _, _, _}
+      refute_received :repo_proxy_fetched
     end
 
     test "a pipeline event still reports every block and the pipeline" do

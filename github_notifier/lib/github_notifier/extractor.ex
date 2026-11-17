@@ -4,7 +4,7 @@ defmodule GithubNotifier.Extractor do
   def extract(nil, _block_id), do: nil
 
   def extract(pipeline, block_id, repo_proxy, project) do
-    case project |> GithubNotifier.Utils.Level.level(pipeline) |> scope_to_event(block_id) do
+    case levels(project, pipeline, block_id) do
       [] ->
         nil
 
@@ -55,6 +55,11 @@ defmodule GithubNotifier.Extractor do
       org_id: project.org_id
     }
     |> merge_with_pipeline_summary(repo_proxy, pipeline, pipeline_summary)
+  end
+
+  @doc "The status levels an event reports for this project and pipeline."
+  def levels(project, pipeline, block_id) do
+    project |> GithubNotifier.Utils.Level.level(pipeline) |> scope_to_event(block_id)
   end
 
   # A block event reports only its block: the pipeline may not have settled
