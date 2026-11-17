@@ -42,10 +42,10 @@ defmodule Front.Models.Switch do
 
         case Gofer.ResponseStatus.ResponseCode.key(response.response_status.code) do
           :OK -> {:ok, nil}
-          :BAD_PARAM -> {:error, response.response_status.message}
+          code -> {:error, code, response.response_status.message}
         end
       else
-        {:error, "Triggering promotion blocked by deployment target"}
+        {:error, :REFUSED, "Triggering promotion blocked by deployment target"}
       end
     end
 
@@ -64,7 +64,8 @@ defmodule Front.Models.Switch do
       :pipeline_id,
       :processed,
       :author,
-      :auto_triggered
+      :auto_triggered,
+      :error_response
     ]
 
     def construct(raw) do
@@ -74,7 +75,8 @@ defmodule Front.Models.Switch do
         pipeline_id: raw.scheduled_pipeline_id,
         processed: raw.processed,
         triggered_at: raw.triggered_at.seconds,
-        auto_triggered: raw.auto_triggered
+        auto_triggered: raw.auto_triggered,
+        error_response: raw.error_response
       }
     end
   end
