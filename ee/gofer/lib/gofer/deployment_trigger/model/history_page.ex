@@ -136,6 +136,7 @@ defmodule Gofer.DeploymentTrigger.Model.HistoryPage do
     Ecto.Query.from(dt in Trigger)
     |> Ecto.Query.where([dt], dt.deployment_id == ^page.deployment_id)
     |> Ecto.Query.where([dt], dt.triggered_at <= ^datetime)
+    |> Ecto.Query.order_by([dt], desc: dt.triggered_at)
     |> Ecto.Query.limit(^page.max_size + 2)
     |> EctoRepo.aggregate(:count, :id)
   end
@@ -146,6 +147,7 @@ defmodule Gofer.DeploymentTrigger.Model.HistoryPage do
     Ecto.Query.from(dt in Trigger)
     |> Ecto.Query.where([dt], dt.deployment_id == ^page.deployment_id)
     |> Ecto.Query.where([dt], dt.triggered_at >= ^datetime)
+    |> Ecto.Query.order_by([dt], asc: dt.triggered_at)
     |> Ecto.Query.limit(^page.max_size + 2)
     |> EctoRepo.aggregate(:count, :id)
   end

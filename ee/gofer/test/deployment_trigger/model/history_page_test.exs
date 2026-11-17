@@ -443,6 +443,7 @@ defmodule DeploymentTrigger.Model.HistoryPageTest do
 
       assert [_ | _] = counts = Enum.filter(received_queries(), &(&1 =~ "count("))
       assert Enum.all?(counts, &(&1 =~ "LIMIT"))
+      assert Enum.all?(counts, &(&1 =~ ~s(ORDER BY sd0."triggered_at")))
     end
 
     test "a page after a cursor runs no unbounded count", ctx do
@@ -450,6 +451,7 @@ defmodule DeploymentTrigger.Model.HistoryPageTest do
 
       assert [_, _] = counts = Enum.filter(received_queries(), &(&1 =~ "count("))
       assert Enum.all?(counts, &(&1 =~ "LIMIT"))
+      assert Enum.all?(counts, &(&1 =~ ~s(ORDER BY sd0."triggered_at")))
     end
   end
 
