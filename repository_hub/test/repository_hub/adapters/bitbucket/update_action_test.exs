@@ -71,7 +71,9 @@ defmodule RepositoryHub.Server.Bitbucket.UpdateActionTest do
 
       assert %UpdateResponse{} = UpdateAction.execute(adapter, request)
 
-      {:ok, %{organization: organization}} = RepositoryHub.OrganizationClient.describe("")
+      {:ok, %{organization: organization}} =
+        RepositoryHub.OrganizationClient.describe(RepositoryHub.Stub.ProjectHub.org_id())
+
       host = Application.fetch_env!(:repository_hub, :webhook_host)
 
       assert_received {:create_webhook_url, url}
