@@ -1,5 +1,6 @@
 defmodule Zebra.Workers.Agent.HostedAgent do
   require Logger
+  import Ecto.Query
   defstruct [:id, :name, :ip_address, :ctrl_port, :auth_token, :ssh_port, :provider]
 
   alias InternalApi.Chmura.Chmura.Stub
@@ -65,8 +66,37 @@ defmodule Zebra.Workers.Agent.HostedAgent do
     end
   end
 
-  def occupy(job) do
+  @doc """
+  How many of the given jobs wait for each provider, keyed like provider_for/1.
+  With no secondary endpoint every job goes to the default provider, so no
+  query is needed.
+  """
+  def waiting_by_provider([]), do: %{}
+
+  def waiting_by_provider(job_ids) do
+    if secondary_endpoint() do
+      Zebra.Models.Job
+      |> where([j], j.id in ^job_ids)
+      |> group_by([j], j.organization_id)
+      |> select([j], {j.organization_id, count(j.id)})
+      |> Zebra.LegacyRepo.all()
+      |> Enum.reduce(%{}, fn {org_id, n}, acc ->
+        Map.update(acc, provider_for_org(org_id), n, &(&1 + n))
+      end)
+    else
+      %{nil => length(job_ids)}
+    end
+  end
+
+  @doc """
+  Asks the job's provider for an agent. waiting_by_provider is from
+  waiting_by_provider/1: the provider's count goes with the request, so it
+  knows its whole queue even when the dispatcher stops asking after a
+  NOT_FOUND. A provider missing from it sends 0, which means unknown.
+  """
+  def occupy(job, waiting_by_provider \\ %{}) do
     provider = provider_for(job)
+    waiting = Map.get(waiting_by_provider, provider, 0)
 
     Task.async(fn ->
       Watchman.benchmark("zebra.external.chmura.occupy", fn ->
@@ -75,6 +105,9 @@ defmodule Zebra.Workers.Agent.HostedAgent do
         request =
           OccupyAgentRequest.new(
             request_id: job.id,
+            organization_id: job.organization_id || "",
+            project_id: job.project_id || "",
+            waiting: waiting,
             machine:
               InternalApi.Chmura.Agent.Machine.new(
                 type: machine_type,
@@ -128,8 +161,10 @@ defmodule Zebra.Workers.Agent.HostedAgent do
   end
 
   @doc "The provider that serves the job's hosted agent: the secondary one, or nil for the default."
-  def provider_for(job) do
-    if secondary_endpoint() && secondary_provider_enabled?(job.organization_id) do
+  def provider_for(job), do: provider_for_org(job.organization_id)
+
+  defp provider_for_org(org_id) do
+    if secondary_endpoint() && secondary_provider_enabled?(org_id) do
       @secondary_provider
     else
       nil

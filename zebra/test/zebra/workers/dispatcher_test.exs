@@ -620,6 +620,117 @@ defmodule Zebra.Workers.DispatcherTest do
     end
   end
 
+  describe ".tick waiting counts" do
+    setup do
+      System.put_env("DISPATCH_SELF_HOSTED_ONLY", "false")
+      System.put_env("DISPATCH_CLOUD_ONLY", "false")
+      {:ok, requests} = Agent.start_link(fn -> [] end)
+
+      %{requests: requests}
+    end
+
+    test "every occupy to the primary provider carries the machine type's queue, also the ones a NOT_FOUND cuts off",
+         %{requests: requests} do
+      Enum.each(1..25, fn _ ->
+        {:ok, _} = Support.Factories.Job.create(:scheduled, %{machine_type: "e1-standard-2"})
+      end)
+
+      Enum.each(1..3, fn _ ->
+        {:ok, _} = Support.Factories.Job.create(:scheduled, %{machine_type: "e2-standard-2"})
+      end)
+
+      GrpcMock.stub(Support.FakeServers.ChmuraApi, :occupy_agent, fn req, _ ->
+        Agent.update(requests, &[{req.machine.type, req.waiting} | &1])
+        raise GRPC.RPCError, status: GRPC.Status.not_found(), message: "No suitable agent found"
+      end)
+
+      with_stubbed_http_calls(fn ->
+        Worker.init() |> Zebra.Workers.DbWorker.tick()
+      end)
+
+      sent = Agent.get(requests, & &1)
+
+      # The first batch of each machine type is asked, then the NOT_FOUND
+      # halts it; each request still says how many jobs wait in all.
+      assert Enum.count(sent, &match?({"e1-standard-2", _}, &1)) == 10
+      assert Enum.count(sent, &match?({"e2-standard-2", _}, &1)) == 3
+
+      assert Enum.all?(sent, fn {type, w} -> w == if(type == "e1-standard-2", do: 25, else: 3) end)
+    end
+
+    test "the count of a busy machine type is what the tick read, at most records_per_tick",
+         %{requests: requests} do
+      Enum.each(1..105, fn _ -> {:ok, _} = Support.Factories.Job.create(:scheduled) end)
+
+      GrpcMock.stub(Support.FakeServers.ChmuraApi, :occupy_agent, fn req, _ ->
+        Agent.update(requests, &[req.waiting | &1])
+        raise GRPC.RPCError, status: GRPC.Status.not_found(), message: "No suitable agent found"
+      end)
+
+      with_stubbed_http_calls(fn ->
+        Worker.init() |> Zebra.Workers.DbWorker.tick()
+      end)
+
+      assert Agent.get(requests, & &1) == List.duplicate(100, 10)
+    end
+
+    test "each provider gets the count of its own organizations' jobs", %{requests: requests} do
+      Application.put_env(:zebra, :chmura_secondary_endpoint, "localhost:50051")
+      on_exit(fn -> Application.delete_env(:zebra, :chmura_secondary_endpoint) end)
+      Cachex.clear(:feature_provider_cache)
+
+      org_with_feature = Ecto.UUID.generate()
+
+      Mox.stub(Support.MockedProvider, :provide_features, fn org_id, opts ->
+        {:ok, features} = Support.StubbedProvider.provide_features(org_id, opts)
+        state = if org_id == org_with_feature, do: :enabled, else: :hidden
+
+        {:ok,
+         features ++ [Support.StubbedProvider.feature("secondary_hosted_agent_provider", [state])]}
+      end)
+
+      secondary_ids =
+        MapSet.new(1..4, fn _ ->
+          {:ok, job} =
+            Support.Factories.Job.create(:scheduled, %{organization_id: org_with_feature})
+
+          job.id
+        end)
+
+      Enum.each(1..6, fn _ -> {:ok, _} = Support.Factories.Job.create(:scheduled) end)
+
+      GrpcMock.stub(Support.FakeServers.ChmuraApi, :occupy_agent, fn req, _ ->
+        provider =
+          if MapSet.member?(secondary_ids, req.request_id), do: :secondary, else: :default
+
+        Agent.update(requests, &[{provider, req.waiting} | &1])
+        raise GRPC.RPCError, status: GRPC.Status.not_found(), message: "No suitable agent found"
+      end)
+
+      with_stubbed_http_calls(fn ->
+        Worker.init() |> Zebra.Workers.DbWorker.tick()
+      end)
+
+      sent = Agent.get(requests, & &1)
+
+      assert Enum.sort(Enum.uniq(sent)) == [{:default, 6}, {:secondary, 4}]
+      assert length(sent) == 10
+    end
+
+    test "a job processed outside a tick sends no count", %{requests: requests} do
+      {:ok, job} = Support.Factories.Job.create(:scheduled)
+
+      GrpcMock.stub(Support.FakeServers.ChmuraApi, :occupy_agent, fn req, _ ->
+        Agent.update(requests, &[req.waiting | &1])
+        raise GRPC.RPCError, status: GRPC.Status.not_found(), message: "No suitable agent found"
+      end)
+
+      Worker.process(job)
+
+      assert Agent.get(requests, & &1) == [0]
+    end
+  end
+
   describe ".process" do
     test "processes the job with given id => when the job is scheduled" do
       {:ok, job} = Support.Factories.Job.create(:scheduled)

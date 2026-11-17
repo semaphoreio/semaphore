@@ -160,6 +160,100 @@ defmodule Zebra.Workers.Agent.HostedAgentProviderTest do
     end
   end
 
+  describe ".waiting_by_provider" do
+    test "counts every job for the default provider when no secondary endpoint is configured" do
+      {:ok, job} = create_job(:scheduled, org_with_feature())
+      {:ok, other_job} = Support.Factories.Job.create(:scheduled)
+
+      assert HostedAgent.waiting_by_provider([job.id, other_job.id]) == %{nil => 2}
+    end
+
+    test "splits the jobs by their organization's provider" do
+      Application.put_env(:zebra, :chmura_secondary_endpoint, @secondary_endpoint)
+
+      ids =
+        Enum.map(1..3, fn _ -> elem(create_job(:scheduled, org_with_feature()), 1).id end) ++
+          Enum.map(1..2, fn _ -> elem(Support.Factories.Job.create(:scheduled), 1).id end)
+
+      assert HostedAgent.waiting_by_provider(ids) == %{
+               HostedAgent.secondary_provider() => 3,
+               nil => 2
+             }
+    end
+
+    test "is empty without jobs" do
+      Application.put_env(:zebra, :chmura_secondary_endpoint, @secondary_endpoint)
+
+      assert HostedAgent.waiting_by_provider([]) == %{}
+    end
+  end
+
+  describe ".occupy waiting" do
+    test "sends the count of the job's provider" do
+      Application.put_env(:zebra, :chmura_secondary_endpoint, @secondary_endpoint)
+      {:ok, job} = create_job(:scheduled, org_with_feature())
+      counts = %{HostedAgent.secondary_provider() => 7, nil => 40}
+
+      with_mocks(request_mocks(self())) do
+        HostedAgent.occupy(job, counts)
+      end
+
+      assert_received {:waiting, 7}
+    end
+
+    test "sends 0 when its provider has no count" do
+      {:ok, job} = Support.Factories.Job.create(:scheduled)
+
+      with_mocks(request_mocks(self())) do
+        HostedAgent.occupy(job, %{HostedAgent.secondary_provider() => 7})
+        HostedAgent.occupy(job)
+      end
+
+      assert_received {:waiting, 0}
+      assert_received {:waiting, 0}
+    end
+  end
+
+  describe ".occupy cost tags" do
+    test "sends the job's organization and project" do
+      {:ok, job} = Support.Factories.Job.create(:scheduled)
+
+      with_mocks(request_mocks(self())) do
+        HostedAgent.occupy(job)
+      end
+
+      assert_received {:tags, org_id, project_id}
+      assert org_id == job.organization_id
+      assert project_id == job.project_id
+      assert org_id != "" and project_id != ""
+    end
+
+    test "sends empty ids for a job without them" do
+      {:ok, job} = Support.Factories.Job.create(:scheduled)
+      job = %{job | organization_id: nil, project_id: nil}
+
+      with_mocks(request_mocks(self())) do
+        HostedAgent.occupy(job)
+      end
+
+      assert_received {:tags, "", ""}
+    end
+  end
+
+  defp request_mocks(test_pid) do
+    [
+      {GRPC.Stub, [:passthrough], [connect: fn endpoint -> {:ok, endpoint} end]},
+      {Stub, [],
+       [
+         occupy_agent: fn _endpoint, request, _opts ->
+           send(test_pid, {:waiting, request.waiting})
+           send(test_pid, {:tags, request.organization_id, request.project_id})
+           {:ok, occupy_response()}
+         end
+       ]}
+    ]
+  end
+
   defp org_with_feature, do: @org_with_feature
 
   defp create_job(state, org_id),
