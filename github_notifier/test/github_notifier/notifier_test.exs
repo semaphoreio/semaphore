@@ -158,7 +158,7 @@ defmodule GithubNotifier.NotifierTest do
         Support.Factories.periodic_describe_response(skip_scheduled_run_notifications: true)
       )
 
-      GithubNotifier.Notifier.notify("asd", "123", "1")
+      GithubNotifier.Notifier.notify("asd", "123")
 
       # one status per level; the flag must ride on all of them
       requests = collect_build_statuses()
@@ -220,15 +220,31 @@ defmodule GithubNotifier.NotifierTest do
 
       GrpcMock.stub(ProjecthubMock, :describe, block_and_pipeline_level_project())
 
-      GithubNotifier.Notifier.notify("asd", "123", "1")
+      GithubNotifier.Notifier.notify("asd", "123")
 
       requests = collect_build_statuses()
 
       # the STOPPED is the one that lands on a check the run that superseded
       # this one has already reported on, so it above all must not be sent
-      assert length(requests) == 2
+      assert length(requests) == 4
       assert Enum.any?(requests, &(&1.status == :STOPPED))
       assert Enum.all?(requests, & &1.suppress)
+    end
+
+    test "asks repository_hub to suppress the block status on a block event" do
+      stub_services(
+        triggered_by: :HOOK,
+        state: :DONE,
+        result: :CANCELED,
+        result_reason: :STRATEGY
+      )
+
+      GrpcMock.stub(ProjecthubMock, :describe, block_and_pipeline_level_project())
+
+      GithubNotifier.Notifier.notify("asd", "123", "1")
+
+      assert [request] = collect_build_statuses()
+      assert request.suppress
     end
 
     test "still reports it when the queue is named, where no sibling run answers the check" do
@@ -242,7 +258,7 @@ defmodule GithubNotifier.NotifierTest do
 
       GrpcMock.stub(ProjecthubMock, :describe, block_and_pipeline_level_project())
 
-      GithubNotifier.Notifier.notify("asd", "123", "1")
+      GithubNotifier.Notifier.notify("asd", "123")
 
       requests = collect_build_statuses()
 
@@ -260,12 +276,35 @@ defmodule GithubNotifier.NotifierTest do
 
       GrpcMock.stub(ProjecthubMock, :describe, block_and_pipeline_level_project())
 
-      GithubNotifier.Notifier.notify("asd", "123", "1")
+      GithubNotifier.Notifier.notify("asd", "123")
 
       requests = collect_build_statuses()
 
       assert Enum.any?(requests, &(&1.status == :STOPPED))
       refute Enum.any?(requests, & &1.suppress)
+    end
+  end
+
+  describe "notify/3 when an upstream fetch outlives its budget" do
+    setup do
+      Application.put_env(:github_notifier, :fetch_timeout, 50)
+      on_exit(fn -> Application.delete_env(:github_notifier, :fetch_timeout) end)
+    end
+
+    test "raises a fetch error and stops the fetch" do
+      stub_services([])
+
+      GrpcMock.stub(PipelineMock, :describe, fn _req, _stream ->
+        Process.sleep(2_000)
+        Support.Factories.pipeline_describe_response()
+      end)
+
+      assert_raise GithubNotifier.Notifier.FetchError, ~r/pipeline fetch timed out/, fn ->
+        GithubNotifier.Notifier.notify("asd", "123", "1")
+      end
+
+      assert Task.Supervisor.children(GithubNotifier.TaskSupervisor) == []
+      refute_received {:build_status, _}
     end
   end
 
