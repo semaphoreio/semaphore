@@ -222,13 +222,13 @@ func configureHooks(hooks *server.Hooks) {
 	})
 
 	hooks.AddBeforeCallTool(func(ctx context.Context, id any, request *mcp.CallToolRequest) {
-		toolLogger(ctx, id, request.Params.Name).
+		toolLogger(ctx, id, request).
 			WithField("arguments", request.Params.Arguments).
 			Info("tool call started")
 	})
 
 	hooks.AddAfterCallTool(func(ctx context.Context, id any, request *mcp.CallToolRequest, result *mcp.CallToolResult) {
-		entry := toolLogger(ctx, id, request.Params.Name)
+		entry := toolLogger(ctx, id, request)
 		if result == nil {
 			entry.Warn("tool call completed without a result payload")
 			return
@@ -248,19 +248,23 @@ func configureHooks(hooks *server.Hooks) {
 		if method != mcp.MethodToolsCall {
 			return
 		}
-		toolName := ""
-		if req, ok := message.(*mcp.CallToolRequest); ok && req != nil {
-			toolName = req.Params.Name
-		}
-		toolLogger(ctx, id, toolName).
+		req, _ := message.(*mcp.CallToolRequest)
+		toolLogger(ctx, id, req).
 			WithError(err).
 			Error("tool call failed")
 	})
 }
 
-func toolLogger(ctx context.Context, id any, toolName string) *logrus.Entry {
-	fields := logrus.Fields{
-		"tool": toolName,
+// toolLogger returns an entry identifying the tool call and its caller (user,
+// organization, client IP, user agent and ingress request ID), so read-only
+// calls that are not in the audit log can still be attributed to a user.
+func toolLogger(ctx context.Context, id any, request *mcp.CallToolRequest) *logrus.Entry {
+	fields := logrus.Fields{}
+	if request != nil {
+		fields = logging.ToolCallFields(request.Header, request.Params.Arguments)
+		fields["tool"] = request.Params.Name
+	} else {
+		fields["tool"] = ""
 	}
 	if rid := requestIDString(id); rid != "" {
 		fields["requestId"] = rid
@@ -322,6 +326,7 @@ func instrumentStreamableHandler(next http.Handler) http.Handler {
 
 		if r.Method == http.MethodGet || r.Method == http.MethodPost {
 			entry := logging.ForComponent("http").
+				WithFields(logging.RequestFields(r.Header)).
 				WithFields(logrus.Fields{
 					"method":     r.Method,
 					"path":       r.URL.Path,
