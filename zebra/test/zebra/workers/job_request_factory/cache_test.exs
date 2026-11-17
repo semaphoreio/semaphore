@@ -299,6 +299,14 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
       assert_received {:get_s3_credentials, req}
       assert req.project_id == job.project_id
       assert req.min_validity_seconds == 7_200
+      assert req.refresh_validity_seconds == 0
+
+      assert {:ok, _credentials} = Cache.find_s3(job, project(), nil, :pipeline_job, 7_200, 9_000)
+
+      assert_received {:get_s3_credentials, req}
+      assert req.job_id == job.id
+      assert req.organization_id == job.organization_id
+      assert req.refresh_validity_seconds == 9_000
     end
 
     test "skips a project without a cache_id without asking cachehub", %{job: job} do
@@ -453,6 +461,37 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
       assert envs == expected_s3_envs()
     end
 
+    test "a refresh grant comes with its URL when the job API is configured", %{job: job} do
+      credentials = %{s3_credentials() | refresh_token: "grant"}
+
+      assert {:ok, envs} = Cache.env_vars(job, credentials, @org_id)
+      assert envs == expected_s3_envs()
+
+      Application.put_env(:zebra, :cachehub_job_api_url, "https://cachehub.example.com/")
+      on_exit(fn -> Application.delete_env(:zebra, :cachehub_job_api_url) end)
+
+      assert {:ok, envs} = Cache.env_vars(job, credentials, @org_id)
+
+      assert envs ==
+               expected_s3_envs() ++
+                 [
+                   %{
+                     "name" => "SEMAPHORE_CACHE_S3_REFRESH_TOKEN",
+                     "value" => Base.encode64("grant")
+                   },
+                   %{
+                     "name" => "SEMAPHORE_CACHE_S3_REFRESH_URL",
+                     "value" =>
+                       Base.encode64("https://cachehub.example.com/api/v1/credentials/s3")
+                   }
+                 ]
+
+      assert {:ok, envs} = Cache.env_vars(job, s3_credentials(), @org_id)
+      assert envs == expected_s3_envs()
+
+      assert {:ok, []} = Cache.env_vars(job, credentials, @org_id, ["SEMAPHORE_CACHE_BACKEND"])
+    end
+
     test "the SFTP variables do not depend on the job's own variables", %{job: job} do
       assert {:ok, envs} = Cache.env_vars(job, @cache, @org_id, ["SEMAPHORE_CACHE_URL"])
       assert envs == expected_envs(false)
@@ -495,7 +534,8 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
       %{
         "name" => "SEMAPHORE_CACHE_S3_SESSION_TOKEN",
         "value" => Base.encode64(@s3_session_token)
-      }
+      },
+      %{"name" => "SEMAPHORE_CACHE_S3_EXPIRES_AT", "value" => Base.encode64("1800000000")}
     ]
   end
 

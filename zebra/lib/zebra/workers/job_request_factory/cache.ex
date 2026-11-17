@@ -4,6 +4,7 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
   alias InternalApi.Cache.{GetS3CredentialsRequest, GetS3CredentialsResponse}
   alias InternalApi.Cache.CacheService.Stub
 
+  alias Zebra.Workers.JobRequestFactory.CredentialRefresh
   alias Zebra.Workers.JobRequestFactory.JobRequest
   alias Zebra.Workers.JobRequestFactory.Machine
 
@@ -58,19 +59,29 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
   Temporary S3 credentials for the job's project prefix in the cache bucket.
   Like find/5, it never fails the job: without credentials, the job gets no cache.
   """
-  def find_s3(job, project, repo_proxy, job_type, min_validity_seconds)
+  def find_s3(
+        job,
+        project,
+        repo_proxy,
+        job_type,
+        min_validity_seconds,
+        refresh_validity_seconds \\ 0
+      )
 
-  def find_s3(_job, %{cache_id: nil}, _repo_proxy, _job_type, _min_validity_seconds) do
+  def find_s3(_job, %{cache_id: nil}, _repo_proxy, _job_type, _min_validity_seconds, _refresh) do
     skipped_s3(:no_cache_id)
     {:ok, nil}
   end
 
-  def find_s3(job, project, repo_proxy, job_type, min_validity_seconds) do
+  def find_s3(job, project, repo_proxy, job_type, min_validity_seconds, refresh_validity_seconds) do
     Watchman.benchmark("external.cachehub.get_s3_credentials", fn ->
       req =
         GetS3CredentialsRequest.new(
           project_id: job.project_id,
-          min_validity_seconds: min_validity_seconds
+          min_validity_seconds: min_validity_seconds,
+          job_id: job.id,
+          organization_id: job.organization_id,
+          refresh_validity_seconds: refresh_validity_seconds
         )
 
       with false <- skip_s3_cache?(repo_proxy, job.organization_id, job_type, project),
@@ -216,7 +227,9 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
         JobRequest.env_var("SEMAPHORE_CACHE_S3_SESSION_TOKEN", credentials.session_token)
       ]
 
-      {:ok, vars ++ archive_method_env_vars(organization_id)}
+      refresh = CredentialRefresh.env_vars("SEMAPHORE_CACHE_S3", :s3, credentials)
+
+      {:ok, vars ++ refresh ++ archive_method_env_vars(organization_id)}
     end
   end
 
