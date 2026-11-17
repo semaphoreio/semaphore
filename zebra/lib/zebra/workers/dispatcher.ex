@@ -48,16 +48,22 @@ defmodule Zebra.Workers.Dispatcher do
 
   # On a NOT_FOUND the primary provider is asked for no more jobs of the
   # machine type in this tick, so it sees only part of the queue. Each occupy
-  # carries how many of the tick's jobs wait for its provider, so a provider
-  # that sizes a pool from demand sees the whole queue. Only cloud machine
-  # types of an isolated tick get a count; a tick across machine types would
-  # mix them.
+  # carries how many of the tick's jobs wait for its provider from it onward,
+  # so a provider that sizes a pool from demand sees the whole queue. Only
+  # cloud machine types of an isolated tick get a count; a tick across machine
+  # types would mix them. The count is advisory: if it cannot be had, the jobs
+  # are dispatched without it.
   def waiting_by_provider(job_ids, {machine_type, _os_image}) do
     if Zebra.Models.Job.self_hosted?(machine_type) do
       %{}
     else
       HostedAgent.waiting_by_provider(job_ids)
     end
+  rescue
+    e ->
+      Logger.warning("Dispatcher: no waiting count for #{machine_type}: #{Exception.message(e)}")
+      Watchman.increment({"dispatcher.waiting_count.error", [machine_type]})
+      %{}
   end
 
   def waiting_by_provider(_job_ids, _machine_type_tuple), do: %{}

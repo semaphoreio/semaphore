@@ -67,7 +67,10 @@ defmodule Zebra.Workers.Agent.HostedAgent do
   end
 
   @doc """
-  How many of the given jobs wait for each provider, keyed like provider_for/1.
+  For each provider, how many of the given jobs (in dispatch order) wait for
+  it from each job onward, that job included: %{provider => %{job_id => n}},
+  providers keyed like provider_for/1. Counting from the job onward leaves
+  out the jobs ahead of it, which the same tick may already have served.
   With no secondary endpoint every job goes to the default provider, so no
   query is needed.
   """
@@ -75,28 +78,37 @@ defmodule Zebra.Workers.Agent.HostedAgent do
 
   def waiting_by_provider(job_ids) do
     if secondary_endpoint() do
-      Zebra.Models.Job
-      |> where([j], j.id in ^job_ids)
-      |> group_by([j], j.organization_id)
-      |> select([j], {j.organization_id, count(j.id)})
-      |> Zebra.LegacyRepo.all()
-      |> Enum.reduce(%{}, fn {org_id, n}, acc ->
-        Map.update(acc, provider_for_org(org_id), n, &(&1 + n))
-      end)
+      providers =
+        Zebra.Models.Job
+        |> where([j], j.id in ^job_ids)
+        |> select([j], {j.id, j.organization_id})
+        |> Zebra.LegacyRepo.all()
+        |> Map.new(fn {id, org_id} -> {id, provider_for_org(org_id)} end)
+
+      job_ids
+      |> Enum.filter(&Map.has_key?(providers, &1))
+      |> Enum.group_by(&Map.fetch!(providers, &1))
+      |> Map.new(fn {provider, ids} -> {provider, waiting_from_each(ids)} end)
     else
-      %{nil => length(job_ids)}
+      %{nil => waiting_from_each(job_ids)}
     end
+  end
+
+  defp waiting_from_each(ids) do
+    n = length(ids)
+
+    ids |> Enum.with_index() |> Map.new(fn {id, i} -> {id, n - i} end)
   end
 
   @doc """
   Asks the job's provider for an agent. waiting_by_provider is from
-  waiting_by_provider/1: the provider's count goes with the request, so it
-  knows its whole queue even when the dispatcher stops asking after a
-  NOT_FOUND. A provider missing from it sends 0, which means unknown.
+  waiting_by_provider/1: the job's count goes with the request, so the
+  provider knows its whole queue even when the dispatcher stops asking after
+  a NOT_FOUND. A job missing from it sends 0, which means unknown.
   """
   def occupy(job, waiting_by_provider \\ %{}) do
     provider = provider_for(job)
-    waiting = Map.get(waiting_by_provider, provider, 0)
+    waiting = waiting_by_provider |> Map.get(provider, %{}) |> Map.get(job.id, 0)
 
     Task.async(fn ->
       Watchman.benchmark("zebra.external.chmura.occupy", fn ->

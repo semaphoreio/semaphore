@@ -165,19 +165,23 @@ defmodule Zebra.Workers.Agent.HostedAgentProviderTest do
       {:ok, job} = create_job(:scheduled, org_with_feature())
       {:ok, other_job} = Support.Factories.Job.create(:scheduled)
 
-      assert HostedAgent.waiting_by_provider([job.id, other_job.id]) == %{nil => 2}
+      assert HostedAgent.waiting_by_provider([job.id, other_job.id]) == %{
+               nil => %{job.id => 2, other_job.id => 1}
+             }
     end
 
     test "splits the jobs by their organization's provider" do
       Application.put_env(:zebra, :chmura_secondary_endpoint, @secondary_endpoint)
 
-      ids =
-        Enum.map(1..3, fn _ -> elem(create_job(:scheduled, org_with_feature()), 1).id end) ++
-          Enum.map(1..2, fn _ -> elem(Support.Factories.Job.create(:scheduled), 1).id end)
+      [s1, s2, s3] =
+        Enum.map(1..3, fn _ -> elem(create_job(:scheduled, org_with_feature()), 1).id end)
 
-      assert HostedAgent.waiting_by_provider(ids) == %{
-               HostedAgent.secondary_provider() => 3,
-               nil => 2
+      [d1, d2] = Enum.map(1..2, fn _ -> elem(Support.Factories.Job.create(:scheduled), 1).id end)
+
+      # Dispatch order interleaves the providers; each counts its own jobs.
+      assert HostedAgent.waiting_by_provider([s1, d1, s2, d2, s3]) == %{
+               HostedAgent.secondary_provider() => %{s1 => 3, s2 => 2, s3 => 1},
+               nil => %{d1 => 2, d2 => 1}
              }
     end
 
@@ -192,7 +196,7 @@ defmodule Zebra.Workers.Agent.HostedAgentProviderTest do
     test "sends the count of the job's provider" do
       Application.put_env(:zebra, :chmura_secondary_endpoint, @secondary_endpoint)
       {:ok, job} = create_job(:scheduled, org_with_feature())
-      counts = %{HostedAgent.secondary_provider() => 7, nil => 40}
+      counts = %{HostedAgent.secondary_provider() => %{job.id => 7}, nil => %{job.id => 40}}
 
       with_mocks(request_mocks(self())) do
         HostedAgent.occupy(job, counts)
@@ -205,10 +209,12 @@ defmodule Zebra.Workers.Agent.HostedAgentProviderTest do
       {:ok, job} = Support.Factories.Job.create(:scheduled)
 
       with_mocks(request_mocks(self())) do
-        HostedAgent.occupy(job, %{HostedAgent.secondary_provider() => 7})
+        HostedAgent.occupy(job, %{HostedAgent.secondary_provider() => %{job.id => 7}})
+        HostedAgent.occupy(job, %{nil => %{Ecto.UUID.generate() => 7}})
         HostedAgent.occupy(job)
       end
 
+      assert_received {:waiting, 0}
       assert_received {:waiting, 0}
       assert_received {:waiting, 0}
     end

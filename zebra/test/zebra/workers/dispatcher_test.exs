@@ -651,11 +651,12 @@ defmodule Zebra.Workers.DispatcherTest do
       sent = Agent.get(requests, & &1)
 
       # The first batch of each machine type is asked, then the NOT_FOUND
-      # halts it; each request still says how many jobs wait in all.
-      assert Enum.count(sent, &match?({"e1-standard-2", _}, &1)) == 10
-      assert Enum.count(sent, &match?({"e2-standard-2", _}, &1)) == 3
+      # halts it; each request says how many jobs wait from it onward, so
+      # the oldest one carries the whole queue.
+      counts = fn type -> Enum.sort(for({^type, w} <- sent, do: w), :desc) end
 
-      assert Enum.all?(sent, fn {type, w} -> w == if(type == "e1-standard-2", do: 25, else: 3) end)
+      assert counts.("e1-standard-2") == Enum.to_list(25..16//-1)
+      assert counts.("e2-standard-2") == [3, 2, 1]
     end
 
     test "the count of a busy machine type is what the tick read, at most records_per_tick",
@@ -671,7 +672,7 @@ defmodule Zebra.Workers.DispatcherTest do
         Worker.init() |> Zebra.Workers.DbWorker.tick()
       end)
 
-      assert Agent.get(requests, & &1) == List.duplicate(100, 10)
+      assert Enum.sort(Agent.get(requests, & &1), :desc) == Enum.to_list(100..91//-1)
     end
 
     test "each provider gets the count of its own organizations' jobs", %{requests: requests} do
@@ -713,8 +714,74 @@ defmodule Zebra.Workers.DispatcherTest do
 
       sent = Agent.get(requests, & &1)
 
-      assert Enum.sort(Enum.uniq(sent)) == [{:default, 6}, {:secondary, 4}]
-      assert length(sent) == 10
+      counts = fn provider -> Enum.sort(for({^provider, w} <- sent, do: w), :desc) end
+
+      assert counts.(:secondary) == [4, 3, 2, 1]
+      assert counts.(:default) == [6, 5, 4, 3, 2, 1]
+    end
+
+    test "jobs a tick serves before a NOT_FOUND are not counted by the jobs after them",
+         %{requests: requests} do
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+      ids =
+        Enum.map(1..5, fn i ->
+          {:ok, job} =
+            Support.Factories.Job.create(:scheduled, %{scheduled_at: Timex.shift(now, seconds: i)})
+
+          job.id
+        end)
+
+      served = MapSet.new(Enum.take(ids, 2))
+
+      GrpcMock.stub(Support.FakeServers.ChmuraApi, :occupy_agent, fn req, _ ->
+        Agent.update(requests, &[{req.request_id, req.waiting} | &1])
+
+        if MapSet.member?(served, req.request_id) do
+          %InternalApi.Chmura.OccupyAgentResponse{
+            agent: %InternalApi.Chmura.Agent{
+              id: Ecto.UUID.generate(),
+              ip_address: "1.2.3.4",
+              ssh_port: 80,
+              ctrl_port: 80,
+              auth_token: "asdas"
+            }
+          }
+        else
+          raise GRPC.RPCError, status: GRPC.Status.not_found(), message: "No suitable agent found"
+        end
+      end)
+
+      with_stubbed_http_calls(fn ->
+        Worker.init() |> Zebra.Workers.DbWorker.tick()
+      end)
+
+      sent = Map.new(Agent.get(requests, & &1))
+
+      # The oldest job still waiting says 3: the two served ahead of it are
+      # not in its count.
+      assert Enum.map(ids, &sent[&1]) == [5, 4, 3, 2, 1]
+      assert Enum.max(for id <- ids, not MapSet.member?(served, id), do: sent[id]) == 3
+    end
+
+    test "a failing count does not stop the tick", %{requests: requests} do
+      Enum.each(1..3, fn _ -> {:ok, _} = Support.Factories.Job.create(:scheduled) end)
+
+      GrpcMock.stub(Support.FakeServers.ChmuraApi, :occupy_agent, fn req, _ ->
+        Agent.update(requests, &[req.waiting | &1])
+        raise GRPC.RPCError, status: GRPC.Status.not_found(), message: "No suitable agent found"
+      end)
+
+      with_mock Zebra.Workers.Agent.HostedAgent, [:passthrough],
+        waiting_by_provider: fn _ ->
+          raise DBConnection.ConnectionError, "connection not available"
+        end do
+        with_stubbed_http_calls(fn ->
+          Worker.init() |> Zebra.Workers.DbWorker.tick()
+        end)
+      end
+
+      assert Agent.get(requests, & &1) == [0, 0, 0], "every job is still asked for, with no count"
     end
 
     test "a job processed outside a tick sends no count", %{requests: requests} do
