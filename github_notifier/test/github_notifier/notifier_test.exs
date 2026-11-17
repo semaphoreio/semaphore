@@ -231,6 +231,22 @@ defmodule GithubNotifier.NotifierTest do
       assert Enum.all?(requests, & &1.suppress)
     end
 
+    test "asks repository_hub to suppress the block status on a block event" do
+      stub_services(
+        triggered_by: :HOOK,
+        state: :DONE,
+        result: :CANCELED,
+        result_reason: :STRATEGY
+      )
+
+      GrpcMock.stub(ProjecthubMock, :describe, block_and_pipeline_level_project())
+
+      GithubNotifier.Notifier.notify("asd", "123", "1")
+
+      assert [request] = collect_build_statuses()
+      assert request.suppress
+    end
+
     test "still reports it when the queue is named, where no sibling run answers the check" do
       stub_services(
         triggered_by: :HOOK,
