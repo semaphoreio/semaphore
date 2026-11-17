@@ -12,6 +12,14 @@ export const STATUS_LABEL: Record<Status, string> = {
   passed: `Passed`,
 };
 
+export interface ApiTriggerer {
+  text: string;
+  link: { label: string, url: string, } | null;
+  owner: string | null;
+  stopped: boolean;
+  stopped_by: string | null;
+}
+
 export interface ApiPipeline {
   id: string;
   name: string;
@@ -20,6 +28,7 @@ export interface ApiPipeline {
   result: string;
   parent_id: string | null;
   trigger: string;
+  triggerer: ApiTriggerer;
   switch_id: string | null;
   created_at: number | null;
   running_at: number | null;
@@ -77,6 +86,8 @@ export interface ApiPromotion {
 export interface InitJob {
   url: string;
   status: Status;
+  started_at: number | null;
+  finished_at: number | null;
 }
 
 export interface ApiPipelineDetail {
@@ -123,6 +134,7 @@ export interface Pipeline {
   status: Status;
   done: boolean;
   trigger: string;
+  triggerer: ApiTriggerer;
   switchId: string | null;
   stopUrl: string | null;
   rebuildUrl: string | null;
@@ -214,6 +226,7 @@ export function buildWorkflow(tree: ApiWorkflow, details: Record<string, ApiPipe
       status: pipelineStatus(a.state, a.result),
       done: a.state === `DONE`,
       trigger: a.trigger,
+      triggerer: a.triggerer,
       switchId: a.switch_id,
       stopUrl: a.stop_url,
       rebuildUrl: a.rebuild_url,
@@ -307,10 +320,30 @@ export function formatDuration(total: number): string {
   return `${two(minutes)}:${two(rest)}`;
 }
 
+export function formatAgo(total: number): string {
+  const seconds = Math.max(0, Math.floor(total));
+  if (seconds < 60) return `now`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  if (seconds < 30 * 86400) return `${Math.floor(seconds / 86400)}d ago`;
+  if (seconds < 365 * 86400) return `${Math.floor(seconds / (30 * 86400))}mo ago`;
+  return `${Math.floor(seconds / (365 * 86400))}y ago`;
+}
+
+export function shortName(name: string): string {
+  const words = name.trim().split(/\s+/);
+  const first = words[0];
+  const last = Array.from(words[words.length - 1].normalize());
+  if (words.length < 2 || !/^\p{Lu}/u.test(first) || !/^\p{Lu}/u.test(last[0])) return name;
+  return `${first} ${last[0]}.`;
+}
+
+export const plural = (n: number, word: string) => `${n} ${n === 1 ? word : `${word}s`}`;
+
 export const blockSummary = (b: Block) => {
   const c = countJobs(b.jobs);
   return [
-    `${b.jobs.length} ${b.jobs.length === 1 ? `job` : `jobs`}`,
+    plural(b.jobs.length, `job`),
     ...([`failed`, `running`, `queued`, `stopped`] as Status[]).filter((s) => c[s]).map((s) => `${c[s]} ${STATUS_LABEL[s].toLowerCase()}`),
   ].join(` · `);
 };

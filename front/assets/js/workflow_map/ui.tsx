@@ -1,6 +1,7 @@
 import { ComponentChildren } from "preact";
+import type {} from "../custom_types/time_ago";
 import { useState } from "preact/hooks";
-import { Block, Job, Pipeline, STATUSES, STATUS_LABEL, Status, blockStatus, blockSummary, countJobs, formatDuration } from "./model";
+import { Block, Job, Pipeline, STATUSES, STATUS_LABEL, Status, blockStatus, blockSummary, countJobs, formatAgo, formatDuration } from "./model";
 import { focus, hits, now, query } from "./store";
 
 export const StatusIcon = ({ status, size = 16 }: { status: Status, size?: number, }) => {
@@ -212,6 +213,49 @@ export const PipelineTitle = ({ p }: { p: Pipeline, }) => (
     {p.attempt > 1 && <span className="wf-map-attempt">#{p.attempt}</span>}
   </span>
 );
+
+export const TimeAgo = ({ at }: { at: number, }) => {
+  const datetime = new Date(at * 1000).toISOString();
+  return <time-ago key={datetime} datetime={datetime} always-relative/>;
+};
+
+const TRIGGER_ICON: Record<string, string> = {
+  INITIAL_WORKFLOW: `commit`,
+  WORKFLOW_RERUN: `replay`,
+  API: `api`,
+  SCHEDULED_RUN: `schedule`,
+  SCHEDULED_MANUAL_RUN: `play_arrow`,
+  PIPELINE_PARTIAL_RERUN: `replay`,
+  MANUAL_PROMOTION: `person`,
+  AUTO_PROMOTION: `bolt`,
+};
+
+export const Triggered = ({ p }: { p: Pipeline, }) => {
+  const t = p.triggerer;
+  if (!t) return null;
+  const tip = [
+    [t.text, t.link?.label, t.owner && `by ${t.owner}`].filter(Boolean).join(` `),
+    p.createdAt && new Date(p.createdAt * 1000).toLocaleString(undefined, { weekday: `short`, day: `numeric`, month: `short`, year: `numeric`, hour: `2-digit`, minute: `2-digit` }),
+    t.stopped && (t.stopped_by ? `Stopped by ${t.stopped_by}` : `Stopped`),
+  ]
+    .filter(Boolean)
+    .join(` · `);
+  const body = (
+    <>
+      <span className="material-symbols-outlined" aria-hidden="true">{TRIGGER_ICON[p.trigger] ?? `play_arrow`}</span>
+      {p.createdAt && formatAgo(now.value - p.createdAt)}
+    </>
+  );
+  return t.link ? (
+    <a className="wf-map-triggered" href={t.link.url} aria-label={tip} data-tippy-content={tip} onClick={(e) => e.stopPropagation()}>
+      {body}
+    </a>
+  ) : (
+    <span className="wf-map-triggered" role="img" aria-label={tip} data-tippy-content={tip}>
+      {body}
+    </span>
+  );
+};
 
 export const Counts = ({ jobs }: { jobs: Job[], }) => {
   const c = countJobs(jobs);

@@ -24,7 +24,7 @@ defmodule FrontWeb.WorkflowView do
       pipelines:
         Enum.map(workflow.pipelines, fn pipeline ->
           pipeline
-          |> map_pipeline()
+          |> map_pipeline(conn, workflow)
           |> Map.merge(%{
             stop_url:
               if(
@@ -57,7 +57,9 @@ defmodule FrontWeb.WorkflowView do
     }
   end
 
-  defp map_pipeline(pipeline) do
+  defp map_pipeline(pipeline, conn, workflow) do
+    triggerer = pipeline.triggerer
+
     %{
       id: pipeline.id,
       name: pipeline.name,
@@ -65,7 +67,14 @@ defmodule FrontWeb.WorkflowView do
       state: pipeline.state,
       result: pipeline.result,
       parent_id: map_parent_id(pipeline),
-      trigger: pipeline.triggerer.trigger_type,
+      trigger: triggerer.trigger_type,
+      triggerer: %{
+        text: FrontWeb.PipelineView.format_trigger_type(conn, triggerer),
+        link: FrontWeb.PipelineView.triggered_by_link(conn, triggerer, workflow),
+        owner: FrontWeb.PipelineView.trigger_user_name(triggerer.owner),
+        stopped: triggerer.is_terminated?,
+        stopped_by: FrontWeb.PipelineView.trigger_user_name(triggerer.terminated_by)
+      },
       switch_id: blank_to_nil(pipeline.switch_id),
       created_at: zero_to_nil(pipeline.timeline.created_at),
       running_at: zero_to_nil(pipeline.timeline.running_at),

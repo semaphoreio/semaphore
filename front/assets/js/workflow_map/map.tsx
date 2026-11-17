@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { computed, signal } from "@preact/signals";
 import { BaseEdge, Background, Controls, Edge, EdgeLabelRenderer, EdgeProps, Handle, MiniMap, Node, NodeProps, Panel, Position, ReactFlow, ReactFlowProvider, useReactFlow, useStore } from "@xyflow/react";
-import { Block, Pipeline, Workflow, blockStatus, pipelineJobs } from "./model";
+import { Block, InitJob, Pipeline, Workflow, blockStatus, pipelineJobs, plural } from "./model";
 import { focus, hits, layoutError, popover, rerunPipeline, selected, stopPipeline, togglePopover, workflow } from "./store";
 import { MapLayout, Point, layoutMap, promotionLabel } from "./layout";
 import { PromoteButton } from "./promote";
 import { Chips, Search, Stepper } from "./toolbar";
-import { BlockCard, BlockSummary, Chevron, Counts, Duration, Name, PipelineTitle, StatusBar, StatusIcon, plainClick } from "./ui";
+import { BlockCard, BlockSummary, Chevron, Counts, Duration, Name, PipelineTitle, StatusBar, StatusIcon, Triggered, plainClick } from "./ui";
 import { BLOCK_GAP, JOB_ROW_H, blockSize, jobTop } from "./lines";
 
 const CARD = { w: 300, h: 72 };
@@ -161,12 +161,14 @@ const CardNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node
           </span>
         ) : (
           <span>
-            {p.blocks.length} blocks · {jobs.length} jobs
+            {plural(p.blocks.length, `block`)} · {plural(jobs.length, `job`)}
           </span>
         )}
         <span className="wf-map-card-end">
           {h.active ? <span className={`wf-map-match ${n ? `` : `zero`}`}>{n} matching</span> : <Counts jobs={jobs}/>}
           <Duration start={p.runningAt} end={p.doneAt} running={p.status === `running`}/>
+          {p.triggerer && <span className="wf-map-sep" aria-hidden="true"/>}
+          <Triggered p={p}/>
         </span>
       </span>
       <Handle type="source" id="out" position={Position.Right} isConnectable={false}/>
@@ -217,6 +219,14 @@ export const BlocksToggle = ({ p, at }: { p: Pipeline, at: Point, }) => {
   );
 };
 
+export const InitTab = ({ job }: { job: InitJob, }) => (
+  <a className="wf-map-init-tab" href={job.url} data-tippy-content="Opens the initialization log" onClick={(e) => e.stopPropagation()}>
+    <StatusIcon status={job.status} size={12}/>
+    Init
+    <Duration start={job.started_at} end={job.finished_at} running={job.status === `running`}/>
+  </a>
+);
+
 const PipelineNode = ({ data, width, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node<{ id: string, }>>) => {
   const p = workflow.value?.pipelineById.get(data.id);
   const h = hits.value;
@@ -244,20 +254,18 @@ const PipelineNode = ({ data, width, positionAbsoluteX, positionAbsoluteY }: Nod
           <span className="wf-map-pipeline-title">
             <PipelineTitle p={p}/>
           </span>
+          <Counts jobs={pipelineJobs(p)}/>
           <Duration start={p.runningAt} end={p.doneAt} running={p.status === `running`}/>
+          {p.triggerer && <span className="wf-map-sep" aria-hidden="true"/>}
+          <Triggered p={p}/>
           <BlocksToggle p={p} at={{ x: at.x + width, y: at.y }}/>
         </div>
         <div className="wf-map-pipeline-row wf-map-pipeline-sub">
           <Name className="wf-map-pipeline-meta">{p.yamlFile}</Name>
-          {p.initJob && (
-            <a className={`wf-map-init-log ${p.initJob.status}`} href={p.initJob.url} onClick={(e) => e.stopPropagation()}>
-              Init log
-            </a>
-          )}
-          <Counts jobs={pipelineJobs(p)}/>
           <PipelineActions p={p}/>
         </div>
       </div>
+      {p.initJob && <InitTab job={p.initJob}/>}
       {after && <AfterBand block={after} at={at}/>}
       <Handle type="source" id="out" position={Position.Right} isConnectable={false} style={{ top: 34 }}/>
     </div>
@@ -391,7 +399,7 @@ export function structureKey(wf: Workflow, open: Set<string>, openB: Set<string>
       const blocks = open.has(p.id) && p.blocks ? p.blocks.map((b) => `${b.name}:${b.deps.length}:${openB.has(b.id) ? b.jobs.length : `-`}`).join(`,`) : `closed`;
       const promotions = p.promotions?.map((promotion) => `${promotion.name}:${promotion.pipelines.length}`).join(`,`) ?? ``;
       const after = p.blocks?.find((b) => b.after);
-      return `${p.id}<${p.parent?.id ?? ``}>${blocks}[${promotions}]${after ? `+${openB.has(after.id) ? after.jobs.length : `-`}` : ``}`;
+      return `${p.id}${p.initJob ? `+init` : ``}<${p.parent?.id ?? ``}>${blocks}[${promotions}]${after ? `+${openB.has(after.id) ? after.jobs.length : `-`}` : ``}`;
     })
     .join(`|`);
 }

@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe, test } from "mocha";
 
-import { AFTER_PIPELINE, ApiPipeline, ApiPipelineDetail, buildWorkflow, formatDuration, rollup } from "./model";
+import { AFTER_PIPELINE, ApiPipeline, ApiPipelineDetail, buildWorkflow, formatAgo, formatDuration, plural, rollup, shortName } from "./model";
 
 const apiPipeline = (id: string, overrides: Partial<ApiPipeline> = {}): ApiPipeline => ({
   id,
@@ -11,6 +11,7 @@ const apiPipeline = (id: string, overrides: Partial<ApiPipeline> = {}): ApiPipel
   result: `PASSED`,
   parent_id: null,
   trigger: `INITIAL_WORKFLOW`,
+  triggerer: { text: `Triggered by push`, link: null, owner: `Ana`, stopped: false, stopped_by: null },
   switch_id: null,
   created_at: 1,
   running_at: 10,
@@ -149,11 +150,54 @@ describe(`rollup`, () => {
   });
 });
 
+describe(`plural`, () => {
+  test(`says one of something in the singular and any other count in the plural`, () => {
+    expect([plural(0, `job`), plural(1, `job`), plural(1, `block`), plural(2, `block`)]).to.deep.equal([`0 jobs`, `1 job`, `1 block`, `2 blocks`]);
+  });
+});
+
+describe(`shortName`, () => {
+  test(`keeps the first name and the last name's initial`, () => {
+    expect(shortName(`Michał Kowalski`)).to.eq(`Michał K.`);
+    expect(shortName(`Ludwig van Beethoven`)).to.eq(`Ludwig B.`);
+    expect(shortName(`Jean-Luc Picard`)).to.eq(`Jean-Luc P.`);
+    expect(shortName(`  Ana   Łukasiewicz `)).to.eq(`Ana Ł.`);
+    expect(shortName(`Ana \u0141ukasiewicz`)).to.eq(`Ana Ł.`);
+    expect(shortName(`Ana L\u0301opez`)).to.eq(`Ana Ĺ.`);
+  });
+
+  test(`leaves alone what is not a capitalised first and last name`, () => {
+    for (const name of [`octocat`, `dependabot[bot]`, `[Deleted User]`, `branch deletion`, `admin`, `John Doe (Acme)`, `john doe`, `山田 太郎`]) {
+      expect(shortName(name)).to.eq(name);
+    }
+  });
+});
+
+describe(`formatAgo`, () => {
+  test(`says how long ago in the largest whole unit`, () => {
+    const day = 86400;
+    const shown = [0, 59, 60, 3599, 3600, day - 1, day, 30 * day - 1, 30 * day, 365 * day - 1, 365 * day, 800 * day].map(formatAgo);
+    expect(shown).to.deep.equal([`now`, `now`, `1m ago`, `59m ago`, `1h ago`, `23h ago`, `1d ago`, `29d ago`, `1mo ago`, `12mo ago`, `1y ago`, `2y ago`]);
+  });
+
+  test(`treats a time ahead of the reader's clock as now`, () => {
+    expect(formatAgo(-30)).to.eq(`now`);
+  });
+});
+
 describe(`formatDuration`, () => {
   test(`matches the server side duration format`, () => {
     expect(formatDuration(0)).to.eq(`00:00`);
     expect(formatDuration(65)).to.eq(`01:05`);
     expect(formatDuration(3600 + 61)).to.eq(`01:01:01`);
     expect(formatDuration(86400 * 2 + 5)).to.eq(`2d 00:00:05`);
+  });
+
+  test(`carries how and by whom each pipeline was triggered`, () => {
+    const stopped = { text: `Manual promotion`, link: null, owner: `Bo`, stopped: true, stopped_by: `Cy` };
+    const wf = buildWorkflow({ root_pipeline_id: `ci`, pipelines: [apiPipeline(`ci`), apiPipeline(`deploy`, { parent_id: `ci`, triggerer: stopped })] }, {});
+
+    expect(wf.root.triggerer.owner).to.eq(`Ana`);
+    expect(wf.pipelineById.get(`deploy`).triggerer).to.deep.eq(stopped);
   });
 });

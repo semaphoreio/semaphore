@@ -27,6 +27,13 @@ describe(`structureKey`, () => {
     expect(after).to.not.equal(before);
   });
 
+  test(`changes when a pipeline gets its init job`, () => {
+    const wf = workflowWith([`passed`]);
+    const before = structureKey(wf, new Set([`p`]), new Set());
+    wf.pipelines[0].initJob = { url: `/jobs/init`, status: `passed`, started_at: 1, finished_at: 8 };
+    expect(structureKey(wf, new Set([`p`]), new Set())).to.not.equal(before);
+  });
+
   test(`changes when the after-pipeline node of a closed pipeline opens`, () => {
     const wf = workflowWith([`passed`]);
     wf.pipelines[0].blocks.push({ id: `a`, name: `After pipeline`, deps: [], jobs: [job(`passed`)], after: true } as Block);
