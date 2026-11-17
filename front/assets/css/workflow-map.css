@@ -691,8 +691,12 @@ a.wf-map-triggered:hover {
   display: none;
 }
 
-.wf-map-card-size {
-  flex: none;
+.wf-map-card-meta > :first-child {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .wf-map-after {

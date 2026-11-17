@@ -144,7 +144,6 @@ const CardNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node
         <span className="wf-map-card-title">
           <PipelineTitle p={p}/>
         </span>
-        <Triggered p={p}/>
         <PipelineActions p={p} compact/>
       </span>
       {p.blocks ? <StatusBar jobs={jobs}/> : <span className="wf-map-bar loading"/>}
@@ -161,13 +160,15 @@ const CardNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node
             </a>
           </span>
         ) : (
-          <span className="wf-map-card-size">
+          <span>
             {plural(p.blocks.length, `block`)} · {plural(jobs.length, `job`)}
           </span>
         )}
         <span className="wf-map-card-end">
           {h.active ? <span className={`wf-map-match ${n ? `` : `zero`}`}>{n} matching</span> : <Counts jobs={jobs}/>}
           <Duration start={p.runningAt} end={p.doneAt} running={p.status === `running`}/>
+          {p.triggerer && <span className="wf-map-sep" aria-hidden="true"/>}
+          <Triggered p={p}/>
         </span>
       </span>
       <Handle type="source" id="out" position={Position.Right} isConnectable={false}/>
@@ -255,7 +256,7 @@ const PipelineNode = ({ data, width, positionAbsoluteX, positionAbsoluteY }: Nod
           </span>
           <Counts jobs={pipelineJobs(p)}/>
           <Duration start={p.runningAt} end={p.doneAt} running={p.status === `running`}/>
-          <span className="wf-map-sep" aria-hidden="true"/>
+          {p.triggerer && <span className="wf-map-sep" aria-hidden="true"/>}
           <Triggered p={p}/>
           <BlocksToggle p={p} at={{ x: at.x + width, y: at.y }}/>
         </div>
