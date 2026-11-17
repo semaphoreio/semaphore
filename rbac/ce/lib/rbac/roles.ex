@@ -5,7 +5,8 @@ defmodule Rbac.Roles do
     [
       __MODULE__.Owner.role(),
       __MODULE__.Admin.role(),
-      __MODULE__.Member.role()
+      __MODULE__.Member.role(),
+      __MODULE__.ComputerAgent.role()
     ]
   end
 
