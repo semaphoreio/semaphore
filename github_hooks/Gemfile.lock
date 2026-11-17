@@ -274,7 +274,7 @@ GEM
       byebug (~> 12.0)
       pry (>= 0.13, < 0.16)
     public_suffix (6.0.2)
-    puma (7.2.1)
+    puma (7.2.2)
       nio4r (~> 2.0)
     raabro (1.4.0)
     racc (1.8.1)
@@ -514,7 +514,7 @@ DEPENDENCIES
   octokit
   pg (~> 1.1)
   pry-byebug (~> 3.10, >= 3.10.1)
-  puma (~> 7.2.1)
+  puma (~> 7.2.2)
   rack (>= 3.2.8, < 4)
   rails (>= 8.1.4.1, < 8.2)
   retryable
