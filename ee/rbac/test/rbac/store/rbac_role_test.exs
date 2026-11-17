@@ -285,7 +285,7 @@ defmodule Rbac.Store.RbacRole.Test do
       import Ecto.Query, only: [where: 3]
       Role.create_default_roles_for_organization(@org_id)
 
-      assert Repo.aggregate(Repo.RbacRole, :count, :id) == 6
+      assert Repo.aggregate(Repo.RbacRole, :count, :id) == 7
       assert Repo.aggregate(Repo.RepoToRoleMapping, :count, :org_id) == 1
       assert Repo.aggregate(Repo.OrgRoleToProjRoleMapping, :count, :org_role_id) == 2
       # None of the default roles should be editable
