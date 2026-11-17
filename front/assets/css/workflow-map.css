@@ -629,6 +629,7 @@
 
 .wf-map-pipeline-meta {
   flex: 0 1 auto;
+  margin-right: auto;
   font-size: 13px;
   color: #677278;
 }
@@ -638,38 +639,37 @@
 }
 
 .wf-map-triggered {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  font-size: 13px;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
   color: #677278;
+  text-decoration: none;
   white-space: nowrap;
 }
 
-.wf-map-triggered-how {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+a.wf-map-triggered:hover {
+  color: #202B30;
 }
 
-.wf-map-triggered-how a {
-  color: inherit;
-  text-decoration: underline;
+.wf-map-triggered .material-symbols-outlined {
+  font-size: 15px;
 }
 
-.wf-map-triggered::before {
-  content: "·";
+.wf-map-sep {
   flex: none;
-  margin-right: 8px;
+  width: 1px;
+  height: 14px;
+  background: #C9D1D6;
 }
 
-.wf-map-triggered-when {
+.wf-map-pipeline-row > .wf-map-counts {
   flex: none;
 }
 
-.wf-map-triggered-when::before {
-  content: " · ";
-  white-space: pre;
+.wf-map-pipeline-row > .wf-map-counts:empty {
+  display: none;
 }
 
 .wf-map-card-size {

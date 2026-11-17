@@ -144,6 +144,7 @@ const CardNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node
         <span className="wf-map-card-title">
           <PipelineTitle p={p}/>
         </span>
+        <Triggered p={p}/>
         <PipelineActions p={p} compact/>
       </span>
       {p.blocks ? <StatusBar jobs={jobs}/> : <span className="wf-map-bar loading"/>}
@@ -164,7 +165,6 @@ const CardNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node
             {p.blocks.length} blocks · {jobs.length} jobs
           </span>
         )}
-        <Triggered p={p}/>
         <span className="wf-map-card-end">
           {h.active ? <span className={`wf-map-match ${n ? `` : `zero`}`}>{n} matching</span> : <Counts jobs={jobs}/>}
           <Duration start={p.runningAt} end={p.doneAt} running={p.status === `running`}/>
@@ -245,18 +245,19 @@ const PipelineNode = ({ data, width, positionAbsoluteX, positionAbsoluteY }: Nod
           <span className="wf-map-pipeline-title">
             <PipelineTitle p={p}/>
           </span>
+          <Counts jobs={pipelineJobs(p)}/>
           <Duration start={p.runningAt} end={p.doneAt} running={p.status === `running`}/>
+          <span className="wf-map-sep" aria-hidden="true"/>
+          <Triggered p={p}/>
           <BlocksToggle p={p} at={{ x: at.x + width, y: at.y }}/>
         </div>
         <div className="wf-map-pipeline-row wf-map-pipeline-sub">
           <Name className="wf-map-pipeline-meta">{p.yamlFile}</Name>
-          <Triggered p={p}/>
           {p.initJob && (
             <a className={`wf-map-init-log ${p.initJob.status}`} href={p.initJob.url} onClick={(e) => e.stopPropagation()}>
               Init log
             </a>
           )}
-          <Counts jobs={pipelineJobs(p)}/>
           <PipelineActions p={p}/>
         </div>
       </div>

@@ -318,6 +318,16 @@ export function formatDuration(total: number): string {
   return `${two(minutes)}:${two(rest)}`;
 }
 
+export function formatAgo(total: number): string {
+  const seconds = Math.max(0, Math.floor(total));
+  if (seconds < 60) return `now`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  if (seconds < 30 * 86400) return `${Math.floor(seconds / 86400)}d ago`;
+  if (seconds < 365 * 86400) return `${Math.floor(seconds / (30 * 86400))}mo ago`;
+  return `${Math.floor(seconds / (365 * 86400))}y ago`;
+}
+
 export function shortName(name: string): string {
   const words = name.trim().split(/\s+/);
   const first = words[0];

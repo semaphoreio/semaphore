@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe, test } from "mocha";
 
-import { AFTER_PIPELINE, ApiPipeline, ApiPipelineDetail, buildWorkflow, formatDuration, rollup, shortName } from "./model";
+import { AFTER_PIPELINE, ApiPipeline, ApiPipelineDetail, buildWorkflow, formatAgo, formatDuration, rollup, shortName } from "./model";
 
 const apiPipeline = (id: string, overrides: Partial<ApiPipeline> = {}): ApiPipeline => ({
   id,
@@ -164,6 +164,18 @@ describe(`shortName`, () => {
     for (const name of [`octocat`, `dependabot[bot]`, `[Deleted User]`, `branch deletion`, `admin`, `John Doe (Acme)`, `john doe`, `山田 太郎`]) {
       expect(shortName(name)).to.eq(name);
     }
+  });
+});
+
+describe(`formatAgo`, () => {
+  test(`says how long ago in the largest whole unit`, () => {
+    const day = 86400;
+    const shown = [0, 59, 60, 3599, 3600, day - 1, day, 30 * day - 1, 30 * day, 365 * day - 1, 365 * day, 800 * day].map(formatAgo);
+    expect(shown).to.deep.equal([`now`, `now`, `1m ago`, `59m ago`, `1h ago`, `23h ago`, `1d ago`, `29d ago`, `1mo ago`, `12mo ago`, `1y ago`, `2y ago`]);
+  });
+
+  test(`treats a time ahead of the reader's clock as now`, () => {
+    expect(formatAgo(-30)).to.eq(`now`);
   });
 });
 
