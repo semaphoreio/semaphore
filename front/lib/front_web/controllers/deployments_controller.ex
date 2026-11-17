@@ -55,16 +55,9 @@ defmodule FrontWeb.DeploymentsController do
 
           {conn, history} =
             case Async.await(maybe_history) do
-              {:ok, history} ->
-                {conn, history}
-
-              error ->
-                Logger.error(
-                  "[DT] Failed to fetch history: target_id=#{target_id} #{inspect(error)}"
-                )
-
-                {put_flash(conn, :alert, "Failure: unable to load deployment history"),
-                 Details.HistoryPage.construct([], 0, 0)}
+              {:ok, history} -> {conn, history}
+              {:exit, {reason, _stacktrace}} -> history_failed(conn, target_id, reason)
+              nil -> history_failed(conn, target_id, :timeout)
             end
 
           maybe_target_details = Async.run(fetch_target_details(target, history, conn.assigns))
@@ -327,6 +320,14 @@ defmodule FrontWeb.DeploymentsController do
         {:error, error} -> raise error
       end
     end
+
+  defp history_failed(conn, target_id, reason) do
+    Watchman.increment(watchman_name(:show, :history_failure))
+    Logger.error("[DT] Failed to fetch history: target_id=#{target_id} reason=#{inspect(reason)}")
+
+    {put_flash(conn, :alert, "Failure: unable to load deployment history"),
+     Details.HistoryPage.construct([], 0, 0)}
+  end
 
   defp fetch_target_details(target, history, _assings),
     do: fn -> Details.load(target, history) end

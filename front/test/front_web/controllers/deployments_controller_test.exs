@@ -1,5 +1,7 @@
 defmodule FrontWeb.DeploymentsControllerTest do
   use FrontWeb.ConnCase
+  import ExUnit.CaptureLog
+  import Mock
   @moduletag capture_log: true
   @moduletag :deployments
 
@@ -303,13 +305,65 @@ defmodule FrontWeb.DeploymentsControllerTest do
         raise GRPC.RPCError, status: :unknown, message: "query timed out"
       end)
 
-      conn = call_show(conn, project_id, target_id)
-      html = html_response(conn, 200)
+      with_mock Watchman, [:passthrough], increment: fn _ -> nil end do
+        {conn, log} = with_log(fn -> call_show(conn, project_id, target_id) end)
+        html = html_response(conn, 200)
 
-      assert html =~ "Staging environment"
-      assert html =~ "We didn't find any deployments matching your criteria."
-      refute html =~ "Deploy to Staging"
-      assert get_flash(conn, :alert) == "Failure: unable to load deployment history"
+        assert html =~ "Staging environment"
+        assert html =~ "We didn't find any deployments matching your criteria."
+        refute html =~ "Deploy to Staging"
+        assert get_flash(conn, :alert) == "Failure: unable to load deployment history"
+
+        assert log =~
+                 "[DT] Failed to fetch history: target_id=#{target_id} reason=%GRPC.RPCError{"
+
+        assert log =~ "query timed out"
+        refute log =~ "file:"
+        assert_called_exactly(Watchman.increment("deployments.endpoint.show.history_failure"), 1)
+      end
+    end
+
+    test "renders the target with an empty history and a flash when history times out",
+         %{
+           conn: conn,
+           project_id: project_id,
+           target_id: target_id,
+           organization_id: org_id,
+           user_id: user_id
+         } = context do
+      PermissionPatrol.remove_all_permissions()
+
+      PermissionPatrol.allow_everything_except(
+        org_id,
+        user_id,
+        "project.deployment_targets.manage"
+      )
+
+      setup_deployment(context)
+
+      with_mocks [
+        {Watchman, [:passthrough], [increment: fn _ -> nil end]},
+        {Front.Async, [:passthrough],
+         [
+           await: fn task ->
+             case passthrough([task]) do
+               {:ok, %Front.Models.DeploymentDetails.HistoryPage{}} -> nil
+               result -> result
+             end
+           end
+         ]}
+      ] do
+        {conn, log} = with_log(fn -> call_show(conn, project_id, target_id) end)
+        html = html_response(conn, 200)
+
+        assert html =~ "Staging environment"
+        assert html =~ "We didn't find any deployments matching your criteria."
+        refute html =~ "Deploy to Staging"
+        assert get_flash(conn, :alert) == "Failure: unable to load deployment history"
+
+        assert log =~ "[DT] Failed to fetch history: target_id=#{target_id} reason=:timeout"
+        assert_called_exactly(Watchman.increment("deployments.endpoint.show.history_failure"), 1)
+      end
     end
   end
 
