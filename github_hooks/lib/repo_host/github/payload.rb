@@ -37,14 +37,69 @@ module RepoHost::Github
 
     def pr_approval?
       return false unless pr_comment?
+      # A privileged, secret-granting command must come from a brand-new
+      # comment: edited/deleted comments are rejected so an approval cannot be
+      # re-fired by editing an old comment (which would defeat the once-only
+      # control) and so quoting the command in an edit is inert.
+      return false unless comment_created?
 
-      @data["comment"]["body"].include?("/sem-approve")
+      ApprovalCommand.present?(pr_comment_body)
+    end
+
+    # True only for freshly created issue_comment events. GitHub sends
+    # action "created" / "edited" / "deleted" for issue_comment webhooks.
+    def comment_created?
+      return false unless pr_comment?
+
+      @data["action"] == "created"
+    end
+
+    def pr_approval_include_secrets?
+      @data["semaphore_approval_include_secrets"] == true ||
+        pr_approval_option?(:include_secrets)
+    end
+
+    def pr_approval_enable_cache?
+      @data["semaphore_approval_enable_cache"] == true ||
+        pr_approval_option?(:enable_cache)
+    end
+
+    def pr_approval_sha
+      ApprovalCommand.sha(pr_comment_body)
+    end
+
+    # Fork head an earlier /sem-approve bound this workflow to; nil if it was
+    # never approved.
+    def approved_pr_head_sha
+      record = @data["semaphore_approval"]
+      record["approved_head_sha"].presence if record.is_a?(Hash)
     end
 
     def comment_author
       return nil unless pr_comment?
 
       @data["comment"]["user"]["login"]
+    end
+
+    # Immutable GitHub user id of the commenter. Authorization must key off
+    # this rather than the mutable, reusable login (`comment_author`), which is
+    # kept only for display/audit.
+    def comment_author_uid
+      return nil unless pr_comment?
+
+      @data.dig("comment", "user", "id")
+    end
+
+    def comment_id
+      return nil unless pr_comment?
+
+      @data["comment"]["id"]
+    end
+
+    def comment_created_at
+      return nil unless pr_comment?
+
+      @data["comment"]["created_at"]
     end
 
     def issue_number
@@ -375,6 +430,14 @@ module RepoHost::Github
       return nil unless username.present?
 
       "https://avatars.githubusercontent.com/#{username}?v=4"
+    end
+
+    def pr_approval_option?(option)
+      ApprovalCommand.options(pr_comment_body).include?(option)
+    end
+
+    def pr_comment_body
+      @data.dig("comment", "body").to_s
     end
   end
 end

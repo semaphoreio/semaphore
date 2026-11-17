@@ -68,6 +68,55 @@ defmodule Zebra.Workers.JobRequestFactory.OpenIDConnectTest do
       assert req.git_tag == ""
       assert req.git_branch_name == "main"
     end
+
+    test "sends the workflow triggerer as user_id", ctx do
+      spec_env_vars =
+        ctx.spec_env_vars ++ [JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY", "pusher")]
+
+      assert load_user_id(ctx, spec_env_vars) == "pusher"
+    end
+
+    test "sends the workflow triggerer, not the promoter, for promotions", ctx do
+      for promoted_by <- ["promoter", "auto-promotion"] do
+        spec_env_vars =
+          ctx.spec_env_vars ++
+            [
+              JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY", "pusher"),
+              JobRequest.env_var("SEMAPHORE_PIPELINE_PROMOTION", "true"),
+              JobRequest.env_var("SEMAPHORE_PIPELINE_PROMOTED_BY", promoted_by)
+            ]
+
+        assert load_user_id(ctx, spec_env_vars) == "pusher"
+      end
+    end
+
+    test "sends an empty user_id for debug jobs", ctx do
+      spec_env_vars =
+        ctx.spec_env_vars ++
+          [JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY", "pusher")]
+
+      assert load_user_id(ctx, spec_env_vars, :debug_job) == ""
+      assert load_user_id(ctx, spec_env_vars, :project_debug_job) == ""
+    end
+
+    test "ignores user-supplied duplicates appended after the platform env vars", ctx do
+      spec_env_vars =
+        ctx.spec_env_vars ++
+          [
+            JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY", "pusher"),
+            JobRequest.env_var("SEMAPHORE_WORKFLOW_TRIGGERED_BY", "spoofed")
+          ]
+
+      assert load_user_id(ctx, spec_env_vars) == "pusher"
+    end
+  end
+
+  defp load_user_id(ctx, spec_env_vars, job_type \\ :pipeline_job) do
+    assert {:ok, [%{"name" => "SEMAPHORE_OIDC_TOKEN"}]} =
+             OpenIDConnect.load(ctx.job, [], ctx.org, ctx.project, job_type, spec_env_vars)
+
+    assert_receive {:oidc_request, req}
+    req.user_id
   end
 
   describe "construct_triggerer/1" do

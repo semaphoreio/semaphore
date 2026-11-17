@@ -375,15 +375,17 @@ defmodule Guard.ServiceAccount.ActionsTest do
     test "regenerates token successfully" do
       service_account_id = "sa-id"
       org_id = "org-id"
+      requester_id = "requester-id"
       new_token = "new-token-123"
 
       with_mock ServiceAccount, [:passthrough],
-        regenerate_token: fn id, scope_org_id ->
+        regenerate_token: fn id, scope_org_id, asked_by ->
           assert id == service_account_id
           assert scope_org_id == org_id
+          assert asked_by == requester_id
           {:ok, new_token}
         end do
-        {:ok, result} = Actions.regenerate_token(service_account_id, org_id)
+        {:ok, result} = Actions.regenerate_token(service_account_id, org_id, requester_id)
 
         assert result == new_token
       end
@@ -394,9 +396,9 @@ defmodule Guard.ServiceAccount.ActionsTest do
       org_id = "org-id"
 
       with_mock ServiceAccount, [:passthrough],
-        regenerate_token: fn _, _ -> {:error, :token_regeneration_failed} end do
+        regenerate_token: fn _, _, _ -> {:error, :token_regeneration_failed} end do
         {:error, :token_regeneration_failed} =
-          Actions.regenerate_token(service_account_id, org_id)
+          Actions.regenerate_token(service_account_id, org_id, "requester-id")
       end
     end
 
@@ -405,12 +407,13 @@ defmodule Guard.ServiceAccount.ActionsTest do
       other_org_id = Ecto.UUID.generate()
 
       with_mock ServiceAccount, [:passthrough],
-        regenerate_token: fn id, scope_org_id ->
+        regenerate_token: fn id, scope_org_id, _requester_id ->
           assert id == service_account_id
           assert scope_org_id == other_org_id
           {:error, :not_found}
         end do
-        {:error, :not_found} = Actions.regenerate_token(service_account_id, other_org_id)
+        {:error, :not_found} =
+          Actions.regenerate_token(service_account_id, other_org_id, "requester-id")
       end
     end
   end

@@ -38,4 +38,15 @@ defmodule Front do
   def saas? do
     !os?() && !onprem?()
   end
+
+  @doc """
+  Whether a service account's projects are held to its owner's access.
+
+  Mirrors the same switch in the service that applies the rule, so the UI says a
+  create is blocked only where it really is.
+  """
+  @spec enforce_service_account_owner?() :: boolean()
+  def enforce_service_account_owner? do
+    Application.get_env(:front, :enforce_service_account_owner?, false)
+  end
 end

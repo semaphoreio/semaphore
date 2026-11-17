@@ -60,6 +60,8 @@ spec:
               value: "true"
             - name: LOG_LEVEL
               value: info
+            - name: WEBHOOK_BLOCK_INTERNAL_ENDPOINTS
+              value: {{ .Values.webhooks.blockInternalEndpoints | quote }}
             - name: BASE_DOMAIN
               valueFrom:
                 configMapKeyRef:

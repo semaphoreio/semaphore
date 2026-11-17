@@ -26,23 +26,61 @@ module RepoHost::Github
 
     Octokit.default_media_type = "application/vnd.github.moondragon+json"
 
-    def initialize(token = nil)
+    def initialize(token = nil, request_timeout: nil)
       @token = token
+      @request_timeout = request_timeout
     end
 
     def rate_limit_remaining
       user_client.rate_limit.remaining()
     end
 
+    # Requests left in the rate-limit window as reported by the last response,
+    # without making a request. nil when there is no such header.
+    def last_response_rate_limit_remaining
+      response = user_client.last_response
+      return nil if response.nil?
+
+      Integer(response.headers["x-ratelimit-remaining"], :exception => false)
+    end
+
     def token_valid?
       validate_token_presence!
 
-      app_client.check_application_authorization(@token).present?
-    rescue Octokit::ServiceUnavailable, Octokit::InternalServerError => exception
+      begin
+        app_client.check_application_authorization(@token).present?
+      rescue Octokit::ClientError => exception
+        # Octokit only maps a 403 to a throttling class; a bare 429 becomes a
+        # plain ClientError, which is not in GITHUB_EXCEPTION and so escaped
+        # this method raw. Re-raising anything else keeps the clauses below
+        # reachable, which a method-level rescue would not.
+        raise exception unless status_429?(exception)
+
+        raise ::RepoHost::RemoteException::TooManyRequests, exception.message
+      end
+    rescue Octokit::ServiceUnavailable, Octokit::InternalServerError,
+           Octokit::TooManyRequests, Octokit::AbuseDetected,
+           Octokit::TooManyLoginAttempts => exception
+      # Transient upstream failures (5xx and throttling) must not classify the
+      # token as revoked; raising keeps the caller's revoke status unchanged.
+      #
+      # These must be named here because `rescue` matches with is_a? and
+      # Octokit::Forbidden, their parent, is in GITHUB_EXCEPTION below.
+      # Octokit maps a 403 by body: "rate limit exceeded" and "exceeded a
+      # secondary rate limit" to TooManyRequests, "abuse" to AbuseDetected,
+      # "login attempts exceeded" to TooManyLoginAttempts.
       handle_octokit_exceptions(exception)
     rescue ::RepoHost::RemoteException::Unauthorized
       false
     rescue *GITHUB_EXCEPTION
+      false
+    end
+
+    # response_status reads the stored response, which an Octokit error raised
+    # without one does not have.
+    def status_429?(exception)
+      exception.response_status == 429
+    rescue StandardError
       false
     end
 
@@ -171,6 +209,12 @@ module RepoHost::Github
       handle_octokit_exceptions(exception)
     end
 
+    def git_commit(repo, sha)
+      user_client.git_commit(repo, sha)
+    rescue *GITHUB_EXCEPTION => exception
+      handle_octokit_exceptions(exception)
+    end
+
     def compare(repo, base, head)
       # We only read the first-page envelope of the comparison (`base_commit`).
       # The `commits[]`/`files[]` lists are never used, so route this through a
@@ -271,8 +315,11 @@ module RepoHost::Github
     end
 
     def user_client
-      @user_client ||= Octokit::Client.new(:access_token => @token,
-                                           :auto_paginate => AUTO_PAGINATE)
+      @user_client ||= begin
+        options = { :access_token => @token, :auto_paginate => AUTO_PAGINATE }
+        options[:connection_options] = { :request => { :open_timeout => @request_timeout, :timeout => @request_timeout } } if @request_timeout
+        Octokit::Client.new(options)
+      end
     end
 
     # Like `user_client`, but with auto-pagination disabled. For calls that only
@@ -310,6 +357,12 @@ module RepoHost::Github
       elsif exception.instance_of? Octokit::NotFound
         raise ::RepoHost::RemoteException::NotFound, exception.message
       elsif exception.instance_of? Octokit::TooManyRequests
+        raise ::RepoHost::RemoteException::TooManyRequests, exception.message
+      elsif exception.instance_of?(Octokit::AbuseDetected) ||
+            exception.instance_of?(Octokit::TooManyLoginAttempts)
+        # Both are throttling, not a bad token. Every arm here matches with
+        # instance_of?, so subclassing Forbidden wins them nothing - without
+        # these names they reach the else and become Unknown.
         raise ::RepoHost::RemoteException::TooManyRequests, exception.message
       elsif exception.instance_of? Octokit::ServiceUnavailable
         raise ::RepoHost::RemoteException::ServiceUnavailable, exception.message

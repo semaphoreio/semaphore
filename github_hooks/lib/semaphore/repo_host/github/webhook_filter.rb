@@ -6,7 +6,9 @@ module Semaphore::RepoHost::Github
     GITHUB_APP_WEBHOOK_EVENTS = ["installation", "installation_repositories"]
     SUPPORTED_GITHUB_WEBHOOK_EVENTS = ["push", "pull_request", "member", "issue_comment", "installation", "installation_repositories", "team", "membership", "repository"]
     SUPPORTED_GITHUB_PULL_REQUEST_ACTIONS = ["opened", "synchronize", "closed", "reopened", "ready_for_review"]
-    SUPPORTED_PR_COMMANDS = ["/sem-approve"]
+    # Only newly created comments may carry an approval command; edited/deleted
+    # comment events are dropped here so they never become workflows.
+    SUPPORTED_ISSUE_COMMENT_ACTION = "created"
 
     def initialize(request, payload)
       @request = request
@@ -81,7 +83,8 @@ module Semaphore::RepoHost::Github
 
     def supported_pr_command?
       payload_data["issue"]["pull_request"].present? &&
-        SUPPORTED_PR_COMMANDS.any? { |cmd| pull_request_command.include?(cmd) }
+        webhook_action == SUPPORTED_ISSUE_COMMENT_ACTION &&
+        ::RepoHost::Github::ApprovalCommand.present?(pull_request_command)
     end
 
     def supported_membership_scope?
@@ -121,7 +124,7 @@ module Semaphore::RepoHost::Github
     end
 
     def pull_request_command
-      payload_data["comment"]["body"]
+      payload_data.dig("comment", "body").to_s
     end
 
     def payload_data

@@ -10,11 +10,14 @@ export class AppConfig {
     return {
       organizationId: json.organization_id,
       projectId: json.project_id,
+      userId: json.user_id,
       isOrgScope,
       permissions: {
         canView: json.permissions?.view || false,
         canManage: json.permissions?.manage || false,
       },
+      showOwnership: json.show_ownership || false,
+      ownershipEnforced: json.ownership_enforced || false,
       roles: json.roles || [],
       urls: {
         list: `/service_accounts`,
@@ -24,6 +27,9 @@ export class AppConfig {
         delete: (id: string) => `/service_accounts/${id}`,
         regenerateToken: (id: string) =>
           `/service_accounts/${id}/regenerate_token`,
+        takeOwnership: (id: string) => `/service_accounts/${id}/take_ownership`,
+        releaseOwnership: (id: string) =>
+          `/service_accounts/${id}/release_ownership`,
         assignRole: json.assign_role_url,
       },
     };

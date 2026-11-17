@@ -585,6 +585,7 @@ defmodule InternalApi.Repository.UpdateRequest do
 
   field :whitelist, 6, type: InternalApi.Projecthub.Project.Spec.Repository.Whitelist
   field :default_branch, 7, type: :string, json_name: "defaultBranch"
+  field :user_id, 8, type: :string, json_name: "userId"
 end
 
 defmodule InternalApi.Repository.UpdateResponse do

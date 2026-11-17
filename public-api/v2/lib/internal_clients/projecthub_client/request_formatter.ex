@@ -118,7 +118,19 @@ defmodule InternalClients.Projecthub.RequestFormatter do
       allowed_secrets:
         from_params(params.spec.repository.forked_pull_requests, :allowed_secrets, []),
       allowed_contributors:
-        from_params(params.spec.repository.forked_pull_requests, :allowed_contributors, [])
+        from_params(params.spec.repository.forked_pull_requests, :allowed_contributors, []),
+      allow_sem_approve_include_secrets:
+        from_params(
+          params.spec.repository.forked_pull_requests,
+          :allow_sem_approve_include_secrets,
+          false
+        ),
+      allow_sem_approve_enable_cache:
+        from_params(
+          params.spec.repository.forked_pull_requests,
+          :allow_sem_approve_enable_cache,
+          false
+        )
     }
   end
 

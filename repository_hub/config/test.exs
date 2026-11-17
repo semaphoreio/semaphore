@@ -21,3 +21,5 @@ config :repository_hub, RepositoryHub.WebhookSecretEncryptor, module: {Repositor
 
 config :repository_hub, RepositoryHub.RemoteIdSyncWorker, enabled: false
 config :repository_hub, RepositoryHub.BuildStatusGuardCleanupWorker, enabled: false
+
+config :repository_hub, :enforce_service_account_owner?, true

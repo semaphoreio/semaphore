@@ -81,8 +81,65 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
     end
 
     context "PR approval" do
-      it "marks workflow as pr approval" do
+      before do
+        allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:sem_approve_options, anything).and_return(true)
+        allow(@workflow.payload).to receive(:pr_approval_sha).and_return(nil)
+      end
+
+      # Fixed timeline used by the approval tests. In the normal case a blocked
+      # forked-PR workflow is created *before* the maintainer's approval comment
+      # (the PR event arrives, is blocked, then a maintainer comments). Tests
+      # that model a contributor pushing after approval create a workflow at
+      # `after_comment`.
+      def approval_comment_time
+        "2026-07-20T00:00:00Z"
+      end
+
+      def before_comment
+        Time.utc(2026, 7, 19)
+      end
+
+      def after_comment
+        Time.utc(2026, 7, 21)
+      end
+
+      # A blocked forked-PR workflow whose payload is a real pull_request
+      # event, so the shared pull_request? launch path — and the SHA-binding
+      # guard — is exercised end to end.
+      def build_blocked_pr_workflow(project_id:, pr_number: 1, created_at: before_comment)
+        wf = FactoryBot.create(
+          :workflow,
+          :project_id => project_id,
+          :state => Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR,
+          :request => ActionController::Parameters.new(
+            "payload" => RepoHost::Github::Responses::Payload.post_receive_hook_pull_request
+          )
+        )
+        wf.update(:git_ref => "refs/pull/#{pr_number}/merge", :created_at => created_at)
+        wf
+      end
+
+      # update_pr_data result whose live head is `head_sha`. Defaults to the
+      # approved head, i.e. the approval is still valid (no injected commit).
+      def ok_pr_data(workflow, head_sha: nil)
+        [
+          :ok,
+          {
+            :mergeable => true,
+            :commit_author => "octocat",
+            :merge_commit_sha => workflow.commit_sha,
+            :ref => workflow.git_ref,
+            :head_sha => head_sha || workflow.commit_sha
+          },
+          nil
+        ]
+      end
+
+      it "marks the comment workflow as pr approval" do
+        allow(@logger).to receive(:info)
         allow(@workflow.payload).to receive(:pr_approval?).and_return(true)
+        allow(described_class).to receive(:can_approve_forked_pr?).and_return(false)
+
         expect(@logger).to receive(:info).with("pr-approval")
 
         described_class.run(@workflow, @logger)
@@ -90,36 +147,986 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         expect(@workflow.reload.state).to eq(Workflow::STATE_PR_APPROVAL)
       end
 
-      it "launches workflow if marked as allowed user" do
-        workflow = FactoryBot.create(
-          :workflow,
-          :project_id => @workflow.project_id,
-          :state => Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR
-        )
-        workflow.update(:git_ref => "refs/pull/45/merge")
+      it "denies approval and does not launch when the requestor lacks the required permission" do
+        build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 45)
 
-        allow(@workflow.payload).to receive_messages(issue_number: 45, pr_approval?: true)
+        allow(@logger).to receive(:info)
+        allow(Watchman).to receive(:increment)
+        allow(@workflow.payload).to receive_messages(issue_number: 45, pr_approval?: true, comment_author: "octocat")
+        allow(described_class).to receive(:can_approve_forked_pr?).and_return(false)
 
-        expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
-
-        allow(Semaphore::RepoHost::Hooks::Handler).to receive(:forked_pr_allowed?).and_return(true)
+        expect(@logger).to receive(:info).with("pr-approval-denied", :requestor => "octocat", :required_permission => "project.view", :project_id => @workflow.project_id)
+        expect(Watchman).to receive(:increment).with("hooks.pr_approval.denied")
+        expect(described_class).not_to receive(:launch_pipeline)
 
         described_class.run(@workflow, @logger)
       end
 
-      it "does not launch workflow if marked as not allowed user" do
+      it "launches the blocked workflow when the requestor can approve" do
         workflow = FactoryBot.create(
           :workflow,
           :project_id => @workflow.project_id,
           :state => Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR
         )
-        workflow.update(:git_ref => "refs/pull/45/merge")
+        workflow.update(:git_ref => "refs/pull/45/merge", :created_at => before_comment)
 
-        allow(@workflow.payload).to receive_messages(issue_number: 45, pr_approval?: true)
+        allow(@workflow.payload).to receive_messages(issue_number: 45, pr_approval?: true, comment_author: "maintainer", comment_created_at: approval_comment_time)
+        allow(described_class).to receive(:can_approve_forked_pr?).and_return(true)
+
+        expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
+
+        described_class.run(@workflow, @logger)
+      end
+
+      it "authorizes the permission check by the commenter's immutable uid" do
+        build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 45)
+
+        allow(@workflow.payload).to receive_messages(issue_number: 45, pr_approval?: true, comment_author: "maintainer", comment_author_uid: 4242, comment_created_at: approval_comment_time)
+
+        expect(described_class).to receive(:can_approve_forked_pr?)
+          .with(@workflow.project, 4242, @logger, :permission => "project.view")
+          .and_return(false)
+
+        described_class.run(@workflow, @logger)
+      end
+
+      it "requires project.job.rerun when the approval requests an option" do
+        build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 45)
+
+        allow(@workflow.payload).to receive_messages(issue_number: 45, pr_approval?: true, pr_approval_enable_cache?: true, comment_author: "maintainer", comment_author_uid: 4242, comment_created_at: approval_comment_time)
+
+        expect(described_class).to receive(:can_approve_forked_pr?)
+          .with(@workflow.project, 4242, @logger, :permission => "project.job.rerun")
+          .and_return(false)
+        expect(described_class).not_to receive(:launch_pipeline)
+
+        described_class.run(@workflow, @logger)
+      end
+
+      it "does not launch when there is no blocked workflow" do
+        allow(@workflow.payload).to receive_messages(issue_number: 999, pr_approval?: true, comment_author: "maintainer", comment_created_at: approval_comment_time)
+        allow(described_class).to receive(:can_approve_forked_pr?).and_return(true)
 
         expect(described_class).not_to receive(:launch_pipeline)
 
-        allow(Semaphore::RepoHost::Hooks::Handler).to receive(:forked_pr_allowed?).and_return(false)
+        described_class.run(@workflow, @logger)
+      end
+
+      it "persists a typed approval record and launches when authorized and enabled" do
+        workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 1,
+          pr_approval?: true,
+          pr_approval_include_secrets?: true,
+          pr_approval_sha: workflow.commit_sha,
+          pr_approval_enable_cache?: true,
+          comment_author: "maintainer",
+          comment_author_uid: 4242,
+          comment_id: 42,
+          comment_created_at: approval_comment_time
+        )
+        allow(described_class).to receive_messages(
+          approval_option_enabled?: true,
+          can_approve_forked_pr?: true,
+          update_pr_data: ok_pr_data(workflow)
+        )
+
+        expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
+
+        described_class.run(@workflow, @logger)
+
+        payload = JSON.parse(Workflow.find(workflow.id).request["payload"])
+        expect(payload["semaphore_approval_include_secrets"]).to be(true)
+        expect(payload["semaphore_approval_enable_cache"]).to be(true)
+
+        record = payload["semaphore_approval"]
+        expect(record["include_secrets"]).to be(true)
+        expect(record["enable_cache"]).to be(true)
+        expect(record["approver"]).to eq("maintainer")
+        expect(record["approver_uid"]).to eq(4242)
+        expect(record["approved_head_sha"]).to eq(workflow.commit_sha)
+        expect(record["comment_id"]).to eq(42)
+        expect(record["approved_at"]).to eq(approval_comment_time)
+      end
+
+      context "when an approved workflow did not launch on the first attempt" do
+        def mark_approved(workflow, include_secrets: false, enable_cache: false, state: Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+          payload = JSON.parse(workflow.request["payload"]).merge(
+            "semaphore_approval_include_secrets" => include_secrets,
+            "semaphore_approval_enable_cache" => enable_cache,
+            "semaphore_approval" => {
+              "include_secrets" => include_secrets,
+              "enable_cache" => enable_cache,
+              "approver" => "first-maintainer",
+              "approved_head_sha" => workflow.commit_sha
+            }
+          )
+          workflow.update(:request => workflow.request.merge("payload" => payload.to_json), :state => state)
+          Workflow.find(workflow.id)
+        end
+
+        def approval_payload(workflow)
+          JSON.parse(Workflow.find(workflow.id).request["payload"])
+        end
+
+        before do
+          allow(@logger).to receive(:info)
+          allow(Watchman).to receive(:increment)
+        end
+
+        it "clears options left by an earlier approval when the next approval is bare" do
+          workflow = mark_approved(
+            build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1),
+            :include_secrets => true,
+            :enable_cache => true
+          )
+
+          allow(@workflow.payload).to receive_messages(
+            issue_number: 1,
+            pr_approval?: true,
+            comment_author: "maintainer",
+            comment_author_uid: 4242,
+            comment_created_at: approval_comment_time
+          )
+          allow(described_class).to receive_messages(
+            can_approve_forked_pr?: true,
+            update_pr_data: ok_pr_data(workflow)
+          )
+
+          expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
+
+          described_class.run(@workflow, @logger)
+
+          payload = approval_payload(workflow)
+          expect(payload["semaphore_approval_include_secrets"]).to be(false)
+          expect(payload["semaphore_approval_enable_cache"]).to be(false)
+          expect(payload["semaphore_approval"]).to include(
+            "include_secrets" => false,
+            "enable_cache" => false,
+            "approver" => "maintainer",
+            "approver_uid" => 4242
+          )
+          expect(RepoHost::Github::Payload.new(Workflow.find(workflow.id).request["payload"]).pr_approval_include_secrets?).to be(false)
+        end
+
+        it "records a bare approval with the approved head" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+
+          allow(@workflow.payload).to receive_messages(
+            issue_number: 1,
+            pr_approval?: true,
+            comment_author: "maintainer",
+            comment_created_at: approval_comment_time
+          )
+          allow(described_class).to receive_messages(
+            can_approve_forked_pr?: true,
+            update_pr_data: ok_pr_data(workflow)
+          )
+
+          described_class.run(@workflow, @logger)
+
+          expect(approval_payload(workflow)["semaphore_approval"]).to include(
+            "approver" => "maintainer",
+            "approved_head_sha" => workflow.commit_sha
+          )
+        end
+
+        it "resumes a rescheduled approved workflow instead of filtering it again" do
+          workflow = mark_approved(
+            build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1),
+            :state => Workflow::STATE_PR_APPROVAL_IN_PROGRESS
+          )
+          allow(workflow.project).to receive_messages(build_forked_pr: true, allowed_contributors: "radwo")
+          allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(workflow))
+
+          expect(@logger).not_to receive(:info).with("skip-filtered-contributor")
+          expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
+
+          described_class.run(workflow, @logger, "", "", 1)
+
+          expect(described_class).to have_received(:update_pr_data).with(anything, anything, anything, hash_including(:webhook_base_sha => nil))
+        end
+
+        context "when a resumed approved workflow hits a GitHub error" do
+          let(:workflow) do
+            mark_approved(
+              build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1),
+              :state => Workflow::STATE_PR_APPROVAL_IN_PROGRESS
+            )
+          end
+
+          before do
+            allow(workflow.project).to receive_messages(build_forked_pr: true, allowed_contributors: "radwo")
+          end
+
+          [
+            RepoHost::RemoteException::TooManyRequests,
+            RepoHost::RemoteException::ServiceUnavailable,
+            RepoHost::RemoteException::InternalServerError,
+            Octokit::BadGateway,
+            Faraday::TimeoutError
+          ].each do |error|
+            it "keeps the claim through #{error} so the retry resumes it" do
+              allow(described_class).to receive(:update_pr_data).and_raise(error)
+
+              expect { described_class.run(workflow, @logger, "", "", 1) }.to raise_error(error)
+
+              expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_PR_APPROVAL_IN_PROGRESS)
+            end
+          end
+
+          it "releases the claim on any other error" do
+            allow(described_class).to receive(:update_pr_data).and_raise(RepoHost::RemoteException::Unknown, "boom")
+
+            expect { described_class.run(workflow, @logger, "", "", 1) }.to raise_error(RepoHost::RemoteException::Unknown)
+
+            expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+          end
+        end
+
+        it "fails closed when a rescheduled approved workflow's fork head moved" do
+          workflow = mark_approved(
+            build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1),
+            :state => Workflow::STATE_PR_APPROVAL_IN_PROGRESS
+          )
+          allow(workflow.project).to receive_messages(build_forked_pr: true, allowed_contributors: "radwo")
+          allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(workflow, head_sha: "pushed-after-approval"))
+
+          expect(described_class).not_to receive(:launch_pipeline)
+
+          described_class.run(workflow, @logger, "", "", 1)
+
+          expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_PR_APPROVAL_STALE)
+        end
+
+        context "when claiming the blocked workflow" do
+          def approve_bare
+            allow(@workflow.payload).to receive_messages(
+              issue_number: 1,
+              pr_approval?: true,
+              comment_author: "maintainer",
+              comment_author_uid: 4242,
+              comment_created_at: approval_comment_time
+            )
+            allow(described_class).to receive(:can_approve_forked_pr?).and_return(true)
+          end
+
+          it "holds the claim while launching" do
+            workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+            approve_bare
+            allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(workflow))
+
+            state_at_launch = nil
+            allow(described_class).to receive(:launch_pipeline) { |_branch, wf, _logger| state_at_launch = Workflow.find(wf.id).state }
+
+            described_class.run(@workflow, @logger)
+
+            expect(state_at_launch).to eq(Workflow::STATE_PR_APPROVAL_IN_PROGRESS)
+            expect(described_class).to have_received(:update_pr_data).with(anything, anything, anything, hash_including(:webhook_base_sha => nil))
+          end
+
+          it "backs off without touching the workflow when a concurrent approval claimed it first" do
+            workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+            approve_bare
+            original_payload = workflow.request["payload"]
+            allow(described_class).to receive(:approved_sem_approve_option).and_wrap_original do |method, **kwargs|
+              Workflow.find(workflow.id).update(:state => Workflow::STATE_PR_APPROVAL_IN_PROGRESS)
+              method.call(**kwargs)
+            end
+
+            expect(described_class).not_to receive(:update_pr_data)
+            expect(described_class).not_to receive(:launch_pipeline)
+            expect(Watchman).to receive(:increment).with("hooks.pr_approval.already_claimed")
+
+            described_class.run(@workflow, @logger)
+
+            expect(Workflow.find(workflow.id).request["payload"]).to eq(original_payload)
+          end
+
+          it "keeps the claim across a stale merge commit reschedule while the approved head is unchanged" do
+            workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+            approve_bare
+            allow(App).to receive(:stale_merge_commit_max_retries).and_return(3)
+            stale = { :head_sha => workflow.commit_sha, :merge_parent_shas => ["c" * 40, "b" * 40], :rate_limit_remaining => 5000 }
+            allow(described_class).to receive(:update_pr_data).and_return([:stale_merge_commit, stale, ""])
+
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker).to receive(:perform_in).with(1.minute, workflow.id, anything, anything, 1, 1)
+
+            described_class.run(@workflow, @logger)
+
+            expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_PR_APPROVAL_IN_PROGRESS)
+          end
+
+          it "marks the approval stale when the fork pushed after approval and the merge commit is stale" do
+            workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+            approve_bare
+            stale = { :head_sha => "b" * 40, :merge_parent_shas => ["c" * 40, "b" * 40], :rate_limit_remaining => 5000 }
+            allow(described_class).to receive(:update_pr_data).and_return([:stale_merge_commit, stale, ""])
+
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker).not_to receive(:perform_in)
+
+            described_class.run(@workflow, @logger)
+
+            expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_PR_APPROVAL_STALE)
+          end
+
+          it "keeps the claim across a mergeable_unknown reschedule" do
+            workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+            approve_bare
+            allow(described_class).to receive(:update_pr_data).and_return([:mergeable_unknown, { :rate_limit_remaining => 5000 }, ""])
+
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker).to receive(:perform_in).with(2.minutes, workflow.id, anything, anything, 1)
+
+            described_class.run(@workflow, @logger)
+
+            expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_PR_APPROVAL_IN_PROGRESS)
+          end
+
+          it "ignores a late reschedule once the workflow was launched by another approval" do
+            workflow = mark_approved(
+              build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1),
+              :state => Workflow::STATE_LAUNCHING
+            )
+            workflow.update(:ppl_id => SecureRandom.uuid, :git_ref => "refs/semaphoreci/#{workflow.commit_sha}")
+            workflow = Workflow.find(workflow.id)
+
+            expect(described_class).not_to receive(:update_pr_data)
+            expect(described_class).not_to receive(:launch_pipeline)
+            expect(Watchman).to receive(:increment).with("hooks.pr_approval.resume_skipped")
+
+            expect { described_class.run(workflow, @logger, "", "", 1) }
+              .not_to(change { Workflow.find(workflow.id).attributes.slice("state", "commit_sha", "git_ref") })
+          end
+
+          it "releases the claim and re-raises when fetching the PR fails" do
+            workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+            approve_bare
+            allow(described_class).to receive(:update_pr_data).and_raise(RepoHost::RemoteException::Unknown, "boom")
+
+            expect { described_class.run(@workflow, @logger) }.to raise_error(RepoHost::RemoteException::Unknown)
+
+            expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+          end
+
+          it "releases the claim on a transient error so the approval comment's retry can claim it again" do
+            workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+            approve_bare
+            allow(described_class).to receive(:update_pr_data).and_raise(RepoHost::RemoteException::TooManyRequests, "slow down")
+
+            expect { described_class.run(@workflow, @logger) }.to raise_error(RepoHost::RemoteException::TooManyRequests)
+
+            expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+          end
+
+          it "releases the claim and re-raises when preparing the launch fails" do
+            workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+            approve_bare
+            allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(workflow))
+            allow(described_class).to receive(:find_or_create_branch).and_raise(ActiveRecord::RecordInvalid)
+
+            expect { described_class.run(@workflow, @logger) }.to raise_error(ActiveRecord::RecordInvalid)
+
+            expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+          end
+
+          it "releases the claim when the approval cannot be persisted" do
+            workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+            approve_bare
+            allow(described_class).to receive(:mark_workflow_with_pr_approval_options).and_return(false)
+
+            expect(described_class).not_to receive(:launch_pipeline)
+
+            described_class.run(@workflow, @logger)
+
+            expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+          end
+        end
+
+        it "still filters a rescheduled workflow that was never approved" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+          allow(workflow.project).to receive_messages(build_forked_pr: true, allowed_contributors: "radwo")
+
+          expect(described_class).not_to receive(:launch_pipeline)
+
+          described_class.run(workflow, @logger, "", "", 1)
+
+          expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+        end
+      end
+
+      it "fails closed (no launch, no marker) when a requested option is disabled at project level" do
+        workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+
+        allow(@logger).to receive(:info)
+        allow(Watchman).to receive(:increment)
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 1,
+          pr_approval?: true,
+          pr_approval_include_secrets?: true,
+          pr_approval_sha: workflow.commit_sha,
+          pr_approval_enable_cache?: true,
+          comment_author: "maintainer",
+          comment_created_at: approval_comment_time
+        )
+        allow(described_class).to receive_messages(
+          approval_option_enabled?: false,
+          approval_enable_cache_option_enabled?: false,
+          can_approve_forked_pr?: true
+        )
+
+        expect(described_class).not_to receive(:launch_pipeline)
+        expect(Watchman).to receive(:increment).with("hooks.pr_approval.option_not_enabled")
+        expect(@logger).to receive(:info).with(
+          "pr-approval-option-not-enabled",
+          hash_including(:workflow_id => workflow.id, :project_id => workflow.project_id)
+        )
+
+        described_class.run(@workflow, @logger)
+
+        # One-shot approval NOT consumed: no markers persisted and the workflow
+        # stays blocked so the option can be enabled and the command re-issued.
+        payload = JSON.parse(Workflow.find(workflow.id).request["payload"])
+        expect(payload["semaphore_approval_include_secrets"]).to be_nil
+        expect(payload["semaphore_approval_enable_cache"]).to be_nil
+        expect(payload["semaphore_approval"]).to be_nil
+      end
+
+      it "fails closed when only one of the requested options is disabled" do
+        blocked = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+
+        allow(@logger).to receive(:info)
+        allow(Watchman).to receive(:increment)
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 1,
+          pr_approval?: true,
+          pr_approval_include_secrets?: true,
+          pr_approval_sha: blocked.commit_sha,
+          pr_approval_enable_cache?: true,
+          comment_author: "maintainer",
+          comment_created_at: approval_comment_time
+        )
+        # include-secrets enabled, enable-cache disabled → the requested cache
+        # option is unavailable, so the whole command fails closed.
+        allow(described_class).to receive_messages(
+          approval_option_enabled?: true,
+          approval_enable_cache_option_enabled?: false,
+          can_approve_forked_pr?: true
+        )
+
+        expect(described_class).not_to receive(:launch_pipeline)
+        expect(Watchman).to receive(:increment).with("hooks.pr_approval.option_not_enabled")
+
+        described_class.run(@workflow, @logger)
+      end
+
+      context "when the sem_approve_options feature is disabled for the organization" do
+        before do
+          allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:sem_approve_options, anything).and_return(false)
+          allow(@logger).to receive(:info)
+          allow(Watchman).to receive(:increment)
+        end
+
+        it "fails closed for a requested option even when the project setting is on" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+
+          allow(@workflow.payload).to receive_messages(
+            issue_number: 1,
+            pr_approval?: true,
+            pr_approval_include_secrets?: true,
+            pr_approval_sha: workflow.commit_sha,
+            comment_author: "maintainer",
+            comment_created_at: approval_comment_time
+          )
+          allow(described_class).to receive_messages(
+            approval_option_enabled?: true,
+            can_approve_forked_pr?: true,
+            update_pr_data: ok_pr_data(workflow)
+          )
+
+          expect(described_class).not_to receive(:launch_pipeline)
+          expect(Watchman).to receive(:increment).with("hooks.pr_approval.options_feature_disabled")
+          expect(@logger).to receive(:info).with(
+            "pr-approval-options-feature-disabled",
+            hash_including(:workflow_id => workflow.id, :project_id => workflow.project_id)
+          )
+
+          described_class.run(@workflow, @logger)
+
+          reloaded = Workflow.find(workflow.id)
+          expect(reloaded.state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+          expect(JSON.parse(reloaded.request["payload"])).not_to include("semaphore_approval", "semaphore_approval_include_secrets")
+        end
+
+        it "checks the flag for the project's organization" do
+          blocked = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+
+          allow(@workflow.payload).to receive_messages(
+            issue_number: 1,
+            pr_approval?: true,
+            pr_approval_enable_cache?: true,
+            pr_approval_sha: blocked.commit_sha,
+            comment_author: "maintainer",
+            comment_created_at: approval_comment_time
+          )
+          allow(described_class).to receive(:can_approve_forked_pr?).and_return(true)
+
+          expect(Semaphore::FeatureFlags).to receive(:enabled?)
+            .with(:sem_approve_options, @workflow.project.organization_id)
+            .and_return(false)
+
+          described_class.run(@workflow, @logger)
+        end
+
+        it "still launches a bare approval without looking up the flag" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+
+          allow(@workflow.payload).to receive_messages(
+            issue_number: 1,
+            pr_approval?: true,
+            comment_author: "maintainer",
+            comment_created_at: approval_comment_time
+          )
+          allow(described_class).to receive_messages(
+            can_approve_forked_pr?: true,
+            update_pr_data: ok_pr_data(workflow)
+          )
+
+          expect(Semaphore::FeatureFlags).not_to receive(:enabled?)
+          expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
+
+          described_class.run(@workflow, @logger)
+        end
+      end
+
+      context "when the approval names the reviewed commit" do
+        let(:reviewed_sha) { "aaaaaaa111111111111111111111111111111111" }
+        let(:pushed_sha) { "bbbbbbb222222222222222222222222222222222" }
+
+        def approve(sha:, **options)
+          allow(@workflow.payload).to receive_messages(
+            issue_number: 1,
+            pr_approval?: true,
+            pr_approval_sha: sha,
+            comment_author: "maintainer",
+            comment_created_at: approval_comment_time,
+            **options
+          )
+        end
+
+        def blocked_at(sha, created_at)
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1, created_at: created_at)
+          workflow.update(:commit_sha => sha)
+          workflow
+        end
+
+        before do
+          allow(@logger).to receive(:info)
+          allow(Watchman).to receive(:increment)
+          allow(described_class).to receive_messages(approval_option_enabled?: true, can_approve_forked_pr?: true)
+        end
+
+        it "refuses options when no SHA is given" do
+          workflow = blocked_at(reviewed_sha, before_comment)
+          approve(:sha => nil, :pr_approval_include_secrets? => true)
+
+          expect(described_class).not_to receive(:update_pr_data)
+          expect(described_class).not_to receive(:launch_pipeline)
+          expect(Watchman).to receive(:increment).with("hooks.pr_approval.options_missing_sha")
+
+          expect { described_class.run(@workflow, @logger) }
+            .not_to(change { Workflow.find(workflow.id).attributes.slice("state", "request") })
+        end
+
+        it "still launches a bare approval without a SHA" do
+          workflow = blocked_at(reviewed_sha, before_comment)
+          approve(:sha => nil)
+          allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(workflow))
+
+          expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
+
+          described_class.run(@workflow, @logger)
+        end
+
+        it "approves the workflow for the named commit, not the newest blocked one" do
+          reviewed = blocked_at(reviewed_sha, before_comment - 1.hour)
+          blocked_at(pushed_sha, before_comment)
+          approve(:sha => reviewed_sha[0, 12], :pr_approval_include_secrets? => true)
+          allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(reviewed))
+
+          expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), reviewed, @logger)
+
+          described_class.run(@workflow, @logger)
+
+          expect(approval_record(reviewed)).to include("approved_head_sha" => reviewed_sha, "include_secrets" => true)
+        end
+
+        it "does not hand options to a head the fork pushed after the reviewed commit" do
+          reviewed = blocked_at(reviewed_sha, before_comment - 1.hour)
+          pushed = blocked_at(pushed_sha, before_comment)
+          approve(:sha => reviewed_sha, :pr_approval_include_secrets? => true)
+          allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(reviewed, head_sha: pushed_sha))
+
+          expect(described_class).not_to receive(:launch_pipeline)
+
+          described_class.run(@workflow, @logger)
+
+          expect(Workflow.find(reviewed.id).state).to eq(Workflow::STATE_PR_APPROVAL_STALE)
+          expect(Workflow.find(pushed.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+        end
+
+        it "does nothing when no blocked workflow matches the SHA" do
+          workflow = blocked_at(reviewed_sha, before_comment)
+          approve(:sha => "cccccccccccc", :pr_approval_include_secrets? => true)
+
+          expect(described_class).not_to receive(:launch_pipeline)
+          expect(Watchman).to receive(:increment).with("hooks.pr_approval.sha_not_found")
+
+          described_class.run(@workflow, @logger)
+
+          expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+        end
+
+        it "refuses a SHA prefix shared by two fork heads" do
+          reviewed = blocked_at(reviewed_sha, before_comment - 1.hour)
+          colliding = blocked_at("#{reviewed_sha[0, 12]}#{"f" * 28}", before_comment)
+          approve(:sha => reviewed_sha[0, 12], :pr_approval_include_secrets? => true)
+
+          expect(described_class).not_to receive(:update_pr_data)
+          expect(described_class).not_to receive(:launch_pipeline)
+          expect(Watchman).to receive(:increment).with("hooks.pr_approval.sha_ambiguous")
+
+          described_class.run(@workflow, @logger)
+
+          expect([reviewed, colliding].map { |wf| Workflow.find(wf.id).state }).to all(eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR))
+        end
+
+        it "counts a colliding head that is no longer blocked as ambiguous" do
+          blocked_at(reviewed_sha, before_comment - 1.hour)
+          blocked_at("#{reviewed_sha[0, 12]}#{"f" * 28}", before_comment).update(:state => Workflow::STATE_PR_APPROVAL_STALE)
+          approve(:sha => reviewed_sha[0, 12], :pr_approval_include_secrets? => true)
+
+          expect(described_class).not_to receive(:launch_pipeline)
+          expect(Watchman).to receive(:increment).with("hooks.pr_approval.sha_ambiguous")
+
+          described_class.run(@workflow, @logger)
+        end
+
+        it "approves the full SHA even when a colliding prefix exists" do
+          reviewed = blocked_at(reviewed_sha, before_comment - 1.hour)
+          blocked_at("#{reviewed_sha[0, 12]}#{"f" * 28}", before_comment)
+          approve(:sha => reviewed_sha, :pr_approval_include_secrets? => true)
+          allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(reviewed))
+
+          expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), reviewed, @logger)
+
+          described_class.run(@workflow, @logger)
+        end
+
+        it "treats the same commit pushed twice as one head" do
+          blocked_at(reviewed_sha, before_comment - 1.hour)
+          latest = blocked_at(reviewed_sha, before_comment)
+          approve(:sha => reviewed_sha[0, 12], :pr_approval_include_secrets? => true)
+          allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(latest))
+
+          expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), latest, @logger)
+
+          described_class.run(@workflow, @logger)
+        end
+
+        def approval_record(workflow)
+          JSON.parse(Workflow.find(workflow.id).request["payload"])["semaphore_approval"]
+        end
+      end
+
+      context "when the PR head changed just before the approval comment" do
+        before do
+          allow(@logger).to receive(:info)
+          allow(Watchman).to receive(:increment)
+          allow(described_class).to receive_messages(approval_option_enabled?: true, can_approve_forked_pr?: true)
+        end
+
+        it "launches an approval with options that names that head" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1, created_at: Time.parse(approval_comment_time) - 1)
+          allow(@workflow.payload).to receive_messages(
+            issue_number: 1,
+            pr_approval?: true,
+            pr_approval_include_secrets?: true,
+            pr_approval_sha: workflow.commit_sha,
+            comment_author: "maintainer",
+            comment_created_at: approval_comment_time
+          )
+          allow(described_class).to receive(:update_pr_data).and_return(ok_pr_data(workflow))
+
+          expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
+
+          described_class.run(@workflow, @logger)
+        end
+      end
+
+      context "when no Semaphore ref can be created (without_reference)" do
+        def without_reference_data(workflow, head_sha: nil)
+          [:without_reference, { :mergeable => true, :commit_author => "octocat", :head_sha => head_sha || workflow.commit_sha }, ""]
+        end
+
+        def approve(**options)
+          allow(@workflow.payload).to receive_messages(
+            issue_number: 1,
+            pr_approval?: true,
+            comment_author: "maintainer",
+            comment_created_at: approval_comment_time,
+            **options
+          )
+        end
+
+        before do
+          allow(@logger).to receive(:info)
+          allow(Watchman).to receive(:increment)
+          allow(described_class).to receive_messages(approval_option_enabled?: true, can_approve_forked_pr?: true)
+        end
+
+        it "refuses to launch an approval that grants options" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+          approve(pr_approval_include_secrets?: true, pr_approval_sha: workflow.commit_sha)
+          allow(described_class).to receive(:update_pr_data).and_return(without_reference_data(workflow))
+
+          expect(described_class).not_to receive(:launch_pipeline)
+          expect(Watchman).to receive(:increment).with("hooks.pr_approval.options_without_reference")
+
+          described_class.run(@workflow, @logger)
+
+          expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+        end
+
+        it "fails closed when the fork head moved since approval" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+          approve
+          allow(described_class).to receive(:update_pr_data).and_return(without_reference_data(workflow, head_sha: "pushed-after-approval"))
+
+          expect(described_class).not_to receive(:launch_pipeline)
+
+          described_class.run(@workflow, @logger)
+
+          expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_PR_APPROVAL_STALE)
+        end
+
+        it "still launches a bare approval whose fork head is unchanged" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+          approve
+          allow(described_class).to receive(:update_pr_data).and_return(without_reference_data(workflow))
+
+          expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
+
+          described_class.run(@workflow, @logger)
+        end
+
+        it "refuses a rescheduled approved workflow that carries options" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+          payload = JSON.parse(workflow.request["payload"]).merge(
+            "semaphore_approval_include_secrets" => true,
+            "semaphore_approval" => { "include_secrets" => true, "approved_head_sha" => workflow.commit_sha }
+          )
+          workflow.update(
+            :request => workflow.request.merge("payload" => payload.to_json),
+            :state => Workflow::STATE_PR_APPROVAL_IN_PROGRESS
+          )
+          workflow = Workflow.find(workflow.id)
+          allow(workflow.project).to receive_messages(build_forked_pr: true, allowed_contributors: "radwo")
+          allow(described_class).to receive(:update_pr_data).and_return(without_reference_data(workflow))
+
+          expect(described_class).not_to receive(:launch_pipeline)
+          expect(Watchman).to receive(:increment).with("hooks.pr_approval.options_without_reference")
+
+          described_class.run(workflow, @logger, "", "", 1)
+
+          expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+        end
+      end
+
+      it "fails closed (STATE_PR_APPROVAL_STALE, no launch) when the fork head moved after approval" do
+        workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+
+        allow(@logger).to receive(:info)
+        allow(Watchman).to receive(:increment)
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 1,
+          pr_approval?: true,
+          pr_approval_include_secrets?: true,
+          pr_approval_sha: workflow.commit_sha,
+          comment_author: "maintainer",
+          comment_created_at: approval_comment_time
+        )
+        allow(described_class).to receive_messages(
+          approval_option_enabled?: true,
+          can_approve_forked_pr?: true,
+          # Live fork head differs from the approved (blocked) head → a commit
+          # was injected between approval and launch.
+          update_pr_data: ok_pr_data(workflow, head_sha: "attacker-pushed-sha")
+        )
+
+        expect(described_class).not_to receive(:launch_pipeline)
+        expect(@logger).to receive(:info).with(
+          "pr-approval-stale-head",
+          hash_including(:workflow_id => workflow.id, :approved_head_sha => workflow.commit_sha, :live_head_sha => "attacker-pushed-sha")
+        )
+        expect(Watchman).to receive(:increment).with("hooks.pr_approval.stale_head")
+
+        described_class.run(@workflow, @logger)
+
+        expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_PR_APPROVAL_STALE)
+      end
+
+      it "fails closed when the live PR head cannot be determined" do
+        workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+
+        allow(@logger).to receive(:info)
+        allow(Watchman).to receive(:increment)
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 1,
+          pr_approval?: true,
+          comment_author: "maintainer",
+          comment_created_at: approval_comment_time
+        )
+        allow(described_class).to receive_messages(
+          can_approve_forked_pr?: true,
+          # No :head_sha at all → treated as changed, fail closed.
+          update_pr_data: [
+            :ok,
+            { :mergeable => true, :commit_author => "octocat", :merge_commit_sha => workflow.commit_sha, :ref => workflow.git_ref },
+            nil
+          ]
+        )
+
+        expect(described_class).not_to receive(:launch_pipeline)
+
+        described_class.run(@workflow, @logger)
+
+        expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_PR_APPROVAL_STALE)
+      end
+
+      it "does not launch workflow when option persistence fails" do
+        workflow = FactoryBot.create(
+          :workflow,
+          :project_id => @workflow.project_id,
+          :state => Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR
+        )
+        workflow.update(:git_ref => "refs/pull/1/merge", :created_at => before_comment)
+        workflow.update(:request => ActionController::Parameters.new("payload" => "{invalid-json"))
+
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 1,
+          pr_approval?: true,
+          pr_approval_include_secrets?: true,
+          comment_author: "maintainer",
+          comment_created_at: approval_comment_time
+        )
+        allow(described_class).to receive_messages(
+          approval_option_enabled?: true,
+          can_approve_forked_pr?: true
+        )
+
+        expect(described_class).not_to receive(:launch_pipeline)
+
+        described_class.run(@workflow, @logger)
+      end
+
+      it "does not launch workflow when the requestor cannot approve" do
+        FactoryBot.create(
+          :workflow,
+          :project_id => @workflow.project_id,
+          :state => Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR
+        ).update(:git_ref => "refs/pull/45/merge")
+
+        allow(@workflow.payload).to receive_messages(issue_number: 45, pr_approval?: true, comment_author: "outsider")
+
+        expect(described_class).not_to receive(:launch_pipeline)
+
+        allow(described_class).to receive(:can_approve_forked_pr?).and_return(false)
+
+        described_class.run(@workflow, @logger)
+      end
+
+      it "binds the approval to the workflow present at comment time, ignoring a later push" do
+        reviewed = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 7, created_at: before_comment)
+        # The contributor pushes again AFTER the maintainer's approval comment,
+        # producing a newer blocked workflow for the same PR. It must never be
+        # the one that gets selected (and granted secrets).
+        build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 7, created_at: after_comment)
+
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 7,
+          pr_approval?: true,
+          pr_approval_include_secrets?: true,
+          pr_approval_sha: reviewed.commit_sha,
+          comment_author: "maintainer",
+          comment_created_at: approval_comment_time
+        )
+        allow(described_class).to receive_messages(
+          approval_option_enabled?: true,
+          can_approve_forked_pr?: true,
+          update_pr_data: ok_pr_data(reviewed)
+        )
+
+        # The reviewed (older) workflow is launched; the post-approval push is
+        # never selected.
+        expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), reviewed, @logger)
+
+        described_class.run(@workflow, @logger)
+      end
+
+      it "fails closed when the only blocked workflow was created after the approval comment" do
+        build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 8, created_at: after_comment)
+
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 8,
+          pr_approval?: true,
+          comment_author: "maintainer",
+          comment_created_at: approval_comment_time
+        )
+        allow(described_class).to receive(:can_approve_forked_pr?).and_return(true)
+
+        expect(described_class).not_to receive(:launch_pipeline)
+
+        described_class.run(@workflow, @logger)
+      end
+
+      it "fails closed (STATE_PR_APPROVAL_STALE) when the approved head sha is blank" do
+        workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 9)
+        workflow.update(:commit_sha => nil)
+
+        allow(@logger).to receive(:info)
+        allow(Watchman).to receive(:increment)
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 9,
+          pr_approval?: true,
+          comment_author: "maintainer",
+          comment_created_at: approval_comment_time
+        )
+        allow(described_class).to receive(:can_approve_forked_pr?).and_return(true)
+
+        expect(described_class).not_to receive(:launch_pipeline)
+        expect(Watchman).to receive(:increment).with("hooks.pr_approval.missing_head_sha")
+
+        described_class.run(@workflow, @logger)
+
+        expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_PR_APPROVAL_STALE)
+      end
+
+      it "fails closed when the approval comment timestamp is missing" do
+        build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 10)
+
+        allow(@logger).to receive(:info)
+        allow(Watchman).to receive(:increment)
+        allow(@workflow.payload).to receive_messages(
+          issue_number: 10,
+          pr_approval?: true,
+          comment_author: "maintainer",
+          comment_created_at: nil
+        )
+        allow(described_class).to receive(:can_approve_forked_pr?).and_return(true)
+
+        expect(described_class).not_to receive(:launch_pipeline)
+        expect(Watchman).to receive(:increment).with("hooks.pr_approval.missing_comment_time")
 
         described_class.run(@workflow, @logger)
       end
@@ -263,6 +1270,8 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           before do
             allow(repo_host).to receive(:validate_token_presence!)
             allow(repo_host).to receive(:pull_request).and_return(:merge_commit_sha => "foo", :mergeable => true)
+            merge_commit = { :parents => [{ :sha => "c" * 40 }, { :sha => @workflow.payload.pr_head_sha }] }
+            allow(repo_host).to receive(:git_commit).with("renderedtext/plakatt", "foo").and_return(merge_commit)
           end
 
           it "creates ref on github via exactly one create_ref call and no probe" do
@@ -277,6 +1286,17 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
                                                       "97114836a47ff614e70e863df819f908877ee1c9").and_return(RepoHost::Github::Responses::Commit.commit)
 
             expect(described_class.run(@workflow, @logger)).to be_nil
+          end
+
+          it "builds on a rescheduled run with a single pull request fetch" do
+            allow(repo_host).to receive(:create_ref)
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt",
+                                                      "97114836a47ff614e70e863df819f908877ee1c9").and_return(RepoHost::Github::Responses::Commit.commit)
+            expect(described_class).to receive(:launch_pipeline)
+
+            described_class.run(@workflow, @logger, "", "", 1)
+
+            expect(repo_host).to have_received(:pull_request).once
           end
 
           it "treats ReferenceAlreadyExists as success and still proceeds" do
@@ -399,10 +1419,221 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           end
         end
 
-        context "and GitHub has not finished computing mergeability (mergeable is nil)" do
+        context "and the merge commit is checked against the webhook head" do
+          let(:webhook_head) { @workflow.payload.pr_head_sha }
+          let(:merge_sha) { "a" * 40 }
+          let(:other_head) { "b" * 40 }
+          let(:base_sha) { "c" * 40 }
+
           before do
+            allow(App).to receive_messages(:stale_merge_commit_max_retries => 3,
+                                           :mergeable_unknown_rate_limit_reserve => 0)
+            allow(Watchman).to receive(:increment)
             allow(repo_host).to receive(:validate_token_presence!)
-            allow(repo_host).to receive(:pull_request).and_return(:merge_commit_sha => "", :mergeable => nil)
+            allow(repo_host).to receive(:create_ref)
+            allow(repo_host).to receive(:last_response_rate_limit_remaining).and_return(5000)
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt",
+                                                      "97114836a47ff614e70e863df819f908877ee1c9").and_return(RepoHost::Github::Responses::Commit.commit)
+          end
+
+          def stub_github_pr(repo_host, head:, parents:, merge_sha:)
+            allow(repo_host).to receive(:pull_request).and_return({ :merge_commit_sha => merge_sha, :mergeable => true, :head => { :sha => head } })
+            merge_commit = { :parents => parents.map { |sha| { :sha => sha } } }
+            allow(repo_host).to receive(:git_commit).with("renderedtext/plakatt", merge_sha).and_return(merge_commit)
+          end
+
+          def create_later_workflow(commit_sha:, git_ref: "refs/pull/1/merge", branch: nil)
+            later = FactoryBot.create(:workflow, :project => @workflow.project)
+            later.update(:commit_sha => commit_sha, :git_ref => git_ref, :branch_id => branch&.id, :created_at => @workflow.created_at + 1.minute)
+            later
+          end
+
+          it "builds a merge commit that contains the webhook head" do
+            stub_github_pr(repo_host, :head => webhook_head, :parents => [base_sha, webhook_head], :merge_sha => merge_sha)
+            expect(described_class).to receive(:launch_pipeline)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.commit_sha).to eq(merge_sha)
+          end
+
+          it "builds a merge commit that contains the webhook head while GitHub's head lags" do
+            stub_github_pr(repo_host, :head => other_head, :parents => [base_sha, webhook_head], :merge_sha => merge_sha)
+            expect(described_class).to receive(:launch_pipeline)
+
+            described_class.run(@workflow, @logger)
+          end
+
+          it "reschedules a stale merge commit without creating its ref, even when the ref is new" do
+            stub_github_pr(repo_host, :head => webhook_head, :parents => [base_sha, other_head], :merge_sha => merge_sha)
+            expect(repo_host).not_to receive(:create_ref)
+            expect(described_class).not_to receive(:launch_pipeline)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(1.minute, @workflow.id, anything, anything, 1, 1)
+            expect(@logger).to receive(:info).with("pr-stale-merge-commit-rescheduled", anything)
+
+            described_class.run(@workflow, @logger)
+
+            expect(Watchman).to have_received(:increment).with("hook.processing.pr_stale_merge_commit", :tags => ["head_missing"])
+            expect(Watchman).to have_received(:increment).with("hook.processing.pr_stale_merge_commit_attempt", :tags => ["head_missing"])
+            expect(@workflow.reload.state).not_to eq(Workflow::STATE_PR_STALE_MERGE_COMMIT)
+          end
+
+          it "counts a stale merge commit once per hook across its attempts" do
+            stub_github_pr(repo_host, :head => webhook_head, :parents => [base_sha, other_head], :merge_sha => merge_sha)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(1.minute, @workflow.id, anything, anything, 3, 2)
+
+            described_class.run(@workflow, @logger, "", "", 2, 1)
+
+            expect(Watchman).not_to have_received(:increment).with("hook.processing.pr_stale_merge_commit", anything)
+            expect(Watchman).to have_received(:increment).with("hook.processing.pr_stale_merge_commit_attempt", :tags => ["head_missing"])
+          end
+
+          it "keeps its own retry budget regardless of earlier reschedules" do
+            stub_github_pr(repo_host, :head => webhook_head, :parents => [base_sha, other_head], :merge_sha => merge_sha)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(1.minute, @workflow.id, anything, anything, 8, 1)
+
+            described_class.run(@workflow, @logger, "", "", 7)
+          end
+
+          it "reschedules after a reset to an ancestor while GitHub still shows the previous head" do
+            create_later_workflow(:commit_sha => webhook_head) # an unrelated later hook must not count
+            stub_github_pr(repo_host, :head => other_head, :parents => [base_sha, other_head], :merge_sha => merge_sha)
+            expect(described_class).not_to receive(:launch_pipeline)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(1.minute, @workflow.id, anything, anything, 1, 1)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.state).not_to eq(Workflow::STATE_SKIP_SUPERSEDED_PR)
+          end
+
+          it "skips a hook superseded by a later hook for GitHub's head" do
+            create_later_workflow(:commit_sha => other_head)
+            stub_github_pr(repo_host, :head => other_head, :parents => [base_sha, other_head], :merge_sha => merge_sha)
+            expect(described_class).not_to receive(:launch_pipeline)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker).not_to receive(:perform_in)
+            expect(@logger).to receive(:info).with("pr-superseded", anything)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.state).to eq(Workflow::STATE_SKIP_SUPERSEDED_PR)
+            expect(Watchman).to have_received(:increment).with("hook.processing.pr_superseded")
+            expect(Watchman).not_to have_received(:increment).with("hook.processing.pr_stale_merge_commit", anything)
+          end
+
+          it "skips a hook superseded by a later hook that already built the merge commit" do
+            branch = FactoryBot.create(:branch, :project => @workflow.project, :name => @workflow.payload.branch)
+            create_later_workflow(:commit_sha => merge_sha, :git_ref => "refs/semaphoreci/#{merge_sha}", :branch => branch)
+            stub_github_pr(repo_host, :head => other_head, :parents => [base_sha, other_head], :merge_sha => merge_sha)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker).not_to receive(:perform_in)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.state).to eq(Workflow::STATE_SKIP_SUPERSEDED_PR)
+          end
+
+          it "does not count a later hook for GitHub's head on another pull request" do
+            create_later_workflow(:commit_sha => other_head, :git_ref => "refs/pull/2/merge")
+            stub_github_pr(repo_host, :head => other_head, :parents => [base_sha, other_head], :merge_sha => merge_sha)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(1.minute, @workflow.id, anything, anything, 1, 1)
+
+            described_class.run(@workflow, @logger)
+          end
+
+          it "does not count a hook received long after this one" do
+            late = create_later_workflow(:commit_sha => other_head)
+            late.update(:created_at => @workflow.created_at + 31.minutes)
+            stub_github_pr(repo_host, :head => other_head, :parents => [base_sha, other_head], :merge_sha => merge_sha)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(1.minute, @workflow.id, anything, anything, 1, 1)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.state).not_to eq(Workflow::STATE_SKIP_SUPERSEDED_PR)
+          end
+
+          it "does not count an earlier hook for GitHub's head" do
+            earlier = create_later_workflow(:commit_sha => other_head)
+            earlier.update(:created_at => @workflow.created_at - 1.minute)
+            stub_github_pr(repo_host, :head => other_head, :parents => [base_sha, other_head], :merge_sha => merge_sha)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(1.minute, @workflow.id, anything, anything, 1, 1)
+
+            described_class.run(@workflow, @logger)
+          end
+
+          it "gives up with its own state once the stale merge retries are exhausted" do
+            stub_github_pr(repo_host, :head => webhook_head, :parents => [base_sha, other_head], :merge_sha => merge_sha)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker).not_to receive(:perform_in)
+            expect(@logger).to receive(:info).with("pr-stale-merge-commit-giving-up", hash_including(:stale_attempts => 3, :reason => "head_missing"))
+
+            described_class.run(@workflow, @logger, "", "", 3, 3)
+
+            expect(@workflow.reload.state).to eq(Workflow::STATE_PR_STALE_MERGE_COMMIT)
+            expect(Watchman).to have_received(:increment).with("hook.processing.pr_stale_merge_commit_giving_up", :tags => ["head_missing"])
+            expect(Watchman).not_to have_received(:increment).with("hook.processing.pr_mergeable_unknown_giving_up")
+          end
+
+          it "gives up instead of rescheduling when the rate limit is below the reserve" do
+            allow(App).to receive(:mergeable_unknown_rate_limit_reserve).and_return(1000)
+            allow(repo_host).to receive(:last_response_rate_limit_remaining).and_return(999)
+            stub_github_pr(repo_host, :head => webhook_head, :parents => [base_sha, other_head], :merge_sha => merge_sha)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker).not_to receive(:perform_in)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.state).to eq(Workflow::STATE_PR_STALE_MERGE_COMMIT)
+          end
+
+          it "reschedules instead of failing the repository when the merge commit lookup is not found" do
+            allow(repo_host).to receive(:pull_request).and_return({ :merge_commit_sha => merge_sha, :mergeable => true, :head => { :sha => webhook_head } })
+            allow(repo_host).to receive(:git_commit).and_raise(::RepoHost::RemoteException::NotFound, "gone")
+            expect(described_class).not_to receive(:launch_pipeline)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(1.minute, @workflow.id, anything, anything, 1, 1)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.state).not_to eq(Workflow::STATE_NOT_FOUND_REPO)
+            expect(Watchman).to have_received(:increment).with("hook.processing.pr_stale_merge_commit_attempt", :tags => ["lookup_failed"])
+          end
+
+          it "checks against the webhook head even after commit_sha was set to the merge commit" do
+            @workflow.update(:commit_sha => merge_sha)
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", merge_sha).and_return(RepoHost::Github::Responses::Commit.commit)
+            stub_github_pr(repo_host, :head => webhook_head, :parents => [base_sha, webhook_head], :merge_sha => merge_sha)
+            expect(described_class).to receive(:launch_pipeline)
+
+            described_class.run(@workflow, @logger)
+          end
+
+          it "builds the merge another project resolved for the same PR event" do
+            merge_key = described_class.shared_merge_key(@workflow.project, @workflow.pull_request_number, webhook_head, @workflow.payload.pr_base_sha)
+            described_class::GithubCache.write(merge_key, { "merge_commit_sha" => merge_sha, "commit_author" => "radwo" }, :ttl => 60)
+            allow(repo_host).to receive(:pull_request)
+            expect(described_class).to receive(:launch_pipeline)
+
+            described_class.run(@workflow, @logger)
+
+            expect(repo_host).not_to have_received(:pull_request)
+            expect(@workflow.reload).to have_attributes(:commit_sha => merge_sha, :git_ref => "refs/semaphoreci/#{merge_sha}", :commit_author => "radwo")
+          end
+        end
+
+        context "and GitHub has not finished computing mergeability (mergeable is nil)" do
+          let(:max_retries) { 3 }
+          let(:reserve) { 1000 }
+
+          before do
+            allow(App).to receive_messages(:mergeable_unknown_max_retries => max_retries,
+                                           :mergeable_unknown_rate_limit_reserve => reserve)
+            allow(repo_host).to receive(:validate_token_presence!)
+            allow(repo_host).to receive_messages(:pull_request => { :merge_commit_sha => "", :mergeable => nil },
+                                                 :last_response_rate_limit_remaining => 5000)
             allow(described_class).to receive(:sleep) # skip get_pr_data poll backoff
           end
 
@@ -417,11 +1648,30 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             expect(@workflow.reload.state).not_to eq(Workflow::STATE_PR_NON_MERGEABLE)
           end
 
+          it "polls the pull request on the first run" do
+            allow(Semaphore::RepoHost::Hooks::Handler::Worker).to receive(:perform_in)
+
+            described_class.run(@workflow, @logger)
+
+            expect(repo_host).to have_received(:pull_request).exactly(9).times
+            expect(described_class).to have_received(:sleep).exactly(8).times
+          end
+
+          it "fetches the pull request once, without polling, on a rescheduled run" do
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 2)
+
+            described_class.run(@workflow, @logger, "", "", 1)
+
+            expect(repo_host).to have_received(:pull_request).once
+            expect(described_class).not_to have_received(:sleep)
+          end
+
           it "still reschedules on the last attempt before the budget is exhausted" do
             expect(Semaphore::RepoHost::Hooks::Handler::Worker)
-              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 10)
+              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, max_retries)
 
-            described_class.run(@workflow, @logger, "", "", 9)
+            described_class.run(@workflow, @logger, "", "", max_retries - 1)
 
             expect(@workflow.reload.state).not_to eq(Workflow::STATE_PR_NON_MERGEABLE)
           end
@@ -429,13 +1679,546 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           it "gives up once retries are exhausted without emitting a spurious unmergeable event" do
             expect(Semaphore::RepoHost::Hooks::Handler::Worker).not_to receive(:perform_in)
             expect(described_class).not_to receive(:update_pull_request_mergeable)
-            expect(@logger).to receive(:info).with("pr-mergeable-unknown-giving-up")
+            expect(@logger).to receive(:info).with("pr-mergeable-unknown-giving-up", hash_including(:retries => max_retries))
 
-            described_class.run(@workflow, @logger, "", "", 10)
+            described_class.run(@workflow, @logger, "", "", max_retries)
 
             expect(@workflow.reload.state).to eq(Workflow::STATE_PR_NON_MERGEABLE)
           end
+
+          it "gives up instead of rescheduling when the rate limit is below the reserve" do
+            allow(repo_host).to receive(:last_response_rate_limit_remaining).and_return(reserve - 1)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker).not_to receive(:perform_in)
+            expect(described_class).not_to receive(:update_pull_request_mergeable)
+            expect(@logger).to receive(:info).with("pr-mergeable-unknown-giving-up", hash_including(:rate_limit_remaining => reserve - 1))
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.state).to eq(Workflow::STATE_PR_NON_MERGEABLE)
+          end
+
+          it "reschedules when exactly the reserve is left" do
+            allow(repo_host).to receive(:last_response_rate_limit_remaining).and_return(reserve)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
+
+            described_class.run(@workflow, @logger)
+          end
+
+          it "reschedules when the response does not report a rate limit" do
+            allow(repo_host).to receive(:last_response_rate_limit_remaining).and_return(nil)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
+
+            described_class.run(@workflow, @logger)
+          end
+
+          it "never holds a retry back for the rate limit when the reserve is 0" do
+            allow(App).to receive(:mergeable_unknown_rate_limit_reserve).and_return(0)
+            allow(repo_host).to receive(:last_response_rate_limit_remaining).and_return(0)
+            expect(Semaphore::RepoHost::Hooks::Handler::Worker)
+              .to receive(:perform_in).with(2.minutes, @workflow.id, anything, anything, 1)
+
+            described_class.run(@workflow, @logger)
+          end
         end
+      end
+    end
+  end
+
+  describe ".update_pr_data merge commit check", :aggregate_failures do
+    let(:project) { build_project }
+    let(:repo_host) { double(::RepoHost::Github::Client.new("token")) }
+    let(:head_sha) { "d" * 40 }
+    let(:merge_sha) { "e" * 40 }
+    let(:base_sha) { "f" * 40 }
+
+    def build_project(repo: "owner/repo", organization_id: "org-1", creator_id: "user-1", integration_type: "github_app")
+      instance_double(Project, :repo_owner_and_name => repo, :organization_id => organization_id, :creator_id => creator_id,
+                               :repository => instance_double(Repository, :integration_type => integration_type))
+    end
+
+    before do
+      allow(::RepoHost::Factory).to receive(:create_from_project).and_return(repo_host)
+      allow(repo_host).to receive(:validate_token_presence!)
+      allow(repo_host).to receive_messages(:pull_request => { :merge_commit_sha => merge_sha, :mergeable => true, :head => { :sha => head_sha } },
+                                           :last_response_rate_limit_remaining => 5000)
+      allow(repo_host).to receive(:commit).with("owner/repo", head_sha).and_return({})
+      allow(repo_host).to receive(:create_ref)
+    end
+
+    def stub_merge_parents(*parent_shas)
+      parents = parent_shas.map { |sha| { :sha => sha } }
+      allow(repo_host).to receive(:git_commit).with("owner/repo", merge_sha).and_return({ :parents => parents })
+    end
+
+    it "returns :stale_merge_commit without creating the ref when the merge lacks GitHub's head and no webhook head is given, as from PrPayload" do
+      stub_merge_parents(base_sha, "9" * 40)
+      expect(repo_host).not_to receive(:create_ref)
+
+      state, meta, = described_class.update_pr_data(project, 1, nil, false)
+
+      expect(state).to eq(:stale_merge_commit)
+      expect(meta[:merge_commit_sha]).to eq(merge_sha)
+      expect(meta[:merge_parent_shas]).to eq([base_sha, "9" * 40])
+      expect(meta[:stale_reason]).to eq("head_missing")
+    end
+
+    it "reports a failed merge commit lookup as its own reason" do
+      allow(repo_host).to receive(:git_commit).and_raise(::RepoHost::RemoteException::Unauthorized, "forbidden")
+
+      state, meta, = described_class.update_pr_data(project, 1, nil, false)
+
+      expect(state).to eq(:stale_merge_commit)
+      expect(meta[:stale_reason]).to eq("lookup_failed")
+      expect(meta[:merge_parent_shas]).to eq([])
+    end
+
+    it "returns :ok when the merge contains GitHub's head and no webhook head is given" do
+      stub_merge_parents(base_sha, head_sha)
+
+      state, meta, = described_class.update_pr_data(project, 1, nil, false)
+
+      expect(state).to eq(:ok)
+      expect(meta[:merge_commit_sha]).to eq(merge_sha)
+    end
+
+    it "checks only the webhook head when one is given" do
+      stub_merge_parents(base_sha, "9" * 40)
+
+      state, = described_class.update_pr_data(project, 1, nil, false, :webhook_head_sha => "9" * 40)
+
+      expect(state).to eq(:ok)
+    end
+
+    it "reads the parents of a merge commit once per SHA" do
+      stub_merge_parents(base_sha, head_sha)
+
+      2.times { described_class.update_pr_data(project, 1, nil, false) }
+
+      expect(repo_host).to have_received(:git_commit).once
+    end
+
+    it "does not cache a failed lookup" do
+      allow(repo_host).to receive(:git_commit).and_raise(::RepoHost::RemoteException::NotFound, "gone")
+
+      2.times { described_class.update_pr_data(project, 1, nil, false) }
+
+      expect(repo_host).to have_received(:git_commit).twice
+    end
+
+    it "reads a commit once per SHA" do
+      stub_merge_parents(base_sha, head_sha)
+
+      2.times { described_class.update_pr_data(project, 1, nil, false) }
+
+      expect(repo_host).to have_received(:commit).once
+    end
+
+    it "shares cached lookups between projects on the same repository, whatever the case of its name" do
+      stub_merge_parents(base_sha, head_sha)
+      described_class.update_pr_data(project, 1, nil, false)
+
+      other_project = build_project(:repo => "Owner/Repo")
+      allow(repo_host).to receive(:git_commit).with("Owner/Repo", merge_sha).and_return({ :parents => [] })
+      allow(repo_host).to receive(:commit).with("Owner/Repo", head_sha).and_return({})
+      state, = described_class.update_pr_data(other_project, 1, nil, false)
+
+      expect(state).to eq(:ok)
+      expect(repo_host).not_to have_received(:git_commit).with("Owner/Repo", merge_sha)
+      expect(repo_host).not_to have_received(:commit).with("Owner/Repo", head_sha)
+    end
+
+    it "remembers a skip-ci commit" do
+      stub_merge_parents(base_sha, head_sha)
+      allow(repo_host).to receive(:commit).with("owner/repo", head_sha)
+                                          .and_return(double(:author => nil, :commit => double(:message => "wip [skip ci]")))
+
+      states = Array.new(2) { described_class.update_pr_data(project, 1).first }
+
+      expect(states).to eq(%i[skip_ci skip_ci])
+      expect(repo_host).to have_received(:commit).once
+    end
+
+    it "does not cache a commit GitHub did not return" do
+      stub_merge_parents(base_sha, head_sha)
+      allow(repo_host).to receive(:commit).with("owner/repo", head_sha).and_return(nil)
+
+      2.times { described_class.update_pr_data(project, 1, nil, false) }
+
+      expect(repo_host).to have_received(:commit).twice
+    end
+
+    it "treats an unavailable Redis as a miss, without waiting for a lock" do
+      allow(described_class::GithubCache).to receive(:call).and_raise(RedisClient::CannotConnectError)
+      allow(described_class).to receive(:sleep)
+      stub_merge_parents(base_sha, head_sha)
+
+      states = Array.new(2) { described_class.update_pr_data(project, 1, nil, false, :webhook_head_sha => head_sha, :webhook_base_sha => base_sha).first }
+
+      expect(states).to eq(%i[ok ok])
+      expect(repo_host).to have_received(:pull_request).twice
+      expect(repo_host).to have_received(:git_commit).twice
+      expect(described_class).not_to have_received(:sleep)
+    end
+
+    it "bounds the GitHub requests of the PR path" do
+      stub_merge_parents(base_sha, head_sha)
+
+      described_class.update_pr_data(project, 1, nil, false)
+
+      expect(::RepoHost::Factory).to have_received(:create_from_project).with(project, :request_timeout => described_class::GITHUB_REQUEST_TIMEOUT)
+    end
+
+    it "does not use Redis when the shared cache is disabled" do
+      allow(App).to receive(:github_shared_cache_enabled).and_return(false)
+      allow(described_class::GithubCache).to receive(:call)
+      stub_merge_parents(base_sha, head_sha)
+
+      2.times { described_class.update_pr_data(project, 1, nil, false, :webhook_head_sha => head_sha, :webhook_base_sha => base_sha) }
+
+      expect(described_class::GithubCache).not_to have_received(:call)
+      expect(repo_host).to have_received(:pull_request).twice
+    end
+  end
+
+  describe ".update_pr_data shared merge per PR event", :aggregate_failures do
+    let(:project) { build_project }
+    let(:repo_host) { double(::RepoHost::Github::Client.new("token")) }
+    let(:head_sha) { "d" * 40 }
+    let(:merge_sha) { "e" * 40 }
+    let(:base_sha) { "f" * 40 }
+    let(:merge_key) { described_class.shared_merge_key(project, 1, head_sha, base_sha) }
+    let(:lock_key) { "#{merge_key}:lock" }
+    let(:commit) { double(:author => double(:login => "octocat"), :commit => double(:message => "Fix")) }
+
+    def build_project(repo: "owner/repo", organization_id: "org-1", creator_id: "user-1", integration_type: "github_app")
+      instance_double(Project, :repo_owner_and_name => repo, :organization_id => organization_id, :creator_id => creator_id,
+                               :repository => instance_double(Repository, :integration_type => integration_type))
+    end
+
+    before do
+      allow(::RepoHost::Factory).to receive(:create_from_project).and_return(repo_host)
+      allow(repo_host).to receive(:validate_token_presence!)
+      allow(repo_host).to receive_messages(:pull_request => { :merge_commit_sha => merge_sha, :mergeable => true, :head => { :sha => head_sha } },
+                                           :last_response_rate_limit_remaining => 5000)
+      allow(repo_host).to receive(:commit).with("owner/repo", head_sha).and_return(commit)
+      allow(repo_host).to receive(:git_commit).with("owner/repo", merge_sha).and_return({ :parents => [{ :sha => base_sha }, { :sha => head_sha }] })
+      allow(repo_host).to receive(:create_ref)
+      allow(described_class).to receive(:sleep)
+    end
+
+    def resolve(commit_sha = nil, base: base_sha)
+      described_class.update_pr_data(project, 1, commit_sha, :webhook_head_sha => head_sha, :webhook_base_sha => base)
+    end
+
+    it "reuses the merge resolved for the same event without calling GitHub" do
+      first_state, = resolve
+
+      state, meta, = resolve
+
+      expect([first_state, state]).to eq(%i[ok ok])
+      expect(meta).to include(:merge_commit_sha => merge_sha, :ref => "refs/semaphoreci/#{merge_sha}", :mergeable => true,
+                              :commit_author => "octocat", :head_sha => head_sha)
+      expect(repo_host).to have_received(:pull_request).once
+      expect(repo_host).to have_received(:create_ref).once
+    end
+
+    it "keeps the first merge stored for an event" do
+      resolve
+      described_class::GithubCache.write(merge_key, { "merge_commit_sha" => "9" * 40 }, :ttl => 60, :only_new => true)
+
+      expect(described_class::GithubCache.read(merge_key)["merge_commit_sha"]).to eq(merge_sha)
+    end
+
+    it "resolves an event with another base on its own" do
+      resolve
+      resolve(:base => "8" * 40)
+
+      expect(repo_host).to have_received(:pull_request).twice
+    end
+
+    it "does not store a stale merge" do
+      allow(repo_host).to receive(:git_commit).with("owner/repo", merge_sha).and_return({ :parents => [{ :sha => base_sha }] })
+
+      states = Array.new(2) { resolve.first }
+
+      expect(states).to eq(%i[stale_merge_commit stale_merge_commit])
+      expect(repo_host).to have_received(:pull_request).twice
+    end
+
+    it "does not store a merge resolved for another commit than the webhook head" do
+      allow(repo_host).to receive(:commit).with("owner/repo", "7" * 40).and_return(commit)
+
+      resolve("7" * 40)
+
+      expect(described_class::GithubCache.read(merge_key)).to be_nil
+    end
+
+    it "releases its lock once resolved" do
+      resolve
+
+      expect(described_class::GithubCache.exists?(lock_key)).to be(false)
+    end
+
+    it "waits for the worker holding the lock and takes its merge" do
+      described_class::GithubCache.lock(lock_key, :ttl => 30)
+      allow(described_class).to receive(:sleep) do
+        described_class::GithubCache.write(merge_key, { "merge_commit_sha" => "9" * 40, "commit_author" => "radwo" }, :ttl => 60)
+      end
+
+      state, meta, = resolve
+
+      expect(state).to eq(:ok)
+      expect(meta).to include(:merge_commit_sha => "9" * 40, :commit_author => "radwo")
+      expect(repo_host).not_to have_received(:pull_request)
+    end
+
+    it "resolves the merge itself when the lock holder finishes without one" do
+      token = described_class::GithubCache.lock(lock_key, :ttl => 30)
+      allow(described_class).to receive(:sleep) { described_class::GithubCache.unlock(lock_key, token) }
+
+      state, meta, = resolve
+
+      expect(state).to eq(:ok)
+      expect(meta[:merge_commit_sha]).to eq(merge_sha)
+      expect(described_class).to have_received(:sleep).once
+    end
+
+    it "stops waiting for a lock holder after the wait limit" do
+      stub_const("#{described_class}::SHARED_MERGE_WAIT", 0)
+      described_class::GithubCache.lock(lock_key, :ttl => 30)
+
+      state, = resolve
+
+      expect(state).to eq(:ok)
+      expect(described_class).to have_received(:sleep).once
+      expect(described_class::GithubCache.exists?(lock_key)).to be(true)
+    end
+
+    it "lets waiters reschedule when the holder found mergeability unknown" do
+      allow(repo_host).to receive(:pull_request).and_return({ :merge_commit_sha => "", :mergeable => nil })
+      first_state, = resolve
+
+      state, meta, = resolve
+
+      expect([first_state, state]).to eq(%i[mergeable_unknown mergeable_unknown])
+      expect(meta[:rate_limit_remaining]).to eq(5000)
+      expect(repo_host).to have_received(:pull_request).exactly(9).times
+      expect(RedisClient.new(:url => App.redis_sidekiq_url).call("TTL", "github_hooks:v1:#{merge_key}:unknown"))
+        .to be_between(1, described_class::SHARED_MERGE_LOCK_TTL.to_i)
+    end
+
+    it "takes the unknown mergeability a holder reports while waiting" do
+      token = described_class::GithubCache.lock(lock_key, :ttl => 30)
+      allow(described_class).to receive(:sleep) do
+        described_class::GithubCache.write("#{merge_key}:unknown", { "state" => "mergeable_unknown", "rate_limit_remaining" => 42 }, :ttl => 30)
+        described_class::GithubCache.unlock(lock_key, token)
+      end
+
+      state, meta, = resolve
+
+      expect(state).to eq(:mergeable_unknown)
+      expect(meta[:rate_limit_remaining]).to eq(42)
+      expect(repo_host).not_to have_received(:pull_request)
+    end
+
+    it "takes a merge stored just before the holder released the lock" do
+      described_class::GithubCache.lock(lock_key, :ttl => 30)
+      allow(described_class::GithubCache).to receive(:exists?).with(lock_key) do
+        described_class::GithubCache.write(merge_key, { "merge_commit_sha" => "9" * 40 }, :ttl => 60)
+        false
+      end
+
+      state, meta, = resolve
+
+      expect(state).to eq(:ok)
+      expect(meta[:merge_commit_sha]).to eq("9" * 40)
+      expect(repo_host).not_to have_received(:pull_request)
+    end
+
+    it "shares a merge between GitHub App projects of one organization created by different users" do
+      described_class.update_pr_data(project, 1, :webhook_head_sha => head_sha, :webhook_base_sha => base_sha)
+      described_class.update_pr_data(build_project(:creator_id => "user-2"), 1, :webhook_head_sha => head_sha, :webhook_base_sha => base_sha)
+
+      expect(repo_host).to have_received(:pull_request).once
+    end
+
+    it "does not share a merge with a project of another organization" do
+      described_class.update_pr_data(project, 1, :webhook_head_sha => head_sha, :webhook_base_sha => base_sha)
+      described_class.update_pr_data(build_project(:organization_id => "org-2"), 1, :webhook_head_sha => head_sha, :webhook_base_sha => base_sha)
+
+      expect(repo_host).to have_received(:pull_request).twice
+    end
+
+    it "does not share a merge between OAuth projects using different users' tokens" do
+      oauth = build_project(:integration_type => "github_oauth_token")
+      described_class.update_pr_data(oauth, 1, :webhook_head_sha => head_sha, :webhook_base_sha => base_sha)
+      described_class.update_pr_data(build_project(:integration_type => "github_oauth_token", :creator_id => "user-2"), 1,
+                                     :webhook_head_sha => head_sha, :webhook_base_sha => base_sha)
+      described_class.update_pr_data(oauth, 1, :webhook_head_sha => head_sha, :webhook_base_sha => base_sha)
+
+      expect(repo_host).to have_received(:pull_request).twice
+    end
+
+    it "records a holder's transient GitHub error for the workers waiting on it" do
+      allow(repo_host).to receive(:pull_request).and_raise(Faraday::TimeoutError)
+
+      expect { resolve }.to raise_error(Faraday::TimeoutError)
+      expect(described_class::GithubCache.exists?(lock_key)).to be(false)
+      expect(RedisClient.new(:url => App.redis_sidekiq_url).call("TTL", "github_hooks:v1:#{merge_key}:failed"))
+        .to be_between(1, described_class::SHARED_MERGE_LOCK_TTL.to_i)
+    end
+
+    it "calls GitHub again on a later attempt after a holder's transient error" do
+      allow(repo_host).to receive(:pull_request).and_raise(Faraday::TimeoutError)
+      expect { resolve }.to raise_error(Faraday::TimeoutError)
+      allow(repo_host).to receive(:pull_request).and_return({ :merge_commit_sha => merge_sha, :mergeable => true, :head => { :sha => head_sha } })
+
+      state, meta, = resolve
+
+      expect(state).to eq(:ok)
+      expect(meta[:merge_commit_sha]).to eq(merge_sha)
+      expect(repo_host).to have_received(:pull_request).twice
+    end
+
+    it "fails a waiter when the holder reports a transient GitHub error" do
+      token = described_class::GithubCache.lock(lock_key, :ttl => 30)
+      allow(described_class).to receive(:sleep) do
+        described_class::GithubCache.write("#{merge_key}:failed", { "state" => "failed", "error" => "Octokit::TooManyRequests" }, :ttl => 30)
+        described_class::GithubCache.unlock(lock_key, token)
+      end
+
+      expect { resolve }.to raise_error(RepoHost::RemoteException::ServiceUnavailable)
+      expect(repo_host).not_to have_received(:pull_request)
+    end
+
+    it "does not record a failure for errors a retry cannot get past" do
+      allow(repo_host).to receive(:pull_request).and_raise(RepoHost::RemoteException::Unauthorized, "revoked")
+
+      expect { resolve }.to raise_error(RepoHost::RemoteException::Unauthorized)
+      expect(described_class::GithubCache.read("#{merge_key}:failed")).to be_nil
+    end
+
+    it "does not share a merge without a webhook base" do
+      2.times { resolve(:base => nil) }
+
+      expect(repo_host).to have_received(:pull_request).twice
+    end
+  end
+
+  describe ".approved_sem_approve_option" do
+    it "records dropped options when the project setting is disabled" do
+      expect(@logger).to receive(:info).with(
+        "pr-approval-option-dropped",
+        :option => "--include-secrets",
+        :reason => "project_option_disabled"
+      )
+      expect(Watchman).to receive(:increment).with(
+        "hooks.pr_approval.option_dropped",
+        :tags => %w[include-secrets project_option_disabled]
+      )
+
+      result = described_class.approved_sem_approve_option(
+        :requested => true,
+        :enabled => false,
+        :option => "--include-secrets",
+        :logger => @logger
+      )
+
+      expect(result).to be(false)
+    end
+
+    it "returns false when the option was not requested" do
+      result = described_class.approved_sem_approve_option(
+        :requested => false,
+        :enabled => true,
+        :option => "--enable-cache",
+        :logger => nil
+      )
+
+      expect(result).to be(false)
+    end
+
+    it "returns true when requested and the project setting is enabled" do
+      result = described_class.approved_sem_approve_option(
+        :requested => true,
+        :enabled => true,
+        :option => "--include-secrets",
+        :logger => @logger
+      )
+
+      expect(result).to be(true)
+    end
+  end
+
+  describe ".can_approve_forked_pr?" do
+    let(:project) { @workflow.project }
+
+    it "returns false for a blank uid" do
+      expect(described_class.can_approve_forked_pr?(project, nil)).to be(false)
+      expect(described_class.can_approve_forked_pr?(project, "")).to be(false)
+    end
+
+    it "returns false when there is no repo host account for the uid" do
+      expect(described_class.can_approve_forked_pr?(project, 999_999)).to be(false)
+    end
+
+    context "with a known user" do
+      let(:maintainer_uid) { 4242 }
+
+      before do
+        user = FactoryBot.create(:user)
+        FactoryBot.create(:repo_host_account, :user => user, :login => "maintainer", :github_uid => maintainer_uid)
+      end
+
+      def stub_permissions(permissions)
+        allow_any_instance_of(InternalApi::RBAC::RBAC::Stub)
+          .to receive(:list_user_permissions)
+          .and_return(InternalApi::RBAC::ListUserPermissionsResponse.new(:permissions => permissions))
+      end
+
+      it "returns true when the user (resolved by uid) has project.job.rerun" do
+        stub_permissions(["project.view", "project.job.rerun"])
+
+        expect(described_class.can_approve_forked_pr?(project, maintainer_uid)).to be(true)
+      end
+
+      it "defaults to requiring project.job.rerun" do
+        stub_permissions(["project.view"])
+
+        expect(described_class.can_approve_forked_pr?(project, maintainer_uid)).to be(false)
+      end
+
+      it "checks the requested permission" do
+        stub_permissions(["project.view"])
+
+        expect(described_class.can_approve_forked_pr?(project, maintainer_uid, :permission => "project.view")).to be(true)
+        expect(described_class.can_approve_forked_pr?(project, maintainer_uid, :permission => "project.job.rerun")).to be(false)
+      end
+
+      it "resolves by immutable uid, not by the (reusable) login" do
+        stub_permissions(["project.view", "project.job.rerun"])
+
+        # A commenter whose GitHub uid is not linked to the authorized account
+        # must be denied even though that account's login exists — logins are
+        # renameable/reusable and must not grant a secret bypass.
+        expect(described_class.can_approve_forked_pr?(project, 5_150)).to be(false)
+      end
+
+      it "fails closed when the RBAC call raises" do
+        allow(Watchman).to receive(:increment)
+        allow_any_instance_of(InternalApi::RBAC::RBAC::Stub)
+          .to receive(:list_user_permissions)
+          .and_raise(StandardError.new("rbac down"))
+
+        expect(@logger).to receive(:error).with(
+          "pr-approval-permission-check-failed",
+          hash_including(:requestor_uid => maintainer_uid, :project_id => project.id)
+        )
+        expect(Watchman).to receive(:increment).with("hooks.pr_approval.permission_check_failed")
+
+        expect(described_class.can_approve_forked_pr?(project, maintainer_uid, @logger)).to be(false)
       end
     end
   end

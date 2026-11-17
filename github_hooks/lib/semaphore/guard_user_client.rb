@@ -31,6 +31,18 @@ module Semaphore
       [response.token, to_time(response.expires_at)]
     end
 
+    # Re-validates the user's link in guard. A revoked link whose uid is free
+    # is re-activated there, through the claim that also moves the Keycloak
+    # identity.
+    def refresh_repository_provider(user_id, provider_type)
+      request = InternalApi::User::RefreshRepositoryProviderRequest.new(
+        :user_id => user_id,
+        :type => provider_type
+      )
+
+      stub.refresh_repository_provider(request, :deadline => Time.now.utc + TIMEOUT)
+    end
+
     def stub
       InternalApi::User::UserService::Stub.new(App.user_api_url, :this_channel_is_insecure)
     end
