@@ -338,10 +338,12 @@ export function shortName(name: string): string {
   return `${first} ${last[0]}.`;
 }
 
+export const plural = (n: number, word: string) => `${n} ${n === 1 ? word : `${word}s`}`;
+
 export const blockSummary = (b: Block) => {
   const c = countJobs(b.jobs);
   return [
-    `${b.jobs.length} ${b.jobs.length === 1 ? `job` : `jobs`}`,
+    plural(b.jobs.length, `job`),
     ...([`failed`, `running`, `queued`, `stopped`] as Status[]).filter((s) => c[s]).map((s) => `${c[s]} ${STATUS_LABEL[s].toLowerCase()}`),
   ].join(` · `);
 };

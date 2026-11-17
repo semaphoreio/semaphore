@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { computed, signal } from "@preact/signals";
 import { BaseEdge, Background, Controls, Edge, EdgeLabelRenderer, EdgeProps, Handle, MiniMap, Node, NodeProps, Panel, Position, ReactFlow, ReactFlowProvider, useReactFlow, useStore } from "@xyflow/react";
-import { Block, InitJob, Pipeline, Workflow, blockStatus, pipelineJobs } from "./model";
+import { Block, InitJob, Pipeline, Workflow, blockStatus, pipelineJobs, plural } from "./model";
 import { focus, hits, layoutError, popover, rerunPipeline, selected, stopPipeline, togglePopover, workflow } from "./store";
 import { MapLayout, Point, layoutMap, promotionLabel } from "./layout";
 import { PromoteButton } from "./promote";
@@ -162,7 +162,7 @@ const CardNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node
           </span>
         ) : (
           <span className="wf-map-card-size">
-            {p.blocks.length} blocks · {jobs.length} jobs
+            {plural(p.blocks.length, `block`)} · {plural(jobs.length, `job`)}
           </span>
         )}
         <span className="wf-map-card-end">

@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe, test } from "mocha";
 
-import { AFTER_PIPELINE, ApiPipeline, ApiPipelineDetail, buildWorkflow, formatAgo, formatDuration, rollup, shortName } from "./model";
+import { AFTER_PIPELINE, ApiPipeline, ApiPipelineDetail, buildWorkflow, formatAgo, formatDuration, plural, rollup, shortName } from "./model";
 
 const apiPipeline = (id: string, overrides: Partial<ApiPipeline> = {}): ApiPipeline => ({
   id,
@@ -147,6 +147,12 @@ describe(`rollup`, () => {
     expect(rollup([`passed`, `skipped`])).to.eq(`passed`);
     expect(rollup([`passed`, `pending`])).to.eq(`running`);
     expect(rollup([`failed`, `stopped`])).to.eq(`failed`);
+  });
+});
+
+describe(`plural`, () => {
+  test(`says one of something in the singular and any other count in the plural`, () => {
+    expect([plural(0, `job`), plural(1, `job`), plural(1, `block`), plural(2, `block`)]).to.deep.equal([`0 jobs`, `1 job`, `1 block`, `2 blocks`]);
   });
 });
 
