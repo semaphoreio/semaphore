@@ -9,6 +9,8 @@ interface ServiceAccountsListProps {
   onEdit: (account: ServiceAccount) => void;
   onDelete: (account: ServiceAccount) => void;
   onRegenerateToken: (account: ServiceAccount) => void;
+  onTakeOwnership: (account: ServiceAccount) => void;
+  onReleaseOwnership: (account: ServiceAccount) => void;
   onLoadMore?: () => void;
   hasMore?: boolean;
   onCreateNew: () => void;
@@ -21,11 +23,16 @@ export const ServiceAccountsList = ({
   onEdit,
   onDelete,
   onRegenerateToken,
+  onTakeOwnership,
+  onReleaseOwnership,
   onLoadMore,
   hasMore,
   onCreateNew
 }: ServiceAccountsListProps) => {
   const config = useContext(ConfigContext);
+
+  const ownedByViewer = (account: ServiceAccount) =>
+    account.owner_active && account.owner?.id === config.userId;
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -118,12 +125,25 @@ export const ServiceAccountsList = ({
                       {(() => {
                         const role = account.roles.find((role) => role.source == `manual`);
                         if(role){
-                          return <span className={`f6 normal ml1 ph1 br2 bg-${role.color} white`}>{role.name}</span>;
+                          return <span data-role-label className={`f6 normal ml1 ph1 br2 bg-${role.color} white`}>{role.name}</span>;
                         }
                       })()}
+                      {config.showOwnership && !account.owner_active && (
+                        <toolbox.Tooltip
+                          anchor={<span className="f6 normal ml1 ph1 br2 bg-washed-yellow dark-gray">No owner</span>}
+                          content={[
+                            config.ownershipEnforced
+                              ? `This account cannot add projects until a member takes ownership of it.`
+                              : `No member has taken ownership of this account.`,
+                            account.creator ? ` It was created by ${account.creator.name}.` : ``
+                          ].join(``)}
+                        />
+                      )}
                     </div>
                     <div className="f7 gray mt1">
-                      {account.description || `No description`} • Created {formatDate(account.created_at)}
+                      {account.description || `No description`}
+                      {config.showOwnership && account.owner_active && account.owner ? ` • Owned by ${account.owner.name}` : ``}
+                      {` `}• Created {formatDate(account.created_at)}
                     </div>
                   </div>
                 </div>
@@ -131,6 +151,25 @@ export const ServiceAccountsList = ({
                 {config.permissions.canManage && (
                   <div className="flex-shrink-0 pl2">
                     <div className="button-group">
+                      {config.showOwnership && (ownedByViewer(account) ? (
+                        <button
+                          className="flex items-center btn btn-sm btn-secondary"
+                          onClick={() => onReleaseOwnership(account)}
+                          title="Give up ownership"
+                        >
+                          <span className="material-symbols-outlined mr1">person_remove</span>
+                          <span>Give up ownership</span>
+                        </button>
+                      ) : (
+                        <button
+                          className="flex items-center btn btn-sm btn-secondary"
+                          onClick={() => onTakeOwnership(account)}
+                          title="Take ownership"
+                        >
+                          <span className="material-symbols-outlined mr1">person_add</span>
+                          <span>Take ownership</span>
+                        </button>
+                      ))}
                       <button
                         className="flex items-center btn btn-sm btn-secondary"
                         onClick={() => onEdit(account)}

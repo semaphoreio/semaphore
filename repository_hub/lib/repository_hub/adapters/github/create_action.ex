@@ -102,26 +102,12 @@ defimpl RepositoryHub.Server.CreateAction, for: RepositoryHub.GithubAdapter do
   defp get_permissions(%{integration_type: "github_oauth_token"}, repo, _user, _github_token),
     do: repo.permissions |> wrap
 
-  defp get_permissions(
-         %{integration_type: "github_app"},
-         _repo,
-         %{user: %{creation_source: :SERVICE_ACCOUNT}},
-         _github_token
-       ) do
-    %{"admin" => true, "push" => true}
-    |> wrap()
-  end
-
   defp get_permissions(%{integration_type: "github_app"}, repo, user, github_token) do
-    {:ok, [username | _]} = UserClient.get_repository_provider_logins(:GITHUB, user.user_id)
-
-    GithubClient.repository_permissions(
-      %{
-        repo_owner: repo.owner,
-        repo_name: repo.name,
-        username: username
-      },
-      token: github_token
+    GithubAdapter.github_app_permissions(
+      user,
+      repo,
+      github_token,
+      "Connect your GitHub account to Semaphore to add this repository."
     )
   end
 

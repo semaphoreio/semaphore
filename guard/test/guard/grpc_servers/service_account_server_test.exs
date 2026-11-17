@@ -1261,7 +1261,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           regenerate_token: fn id, requested_org_id ->
+           regenerate_token: fn id, requested_org_id, _requester_id ->
              assert id == service_account_id
              assert requested_org_id == org_id
              {:ok, "new-api-token"}
@@ -1280,6 +1280,58 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
       end
     end
 
+    test "names the member asking for the token", %{grpc_channel: channel} do
+      service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
+      requester_id = Ecto.UUID.generate()
+
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.ServiceAccount.Actions, [:passthrough],
+         [
+           regenerate_token: fn _id, _org_id, asked_by ->
+             assert asked_by == requester_id
+             {:ok, "new-api-token"}
+           end
+         ]}
+      ]) do
+        request =
+          ServiceAccount.RegenerateTokenRequest.new(
+            service_account_id: service_account_id,
+            org_id: org_id,
+            requester_id: requester_id
+          )
+
+        assert {:ok, _response} = channel |> Stub.regenerate_token(request)
+      end
+    end
+
+    test "stands in for a caller that names nobody", %{grpc_channel: channel} do
+      service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
+
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.ServiceAccount.Actions, [:passthrough],
+         [
+           regenerate_token: fn _id, _org_id, asked_by ->
+             # A caller from before the field existed still regenerates the token. It
+             # names nobody, which is nobody the owner handed it to.
+             assert asked_by == ""
+             {:ok, "new-api-token"}
+           end
+         ]}
+      ]) do
+        request =
+          ServiceAccount.RegenerateTokenRequest.new(
+            service_account_id: service_account_id,
+            org_id: org_id
+          )
+
+        assert {:ok, _response} = channel |> Stub.regenerate_token(request)
+      end
+    end
+
     test "returns not_found when regenerating token for a service account from a different org",
          %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
@@ -1290,7 +1342,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           regenerate_token: fn id, requested_org_id ->
+           regenerate_token: fn id, requested_org_id, _requester_id ->
              assert id == service_account_id
              assert requested_org_id == other_org_id
              {:error, :not_found}
@@ -1330,7 +1382,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           regenerate_token: fn _, _ -> {:error, :not_found} end
+           regenerate_token: fn _, _, _ -> {:error, :not_found} end
          ]}
       ]) do
         request =
@@ -1354,7 +1406,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           regenerate_token: fn _, _ -> {:error, :token_generation_error} end
+           regenerate_token: fn _, _, _ -> {:error, :token_generation_error} end
          ]}
       ]) do
         request =
@@ -1367,6 +1419,72 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
           channel |> Stub.regenerate_token(request)
 
         assert String.contains?(message, "Failed to regenerate token")
+      end
+    end
+  end
+
+  describe "set_owner/2" do
+    test "refuses to make anyone but the requester the owner", %{grpc_channel: channel} do
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.ServiceAccount.Actions, [:passthrough],
+         [set_owner: fn _, _, _ -> flunk("should not have reached the store") end]}
+      ]) do
+        request =
+          ServiceAccount.SetOwnerRequest.new(
+            service_account_id: Ecto.UUID.generate(),
+            org_id: Ecto.UUID.generate(),
+            owner_id: Ecto.UUID.generate(),
+            requester_id: Ecto.UUID.generate()
+          )
+
+        {:error, %GRPC.RPCError{status: 7, message: message}} = channel |> Stub.set_owner(request)
+
+        assert String.contains?(message, "member making the request")
+      end
+    end
+
+    test "takes the account on for the requester", %{grpc_channel: channel} do
+      member_id = Ecto.UUID.generate()
+      service_account_id = Ecto.UUID.generate()
+      org_id = Ecto.UUID.generate()
+
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.ServiceAccount.Actions, [:passthrough],
+         [
+           set_owner: fn id, requested_org_id, owner_id ->
+             assert id == service_account_id
+             assert requested_org_id == org_id
+             assert owner_id == member_id
+
+             {:ok,
+              %{
+                id: service_account_id,
+                name: "Test SA",
+                description: "",
+                org_id: org_id,
+                creator_id: member_id,
+                owner_id: member_id,
+                owner_active: true,
+                created_at: DateTime.utc_now(),
+                updated_at: DateTime.utc_now(),
+                deactivated: false
+              }}
+           end
+         ]}
+      ]) do
+        request =
+          ServiceAccount.SetOwnerRequest.new(
+            service_account_id: service_account_id,
+            org_id: org_id,
+            owner_id: member_id,
+            requester_id: member_id
+          )
+
+        {:ok, response} = channel |> Stub.set_owner(request)
+
+        assert response.service_account.owner_id == member_id
       end
     end
   end

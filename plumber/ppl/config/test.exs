@@ -28,6 +28,8 @@ config :ppl, feature_provider: {Ppl.FeatureHubProvider, []}
 config :ppl, general_looper_cooling_time_sec: -2
 # Time period looper will sleep between scheduling in miliseconds
 config :ppl, general_sleeping_period_ms: 100
+# Same period as before draining, so tests don't rely on faster periodic scan
+config :ppl, ppl_blk_waiting_sp: 1000
 config :ppl, ppl_pending_sp: 100
 
 # Interval between two Beholder execution

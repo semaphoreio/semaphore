@@ -8,6 +8,8 @@ defmodule Front.Clients.ServiceAccount do
     DescribeManyRequest,
     ListRequest,
     RegenerateTokenRequest,
+    ReleaseOwnerRequest,
+    SetOwnerRequest,
     UpdateRequest
   }
 
@@ -122,10 +124,13 @@ defmodule Front.Clients.ServiceAccount do
   end
 
   @impl Front.ServiceAccount.Behaviour
-  def regenerate_token(service_account_id, org_id) do
+  def regenerate_token(service_account_id, org_id, requester_id) do
     %RegenerateTokenRequest{
       service_account_id: service_account_id,
-      org_id: org_id
+      org_id: org_id,
+      # The new token is held by whoever asked for it, so guard needs to know who that
+      # is before it lets the account keep using its owner's access.
+      requester_id: requester_id
     }
     |> grpc_call(:regenerate_token)
     |> case do
@@ -136,6 +141,48 @@ defmodule Front.Clients.ServiceAccount do
         Logger.error(
           "Error regenerating token for service account #{service_account_id}: #{inspect(err)}"
         )
+
+        handle_error(err)
+    end
+  end
+
+  @impl Front.ServiceAccount.Behaviour
+  def set_owner(service_account_id, org_id, owner_id) do
+    %SetOwnerRequest{
+      service_account_id: service_account_id,
+      org_id: org_id,
+      owner_id: owner_id,
+      # The session user takes the account on for themselves, and guard holds them to it.
+      requester_id: owner_id
+    }
+    |> grpc_call(:set_owner)
+    |> case do
+      {:ok, response} ->
+        {:ok, response.service_account}
+
+      err ->
+        Logger.error(
+          "Error setting owner of service account #{service_account_id}: #{inspect(err)}"
+        )
+
+        handle_error(err)
+    end
+  end
+
+  @impl Front.ServiceAccount.Behaviour
+  def release_owner(service_account_id, org_id, requester_id) do
+    %ReleaseOwnerRequest{
+      service_account_id: service_account_id,
+      org_id: org_id,
+      requester_id: requester_id
+    }
+    |> grpc_call(:release_owner)
+    |> case do
+      {:ok, response} ->
+        {:ok, response.service_account}
+
+      err ->
+        Logger.error("Error releasing service account #{service_account_id}: #{inspect(err)}")
 
         handle_error(err)
     end

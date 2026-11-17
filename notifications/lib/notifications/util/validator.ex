@@ -1,10 +1,12 @@
 defmodule Notifications.Util.Validator do
   alias Notifications.Models.Pattern
+  alias Notifications.Util.Endpoint
 
   def validate(notification, user_id) do
     with {:ok, :valid} <- validate_regex_patterns(notification),
          {:ok, :valid} <- validate_result_patterns(notification),
          {:ok, :valid} <- validate_notification_targets(notification),
+         {:ok, :valid} <- validate_endpoints(notification),
          {:ok, :valid} <- validate_user_id(user_id) do
       {:ok, :valid}
     else
@@ -50,6 +52,32 @@ defmodule Notifications.Util.Validator do
        "A notification rule must have at least one notification target configured."}
     end
   end
+
+  def validate_endpoints(notification = %InternalApi.Notifications.Notification{}),
+    do: validate_endpoints_(notification.rules)
+
+  def validate_endpoints(notification = %Semaphore.Notifications.V1alpha.Notification{}),
+    do: validate_endpoints_(notification.spec.rules)
+
+  defp validate_endpoints_(rules) do
+    rules
+    |> Enum.reduce_while({:ok, :valid}, fn rule, acc ->
+      with :ok <- validate_endpoint(rule.notify.slack),
+           :ok <- validate_endpoint(rule.notify.webhook),
+           {:ok, _} <- validate_webhook_action(rule.notify.webhook) do
+        {:cont, acc}
+      else
+        {:error, message} -> {:halt, {:error, :invalid_argument, message}}
+      end
+    end)
+  end
+
+  defp validate_endpoint(nil), do: :ok
+  defp validate_endpoint(%{endpoint: endpoint}) when endpoint in [nil, ""], do: :ok
+  defp validate_endpoint(%{endpoint: endpoint}), do: Endpoint.validate_url(endpoint)
+
+  defp validate_webhook_action(nil), do: {:ok, :post}
+  defp validate_webhook_action(webhook), do: Endpoint.method(webhook.action)
 
   def has_valid_email_target?(nil), do: false
   def has_valid_email_target?(target), do: !Enum.empty?(target.cc)

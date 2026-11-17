@@ -130,6 +130,7 @@ defmodule Front.Models.Switch do
     Enum.map(switch.targets, fn target -> target.events end)
     |> List.flatten()
     |> Enum.map(fn event -> event.triggered_by end)
+    |> Enum.uniq()
   end
 
   def preload_pipelines(switch) when is_nil(switch), do: nil

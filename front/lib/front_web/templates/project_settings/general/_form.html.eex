@@ -121,6 +121,42 @@
               <% end %>
               <p class="f6 mt1 mb0">Whitelist the GitHub logins you trust to run workflows. Comma separates multiple values.</p>
             </div>
+            <%= if FeatureProvider.feature_enabled?(:sem_approve_options, param: @conn.assigns[:organization_id]) do %>
+            <div id="sem-approve-options" class="mt2">
+              <p class="f5 b mv1">Allow extra /sem-approve options?</p>
+              <p class="f6 mt1 mb2">
+                These options are available only when workflows are restricted to trusted contributors. Only users who can start pipelines in this project (the rerun/rebuild permission) can activate them in /sem-approve comments.
+              </p>
+              <div class="flex items-center">
+                <%= checkbox f, :allow_sem_approve_include_secrets, disabled: !@permissions["project.general_settings.manage"] %>
+                <%= label f, :allow_sem_approve_include_secrets, "Allow /sem-approve --include-secrets", class: "ml2" %>
+                <%= sem_tooltip(
+                  img_tag(
+                    "#{assets_path()}/images/icn-info-15.svg",
+                    class: "v-mid ml1",
+                    style: "transform: translateY(-.1em);",
+                    alt: ""
+                  )
+                ) do %>
+                  Approved runs receive all project secrets referenced by the workflow, bypassing the forked-PR allowed-secrets list (still limited to secrets the project can access). This exposes those secrets to externally-authored fork code.
+                <% end %>
+              </div>
+              <div class="flex items-center">
+                <%= checkbox f, :allow_sem_approve_enable_cache, disabled: !@permissions["project.general_settings.manage"] %>
+                <%= label f, :allow_sem_approve_enable_cache, "Allow /sem-approve --enable-cache", class: "ml2" %>
+                <%= sem_tooltip(
+                  img_tag(
+                    "#{assets_path()}/images/icn-info-15.svg",
+                    class: "v-mid ml1",
+                    style: "transform: translateY(-.1em);",
+                    alt: ""
+                  )
+                ) do %>
+                  Approved runs get read/write access to the project cache. Treat cache entries a fork run writes as untrusted, since later trusted pipelines may restore them.
+                <% end %>
+              </div>
+            </div>
+            <% end %>
           </div>
         <% end %>
         <div class="mt3 pt3 bt b--lighter-gray">

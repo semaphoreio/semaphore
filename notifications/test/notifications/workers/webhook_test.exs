@@ -309,6 +309,104 @@ defmodule Notifications.Workers.WebhookTest do
     end
   end
 
+  describe "request checks" do
+    setup do
+      {:ok, data: build_test_data(), settings: build_test_settings()}
+    end
+
+    test "does not send to an internal address", %{data: data, settings: settings} do
+      with_mock HTTPoison, request: fn _, _, _, _, _ -> {:ok, %HTTPoison.Response{}} end do
+        for endpoint <- ["http://127.0.0.1:4000/hook", "http://[::ffff:10.0.0.1]/hook"] do
+          s = Notifications.Models.Rule.decode_webhook(%{settings | endpoint: endpoint})
+
+          assert {:error, message} = Webhook.publish("test-11", s, data)
+          assert message =~ "not allowed"
+        end
+
+        assert_not_called(HTTPoison.request(:_, :_, :_, :_, :_))
+      end
+    end
+
+    test "does not send to a URL with control characters", %{data: data, settings: settings} do
+      with_mock HTTPoison, request: fn _, _, _, _, _ -> {:ok, %HTTPoison.Response{}} end do
+        endpoint = "https://hooks.slack.com/hook?a=1\r\nX-Header: value\r\n\r\n"
+        s = Notifications.Models.Rule.decode_webhook(%{settings | endpoint: endpoint})
+
+        assert {:error, _} = Webhook.publish("test-12", s, data)
+        assert_not_called(HTTPoison.request(:_, :_, :_, :_, :_))
+      end
+    end
+
+    test "does not send with an unsupported action", %{data: data, settings: settings} do
+      with_mock HTTPoison, request: fn _, _, _, _, _ -> {:ok, %HTTPoison.Response{}} end do
+        for action <- ["get", "post /x HTTP/1.1\r\nX-Header: value\r\n\r\n"] do
+          s = Notifications.Models.Rule.decode_webhook(%{settings | action: action})
+
+          assert {:error, message} = Webhook.publish("test-13", s, data)
+          assert message =~ "is not supported"
+        end
+
+        assert_not_called(HTTPoison.request(:_, :_, :_, :_, :_))
+      end
+    end
+
+    test "sends with the allowed method", %{data: data, settings: settings} do
+      with_mock HTTPoison,
+        request: fn _, _, _, _, _ -> {:ok, %HTTPoison.Response{status_code: 200}} end do
+        for {action, method} <- [{"", :post}, {"POST", :post}, {"put", :put}, {"PATCH", :patch}] do
+          s = Notifications.Models.Rule.decode_webhook(%{settings | action: action})
+
+          assert {:ok, _} = Webhook.publish("test-14", s, data)
+          assert_called(HTTPoison.request(method, :_, :_, :_, :_))
+        end
+      end
+    end
+
+    test "caps the first-attempt timeout at 15000ms", %{data: data, settings: settings} do
+      {:ok, agent} = Agent.start_link(fn -> [] end)
+
+      with_mock HTTPoison,
+        request: fn _, _, _, _, opts ->
+          Agent.update(agent, fn calls -> calls ++ [opts] end)
+          {:ok, %HTTPoison.Response{status_code: 200}}
+        end do
+        for timeout <- [60_000, -1] do
+          s = Notifications.Models.Rule.decode_webhook(%{settings | timeout: timeout})
+          Webhook.publish("test-15", s, data)
+        end
+
+        assert [first, second] = Agent.get(agent, & &1)
+        assert first[:recv_timeout] == 15_000
+        assert second[:recv_timeout] == 500
+      end
+
+      Agent.stop(agent)
+    end
+
+    test "checks the destination again before each retry", %{data: data, settings: settings} do
+      {:ok, agent} = Agent.start_link(fn -> 0 end)
+
+      with_mocks [
+        {Notifications.Util.Endpoint, [:passthrough],
+         check_destination: fn _ ->
+           if Agent.get_and_update(agent, &{&1, &1 + 1}) == 0,
+             do: :ok,
+             else: {:error, "Endpoint host resolves to an address that is not allowed"}
+         end},
+        {HTTPoison, [],
+         request: fn _, _, _, _, _ -> {:error, %HTTPoison.Error{id: nil, reason: :timeout}} end}
+      ] do
+        s = Notifications.Models.Rule.decode_webhook(settings)
+
+        assert {:error, message} = Webhook.publish("test-16", s, data)
+        assert message =~ "not allowed"
+        assert_called_exactly(HTTPoison.request(:_, :_, :_, :_, :_), 1)
+      end
+
+      Agent.stop(agent)
+    end
+  end
+
   defp build_test_data do
     project = Support.Factories.Project.build()
     workflow = Support.Factories.Workflow.build(project)

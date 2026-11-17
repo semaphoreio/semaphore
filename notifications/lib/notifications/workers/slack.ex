@@ -24,6 +24,19 @@ defmodule Notifications.Workers.Slack do
   end
 
   def publish(request_id, url, channel, data) do
+    case Notifications.Util.Endpoint.check_destination(url) do
+      :ok ->
+        send_message(request_id, url, channel, data)
+
+      {:error, reason} ->
+        Logger.error("#{request_id} Slack message not sent: #{reason}")
+        Watchman.increment("notification.slack.blocked")
+
+        {:error, reason}
+    end
+  end
+
+  defp send_message(request_id, url, channel, data) do
     body = Notifications.Workers.Slack.Message.construct(channel, data) |> Poison.encode!()
     headers = [{"Content-type", "application/json"}]
 

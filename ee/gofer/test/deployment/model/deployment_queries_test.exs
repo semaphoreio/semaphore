@@ -57,6 +57,16 @@ defmodule Gofer.Deployment.Model.DeploymentQueriesTest do
       assert is_nil(canary_target.last_trigger)
       assert is_nil(canary_target.switch)
     end
+
+    test "returns targets ordered by name", ctx do
+      deployments = DeploymentQueries.list_by_project_with_last_triggers(ctx[:project_id])
+
+      assert Enum.map(deployments, & &1.deployment.name) == ["Canary", "Production", "Staging"]
+    end
+
+    test "when project has no targets then return empty list" do
+      assert [] = DeploymentQueries.list_by_project_with_last_triggers(UUID.uuid4())
+    end
   end
 
   describe "find_by_id/1" do

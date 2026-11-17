@@ -306,6 +306,8 @@ blocks:
  - [`SEMAPHORE_GIT_DIR`](../reference/env-vars#git-dir): the path where the repository is to be cloned (e.g. `/home/semaphore/myproject`)
  - [`SEMAPHORE_GIT_SHA`](../reference/env-vars#commit-sha): the SHA key for the HEAD used for `git reset -q --hard`
  - [`SEMAPHORE_GIT_DEPTH`](../reference/env-vars#git-depth): checkout does by default a shallow clone. This is the depth level for the shallow clone. Defaults to 50
+
+ You can set `SEMAPHORE_GIT_DIR` and `SEMAPHORE_GIT_DEPTH` in the pipeline YAML. To change `SEMAPHORE_GIT_URL` or `SEMAPHORE_GIT_SHA`, `export` them in the job commands before running `checkout`. See [reserved variables](../reference/env-vars#reserved-variables).
  </div>
 </details>
 

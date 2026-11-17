@@ -6,6 +6,7 @@ include/google/rpc/code
 repository_integrator
 repository
 user
+service_account
 projecthub
 organization
 health

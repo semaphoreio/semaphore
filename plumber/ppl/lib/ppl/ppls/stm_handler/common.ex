@@ -88,9 +88,13 @@ defmodule Ppl.Ppls.STMHandler.Common do
      {:ok, ppl_req} ->
 
        0..(ppl_req.block_count - 1)
-       |> Enum.map(fn index ->
+       |> Enum.each(fn index ->
          trigger_loopers(ppl_id, index)
        end)
+
+       # waiting state has different 'enter_scheduling' query so predicate
+       # would not work, instead all ready blocks of pipeline are scheduled
+       PplBlocksWaitingState.execute_now_for_pipeline(ppl_id)
 
       _ -> :nothing
     end
@@ -106,10 +110,6 @@ defmodule Ppl.Ppls.STMHandler.Common do
 
     query_fun |> PplBlocksInitializingState.execute_now_with_predicate()
     query_fun |> PplBlocksRunningState.execute_now_with_predicate()
-
-    # since waiting state has differen 'enter_scheduling' query,
-    # predicate in not needed and will not work
-    PplBlocksWaitingState.execute_now()
   end
 
   @doc """
