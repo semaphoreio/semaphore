@@ -240,6 +240,7 @@ const sidebars = {
           'reference/toolbox',
           'reference/api',
           'reference/env-vars',
+          'reference/quotas-and-limits',
           'reference/conditions-dsl',
           'reference/self-hosted-config',
           'reference/agent-aws-stack',
