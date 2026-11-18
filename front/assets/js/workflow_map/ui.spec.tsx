@@ -341,6 +341,7 @@ describe(`why a pipeline stopped`, () => {
     expect(button.textContent).to.equal(`Auto-cancelledexpand_more`);
     expect(button.dataset.tippyContent).to.equal(`A newer pipeline started in the same queue (auto_cancel).`);
     expect(button.getAttribute(`aria-expanded`)).to.equal(`false`);
+    expect(button.getAttribute(`aria-label`)).to.equal(`Auto-cancelled: why Build stopped`);
     await act(() => button.click());
     expect(toggled).to.equal(1);
   });

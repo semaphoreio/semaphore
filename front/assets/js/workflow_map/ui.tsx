@@ -273,7 +273,7 @@ export const StopReason = ({ p, open, onToggle }: { p: Pipeline, open?: boolean,
       <button
         className="wf-map-reason"
         aria-expanded={open}
-        aria-label={`${open ? `Hide` : `Show`} why ${p.name} stopped`}
+        aria-label={`${reason.label}: why ${p.name} stopped`}
         data-tippy-content={reason.detail}
         onClick={(e) => {
           e.stopPropagation();
