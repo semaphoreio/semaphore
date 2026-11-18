@@ -351,8 +351,6 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       member_grants =
         Rbac.Repo.RbacRole.get_role_by_id(member_role.id).permissions |> Enum.map(& &1.name)
 
-      # The requester holds none of the permissions the Member role grants, so the assignment
-      # can only succeed because an org-level owner change skips the held-permissions check.
       assert member_grants != []
       refute Enum.any?(member_grants, &Enum.member?(permissions, &1))
 
@@ -375,9 +373,6 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
 
     test "organization Owner role is assigned when a global insider role grants insider.owners.manage",
          state do
-      # The requester's permissions are computed from a real global role binding instead of
-      # being written to the cache by hand, which is what proves insider.owners.manage ends
-      # up on the global (user-only) cache key.
       permissions = grant_requester_global_owner_manager_role()
 
       assert Enum.member?(permissions, "insider.owners.manage")
@@ -392,8 +387,6 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
 
     test "insider.owners.manage granted inside the organization does not pass the owner gate",
          state do
-      # The bypass is global authority only: it must read the nil-uuid (user-only) cache key,
-      # never the requester's in-org permissions.
       replace_requester_permissions("organization.people.manage")
 
       %Rbac.Repo.UserPermissionsKeyValueStore{
@@ -421,9 +414,6 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
     end
 
     test "the Owner role grants every organization-scope permission" do
-      # assign_role skips the held-permissions check for an org-level owner change on the
-      # strength of this invariant. Only org-scope permissions are compared: org_scope Admin
-      # also lists project.delete, which Owner reaches through its maps_to project role.
       {:ok, roles_yaml} = YamlElixir.read_from_file("./assets/roles.yaml")
       {:ok, permissions_yaml} = YamlElixir.read_from_file("./assets/permissions.yaml")
 
