@@ -749,7 +749,7 @@ button.wf-map-reason .material-symbols-outlined {
   flex-direction: column;
   justify-content: center;
   gap: 3px;
-  height: 44px;
+  height: 48px;
   padding: 0 12px 0 36px;
   border-bottom: 1px solid #D3DADE;
   background: #F5F7F8;
@@ -778,7 +778,7 @@ button.wf-map-reason .material-symbols-outlined {
 }
 
 .wf-map-details ~ .wf-map-init-tab {
-  top: 110px;
+  top: 114px;
 }
 
 .wf-map-after {

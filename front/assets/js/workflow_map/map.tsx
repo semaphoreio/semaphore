@@ -16,7 +16,7 @@ const CLICKABLE = { pointerEvents: `all` as const };
 export const openPipelines = signal<Set<string>>(new Set());
 export const openBlocks = signal<Set<string>>(new Set());
 export const openDetails = signal<Set<string>>(new Set());
-export const DETAILS_H = 44;
+export const DETAILS_H = 48;
 export const detailsBand = (p: Pipeline, open: Set<string>) => (open.has(p.id) && stopReason(p) ? DETAILS_H : 0);
 const hovered = signal<string | null>(null);
 
