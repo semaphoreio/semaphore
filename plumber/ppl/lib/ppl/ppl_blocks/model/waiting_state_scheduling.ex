@@ -2,9 +2,9 @@ defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
   @moduledoc """
   Find ready ppl_block - ppl_block ready for scheduling.
 
-  `get_ready_block/0` searches through all waiting ppl_blocks and its cost grows
-  with the number of waiting ppl_blocks which are not ready yet, so it is used
-  only as a periodic safety net.
+  `get_ready_block/0` searches through waiting ppl_blocks of all running
+  pipelines and through ppl_blocks with termination request, it is used only as
+  a periodic safety net.
   `get_ready_block/1` searches only through ppl_blocks of the given pipeline and
   is used for event-driven scheduling (see Ppl.PplBlocks.WaitingDrain).
   """
@@ -29,15 +29,21 @@ defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
   end
 
   def do_get_ready_block do
-    not_ready_ppl_blocks_query()
-    |> ready_ppl_block_query("")
+    case claim(terminate_requested_ppl_block_query()) do
+      {:ok, []} -> claim(running_ppls_ready_ppl_block_query())
+      resp -> resp
+    end
+  end
+
+  defp claim(select_query) do
+    select_query
     |> ready_ppl_block_update_query()
     |> Repo.query([NaiveDateTime.utc_now()])
     |> STM.load(PplBlocks)
   end
 
   def do_get_ready_block(ppl_id) do
-    not_ready_ppl_blocks_query()
+    not_ready_ppl_blocks_query("pb")
     |> ready_ppl_block_query("pb.ppl_id = $2 AND")
     |> ready_ppl_block_update_query()
     |> Repo.query([NaiveDateTime.utc_now(), Ecto.UUID.dump!(ppl_id)])
@@ -72,9 +78,52 @@ defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
     FOR UPDATE OF pb SKIP LOCKED
   " end
 
+  # Uses the partial index pipeline_blocks_waiting_terminate_requested_index.
+  defp terminate_requested_ppl_block_query do "
+    SELECT pb.*
+    FROM pipeline_blocks AS pb
+    WHERE pb.in_scheduling = false AND
+      pb.state = 'waiting' AND
+      pb.terminate_request IS NOT NULL
+    ORDER BY pb.updated_at ASC
+    LIMIT 1
+    FOR UPDATE OF pb SKIP LOCKED
+  " end
+
+  # Both OFFSET 0 keep the planner from flattening the subqueries, so the search
+  # always starts from running pipelines instead of from all waiting ppl_blocks.
+  defp running_ppls_ready_ppl_block_query do "
+    SELECT pb.*
+    FROM pipeline_blocks AS pb
+    WHERE pb.id = ANY(ARRAY(
+        SELECT ready.id
+        FROM (
+          SELECT ppl.ppl_id
+          FROM pipelines AS ppl
+          WHERE ppl.state = 'running'
+          OFFSET 0
+        ) AS running
+        CROSS JOIN LATERAL (
+          SELECT b.id
+          FROM pipeline_blocks AS b
+          WHERE b.ppl_id = running.ppl_id AND
+            b.in_scheduling = false AND
+            b.state = 'waiting' AND
+            b.terminate_request IS NULL AND
+            NOT EXISTS (#{not_ready_ppl_blocks_query("b")})
+          OFFSET 0
+        ) AS ready
+      )) AND
+      pb.in_scheduling = false AND
+      pb.state = 'waiting'
+    ORDER BY pb.updated_at ASC
+    LIMIT 1
+    FOR UPDATE OF pb SKIP LOCKED
+  " end
+
   # Get ppl_blocks that are in WAITING state but not ready to run.
   # Not ready to run == at least one of its dependencies is not in DONE state
-  defp not_ready_ppl_blocks_query do "
+  defp not_ready_ppl_blocks_query(ppl_block_alias) do "
     SELECT targets.id
     FROM pipeline_blocks AS targets
     JOIN pipeline_block_connections AS connections
@@ -82,6 +131,6 @@ defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
     JOIN pipeline_blocks AS dependencies
       ON connections.dependency = dependencies.id
     WHERE targets.state = 'waiting' AND
-      dependencies.state NOT IN ('done') and targets.id = pb.id
+      dependencies.state NOT IN ('done') and targets.id = #{ppl_block_alias}.id
   " end
 end
