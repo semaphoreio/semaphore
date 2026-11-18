@@ -407,7 +407,7 @@ experiencing a capacity incident.
 
 Check your machine quota usage in the [Activity Monitor](../reference/quotas-and-limits#check-quota-usage).
 If quota is available, check [Semaphore CI Status](https://status.semaphore.io/). If quota is
-available and the status page shows no incident, contact [Semaphore Support](mailto:support@semaphoreci.com).
+available and the status page shows no incident, contact [Semaphore Support](mailto:support@semaphore.io).
 
 :::note
 

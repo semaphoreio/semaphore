@@ -1,4 +1,5 @@
 ---
+title: Quotas and limits
 description: Semaphore Cloud machine quotas and limits
 ---
 
@@ -38,7 +39,7 @@ If a job is waiting for quota, use the following checks to identify the cause:
 2. If the Activity Monitor shows available quota, check the [Semaphore CI Status](https://status.semaphore.io/)
    page for a capacity incident or maintenance.
 3. If quota is available and the status page shows no incident, contact Semaphore Support at
-   [support@semaphoreci.com](mailto:support@semaphore.io). Include your organization URL,
+   [support@semaphore.io](mailto:support@semaphore.io). Include your organization URL,
    workflow or job URL, selected machine type, and the approximate time that the job began waiting.
 
 ## Other limits {#other-limits}
