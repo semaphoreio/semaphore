@@ -66,6 +66,7 @@ defmodule FrontWeb.WorkflowView do
       yaml_file: pipeline.yaml_file_name,
       state: pipeline.state,
       result: pipeline.result,
+      result_reason: pipeline.result_reason,
       parent_id: map_parent_id(pipeline),
       trigger: triggerer.trigger_type,
       triggerer: %{

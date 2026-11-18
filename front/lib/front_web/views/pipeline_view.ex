@@ -683,12 +683,16 @@ defmodule FrontWeb.PipelineView do
     %{
       id: nil,
       name: job.name,
-      status: if(block.skipped?, do: :skipped, else: :pending),
+      status: never_run_job_status(block),
       started_at: nil,
       finished_at: nil,
       reused: false
     }
   end
+
+  defp never_run_job_status(%{skipped?: true}), do: :skipped
+  defp never_run_job_status(%{result: result}) when result in [:CANCELED, :STOPPED], do: :canceled
+  defp never_run_job_status(_), do: :pending
 
   defp map_job_status(:ENQUEUED, _), do: :queued
   defp map_job_status(:RUNNING, _), do: :running

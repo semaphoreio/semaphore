@@ -1,7 +1,7 @@
 import { ComponentChildren } from "preact";
 import type {} from "../custom_types/time_ago";
 import { useState } from "preact/hooks";
-import { Block, Job, Pipeline, STATUSES, STATUS_LABEL, Status, blockStatus, blockSummary, countJobs, formatAgo, formatDuration } from "./model";
+import { Block, Job, Pipeline, STATUSES, STATUS_LABEL, Status, blockStatus, blockSummary, countJobs, formatAgo, formatDuration, stopReason } from "./model";
 import { focus, hits, now, query } from "./store";
 
 export const StatusIcon = ({ status, size = 16 }: { status: Status, size?: number, }) => {
@@ -16,7 +16,7 @@ export const StatusIcon = ({ status, size = 16 }: { status: Status, size?: numbe
       )}
       {status === `passed` && <path {...glyph} d="M7.456 8.577L6.273 7.45a1 1 0 00-1.38 1.448l1.917 1.826a1 1 0 001.423-.044l3.386-3.652a1 1 0 00-1.466-1.36z"/>}
       {status === `failed` && <path {...glyph} d="M5.293 6.707l4 4a1 1 0 101.414-1.414l-4-4a1 1 0 00-1.414 1.414zM5.293 9.293l4-4a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414-1.414z"/>}
-      {status === `stopped` && <path {...glyph} d="M5.994 9l4.023.023a1 1 0 00.011-2L6.006 7a1 1 0 00-.012 2z"/>}
+      {(status === `stopped` || status === `canceled`) && <path {...glyph} d="M5.994 9l4.023.023a1 1 0 00.011-2L6.006 7a1 1 0 00-.012 2z"/>}
       {status === `running` && (
         <g {...glyph}>
           <circle cx="5" cy="8" r="1"/>
@@ -236,7 +236,7 @@ export const Triggered = ({ p }: { p: Pipeline, }) => {
   const tip = [
     [t.text, t.link?.label, t.owner && `by ${t.owner}`].filter(Boolean).join(` `),
     p.createdAt && new Date(p.createdAt * 1000).toLocaleString(undefined, { weekday: `short`, day: `numeric`, month: `short`, year: `numeric`, hour: `2-digit`, minute: `2-digit` }),
-    t.stopped && (t.stopped_by ? `Stopped by ${t.stopped_by}` : `Stopped`),
+    t.stopped && (t.stopped_by ? `Stopped by ${t.stopped_by}` : stopReason(p)?.label ?? `Stopped`),
   ]
     .filter(Boolean)
     .join(` · `);
@@ -253,6 +253,16 @@ export const Triggered = ({ p }: { p: Pipeline, }) => {
   ) : (
     <span className="wf-map-triggered" role="img" aria-label={tip} data-tippy-content={tip}>
       {body}
+    </span>
+  );
+};
+
+export const StopReason = ({ p }: { p: Pipeline, }) => {
+  const reason = stopReason(p);
+  if (!reason) return null;
+  return (
+    <span className="wf-map-reason" role="note" aria-label={`${reason.label}: ${reason.detail}`} data-tippy-content={reason.detail}>
+      {reason.label}
     </span>
   );
 };

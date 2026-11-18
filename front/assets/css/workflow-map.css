@@ -4,6 +4,7 @@
   --wf-map-running: #1570ff;
   --wf-map-queued: #fd7e14;
   --wf-map-stopped: #667979;
+  --wf-map-canceled: #8c9c9c;
   --wf-map-pending: #b4c0c0;
   --wf-map-skipped: #8c9c9c;
   --wf-map-edge: #a3b0b5;
@@ -19,6 +20,7 @@
 .wf-map-st-running { --wf-map-st: var(--wf-map-running); }
 .wf-map-st-queued { --wf-map-st: var(--wf-map-queued); }
 .wf-map-st-stopped { --wf-map-st: var(--wf-map-stopped); }
+.wf-map-st-canceled { --wf-map-st: var(--wf-map-canceled); }
 .wf-map-st-pending { --wf-map-st: var(--wf-map-pending); }
 .wf-map-st-skipped { --wf-map-st: var(--wf-map-skipped); }
 
@@ -697,6 +699,32 @@ a.wf-map-triggered:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.wf-map-reason {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 9px;
+  background: #EEF1F2;
+  font-size: 12px;
+  font-weight: 500;
+  color: #495358;
+  white-space: nowrap;
+}
+
+.wf-map-pipeline-meta:has(+ .wf-map-reason) {
+  margin-right: 0;
+}
+
+.wf-map-pipeline-sub > .wf-map-reason {
+  margin: 0 auto 0 8px;
+}
+
+.wf-map-card-meta > .wf-map-reason {
+  flex: none;
 }
 
 .wf-map-after {

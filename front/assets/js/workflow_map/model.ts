@@ -1,12 +1,13 @@
-export type Status = `failed` | `running` | `queued` | `stopped` | `pending` | `skipped` | `passed`;
+export type Status = `failed` | `running` | `queued` | `stopped` | `canceled` | `pending` | `skipped` | `passed`;
 
-export const STATUSES: Status[] = [`failed`, `running`, `queued`, `stopped`, `pending`, `skipped`, `passed`];
+export const STATUSES: Status[] = [`failed`, `running`, `queued`, `stopped`, `canceled`, `pending`, `skipped`, `passed`];
 
 export const STATUS_LABEL: Record<Status, string> = {
   failed: `Failed`,
   running: `Running`,
   queued: `Queued`,
   stopped: `Stopped`,
+  canceled: `Cancelled`,
   pending: `Not started`,
   skipped: `Skipped`,
   passed: `Passed`,
@@ -26,6 +27,7 @@ export interface ApiPipeline {
   yaml_file: string;
   state: string;
   result: string;
+  result_reason: string | null;
   parent_id: string | null;
   trigger: string;
   triggerer: ApiTriggerer;
@@ -132,6 +134,7 @@ export interface Pipeline {
   name: string;
   yamlFile: string;
   status: Status;
+  resultReason: string | null;
   done: boolean;
   trigger: string;
   triggerer: ApiTriggerer;
@@ -164,7 +167,7 @@ export const AFTER_PIPELINE = `After pipeline`;
 
 const pipelineStatus = (state: string, result: string): Status => {
   if (state === `DONE`) {
-    return result === `PASSED` ? `passed` : result === `FAILED` ? `failed` : `stopped`;
+    return result === `PASSED` ? `passed` : result === `FAILED` ? `failed` : result === `CANCELED` ? `canceled` : `stopped`;
   }
   return state === `RUNNING` || state === `STOPPING` ? `running` : `queued`;
 };
@@ -224,6 +227,7 @@ export function buildWorkflow(tree: ApiWorkflow, details: Record<string, ApiPipe
       name: a.name,
       yamlFile: a.yaml_file,
       status: pipelineStatus(a.state, a.result),
+      resultReason: a.result_reason,
       done: a.state === `DONE`,
       trigger: a.trigger,
       triggerer: a.triggerer,
@@ -286,13 +290,13 @@ export function buildWorkflow(tree: ApiWorkflow, details: Record<string, ApiPipe
   return wf;
 }
 
-const PRECEDENCE: Status[] = [`running`, `queued`, `failed`, `stopped`, `pending`, `passed`, `skipped`];
+const PRECEDENCE: Status[] = [`running`, `queued`, `failed`, `stopped`, `canceled`, `pending`, `passed`, `skipped`];
 
 export function rollup(statuses: Status[]): Status {
   if (statuses.length === 0) return `pending`;
   const set = new Set(statuses);
   if (set.size === 1) return statuses[0];
-  if (set.has(`pending`) && set.has(`passed`) && !set.has(`failed`) && !set.has(`stopped`) && !set.has(`running`) && !set.has(`queued`)) {
+  if (set.has(`pending`) && set.has(`passed`) && !set.has(`failed`) && !set.has(`stopped`) && !set.has(`canceled`) && !set.has(`running`) && !set.has(`queued`)) {
     return `running`;
   }
   return PRECEDENCE.find((s) => set.has(s));
@@ -347,3 +351,21 @@ export const blockSummary = (b: Block) => {
     ...([`failed`, `running`, `queued`, `stopped`] as Status[]).filter((s) => c[s]).map((s) => `${c[s]} ${STATUS_LABEL[s].toLowerCase()}`),
   ].join(` · `);
 };
+
+const STOP_REASON: Record<string, { label: string, detail: string, }> = {
+  STRATEGY: { label: `Auto-cancelled`, detail: `A newer pipeline started in the same queue (auto_cancel).` },
+  FAST_FAILING: { label: `Fail-fast`, detail: `A job failed and fail_fast stopped the rest.` },
+  DELETED: { label: `Branch deleted`, detail: `The branch or tag was deleted.` },
+  TIMEOUT: { label: `Timed out`, detail: `The pipeline hit its execution time limit.` },
+  STUCK: { label: `Stopped by Semaphore`, detail: `Semaphore stopped it: it made no progress.` },
+  INTERNAL: { label: `Stopped by Semaphore`, detail: `Semaphore stopped it after an internal error.` },
+};
+
+export function stopReason(p: Pipeline): { label: string, detail: string, } | null {
+  if (p.status !== `stopped` && p.status !== `canceled`) return null;
+  if (p.resultReason === `USER`) {
+    const by = p.triggerer?.stopped_by;
+    return { label: `Stopped by user`, detail: by ? `Stopped by ${by}.` : `Stopped by a user.` };
+  }
+  return STOP_REASON[p.resultReason] ?? null;
+}

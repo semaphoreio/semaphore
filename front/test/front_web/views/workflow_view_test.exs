@@ -103,5 +103,20 @@ defmodule FrontWeb.WorkflowViewTest do
       assert triggerer.owner == "<b>Ana</b>"
       assert triggerer.stopped_by == "[Deleted User]"
     end
+
+    test "sends why a pipeline ended", %{conn: conn} do
+      pipeline = %{pipeline(:API, %{}) | state: :DONE, result: :STOPPED, result_reason: :STRATEGY}
+
+      workflow = %{
+        id: "wf-1",
+        project_name: "foo",
+        root_pipeline_id: pipeline.id,
+        pipelines: [pipeline]
+      }
+
+      [json] = WorkflowView.render("map.json", %{workflow: workflow, conn: conn}).pipelines
+
+      assert {json.result, json.result_reason} == {:STOPPED, :STRATEGY}
+    end
   end
 end

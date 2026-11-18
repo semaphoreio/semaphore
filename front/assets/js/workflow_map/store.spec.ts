@@ -24,6 +24,7 @@ const pipeline = (id: string, name: string, parent_id: string | null) => ({
   yaml_file: `.semaphore/${id}.yml`,
   state: `DONE`,
   result: `PASSED`,
+  result_reason: null,
   parent_id,
   trigger: `AUTO_PROMOTION`,
   triggerer: { text: `Auto promoted`, link: null, owner: null, stopped: false, stopped_by: null },

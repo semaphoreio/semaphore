@@ -284,6 +284,8 @@ describe(`how and when a pipeline was triggered`, () => {
     expect(tip()).to.match(/ · Stopped$/);
     await show(triggerer({ text: `Triggered by push` }), 1700000000, `INITIAL_WORKFLOW`);
     expect(tip()).to.not.contain(`Stopped`);
+    await act(() => render(<Triggered p={{ triggerer: triggerer({ text: `Triggered by push`, stopped: true }), createdAt: 1700000000, trigger: `INITIAL_WORKFLOW`, status: `stopped`, resultReason: `STRATEGY` } as Pipeline}/>, root));
+    expect(tip()).to.match(/ · Auto-cancelled$/);
   });
 
   test(`shows nothing when the map data has no triggerer`, async () => {

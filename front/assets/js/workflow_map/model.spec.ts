@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe, test } from "mocha";
 
-import { AFTER_PIPELINE, ApiPipeline, ApiPipelineDetail, buildWorkflow, formatAgo, formatDuration, plural, rollup, shortName } from "./model";
+import { AFTER_PIPELINE, ApiPipeline, ApiPipelineDetail, buildWorkflow, formatAgo, formatDuration, plural, rollup, shortName, stopReason } from "./model";
 
 const apiPipeline = (id: string, overrides: Partial<ApiPipeline> = {}): ApiPipeline => ({
   id,
@@ -9,6 +9,7 @@ const apiPipeline = (id: string, overrides: Partial<ApiPipeline> = {}): ApiPipel
   yaml_file: `.semaphore/semaphore.yml`,
   state: `DONE`,
   result: `PASSED`,
+  result_reason: null,
   parent_id: null,
   trigger: `INITIAL_WORKFLOW`,
   triggerer: { text: `Triggered by push`, link: null, owner: `Ana`, stopped: false, stopped_by: null },
@@ -68,7 +69,7 @@ describe(`buildWorkflow`, () => {
       {}
     );
 
-    expect(wf.pipelines.map((p) => p.status)).to.deep.eq([`passed`, `failed`, `stopped`, `running`, `queued`]);
+    expect(wf.pipelines.map((p) => p.status)).to.deep.eq([`passed`, `failed`, `canceled`, `running`, `queued`]);
   });
 
   test(`builds blocks with dependencies and an after pipeline block that follows the last blocks`, () => {
@@ -147,6 +148,35 @@ describe(`rollup`, () => {
     expect(rollup([`passed`, `skipped`])).to.eq(`passed`);
     expect(rollup([`passed`, `pending`])).to.eq(`running`);
     expect(rollup([`failed`, `stopped`])).to.eq(`failed`);
+    expect(rollup([`passed`, `canceled`])).to.eq(`canceled`);
+    expect(rollup([`stopped`, `canceled`])).to.eq(`stopped`);
+  });
+});
+
+describe(`stopReason`, () => {
+  const reason = (overrides: Partial<ApiPipeline>) => {
+    const wf = buildWorkflow({ root_pipeline_id: `ci`, pipelines: [apiPipeline(`ci`, overrides)] }, {});
+    return { status: wf.root.status, reason: stopReason(wf.root) };
+  };
+
+  test(`names why a stopped or cancelled pipeline ended`, () => {
+    expect(reason({ result: `STOPPED`, result_reason: `STRATEGY` })).to.deep.equal({
+      status: `stopped`,
+      reason: { label: `Auto-cancelled`, detail: `A newer pipeline started in the same queue (auto_cancel).` },
+    });
+    expect(reason({ result: `CANCELED`, result_reason: `STRATEGY` }).status).to.eq(`canceled`);
+    expect(reason({ result: `STOPPED`, result_reason: `TIMEOUT` }).reason.label).to.eq(`Timed out`);
+  });
+
+  test(`says who stopped it by hand`, () => {
+    const stopped = { text: `Triggered by push`, link: null, owner: `Ana`, stopped: true, stopped_by: `Bo` };
+    expect(reason({ result: `STOPPED`, result_reason: `USER`, triggerer: stopped }).reason).to.deep.equal({ label: `Stopped by user`, detail: `Stopped by Bo.` });
+  });
+
+  test(`has nothing to say about a pipeline that was not stopped, or with no known reason`, () => {
+    expect(reason({ result: `FAILED`, result_reason: `TEST` }).reason).to.eq(null);
+    expect(reason({ result: `PASSED` }).reason).to.eq(null);
+    expect(reason({ result: `STOPPED`, result_reason: null }).reason).to.eq(null);
   });
 });
 

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { computed, signal } from "@preact/signals";
 import { BaseEdge, Background, Controls, Edge, EdgeLabelRenderer, EdgeProps, Handle, MiniMap, Node, NodeProps, Panel, Position, ReactFlow, ReactFlowProvider, useReactFlow, useStore } from "@xyflow/react";
-import { Block, InitJob, Pipeline, Workflow, blockStatus, pipelineJobs, plural } from "./model";
+import { Block, InitJob, Pipeline, Workflow, blockStatus, pipelineJobs, plural, stopReason } from "./model";
 import { focus, hits, layoutError, popover, rerunPipeline, selected, stopPipeline, togglePopover, workflow } from "./store";
 import { MapLayout, Point, layoutMap, promotionLabel } from "./layout";
 import { PromoteButton } from "./promote";
 import { Chips, Search, Stepper } from "./toolbar";
-import { BlockCard, BlockSummary, Chevron, Counts, Duration, Name, PipelineTitle, StatusBar, StatusIcon, Triggered, plainClick } from "./ui";
+import { BlockCard, BlockSummary, Chevron, Counts, Duration, Name, PipelineTitle, StatusBar, StatusIcon, StopReason, Triggered, plainClick } from "./ui";
 import { BLOCK_GAP, JOB_ROW_H, blockSize, jobTop } from "./lines";
 
 const CARD = { w: 300, h: 72 };
@@ -159,6 +159,8 @@ const CardNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node
               log
             </a>
           </span>
+        ) : stopReason(p) ? (
+          <StopReason p={p}/>
         ) : (
           <span>
             {plural(p.blocks.length, `block`)} · {plural(jobs.length, `job`)}
@@ -262,6 +264,7 @@ const PipelineNode = ({ data, width, positionAbsoluteX, positionAbsoluteY }: Nod
         </div>
         <div className="wf-map-pipeline-row wf-map-pipeline-sub">
           <Name className="wf-map-pipeline-meta">{p.yamlFile}</Name>
+          <StopReason p={p}/>
           <PipelineActions p={p}/>
         </div>
       </div>
