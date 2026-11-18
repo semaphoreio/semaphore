@@ -1,6 +1,6 @@
 import { computed, signal } from "@preact/signals";
 import * as APIRequest from "js/toolbox/api_request";
-import { ApiPipeline, ApiPipelineDetail, ApiWorkflow, Block, Job, Pipeline, Promotion, Status, blockStatus, buildWorkflow } from "./model";
+import { ApiPipeline, ApiPipelineDetail, ApiWorkflow, Block, Job, Pipeline, Promotion, Status, blockStatus, buildWorkflow, plural } from "./model";
 
 export interface Config {
   workflowUrl: string;
@@ -109,7 +109,7 @@ export const results = computed<SearchResult[]>(() => {
     }
     for (const b of p.blocks ?? []) {
       if (includes(b.name, q) && (!st.size || b.jobs.some((j) => st.has(j.status)))) {
-        out.push({ kind: `block`, id: b.id, label: b.name, pipeline: p, status: blockStatus(b), context: `${b.jobs.length} jobs` });
+        out.push({ kind: `block`, id: b.id, label: b.name, pipeline: p, status: blockStatus(b), context: plural(b.jobs.length, `job`) });
       }
       for (const j of b.jobs) {
         if (includes(j.name, q) && (!st.size || st.has(j.status))) {
