@@ -1156,12 +1156,21 @@ a.wf-map-job:hover {
 
 .wf-head-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 2px 6px;
   min-width: 0;
   font-size: 14px;
   color: #677278;
   white-space: nowrap;
+}
+
+.wf-head-meta > * {
+  max-width: 100%;
+}
+
+.wf-head-branch {
+  max-width: min(48ch, 100%);
 }
 
 .wf-head-actions {
@@ -1178,15 +1187,16 @@ a.wf-map-job:hover {
 
 .wf-compact-head .wf-head-summary {
   display: flex;
-  align-items: baseline;
-  gap: 16px;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .wf-compact-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 4px 16px;
   margin-top: 2px;
 }
 
