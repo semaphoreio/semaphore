@@ -348,7 +348,7 @@ export const blockSummary = (b: Block) => {
   const c = countJobs(b.jobs);
   return [
     plural(b.jobs.length, `job`),
-    ...([`failed`, `running`, `queued`, `stopped`] as Status[]).filter((s) => c[s]).map((s) => `${c[s]} ${STATUS_LABEL[s].toLowerCase()}`),
+    ...([`failed`, `running`, `queued`, `stopped`, `canceled`] as Status[]).filter((s) => c[s]).map((s) => `${c[s]} ${STATUS_LABEL[s].toLowerCase()}`),
   ].join(` · `);
 };
 

@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe, test } from "mocha";
 
-import { AFTER_PIPELINE, ApiPipeline, ApiPipelineDetail, buildWorkflow, formatAgo, formatDuration, plural, rollup, shortName, stopReason } from "./model";
+import { AFTER_PIPELINE, ApiPipeline, ApiPipelineDetail, Block, Job, blockSummary, buildWorkflow, formatAgo, formatDuration, plural, rollup, shortName, stopReason } from "./model";
 
 const apiPipeline = (id: string, overrides: Partial<ApiPipeline> = {}): ApiPipeline => ({
   id,
@@ -150,6 +150,15 @@ describe(`rollup`, () => {
     expect(rollup([`failed`, `stopped`])).to.eq(`failed`);
     expect(rollup([`passed`, `canceled`])).to.eq(`canceled`);
     expect(rollup([`stopped`, `canceled`])).to.eq(`stopped`);
+  });
+});
+
+describe(`blockSummary`, () => {
+  test(`counts the jobs that need a look, cancelled ones included`, () => {
+    const block = (statuses: string[]) => ({ jobs: statuses.map((status) => ({ status }) as Job) }) as Block;
+    expect(blockSummary(block([`canceled`]))).to.eq(`1 job · 1 cancelled`);
+    expect(blockSummary(block([`passed`, `failed`, `canceled`]))).to.eq(`3 jobs · 1 failed · 1 cancelled`);
+    expect(blockSummary(block([`passed`, `skipped`]))).to.eq(`2 jobs`);
   });
 });
 
