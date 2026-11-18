@@ -64,6 +64,7 @@ See: `docs/arch.md`, `lib/notifications/application.ex`, `lib/notifications/work
 - Extension points / gotchas: add cleanup for other org-scoped tables here; errors are caught and re-raised with metrics. See: `lib/notifications/workers/destroyer.ex`.
 
 ### Delivery Workers (Slack/Webhook/Email)
+- Slack icon asset: `lib/notifications/workers/slack/icon_2026_72px.png`, served to Slack via its public raw GitHub URL on `main` in `lib/notifications/workers/slack/message.ex`. The image must be published on `main` before that URL is available.
 - Location: `lib/notifications/workers/slack.ex`, `lib/notifications/workers/slack/message.ex`, `lib/notifications/workers/webhook.ex`, `lib/notifications/workers/webhook/*`, `lib/notifications/workers/email.ex`.
 - Responsibilities: construct and deliver Slack/webhook payloads; email worker is a stub. See: `lib/notifications/workers/slack.ex`, `lib/notifications/workers/webhook.ex`, `lib/notifications/workers/email.ex`.
 - Entry points / interface: `publish/4` in Slack/Webhook; message builders in `*.Message` modules. See: `lib/notifications/workers/slack.ex`, `lib/notifications/workers/webhook.ex`, `lib/notifications/workers/slack/message.ex`, `lib/notifications/workers/webhook/message.ex`.

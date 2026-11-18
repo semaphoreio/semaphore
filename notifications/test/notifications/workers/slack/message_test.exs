@@ -31,7 +31,8 @@ defmodule Notifications.Workers.Slack.MessageTest do
           }
         ],
         "channel" => "#dev-null",
-        "icon_url" => "https://a.slack-edge.com/7f1a0/plugins/semaphore/assets/service_72.png",
+        "icon_url" =>
+          "https://raw.githubusercontent.com/semaphoreio/semaphore/main/notifications/lib/notifications/workers/slack/icon_2026_72px.png",
         "username" => "Semaphore"
       }
 
