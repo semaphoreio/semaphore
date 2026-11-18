@@ -28,7 +28,7 @@ describe(`the init job's tab under a pipeline's header`, () => {
     await show({ url: `/jobs/init-1`, status: `passed`, started_at: 1700000000, finished_at: 1700000007 });
     expect(tab().getAttribute(`href`)).to.equal(`/jobs/init-1`);
     expect(tab().querySelector(`.wf-map-icon`).getAttribute(`aria-label`)).to.equal(`Passed`);
-    expect(tab().textContent).to.equal(`Init00:07`);
+    expect(tab().textContent).to.equal(`Initialization00:07`);
     expect(tab().dataset.tippyContent).to.equal(`Opens the initialization log`);
     tab().addEventListener(`click`, (e) => e.preventDefault());
     tab().click();
@@ -38,8 +38,8 @@ describe(`the init job's tab under a pipeline's header`, () => {
   test(`counts up while the init job runs, and shows no time before it has started`, async () => {
     now.value = 1700000012;
     await show({ url: `/jobs/init-1`, status: `running`, started_at: 1700000000, finished_at: null });
-    expect(tab().textContent).to.equal(`Init00:12`);
+    expect(tab().textContent).to.equal(`Initialization00:12`);
     await show({ url: `/jobs/init-1`, status: `pending`, started_at: null, finished_at: null });
-    expect(tab().textContent).to.equal(`Init--:--`);
+    expect(tab().textContent).to.equal(`Initialization--:--`);
   });
 });

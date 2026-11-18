@@ -222,7 +222,7 @@ export const BlocksToggle = ({ p, at }: { p: Pipeline, at: Point, }) => {
 export const InitTab = ({ job }: { job: InitJob, }) => (
   <a className="wf-map-init-tab" href={job.url} data-tippy-content="Opens the initialization log" onClick={(e) => e.stopPropagation()}>
     <StatusIcon status={job.status} size={12}/>
-    Init
+    Initialization
     <Duration start={job.started_at} end={job.finished_at} running={job.status === `running`}/>
   </a>
 );
