@@ -1,6 +1,7 @@
 import { ComponentChildren } from "preact";
+import type {} from "../custom_types/time_ago";
 import { useState } from "preact/hooks";
-import { Block, Job, Pipeline, STATUSES, STATUS_LABEL, Status, blockStatus, blockSummary, countJobs, formatDuration } from "./model";
+import { Block, Job, Pipeline, STATUSES, STATUS_LABEL, Status, blockStatus, blockSummary, countJobs, formatAgo, formatDuration, stopReason } from "./model";
 import { focus, hits, now, query } from "./store";
 
 export const StatusIcon = ({ status, size = 16 }: { status: Status, size?: number, }) => {
@@ -15,7 +16,7 @@ export const StatusIcon = ({ status, size = 16 }: { status: Status, size?: numbe
       )}
       {status === `passed` && <path {...glyph} d="M7.456 8.577L6.273 7.45a1 1 0 00-1.38 1.448l1.917 1.826a1 1 0 001.423-.044l3.386-3.652a1 1 0 00-1.466-1.36z"/>}
       {status === `failed` && <path {...glyph} d="M5.293 6.707l4 4a1 1 0 101.414-1.414l-4-4a1 1 0 00-1.414 1.414zM5.293 9.293l4-4a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414-1.414z"/>}
-      {status === `stopped` && <path {...glyph} d="M5.994 9l4.023.023a1 1 0 00.011-2L6.006 7a1 1 0 00-.012 2z"/>}
+      {(status === `stopped` || status === `canceled`) && <path {...glyph} d="M5.994 9l4.023.023a1 1 0 00.011-2L6.006 7a1 1 0 00-.012 2z"/>}
       {status === `running` && (
         <g {...glyph}>
           <circle cx="5" cy="8" r="1"/>
@@ -212,6 +213,102 @@ export const PipelineTitle = ({ p }: { p: Pipeline, }) => (
     {p.attempt > 1 && <span className="wf-map-attempt">#{p.attempt}</span>}
   </span>
 );
+
+export const TimeAgo = ({ at }: { at: number, }) => {
+  const datetime = new Date(at * 1000).toISOString();
+  return <time-ago key={datetime} datetime={datetime} always-relative/>;
+};
+
+const TRIGGER_ICON: Record<string, string> = {
+  INITIAL_WORKFLOW: `commit`,
+  WORKFLOW_RERUN: `replay`,
+  API: `api`,
+  SCHEDULED_RUN: `schedule`,
+  SCHEDULED_MANUAL_RUN: `play_arrow`,
+  PIPELINE_PARTIAL_RERUN: `replay`,
+  MANUAL_PROMOTION: `person`,
+  AUTO_PROMOTION: `bolt`,
+};
+
+export const exactTime = (at: number) =>
+  new Date(at * 1000).toLocaleString(undefined, { weekday: `short`, day: `numeric`, month: `short`, year: `numeric`, hour: `2-digit`, minute: `2-digit` });
+
+export const triggerText = (p: Pipeline) => {
+  const t = p.triggerer;
+  return t ? [t.text, t.link?.label, t.owner && `by ${t.owner}`].filter(Boolean).join(` `) : null;
+};
+
+export const Triggered = ({ p }: { p: Pipeline, }) => {
+  const t = p.triggerer;
+  if (!t) return null;
+  const tip = [
+    triggerText(p),
+    p.createdAt && exactTime(p.createdAt),
+    t.stopped && (t.stopped_by ? `Stopped by ${t.stopped_by}` : stopReason(p)?.label ?? `Stopped`),
+  ]
+    .filter(Boolean)
+    .join(` · `);
+  const body = (
+    <>
+      <span className="material-symbols-outlined" aria-hidden="true">{TRIGGER_ICON[p.trigger] ?? `play_arrow`}</span>
+      {p.createdAt && formatAgo(now.value - p.createdAt)}
+    </>
+  );
+  return t.link ? (
+    <a className="wf-map-triggered" href={t.link.url} aria-label={tip} data-tippy-content={tip} onClick={(e) => e.stopPropagation()}>
+      {body}
+    </a>
+  ) : (
+    <span className="wf-map-triggered" role="img" aria-label={tip} data-tippy-content={tip}>
+      {body}
+    </span>
+  );
+};
+
+export const StopReason = ({ p, open, onToggle }: { p: Pipeline, open?: boolean, onToggle?: () => void, }) => {
+  const reason = stopReason(p);
+  if (!reason) return null;
+  if (onToggle) {
+    return (
+      <button
+        className="wf-map-reason"
+        aria-expanded={open}
+        aria-label={`${open ? `Hide` : `Show`} why ${p.name} stopped`}
+        data-tippy-content={reason.detail}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle();
+        }}
+      >
+        {reason.label}
+        <span className="material-symbols-outlined" aria-hidden="true">{open ? `expand_less` : `expand_more`}</span>
+      </button>
+    );
+  }
+  return (
+    <span className="wf-map-reason" role="note" aria-label={`${reason.label}: ${reason.detail}`} data-tippy-content={reason.detail}>
+      {reason.label}
+    </span>
+  );
+};
+
+export const StopDetails = ({ p }: { p: Pipeline, }) => {
+  const reason = stopReason(p);
+  if (!reason) return null;
+  const ran = p.runningAt && p.doneAt ? `ran ${formatDuration(p.doneAt - p.runningAt)}` : null;
+  const second = [triggerText(p), p.createdAt && exactTime(p.createdAt), ran].filter(Boolean).join(` · `);
+  return (
+    <div className="wf-map-details" role="region" aria-label={`Why ${p.name} stopped`}>
+      <div className="wf-map-details-row" title={reason.detail}>
+        <StatusIcon status={p.status} size={14}/>
+        <span>{reason.detail}</span>
+      </div>
+      <div className="wf-map-details-row wf-map-details-when" title={second}>
+        {second}
+      </div>
+    </div>
+  );
+};
 
 export const Counts = ({ jobs }: { jobs: Job[], }) => {
   const c = countJobs(jobs);

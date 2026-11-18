@@ -1,10 +1,12 @@
 import { expect } from "chai";
-import { afterEach, beforeEach, describe, test } from "mocha";
+import { afterEach, before, beforeEach, describe, test } from "mocha";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 
-import { Block, Job, Pipeline } from "./model";
-import { BlockCard, BlockSummary, DOUBLE_CLICK_MS, JobRow, PipelineTitle } from "./ui";
+import { defineTimeAgoElement } from "../time_ago";
+import { ApiTriggerer, Block, Job, Pipeline } from "./model";
+import { now } from "./store";
+import { BlockCard, BlockSummary, DOUBLE_CLICK_MS, JobRow, PipelineTitle, StopDetails, StopReason, TimeAgo, Triggered } from "./ui";
 
 describe(`names the map may shorten`, () => {
   let root: HTMLElement;
@@ -202,5 +204,156 @@ describe(`names the map may shorten`, () => {
       expect(head.hasAttribute(`data-tippy-content`)).to.equal(false);
       expect(head.querySelector(`.wf-map-chevron`).getAttribute(`aria-hidden`)).to.equal(`true`);
     });
+  });
+});
+
+describe(`how and when a pipeline was triggered`, () => {
+  let root: HTMLElement;
+  const triggerer = (over: Partial<ApiTriggerer> = {}): ApiTriggerer => ({ text: `Manual promotion`, link: null, owner: `Ana Kowalska`, stopped: false, stopped_by: null, ...over });
+  const show = (t: ApiTriggerer, createdAt: number | null = 1700000000, trigger = `MANUAL_PROMOTION`) => act(() => render(<Triggered p={{ triggerer: t, createdAt, trigger } as Pipeline}/>, root));
+  const shown = () => root.querySelector<HTMLElement>(`.wf-map-triggered`);
+  const icon = () => shown().querySelector(`.material-symbols-outlined`);
+  const text = () => shown().textContent.replace(icon().textContent, ``);
+  const tip = () => shown().dataset.tippyContent;
+
+  before(() => {
+    globalThis.customElements = document.defaultView.customElements;
+    defineTimeAgoElement();
+  });
+
+  beforeEach(() => {
+    root = document.createElement(`div`);
+    document.body.appendChild(root);
+    now.value = 1700000000 + 4 * 86400 + 5;
+  });
+
+  afterEach(() => {
+    render(null, root);
+    root.remove();
+  });
+
+  test(`shows an icon for how and a short time for when, with how, who and the exact time on hover`, async () => {
+    await show(triggerer());
+    expect(icon().textContent).to.equal(`person`);
+    expect(icon().getAttribute(`aria-hidden`)).to.equal(`true`);
+    expect(text()).to.equal(`4d ago`);
+    expect(tip()).to.match(/^Manual promotion by Ana Kowalska · .*2023/);
+    expect(shown().getAttribute(`aria-label`)).to.equal(tip());
+  });
+
+  test(`follows the map's clock`, async () => {
+    await show(triggerer());
+    await act(() => {
+      now.value = 1700000000 + 5 * 86400;
+    });
+    expect(text()).to.equal(`5d ago`);
+  });
+
+  test(`has an icon for every trigger type, and one for a type it does not know`, async () => {
+    const icons: string[] = [];
+    for (const trigger of [`INITIAL_WORKFLOW`, `WORKFLOW_RERUN`, `API`, `SCHEDULED_RUN`, `SCHEDULED_MANUAL_RUN`, `PIPELINE_PARTIAL_RERUN`, `MANUAL_PROMOTION`, `AUTO_PROMOTION`, `SOMETHING_NEW`]) {
+      await show(triggerer({ text: `Server text`, owner: null }), 1700000000, trigger);
+      icons.push(icon().textContent);
+    }
+    expect(icons).to.deep.equal([`commit`, `replay`, `api`, `schedule`, `play_arrow`, `replay`, `person`, `bolt`, `play_arrow`]);
+  });
+
+  test(`says nothing about who when the pipeline has no owner`, async () => {
+    await show(triggerer({ text: `Auto promoted`, owner: null }), 1700000000, `AUTO_PROMOTION`);
+    expect(tip()).to.match(/^Auto promoted · /);
+  });
+
+  test(`links what it was a rerun of, and the link does not open the pipeline`, async () => {
+    let opened = 0;
+    root.addEventListener(`click`, () => opened++);
+    await show(triggerer({ text: `Triggered by rerun of a`, link: { label: `Workflow`, url: `/workflows/w1` } }), 1700000000, `WORKFLOW_RERUN`);
+    expect(tip()).to.match(/^Triggered by rerun of a Workflow by Ana Kowalska · /);
+    expect(shown().tagName).to.equal(`A`);
+    expect(shown().getAttribute(`href`)).to.equal(`/workflows/w1`);
+    shown().addEventListener(`click`, (e) => e.preventDefault());
+    shown().click();
+    expect(opened).to.equal(0);
+    await show(triggerer());
+    expect(shown().tagName).to.equal(`SPAN`);
+  });
+
+  test(`says on hover who stopped it, or only that it was stopped`, async () => {
+    await show(triggerer({ text: `Triggered by push`, stopped: true, stopped_by: `Bo Svensson` }), 1700000000, `INITIAL_WORKFLOW`);
+    expect(tip()).to.match(/^Triggered by push by Ana Kowalska · .* · Stopped by Bo Svensson$/);
+    await show(triggerer({ text: `Triggered by push`, stopped: true }), 1700000000, `INITIAL_WORKFLOW`);
+    expect(tip()).to.match(/ · Stopped$/);
+    await show(triggerer({ text: `Triggered by push` }), 1700000000, `INITIAL_WORKFLOW`);
+    expect(tip()).to.not.contain(`Stopped`);
+    await act(() => render(<Triggered p={{ triggerer: triggerer({ text: `Triggered by push`, stopped: true }), createdAt: 1700000000, trigger: `INITIAL_WORKFLOW`, status: `stopped`, resultReason: `STRATEGY` } as Pipeline}/>, root));
+    expect(tip()).to.match(/ · Auto-cancelled$/);
+  });
+
+  test(`shows nothing when the map data has no triggerer`, async () => {
+    await show(undefined);
+    expect(shown()).to.equal(null);
+  });
+
+  test(`shows only the icon before the pipeline has a time`, async () => {
+    await show(triggerer(), null);
+    expect(text()).to.equal(``);
+    expect(tip()).to.equal(`Manual promotion by Ana Kowalska`);
+  });
+
+  test(`a new time replaces the time-ago element, which reads its time only once`, async () => {
+    const time = () => root.querySelector<HTMLElement & { datetime: string, }>(`time-ago`);
+    await act(() => render(<TimeAgo at={1700000000}/>, root));
+    const first = time();
+    await act(() => render(<TimeAgo at={1700000000}/>, root));
+    expect(time()).to.equal(first);
+    await act(() => render(<TimeAgo at={1700003600}/>, root));
+    expect(time()).to.not.equal(first);
+    expect(time().datetime).to.equal(`2023-11-14T23:13:20.000Z`);
+  });
+});
+
+describe(`why a pipeline stopped`, () => {
+  let root: HTMLElement;
+  const stopped = {
+    name: `Build`,
+    status: `stopped`,
+    resultReason: `STRATEGY`,
+    trigger: `INITIAL_WORKFLOW`,
+    triggerer: { text: `Triggered by push`, link: null, owner: `Ana Kowalska`, stopped: true, stopped_by: null },
+    createdAt: 1700000000,
+    runningAt: 1700000010,
+    doneAt: 1700000012,
+  } as Pipeline;
+
+  beforeEach(() => {
+    root = document.createElement(`div`);
+    document.body.appendChild(root);
+  });
+
+  afterEach(() => {
+    render(null, root);
+    root.remove();
+  });
+
+  test(`labels the reason, explains it on hover and toggles the details`, async () => {
+    let toggled = 0;
+    await act(() => render(<StopReason p={stopped} open={false} onToggle={() => toggled++}/>, root));
+    const button = root.querySelector<HTMLButtonElement>(`button.wf-map-reason`);
+    expect(button.textContent).to.equal(`Auto-cancelledexpand_more`);
+    expect(button.dataset.tippyContent).to.equal(`A newer pipeline started in the same queue (auto_cancel).`);
+    expect(button.getAttribute(`aria-expanded`)).to.equal(`false`);
+    await act(() => button.click());
+    expect(toggled).to.equal(1);
+  });
+
+  test(`shows the reason, how it was triggered and how long it ran`, async () => {
+    await act(() => render(<StopDetails p={stopped}/>, root));
+    const rows = [...root.querySelectorAll(`.wf-map-details-row`)].map((r) => r.textContent);
+    expect(rows[0]).to.equal(`A newer pipeline started in the same queue (auto_cancel).`);
+    expect(rows[1]).to.match(/^Triggered by push by Ana Kowalska · .+ · ran 00:02$/);
+  });
+
+  test(`shows nothing for a pipeline that was not stopped`, async () => {
+    await act(() => render(<StopDetails p={{ ...stopped, status: `passed` } as Pipeline}/>, root));
+    expect(root.innerHTML).to.equal(``);
   });
 });

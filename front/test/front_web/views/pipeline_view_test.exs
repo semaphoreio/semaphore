@@ -46,7 +46,7 @@ defmodule FrontWeb.PipelineViewTest do
       assert render_map(map_pipeline(:DONE, [])).error_html == nil
     end
 
-    test "links the initialization job with its status" do
+    test "links the initialization job with its status and its start and end times" do
       init = fn task -> %{map_pipeline(:RUNNING, []) | compile_task: task} end
 
       task = %{
@@ -54,18 +54,36 @@ defmodule FrontWeb.PipelineViewTest do
         job_log_path: "/jobs/init-1",
         running?: false,
         failed?: true,
-        done?: true
+        done?: true,
+        started_at: 1_700_000_000,
+        done_at: 1_700_000_007
       }
 
-      assert render_map(init.(task)).init_job == %{url: "/jobs/init-1", status: :failed}
-
-      assert render_map(init.(%{task | failed?: false})).init_job == %{
+      assert render_map(init.(task)).init_job == %{
                url: "/jobs/init-1",
-               status: :passed
+               status: :failed,
+               started_at: 1_700_000_000,
+               finished_at: 1_700_000_007
              }
 
-      assert render_map(init.(%{task | running?: true, done?: false, failed?: false})).init_job ==
-               %{url: "/jobs/init-1", status: :running}
+      assert render_map(init.(%{task | failed?: false})).init_job.status == :passed
+
+      assert render_map(
+               init.(%{task | running?: true, done?: false, failed?: false, done_at: nil})
+             ).init_job ==
+               %{
+                 url: "/jobs/init-1",
+                 status: :running,
+                 started_at: 1_700_000_000,
+                 finished_at: nil
+               }
+
+      assert render_map(init.(%{present?: true, job_log_path: "/jobs/init-1"})).init_job == %{
+               url: "/jobs/init-1",
+               status: :pending,
+               started_at: nil,
+               finished_at: nil
+             }
 
       assert render_map(init.(%{present?: true, job_log_path: nil})).init_job == nil
       assert render_map(map_pipeline(:RUNNING, [])).init_job == nil
@@ -95,12 +113,27 @@ defmodule FrontWeb.PipelineViewTest do
       assert Enum.at(jobs, 0).id == "job-ENQUEUED-PASSED"
     end
 
-    test "marks jobs that never started as skipped or not started" do
+    test "marks jobs that never started as skipped, cancelled or not started" do
       topology_jobs = [%{name: "build"}]
 
       blocks = [
         %{name: "Skipped", dependencies: [], state: :DONE, skipped?: true, jobs: topology_jobs},
-        %{name: "Canceled", dependencies: [], state: :DONE, skipped?: false, jobs: topology_jobs},
+        %{
+          name: "Canceled",
+          dependencies: [],
+          state: :DONE,
+          result: :CANCELED,
+          skipped?: false,
+          jobs: topology_jobs
+        },
+        %{
+          name: "Stopped",
+          dependencies: [],
+          state: :DONE,
+          result: :STOPPED,
+          skipped?: false,
+          jobs: topology_jobs
+        },
         %{name: "Waiting", dependencies: ["Skipped"], skipped?: false, jobs: topology_jobs}
       ]
 
@@ -108,7 +141,7 @@ defmodule FrontWeb.PipelineViewTest do
         render_map(map_pipeline(:DONE, blocks)).blocks
         |> Enum.map(fn block -> hd(block.jobs).status end)
 
-      assert statuses == [:skipped, :pending, :pending]
+      assert statuses == [:skipped, :canceled, :canceled, :pending]
     end
 
     test "links reused jobs to the original job" do
