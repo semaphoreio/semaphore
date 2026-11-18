@@ -37,7 +37,11 @@ defmodule Zebra.Workers.DbWorker do
     # connection, its transaction is rolled back, and it is retried on a
     # later tick without aborting the rest of the tick. External calls the
     # processor already made are not undone.
-    :process_timeout
+    :process_timeout,
+    # Optional fn(ids, machine_type_tuple) -> context, called once per tick
+    # (once per machine type with isolate_machine_types) with the ids the tick
+    # read. When set, the processor is called as processor.(row, context).
+    :tick_context
   ]
 
   @default_process_timeout 15_000
@@ -77,6 +81,7 @@ defmodule Zebra.Workers.DbWorker do
     submit_batch_size(worker.metric_name, length(rows), machine_type_tuple)
 
     parallelism = worker.parallelism || 10
+    worker = with_tick_context(worker, rows, machine_type_tuple)
 
     case worker.concurrency_mode || :batches do
       :batches ->
@@ -92,6 +97,17 @@ defmodule Zebra.Workers.DbWorker do
               "#{worker.metric_name}: unknown concurrency_mode #{inspect(other)}, " <>
                 "expected :batches or :continuous"
     end
+  end
+
+  # Binds the tick's context into the processor, so process/2 stays the same
+  # for workers with and without one.
+  defp with_tick_context(worker = %{tick_context: nil}, _rows, _machine_type_tuple), do: worker
+
+  defp with_tick_context(worker, rows, machine_type_tuple) do
+    context = worker.tick_context.(rows, machine_type_tuple)
+    processor = worker.processor
+
+    %{worker | processor: fn row -> processor.(row, context) end}
   end
 
   defp process_continuously(worker, rows, parallelism) do
