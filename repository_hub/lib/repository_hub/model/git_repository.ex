@@ -92,10 +92,13 @@ defmodule RepositoryHub.Model.GitRepository do
     new_url
     |> new()
     |> unwrap(fn new_git_repository ->
-      (git_repository.host != new_git_repository.host)
+      (comparable_host(git_repository.host) != comparable_host(new_git_repository.host))
       |> wrap()
     end)
   end
+
+  defp comparable_host("ssh.bitbucket.org"), do: "bitbucket.org"
+  defp comparable_host(host), do: host
 
   defp dissect(url) do
     url_with_no_trailing_git = clean_url(url)
