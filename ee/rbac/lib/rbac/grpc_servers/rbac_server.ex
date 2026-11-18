@@ -329,7 +329,6 @@ defmodule Rbac.GrpcServers.RbacServer do
       do: Rbac.Utils.Grpc.authorize!(@change_owner_permission, requester_id, org_id)
   end
 
-  # Global (insider-scope) holders have no in-org binding to carry @change_owner_permission.
   defp insider_owners_manager?(requester_id) do
     import Rbac.Utils.Common, only: [nil_uuid: 0]
 
