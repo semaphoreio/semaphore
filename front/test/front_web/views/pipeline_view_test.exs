@@ -144,6 +144,33 @@ defmodule FrontWeb.PipelineViewTest do
       assert statuses == [:skipped, :canceled, :canceled, :pending]
     end
 
+    test "marks the never-run jobs after a failed block of a failed pipeline as cancelled" do
+      blocks = [
+        %{
+          name: "Tests",
+          dependencies: [],
+          state: :DONE,
+          result: :FAILED,
+          skipped?: false,
+          jobs: [task_job(:FINISHED, :FAILED)]
+        },
+        %{
+          name: "Deploy",
+          dependencies: ["Tests"],
+          state: :DONE,
+          result: :CANCELED,
+          skipped?: false,
+          jobs: [%{name: "deploy"}]
+        }
+      ]
+
+      statuses =
+        render_map(%{map_pipeline(:DONE, blocks) | result: :FAILED}).blocks
+        |> Enum.map(fn block -> hd(block.jobs).status end)
+
+      assert statuses == [:failed, :canceled]
+    end
+
     test "links reused jobs to the original job" do
       block = %{
         name: "Tests",
