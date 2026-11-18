@@ -37,8 +37,8 @@ If a job is waiting for quota, use the following checks to identify the cause:
 1. If the Activity Monitor shows that the machine quota is fully used, the job is waiting for capacity
    within your organization. It starts when a compatible machine becomes available.
 2. If the Activity Monitor shows available quota, check the [Semaphore CI Status](https://status.semaphore.io/)
-   page for a capacity incident or maintenance.
-3. If quota is available and the status page shows no incident, contact Semaphore Support at
+   page for current service updates.
+3. If quota is available and the status page reports no service issue, contact Semaphore Support at
    [support@semaphore.io](mailto:support@semaphore.io). Include your organization URL,
    workflow or job URL, selected machine type, and the approximate time that the job began waiting.
 

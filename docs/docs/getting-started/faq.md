@@ -401,13 +401,12 @@ If the test passes and fails randomly with the same commit SHA, then you might b
 
 ### Why is my job waiting for quota?
 
-This message means Semaphore cannot allocate a suitable machine to the job
-as of the current moment. It does not by itself mean that you have exhausted your quota or that Semaphore is
-experiencing a capacity incident.
+This message means Semaphore cannot allocate a suitable machine to the job at the moment. It does
+not necessarily mean that you have exhausted your quota.
 
 Check your machine quota usage in the [Activity Monitor](../reference/quotas-and-limits#check-quota-usage).
 If quota is available, check [Semaphore CI Status](https://status.semaphore.io/). If quota is
-available and the status page shows no incident, contact [Semaphore Support](mailto:support@semaphore.io).
+available and the status page reports no service issue, contact [Semaphore Support](mailto:support@semaphore.io).
 
 :::note
 
