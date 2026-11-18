@@ -6,6 +6,7 @@ feature
 gofer.dt
 rbac
 health
+hosted_agent_events
 include/google/protobuf/timestamp
 include/internal_api/response_status
 loghub2
