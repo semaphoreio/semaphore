@@ -76,8 +76,7 @@ defmodule Rbac.GrpcServers.RbacServer do
 
         authorize_owner_change!(req.requester_id, org_id, owner_involved?)
 
-        # Owner holds every org-scope permission, so an org-level owner change grants nothing new.
-        unless project_id == "" and owner_involved?,
+        unless project_id == "" and org_id != Rbac.Utils.Common.nil_uuid() and owner_involved?,
           do: authorize_holds_role_permissions!(req.requester_id, org_id, project_id, role_id)
       end
 

@@ -653,6 +653,24 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       assert err.status == GRPC.Status.permission_denied()
       assert err.message =~ "User unauthorized"
     end
+
+    test "demoting a global Owner still requires the target role's permissions", state do
+      nil_uuid = Rbac.Utils.Common.nil_uuid()
+      Support.Rbac.create_org_roles(nil_uuid)
+      Support.Rbac.assign_org_role_by_name(nil_uuid, @user_id, "Owner")
+
+      replace_requester_permissions("insider.global_roles.manage,insider.owners.manage")
+
+      {:ok, member_role} = Rbac.Repo.RbacRole.get_role_by_name("Member", "org_scope", nil_uuid)
+      req = gen_assign_role_req(@user_id, member_role.id, nil_uuid)
+
+      {:error, err} = state.grpc_channel |> Stub.assign_role(req)
+
+      assert err.status == GRPC.Status.permission_denied()
+      assert err.message =~ "Cannot assign a role granting permissions you do not hold:"
+      assert err.message =~ "organization.view"
+      assert err.message =~ "organization.activity_monitor.view"
+    end
   end
 
   describe "retract_role" do
