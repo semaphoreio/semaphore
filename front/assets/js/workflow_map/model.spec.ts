@@ -182,10 +182,21 @@ describe(`stopReason`, () => {
     expect(reason({ result: `STOPPED`, result_reason: `USER`, triggerer: stopped }).reason).to.deep.equal({ label: `Stopped by user`, detail: `Stopped by Bo.` });
   });
 
+  test(`says Semaphore stopped it, and what stopped it when that is known`, () => {
+    expect(reason({ result: `STOPPED`, result_reason: `INTERNAL` }).reason).to.deep.equal({ label: `Stopped by Semaphore`, detail: `Semaphore stopped it.` });
+    const deleted = { text: `Triggered by push`, link: null, owner: `Ana`, stopped: true, stopped_by: `branch deletion` };
+    expect(reason({ result: `STOPPED`, result_reason: `INTERNAL`, triggerer: deleted }).reason).to.deep.equal({
+      label: `Stopped by Semaphore`,
+      detail: `Stopped by branch deletion.`,
+    });
+  });
+
   test(`has nothing to say about a pipeline that was not stopped, or with no known reason`, () => {
     expect(reason({ result: `FAILED`, result_reason: `TEST` }).reason).to.eq(null);
     expect(reason({ result: `PASSED` }).reason).to.eq(null);
     expect(reason({ result: `STOPPED`, result_reason: null }).reason).to.eq(null);
+    expect(reason({ result: `STOPPED`, result_reason: `FAST_FAILING` }).reason).to.eq(null);
+    expect(reason({ result: `STOPPED`, result_reason: `DELETED` }).reason).to.eq(null);
   });
 });
 

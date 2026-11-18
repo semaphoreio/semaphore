@@ -353,19 +353,17 @@ export const blockSummary = (b: Block) => {
 };
 
 const STOP_REASON: Record<string, { label: string, detail: string, }> = {
+  USER: { label: `Stopped by user`, detail: `Stopped by a user.` },
   STRATEGY: { label: `Auto-cancelled`, detail: `A newer pipeline started in the same queue (auto_cancel).` },
-  FAST_FAILING: { label: `Fail-fast`, detail: `A job failed and fail_fast stopped the rest.` },
-  DELETED: { label: `Branch deleted`, detail: `The branch or tag was deleted.` },
   TIMEOUT: { label: `Timed out`, detail: `The pipeline hit its execution time limit.` },
   STUCK: { label: `Stopped by Semaphore`, detail: `Semaphore stopped it: it made no progress.` },
-  INTERNAL: { label: `Stopped by Semaphore`, detail: `Semaphore stopped it after an internal error.` },
+  INTERNAL: { label: `Stopped by Semaphore`, detail: `Semaphore stopped it.` },
 };
 
 export function stopReason(p: Pipeline): { label: string, detail: string, } | null {
   if (p.status !== `stopped` && p.status !== `canceled`) return null;
-  if (p.resultReason === `USER`) {
-    const by = p.triggerer?.stopped_by;
-    return { label: `Stopped by user`, detail: by ? `Stopped by ${by}.` : `Stopped by a user.` };
-  }
-  return STOP_REASON[p.resultReason] ?? null;
+  const reason = STOP_REASON[p.resultReason];
+  if (!reason) return null;
+  const by = p.triggerer?.stopped_by;
+  return by ? { ...reason, detail: `Stopped by ${by}.` } : reason;
 }
