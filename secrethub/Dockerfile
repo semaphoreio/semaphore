@@ -25,6 +25,7 @@ WORKDIR /app
 COPY secrethub/mix.exs secrethub/mix.lock ./
 COPY secrethub/config config
 COPY feature_provider ../feature_provider
+COPY env_var_policy ../env_var_policy
 RUN mix deps.get --only $MIX_ENV && mix deps.compile
 COPY secrethub/lib lib
 COPY secrethub/priv priv

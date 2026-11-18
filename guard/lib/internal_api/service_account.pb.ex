@@ -211,12 +211,14 @@ defmodule InternalApi.ServiceAccount.RegenerateTokenRequest do
 
   @type t :: %__MODULE__{
           service_account_id: String.t(),
-          org_id: String.t()
+          org_id: String.t(),
+          requester_id: String.t()
         }
 
-  defstruct [:service_account_id, :org_id]
+  defstruct [:service_account_id, :org_id, :requester_id]
   field(:service_account_id, 1, type: :string)
   field(:org_id, 2, type: :string)
+  field(:requester_id, 3, type: :string)
 end
 
 defmodule InternalApi.ServiceAccount.RegenerateTokenResponse do
@@ -231,6 +233,64 @@ defmodule InternalApi.ServiceAccount.RegenerateTokenResponse do
   field(:api_token, 1, type: :string)
 end
 
+defmodule InternalApi.ServiceAccount.SetOwnerRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          service_account_id: String.t(),
+          org_id: String.t(),
+          owner_id: String.t(),
+          requester_id: String.t()
+        }
+
+  defstruct [:service_account_id, :org_id, :owner_id, :requester_id]
+  field(:service_account_id, 1, type: :string)
+  field(:org_id, 2, type: :string)
+  field(:owner_id, 3, type: :string)
+  field(:requester_id, 4, type: :string)
+end
+
+defmodule InternalApi.ServiceAccount.SetOwnerResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          service_account: InternalApi.ServiceAccount.ServiceAccount.t()
+        }
+
+  defstruct [:service_account]
+  field(:service_account, 1, type: InternalApi.ServiceAccount.ServiceAccount)
+end
+
+defmodule InternalApi.ServiceAccount.ReleaseOwnerRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          service_account_id: String.t(),
+          org_id: String.t(),
+          requester_id: String.t()
+        }
+
+  defstruct [:service_account_id, :org_id, :requester_id]
+  field(:service_account_id, 1, type: :string)
+  field(:org_id, 2, type: :string)
+  field(:requester_id, 3, type: :string)
+end
+
+defmodule InternalApi.ServiceAccount.ReleaseOwnerResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          service_account: InternalApi.ServiceAccount.ServiceAccount.t()
+        }
+
+  defstruct [:service_account]
+  field(:service_account, 1, type: InternalApi.ServiceAccount.ServiceAccount)
+end
+
 defmodule InternalApi.ServiceAccount.ServiceAccount do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -243,7 +303,9 @@ defmodule InternalApi.ServiceAccount.ServiceAccount do
           creator_id: String.t(),
           created_at: Google.Protobuf.Timestamp.t(),
           updated_at: Google.Protobuf.Timestamp.t(),
-          deactivated: boolean
+          deactivated: boolean,
+          owner_id: String.t(),
+          owner_active: boolean
         }
 
   defstruct [
@@ -254,7 +316,9 @@ defmodule InternalApi.ServiceAccount.ServiceAccount do
     :creator_id,
     :created_at,
     :updated_at,
-    :deactivated
+    :deactivated,
+    :owner_id,
+    :owner_active
   ]
 
   field(:id, 1, type: :string)
@@ -265,6 +329,8 @@ defmodule InternalApi.ServiceAccount.ServiceAccount do
   field(:created_at, 6, type: Google.Protobuf.Timestamp)
   field(:updated_at, 7, type: Google.Protobuf.Timestamp)
   field(:deactivated, 8, type: :bool)
+  field(:owner_id, 9, type: :string)
+  field(:owner_active, 10, type: :bool)
 end
 
 defmodule InternalApi.ServiceAccount.ServiceAccountService.Service do
@@ -319,6 +385,18 @@ defmodule InternalApi.ServiceAccount.ServiceAccountService.Service do
     :RegenerateToken,
     InternalApi.ServiceAccount.RegenerateTokenRequest,
     InternalApi.ServiceAccount.RegenerateTokenResponse
+  )
+
+  rpc(
+    :SetOwner,
+    InternalApi.ServiceAccount.SetOwnerRequest,
+    InternalApi.ServiceAccount.SetOwnerResponse
+  )
+
+  rpc(
+    :ReleaseOwner,
+    InternalApi.ServiceAccount.ReleaseOwnerRequest,
+    InternalApi.ServiceAccount.ReleaseOwnerResponse
   )
 end
 

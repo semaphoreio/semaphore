@@ -205,6 +205,12 @@ config :front,
        :single_tenant,
        System.get_env("SINGLE_TENANT") == "true"
 
+# Set alongside the same variable on the service that applies the rule, so the people
+# page tells members a create is blocked only once it really is.
+config :front,
+       :enforce_service_account_owner?,
+       System.get_env("ENFORCE_SERVICE_ACCOUNT_OWNER") == "true"
+
 config :front, :edition, edition
 
 config :front,

@@ -1,6 +1,7 @@
 defmodule Notifications.Workers.Webhook do
   require Logger
 
+  alias Notifications.Util.Endpoint
   alias Notifications.Workers.Webhook
 
   @default_connect_timeout 1_000
@@ -17,36 +18,50 @@ defmodule Notifications.Workers.Webhook do
   end
 
   def publish(request_id, settings, data) do
-    endpoint = settings.endpoint
-    method = if(settings.action == "", do: "post", else: settings.action)
-    recv_timeout = if(settings.timeout == 0, do: @default_recv_timeout, else: settings.timeout)
+    with {:ok, method} <- Endpoint.method(settings.action),
+         :ok <- Endpoint.check_destination(settings.endpoint) do
+      recv_timeout =
+        if(settings.timeout <= 0,
+          do: @default_recv_timeout,
+          else: min(settings.timeout, @max_timeout)
+        )
 
-    webhook_id = Ecto.UUID.generate()
+      webhook_id = Ecto.UUID.generate()
 
-    body = Webhook.Message.construct(data) |> Poison.encode!()
-    signature = get_signature(body, data.organization.org_id, settings.secret)
-    headers = get_headers(webhook_id, signature)
+      body = Webhook.Message.construct(data) |> Poison.encode!()
+      signature = get_signature(body, data.organization.org_id, settings.secret)
+      headers = get_headers(webhook_id, signature)
 
-    options = [
-      timeout: @default_connect_timeout,
-      recv_timeout: recv_timeout,
-      follow_redirect: false
-    ]
+      options = [
+        timeout: @default_connect_timeout,
+        recv_timeout: recv_timeout,
+        follow_redirect: false
+      ]
 
-    req = %{
-      method: method,
-      endpoint: endpoint,
-      body: body,
-      headers: headers,
-      options: options,
-      signature: signature,
-      webhook_id: webhook_id,
-      max_retries: min(settings.retries, @max_retries)
-    }
+      req = %{
+        method: method,
+        endpoint: settings.endpoint,
+        body: body,
+        headers: headers,
+        options: options,
+        signature: signature,
+        webhook_id: webhook_id,
+        max_retries: min(settings.retries, @max_retries)
+      }
 
-    Watchman.benchmark("notification.webhook.duration", fn ->
-      do_request_with_retry(request_id, req, 0)
-    end)
+      Watchman.benchmark("notification.webhook.duration", fn ->
+        do_request_with_retry(request_id, req, 0)
+      end)
+    else
+      {:error, reason} -> blocked(request_id, reason)
+    end
+  end
+
+  defp blocked(request_id, reason) do
+    Logger.error("#{request_id} Webhook not sent: #{reason}")
+    Watchman.increment("notification.webhook.blocked")
+
+    {:error, reason}
   end
 
   defp do_request_with_retry(request_id, req, attempt) do
@@ -91,7 +106,10 @@ defmodule Notifications.Workers.Webhook do
 
       Process.sleep(delay)
 
-      do_request_with_retry(request_id, new_req, attempt + 1)
+      case Endpoint.check_destination(req.endpoint) do
+        :ok -> do_request_with_retry(request_id, new_req, attempt + 1)
+        {:error, reason} -> blocked(request_id, reason)
+      end
     else
       Logger.error(fn ->
         "#{request_id} #{req.webhook_id} Failure with #{req.endpoint} after #{req.max_retries + 1} attempts, error: #{inspect(error)}"
