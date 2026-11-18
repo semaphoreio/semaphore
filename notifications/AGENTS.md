@@ -44,7 +44,6 @@
 - CI behavior: when `CI` is set, `make test.ex.setup` starts Postgres and RabbitMQ via `sem-service`, then tests run in `docker run`; formatter runs in check-only mode (see `Makefile`, `../Makefile`). CI pipeline files are Unknown / verify (no `.github/workflows` or `.semaphore` under `notifications/`).
 
 ## Coding Conventions
-- Slack's icon is stored in `lib/notifications/workers/slack/icon_2026_72px.png`; the message builder references its public raw GitHub URL on `main`, so the asset must be published there for Slack to fetch it (see `lib/notifications/workers/slack/message.ex`).
 - Ecto schemas use binary UUID primary keys and changesets for validation (see `lib/notifications/models/rule.ex`, `lib/notifications/models/notification.ex`, `lib/notifications/models/pattern.ex`).
 - Repo lookup helpers return `{:ok, _}` / `{:error, :not_found}` tuples; prefer that pattern when adding queries (see `lib/notifications/models/rule.ex`).
 - gRPC APIs are implemented with `GRPC.Server` and instrumented with `Sentry.Grpc`; public API extracts org/user IDs from headers (see `lib/notifications/api/public_api.ex`, `lib/notifications/api/internal_api.ex`).
