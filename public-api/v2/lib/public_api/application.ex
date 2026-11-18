@@ -15,7 +15,7 @@ defmodule PublicAPI.Application do
 
     # See http://elixir-lang.org/docs/stable/elixir/Supervisor.html
     # for other strategies and supported options
-    opts = [strategy: :one_for_one, name: PublicAPI.Supervisor]
+    opts = [strategy: :one_for_one, name: PublicAPI.Supervisor, max_restarts: 1000]
     Supervisor.start_link(children(Application.get_env(:public_api, :environment)), opts)
   end
 

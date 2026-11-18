@@ -18,11 +18,6 @@ GHSA-jfc2-q6qh-g5x8
 # cowlib 2.11.0 — SPDY decompression bomb in cow_spdy:inflate/2 (unreachable; front does not serve SPDY)
 GHSA-84f2-rp86-235p
 
-# plug 1.18.1 — unbounded buffer accumulation in multipart header parsing, fixed in 1.18.2. Reachable:
-# /support file_input loads Plug.Parsers multipart. Mitigated at cluster ingress L7 body limits;
-# real fix tracked for the plug dep-bump branch.
-GHSA-468c-vq7p-gh64
-
 # --- hackney 1.25.0 advisories, all fixed in 4.0.1 ---
 # Bump to 4.0.1 is blocked: httpoison ~> 1.x requires hackney ~> 1.17, so hackney cannot move to
 # 4.x without a fleet-wide httpoison/grpc upgrade. Real fix tracked for the dep-bump branch.

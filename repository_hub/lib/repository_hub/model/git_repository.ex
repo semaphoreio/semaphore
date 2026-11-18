@@ -79,10 +79,13 @@ defmodule RepositoryHub.Model.GitRepository do
     new_url
     |> new()
     |> unwrap(fn new_git_repository ->
-      (git_repository.ssh_git_url == new_git_repository.ssh_git_url)
+      (comparable_url(git_repository) == comparable_url(new_git_repository))
       |> wrap()
     end)
   end
+
+  defp comparable_url(%{host: "github.com", ssh_git_url: url}), do: String.downcase(url)
+  defp comparable_url(%{ssh_git_url: url}), do: url
 
   @spec did_host_change?(any, binary) :: Toolkit.tupled_result(boolean())
   def did_host_change?(git_repository, new_url) do

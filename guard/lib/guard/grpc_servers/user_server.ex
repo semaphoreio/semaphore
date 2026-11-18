@@ -392,10 +392,11 @@ defmodule Guard.GrpcServers.UserServer do
       ) do
     observe_and_log(
       "grpc.user.create",
+      # No password here: observe_and_log/3 inspects this map at debug on
+      # entry and exit, and at error on any GRPC.RPCError.
       %{
         email: email,
         name: name,
-        password: password,
         repository_providers: providers,
         skip_password_change: skip_password_change
       },
@@ -436,6 +437,9 @@ defmodule Guard.GrpcServers.UserServer do
         {:ok, updated_account} ->
           map_provider(updated_account)
 
+        {:error, :not_found} ->
+          grpc_error!(:not_found, "Repository provider for #{user.id} is no longer connected.")
+
         {:error, _} ->
           grpc_error!(:internal, "Error while updating repository provider for #{user.id}.")
 
@@ -465,7 +469,9 @@ defmodule Guard.GrpcServers.UserServer do
           "Token for #{user.id} is #{if is_valid, do: "valid", else: "invalid"}. Updating revoke status."
         )
 
-        FrontRepo.RepoHostAccount.update_revoke_status(repo_account, not is_valid)
+        repo_account
+        |> FrontRepo.RepoHostAccount.update_revoke_status(not is_valid)
+        |> keep_revoked_on_uid_conflict(repo_account)
 
       {:error, :transient} ->
         Logger.warning(
@@ -478,6 +484,23 @@ defmodule Guard.GrpcServers.UserServer do
         grpc_error!(:internal, "Error while validating token for #{user.id}.")
     end
   end
+
+  # A valid token cannot re-activate a link whose uid was claimed by another
+  # user while this row sat revoked; keep the row revoked instead of failing
+  # the RPC.
+  defp keep_revoked_on_uid_conflict({:error, %Ecto.Changeset{} = changeset}, repo_account) do
+    if FrontRepo.RepoHostAccount.uid_taken_error?(changeset) do
+      Logger.warning(
+        "Keeping #{repo_account.repo_host} account revoked for user #{repo_account.user_id}: uid is held by another user"
+      )
+
+      {:ok, repo_account}
+    else
+      {:error, changeset}
+    end
+  end
+
+  defp keep_revoked_on_uid_conflict(result, _repo_account), do: result
 
   defp handle_delete_user(user_id) do
     case Front.delete_user(user_id) do
@@ -897,6 +920,17 @@ defmodule Guard.GrpcServers.UserServer do
 
   defp handle_token_error(:network_error, provider, user_id) do
     Logger.warning("Network error fetching token for User: '#{user_id}' and '#{provider}'.")
+
+    grpc_error!(:unavailable, "Token temporarily unavailable, please retry.")
+  end
+
+  # A lost optimistic-lock race on the token write is a retry, never a
+  # disconnect. This is currently unreachable (the OAuth layer maps :stale to
+  # :transient), but pin it explicitly so it can never fall through to the
+  # catch-all below, which returns the NOT_FOUND ("... not found") string that
+  # repository_hub treats as a permanent disconnect.
+  defp handle_token_error(:stale, provider, user_id) do
+    Logger.warning("Stale token write race for User: '#{user_id}' and '#{provider}'.")
 
     grpc_error!(:unavailable, "Token temporarily unavailable, please retry.")
   end

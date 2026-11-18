@@ -35,6 +35,27 @@ defmodule Rbac.Okta.Saml.Api.Test do
     end
   end
 
+  # Plug raises InvalidQueryError past 32 levels; the router has no error handler, so it surfaces as 500.
+  describe "deeply nested params" do
+    test "body is rejected before decoding" do
+      {:ok, response} = post("/okta/auth", nested_key(1_000) <> "=1")
+
+      assert response.status_code == 500
+    end
+
+    test "nesting within the limit reaches the handler" do
+      {:ok, response} = post("/okta/auth", nested_key(10) <> "=1")
+
+      assert response.status_code == 404
+    end
+
+    test "query string is rejected before decoding" do
+      {:ok, response} = post("/okta/auth?" <> nested_key(1_000) <> "=1", "")
+
+      assert response.status_code == 500
+    end
+  end
+
   describe "/okta/auth" do
     setup do
       {:ok, integration} = Support.Factories.OktaIntegration.insert(org_id: @org_id)
@@ -435,6 +456,8 @@ defmodule Rbac.Okta.Saml.Api.Test do
   defp post(path, body, headers \\ [], opts \\ []) do
     HTTPoison.post("#{@host}#{path}", body, @headers ++ headers, opts)
   end
+
+  defp nested_key(depth), do: "a" <> String.duplicate("[a]", depth)
 
   defp saml_payload(email, issuer \\ :okta, attributes \\ []) do
     domain = Application.get_env(:rbac, :base_domain)

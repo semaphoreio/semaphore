@@ -30,3 +30,11 @@ GHSA-r73h-97w8-m54h
 # protobuf 0.10.0 — unbounded recursion depth in embedded-message decoding, fixed in 0.16.1
 # (gofer only decodes internal-service traffic; bump tracked in the dedicated dependency PR)
 GHSA-rv48-qqj5-crxg
+
+# grpc 0.5.0 — all fixed in 1.0.0 (major migration, tracked separately)
+# Erlpack RCE: unreachable, no custom codecs registered
+GHSA-grp7-v8xh-rj7h
+# gzip bomb: unreachable, 0.5.0 registers no server compressors by default
+GHSA-6ccx-9c9f-327w
+# unbounded request body: DoS only, internal gRPC endpoint
+GHSA-q8gf-9rvj-gmgj

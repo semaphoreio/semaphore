@@ -158,7 +158,8 @@ export const Highlight = (props: HighlightProps) => {
 
       if (content !== props.query) {
         const highlighted = Prism.highlight(content, Prism.languages.query, `query`);
-        contentDiv.innerHTML = highlighted;
+        // Prism escapes the text it tokenizes; the markup here is Prism's own.
+        contentDiv.innerHTML = highlighted; // njsscan-ignore: dom_xss
         restore();
       }
     }

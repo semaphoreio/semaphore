@@ -4,6 +4,32 @@ description: Environment variables defined by Semaphore
 
 # Environment variables
 
+## Reserved variables {#reserved-variables}
+
+The `SEMAPHORE_` prefix is reserved for Semaphore. Don't define your own variables with it, except for these settings, which configure the [cache](../using-semaphore/cache), the [checkout](../using-semaphore/jobs), the toolbox, and Semaphore's CLI tools:
+
+- `SEMAPHORE_CACHE_ARCHIVE_METHOD`, `SEMAPHORE_CACHE_BACKEND`, `SEMAPHORE_CACHE_GCS_BUCKET`, `SEMAPHORE_CACHE_PRIVATE_KEY_PATH`, `SEMAPHORE_CACHE_S3_BUCKET`, `SEMAPHORE_CACHE_URL`, `SEMAPHORE_CACHE_USERNAME`
+- `SEMAPHORE_GIT_CACHE_AGE`, `SEMAPHORE_GIT_CACHE_KEEP`, `SEMAPHORE_GIT_CLONE_SLOW_RETRY`, `SEMAPHORE_GIT_DEPTH`, `SEMAPHORE_GIT_DIR`
+- `SEMAPHORE_TEST_RESULTS_NO_TRIM`, `SEMAPHORE_TOOLBOX_METRICS_ENABLED`
+- `SEMAPHORE_AGENT_UPLOAD_JOB_LOGS`
+- `SEMAPHORE_API_TOKEN`, `SEMAPHORE_HOST`, used by the [sem-ai CLI](./sem-ai-cli) and the [MCP server](../using-semaphore/ai/mcp-server)
+
+To change another variable that Semaphore provides, such as `SEMAPHORE_GIT_URL` or `SEMAPHORE_GIT_SHA` before running `checkout`, `export` it in the job commands.
+
+`BASH_ENV`, `BASHOPTS`, `PS4` and `SHELLOPTS` can't be set either, because bash reads them when it starts and they can run code before or during the job's setup, including a pre-job hook.
+
+A pipeline fails to start if its YAML or its promotion or task parameters set a variable that Semaphore provides, and a job created through the API fails before it starts if it sets one. The pipeline or job page shows which variable caused the failure.
+
+[Secrets](../using-semaphore/secrets) can't be saved with these names. A secret saved earlier that sets one makes every job that uses it fail before it starts, until you edit the secret and rename or remove the variable.
+
+## Variable names {#variable-names}
+
+Variable names must be valid shell identifiers: letters, digits, and underscores, not starting with a digit. A pipeline whose YAML or parameters use any other name fails to start, a job created through the API with one fails before it starts, and secrets can't be saved with one. The page shows the name under `Invalid environment variable names`.
+
+Environment variables of [service containers](../using-semaphore/containers) can also contain dots and dashes after the first character, such as `discovery.type` or `node-version`.
+
+Secrets saved before this rule was enforced can hold names that no longer pass, such as a name with a trailing newline. Every job that uses such a secret fails until you edit the secret and save the variable again with a valid name.
+
 ## Semaphore variables {#semaphore-variables}
 
 These variables describe various aspects of Semaphore workings.
@@ -243,7 +269,15 @@ Holds `true` if the workflow is a rerun of a previously-ran workflow.
 - **Environment variable**: `SEMAPHORE_WORKFLOW_TRIGGERED_BY`
 - **Example**: `torvalds`
 
-Determines the GitHub or BitBucket username for the individual who ran the workflow.
+The login, on the repository's Git provider (GitHub, GitLab, or Bitbucket), of the individual who triggered the workflow. Promoted pipelines and partial rebuilds keep the workflow's value. A rerun of a push or pull request workflow also keeps it; any other rerun names the user who reran it.
+
+- **Push or pull request**: the login from the provider's webhook. For pushes made through Semaphore's GitHub App, such as workflow editor commits, it is the GitHub account matched to the commit's author email
+- **API, scheduled, or manual run**: the login of the requesting user's account on the repository's provider. For scheduled runs, that is whoever last saved the task. Empty when the user has no account on that provider
+- **Generic Git repositories**: the GitHub login of the organization member whose email the hook sends, or the hook's author name when no member matches. Both come from the hook body
+
+For Bitbucket repositories, the value is the account nickname, which Bitbucket doesn't guarantee to be unique, so don't key per-user policies on it.
+
+The job's [OIDC token](./openid) carries the same value in its `actor` claim.
 
 ### Workflow is triggered by API {#workflow-triggered-by-api}
 

@@ -4,13 +4,17 @@ defmodule GithubNotifier.Models.Pipeline do
     :workflow_id,
     :state,
     :result,
+    :result_reason,
+    :queue_type,
     :blocks,
     :project_id,
     :sha,
     :hook_id,
     :created_at,
     :yaml_file_path,
-    :name
+    :name,
+    :triggered_by,
+    :scheduler_task_id
   ]
 
   require Logger
@@ -51,6 +55,8 @@ defmodule GithubNotifier.Models.Pipeline do
       id: response.pipeline.ppl_id,
       state: response.pipeline.state,
       result: response.pipeline.result,
+      result_reason: response.pipeline.result_reason,
+      queue_type: queue_type(response.pipeline.queue),
       blocks: construct_blocks(response.blocks),
       project_id: response.pipeline.project_id,
       workflow_id: response.pipeline.wf_id,
@@ -59,9 +65,19 @@ defmodule GithubNotifier.Models.Pipeline do
       created_at: response.pipeline.created_at.seconds,
       yaml_file_path:
         yaml_file_path(response.pipeline.working_directory, response.pipeline.yaml_file_name),
-      name: response.pipeline.name
+      name: response.pipeline.name,
+      triggered_by: triggerer_field(response.pipeline.triggerer, :wf_triggered_by, :HOOK),
+      scheduler_task_id: triggerer_field(response.pipeline.triggerer, :wf_triggerer_id, "")
     }
   end
+
+  defp triggerer_field(nil, _field, default), do: default
+  defp triggerer_field(triggerer, field, default), do: Map.get(triggerer, field) || default
+
+  # Left nil when the pipeline has no queue yet, which keeps callers that read
+  # it from treating an unknown queue as an implicit one.
+  defp queue_type(nil), do: nil
+  defp queue_type(queue), do: queue.type
 
   def yaml_file_path(".", file_name), do: file_name
 

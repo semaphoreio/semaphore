@@ -134,6 +134,8 @@ You can change the agent that runs the initialization job in two ways:
 - **For the organization**: affects all projects in the organization. See [organization init agent](./organizations#init-agent) to learn how to change this setting
 - **For the project**: changes the agent running initialization for a single project. See [project pre-flight checks](./projects#preflight) to learn how to change this setting
 
+If you point initialization jobs at a [self-hosted agent](./self-hosted) type, the job environment must provide Git, Erlang/OTP, and a few other tools. See [initialization job requirements](./self-hosted#init-requirements).
+
 ### How to access init logs {#init-logs}
 
 Semaphore shows an **Initializing** message for pipelines with an initialization job. You can see the log by clicking on the **See log** link at the top of the pipeline.
@@ -361,6 +363,8 @@ blocks:
 
 The time limit for job execution. Defaults to 1 hour. Jobs running longer that the limit are forcibly terminated.
 
+[After-pipeline jobs](#after-pipeline-job) inherit this limit unless they define their own.
+
 <Tabs groupId="editor-yaml">
 <TabItem value="editor" label="Editor">
 
@@ -551,6 +555,8 @@ blocks:
 You can configure jobs to run once a pipeline stops. After pipeline jobs always run, even when jobs are canceled or have failed.
 
 After-pipeline jobs are executed in parallel. Typical use cases for after-pipeline jobs are sending notifications, collecting [test reports](./tests/test-reports), or submitting metrics to an external server.
+
+After-pipeline jobs inherit the pipeline's [execution time limit](#time-limit) unless they set their own. The limit is measured from the moment each after-pipeline job starts, so it is additional to the time the pipeline itself ran. See the [`after_pipeline` reference](../reference/pipeline-yaml#after_pipeline) for details.
 
 You can add after-pipeline jobs using YAML or the editor.
 
@@ -795,7 +801,7 @@ This section describes the limits that Semaphore applies to pipelines. See [job 
 
 ### Global job duration {#max-job-duration}
 
-All jobs in a pipeline have a *1 hour limit*. Jobs exceeding this limit are terminated.
+All jobs in a pipeline have a *1 hour limit*. Jobs exceeding this limit are terminated. This includes [after-pipeline jobs](#after-pipeline-job), which inherit the pipeline's limit unless they set their own.
 
 You can change the limit up to a maximum value of *24 hours*.
 

@@ -9,7 +9,7 @@ defmodule PreFlightChecks.Application do
       PreFlightChecks.Consumers
     ]
 
-    opts = [strategy: :one_for_one, name: PreFlightChecks.Supervisor]
+    opts = [strategy: :one_for_one, name: PreFlightChecks.Supervisor, max_restarts: 1000]
     Supervisor.start_link(children, opts)
   end
 end

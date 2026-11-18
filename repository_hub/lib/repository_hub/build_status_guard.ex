@@ -5,8 +5,10 @@ defmodule RepositoryHub.BuildStatusGuard do
   One row per (repository_id, commit_sha, context, source_id) records the last
   delivered state and an in-flight lease. `claim/1` decides under a row lock
   (`SELECT ... FOR UPDATE` inside a transaction): it acquires the lease unless
-  another delivery currently holds it (`:busy`) or a PENDING status arrives
-  after a terminal state was already delivered (`:skip`). The provider call
+  another delivery currently holds it (`:busy`), a PENDING status arrives
+  after a terminal state was already delivered (`:skip`), or the caller asked
+  to suppress a status that isn't reconciling an outstanding PENDING
+  (`:suppressed`). The provider call
   happens outside the transaction; `finalize/2` and `release/2` complete or
   abandon the lease, using the claim timestamp as a fencing token so an
   expired claimant cannot overwrite newer state. Lease arithmetic uses the
@@ -17,6 +19,10 @@ defmodule RepositoryHub.BuildStatusGuard do
   `{:error, :guard_unavailable}` so callers can deliver unguarded. A malformed
   repository_id returns `{:error, :invalid_key}` so the caller's own request
   validation can reject it instead of the guard crashing.
+
+  The rows also record which pipelines wrote a check-run
+  (`mark_check_run/1`), so the commit-status path knows whether a commit has
+  one to mirror to (`check_run_on_commit?/1`) without asking GitHub.
   """
 
   import Ecto.Query
@@ -34,43 +40,79 @@ defmodule RepositoryHub.BuildStatusGuard do
   Acquires the delivery lease for the request's check.
 
   Returns `{:ok, fence}` when the caller may deliver, `:skip` when the status
-  is a stale PENDING that must not be delivered, `:busy` when another delivery
-  for the same check is in flight, or an error tuple.
+  is a stale PENDING that must not be delivered, `:suppressed` when the caller
+  asked for suppression and no PENDING is outstanding for this check, `:busy`
+  when another delivery for the same check is in flight, or an error tuple.
+
+  A suppressed terminal state is still delivered when the last delivered state
+  is PENDING, so a suppression decision that flipped mid-pipeline cannot leave
+  a check pending forever.
   """
   @spec claim(CreateBuildStatusRequest.t()) ::
-          {:ok, DateTime.t()} | :skip | :busy | {:error, term}
+          {:ok, DateTime.t()} | :skip | :suppressed | :busy | {:error, term}
   def claim(request) do
     with {:ok, key} <- key(request) do
-      pending? = request.status == :PENDING
-
       transaction(fn ->
         ensure_row(key)
-
-        {row, db_now} =
-          key
-          |> by_key()
-          |> lock("FOR UPDATE")
-          |> select([g], {g, fragment("now()")})
-          |> Repo.one!()
-
-        cond do
-          pending? && row.last_state in @terminal_states ->
-            :skip
-
-          live_lease?(row, db_now) ->
-            :busy
-
-          true ->
-            {1, _} =
-              key
-              |> by_key()
-              |> Repo.update_all(set: [claimed_at: db_now, updated_at: db_now])
-
-            {:ok, db_now}
-        end
+        {row, db_now} = lock_row(key)
+        decide(key, request, row, db_now)
       end)
     end
   end
+
+  # Selects only the columns the decision reads, so claiming never depends on
+  # a column added later (has_check_run): repository_hub can start before the
+  # front pods have migrated, and a missing column would fail every delivery.
+  defp lock_row(key) do
+    key
+    |> by_key()
+    |> lock("FOR UPDATE")
+    |> select([g], {%{last_state: g.last_state, claimed_at: g.claimed_at}, fragment("now()")})
+    |> Repo.one!()
+  end
+
+  # The lease check comes before any suppression call: last_state is written by
+  # finalize/2 after the provider call, so a delivery in flight looks exactly
+  # like "nothing recorded". Serializing here is what lets a suppressed
+  # terminal see the PENDING it has to reconcile.
+  defp decide(key, request, row, db_now) do
+    cond do
+      live_lease?(row, db_now) -> :busy
+      request.suppress == true -> suppressed_outcome(key, request, row, db_now)
+      stale_pending?(request, row) -> :skip
+      true -> claim_lease(key, db_now)
+    end
+  end
+
+  # A suppressed terminal still records the state it stood for, so a PENDING
+  # arriving later is recognised as stale instead of being delivered with
+  # nothing left to terminate it. A suppressed PENDING records nothing, or a
+  # later suppressed terminal would think a pending is outstanding.
+  defp suppressed_outcome(key, request, row, db_now) do
+    cond do
+      request.status == :PENDING ->
+        :suppressed
+
+      outstanding_delivery?(row) ->
+        claim_lease(key, db_now)
+
+      true ->
+        record_suppressed_state(key, request.status, db_now)
+        :suppressed
+    end
+  end
+
+  # A recorded PENDING is outstanding, and so is a claim that was never
+  # finalized: it may have reached the provider before stalling, and its fence
+  # still matches, so recording state under it would be undone when it wakes.
+  # Either way the terminal has to be delivered, taking over the lease.
+  defp outstanding_delivery?(%{last_state: "PENDING"}), do: true
+  defp outstanding_delivery?(%{claimed_at: claimed_at}), do: not is_nil(claimed_at)
+
+  defp stale_pending?(%{status: :PENDING}, %{last_state: last_state}),
+    do: last_state in @terminal_states
+
+  defp stale_pending?(_request, _row), do: false
 
   @doc """
   Records the delivered state and clears the lease. A stale fence is a no-op.
@@ -91,7 +133,14 @@ defmodule RepositoryHub.BuildStatusGuard do
           |> Repo.update_all([])
           |> case do
             {0, _} ->
-              Logger.warning("[BuildStatusGuard] stale fence on finalize, state not recorded")
+              Watchman.increment("build_status_guard.stale_fence")
+
+              Logger.warning(
+                "[BuildStatusGuard] stale fence on finalize, state not recorded " <>
+                  "repository_id=#{key.repository_id} commit_sha=#{key.commit_sha} " <>
+                  "context=#{key.context} source_id=#{key.source_id}"
+              )
+
               :ok
 
             {_, _} ->
@@ -124,6 +173,57 @@ defmodule RepositoryHub.BuildStatusGuard do
 
       {:error, :invalid_key} ->
         :ok
+    end
+  end
+
+  @doc """
+  Records that the request's pipeline writes a check-run for its commit and
+  context. Called before the write, so a check-run that lands is never
+  unrecorded; a write that then fails leaves the mark, which only costs a
+  GitHub lookup later. Creates the row when needed, so requests that skip
+  `claim/1` (no source_id, guard unavailable) are recorded too.
+
+  Marked rows are kept 30 days instead of 7
+  (`RepositoryHub.BuildStatusGuardCleanupWorker`), which is what lets
+  `check_run_on_commit?/1` answer without asking GitHub.
+  """
+  @spec mark_check_run(CreateBuildStatusRequest.t()) :: :ok | {:error, term}
+  def mark_check_run(request) do
+    with {:ok, key} <- key(request) do
+      transaction(fn ->
+        Repo.insert_all(
+          BuildStatusGuards,
+          [Map.merge(key, %{has_check_run: true, updated_at: DateTime.utc_now()})],
+          on_conflict: [set: [has_check_run: true, updated_at: DateTime.utc_now()]],
+          conflict_target: [:repository_id, :commit_sha, :context, :source_id]
+        )
+
+        :ok
+      end)
+    end
+  end
+
+  @doc """
+  Whether any pipeline marked a check-run for the request's commit and
+  context (`mark_check_run/1`) in the last 30 days. Check-runs are only ever
+  written after a mark, so `false` means there is no check-run to mirror to,
+  unless one is older than that.
+  """
+  @spec check_run_on_commit?(CreateBuildStatusRequest.t()) :: {:ok, boolean} | {:error, term}
+  def check_run_on_commit?(request) do
+    with {:ok, key} <- key(request) do
+      transaction(fn ->
+        from(g in BuildStatusGuards,
+          where:
+            g.repository_id == ^key.repository_id and g.commit_sha == ^key.commit_sha and
+              g.context == ^key.context and g.has_check_run == true
+        )
+        |> Repo.exists?()
+      end)
+      |> case do
+        found? when is_boolean(found?) -> {:ok, found?}
+        error -> error
+      end
     end
   end
 
@@ -165,6 +265,24 @@ defmodule RepositoryHub.BuildStatusGuard do
       [Map.put(key, :updated_at, DateTime.utc_now())],
       on_conflict: :nothing
     )
+  end
+
+  defp claim_lease(key, db_now) do
+    {1, _} =
+      key
+      |> by_key()
+      |> Repo.update_all(set: [claimed_at: db_now, updated_at: db_now])
+
+    {:ok, db_now}
+  end
+
+  defp record_suppressed_state(key, status, db_now) do
+    {1, _} =
+      key
+      |> by_key()
+      |> Repo.update_all(set: [last_state: Atom.to_string(status), updated_at: db_now])
+
+    :ok
   end
 
   defp live_lease?(%{claimed_at: nil}, _db_now), do: false

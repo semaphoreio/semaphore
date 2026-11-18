@@ -74,7 +74,7 @@ endif
 
 DOCKER_BUILD_PATH=.
 EX_CATCH_WARRNINGS_FLAG=--warnings-as-errors
-CHECK_DEPS_EXTRA_OPTS?=-w feature_provider,grpc_health_check,tentacat,util,watchman,fun_registry,sentry_grpc,traceman,cacheman,log_tee,spec,proto,sys2app,looper,job_matrix,definition_validator,gofer_client,open_api_spex,when,uuid,esaml,openid_connect,block
+CHECK_DEPS_EXTRA_OPTS?=-w feature_provider,env_var_policy,grpc_health_check,tentacat,util,watchman,fun_registry,sentry_grpc,traceman,cacheman,log_tee,spec,proto,sys2app,looper,job_matrix,definition_validator,gofer_client,open_api_spex,when,uuid,esaml,openid_connect,block
 ROOT_MAKEFILE_PATH := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 SCAN_RESULT_DIR?=out
 SECURITY_TOOLBOX_RUBY_IMAGE?=registry.semaphoreci.com/ruby:3
@@ -114,6 +114,7 @@ check.deps:
 		-w /app \
 		-e HOST_UID=$$(id -u) \
 		-e HOST_GID=$$(id -g) \
+		-e GIT_TERMINAL_PROMPT=0 \
 		-e TRIVY_DB_REPOSITORY \
 		-e TRIVY_JAVA_DB_REPOSITORY \
 		$(SECURITY_TOOLBOX_RUBY_IMAGE) \
@@ -308,7 +309,7 @@ configure.sign:
 		--credential-source-file=/tmp/oidc_token \
 		--credential-source-type="text" && \
 	export GOOGLE_APPLICATION_CREDENTIALS=/home/semaphore/creds.json && \
-	pip install packaging google-cloud-iam && \
+	pip install --break-system-packages packaging google-cloud-iam && \
 	$(ROOT_MAKEFILE_PATH)/get_id_token.py $$GOOGLE_PROJECT_NAME ci-image-signer > /tmp/sigstore-token
 
 registry.push:
@@ -327,7 +328,7 @@ registry.configure:
 	@printf "%s" "$(GITHUB_TOKEN)" | docker login ghcr.io -u "$(GITHUB_USERNAME)" --password-stdin
 
 registry.helm.configure:
-	@printf "%s" "$(GITHUB_TOKEN)" | helm registry login ghcr.io/semaphoreio --username "$(GITHUB_USERNAME)" --password-stdin
+	@printf "%s" "$(GITHUB_TOKEN)" | helm registry login ghcr.io --username "$(GITHUB_USERNAME)" --password-stdin
 
 cosign.install:
 	curl -O -L "https://github.com/sigstore/cosign/releases/download/v2.4.1/cosign-linux-amd64" && \

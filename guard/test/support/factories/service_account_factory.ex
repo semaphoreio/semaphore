@@ -12,6 +12,7 @@ defmodule Support.Factories.ServiceAccountFactory do
   - :description - Service account description (defaults to empty string)
   - :org_id - Organization ID (defaults to random UUID)
   - :creator_id - Creator user ID (defaults to random UUID)
+  - :owner_id - Owner user ID (defaults to none)
   """
   def insert(options \\ []) do
     # With new schema, service account ID is the same as user ID
@@ -21,9 +22,9 @@ defmodule Support.Factories.ServiceAccountFactory do
     description = get_description(options[:description])
     creator_id = get_creator_id_with_user(options[:creator_id])
 
-    # Create the user record first
+    # Create the user record first. The changeset does not cast the id, so an id a test
+    # picked has to go on the struct or the row gets a generated one instead.
     user_params = %{
-      id: user_id,
       email: generate_synthetic_email(name, org_id),
       name: name,
       company: "",
@@ -34,13 +35,15 @@ defmodule Support.Factories.ServiceAccountFactory do
       authentication_token: generate_token_hash()
     }
 
-    {:ok, user} = User.changeset(%User{}, user_params) |> FrontRepo.insert()
+    {:ok, user} = User.changeset(%User{id: user_id}, user_params) |> FrontRepo.insert()
 
     # Create the service account record with the same ID as the user
     service_account_params = %{
       id: user.id,
       description: description,
       creator_id: creator_id,
+      owner_id: options[:owner_id],
+      owner_set_at: owner_set_at(options[:owner_id]),
       user: user
     }
 
@@ -70,16 +73,28 @@ defmodule Support.Factories.ServiceAccountFactory do
   This creates a real user in the database and returns params with that user's ID.
   """
   def build_params_with_creator(options \\ []) do
+    org_id = get_org_id(options[:org_id])
     {:ok, creator_user} = Support.Factories.FrontUser.insert()
 
+    # Somebody creating an account is a member of the organization they create it in,
+    # and the account takes them as its owner only while that holds.
+    unless options[:creator_is_member] == false do
+      Support.Factories.OrgMembership.insert(creator_user.id, org_id)
+    end
+
     %{
-      org_id: get_org_id(options[:org_id]),
+      org_id: org_id,
       name: get_name(options[:name]),
       description: get_description(options[:description]),
       creator_id: creator_user.id,
       role_id: get_role_id(options[:role_id])
     }
   end
+
+  # An account that was given an owner carries the moment it was decided, as it does in
+  # production, so the backfill treats the fixture the same way.
+  defp owner_set_at(nil), do: nil
+  defp owner_set_at(_owner_id), do: DateTime.utc_now() |> DateTime.truncate(:second)
 
   defp get_id(nil), do: UUID.generate()
   defp get_id(id), do: id

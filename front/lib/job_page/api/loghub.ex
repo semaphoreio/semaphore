@@ -4,7 +4,7 @@ defmodule JobPage.Api.Loghub do
   alias JobPage.GrpcConfig
 
   def fetch(job_id, starting_line, tracing_headers \\ nil) do
-    Watchman.benchmark({"fetch_logs.duration", ["#{job_id}"]}, fn ->
+    Watchman.benchmark("fetch_logs.duration", fn ->
       req =
         InternalApi.Loghub.GetLogEventsRequest.new(job_id: job_id, starting_line: starting_line)
 

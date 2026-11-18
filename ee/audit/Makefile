@@ -45,7 +45,7 @@ ifeq ($(CI),)
 else
 	sem-service start postgres 9.6 --db=$(POSTGRES_DB_NAME) --user=$(POSTGRES_DB_USER) --password=$(POSTGRES_DB_PASSWORD)
 	sem-service start rabbitmq 3.8
-	docker run --network host -p 9090:9090 -e initialBuckets=test-bucket -d -t adobe/s3mock:3.12.0
+	docker run --network host -d -e RUSTFS_ADDRESS=:9090 -e RUSTFS_ACCESS_KEY=audit-key -e RUSTFS_SECRET_KEY=the-cake-is-a-lie-secret -e RUSTFS_CHECK_UPDATE=false -e RUSTFS_OBS_LOG_DIRECTORY="" -e RUSTFS_CONSOLE_ENABLE=false --entrypoint sh rustfs/rustfs:1.0.0 -c 'mkdir -p /tmp/s3-data/test-bucket && exec /entrypoint.sh /tmp/s3-data'
 	docker run --network host -v $(PWD)/out:/app/out $(CONTAINER_ENV_VARS) $(IMAGE):$(IMAGE_TAG) mix do ecto.create, ecto.migrate
 endif
 

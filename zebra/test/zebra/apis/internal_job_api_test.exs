@@ -923,6 +923,36 @@ defmodule Zebra.Api.InternalJobApiTest do
       assert {:error, %GRPC.RPCError{message: "Not found", status: 5}} =
                Stub.get_agent_payload(channel, request)
     end
+
+    test "when the job is fetched twice => both payloads are intact" do
+      alias InternalApi.ServerFarm.Job.GetAgentPayloadRequest, as: Request
+      alias InternalApi.ServerFarm.Job.GetAgentPayloadResponse, as: Response
+      alias InternalApi.ServerFarm.Job.JobService.Stub, as: Stub
+
+      # GetAgentPayload is pulled by self-hosted agents; hosted jobs are pushed.
+      {:ok, job} =
+        Support.Factories.Job.create(:started, %{
+          machine_type: "s1-test",
+          request: agent_job_request()
+        })
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      request = Request.new(job_id: job.id)
+
+      assert {:ok, %Response{payload: first}} = Stub.get_agent_payload(channel, request)
+
+      # The agent refetches the payload when a response is lost in transit, so
+      # give any sanitization the first fetch may have scheduled the chance to
+      # land before refetching. Without this the second fetch races it.
+      await_sanitization(job.id)
+
+      assert {:ok, %Response{payload: second}} = Stub.get_agent_payload(channel, request)
+
+      assert_payload_decodable(first)
+      assert_payload_decodable(second)
+      assert second == first
+    end
   end
 
   describe ".can_debug" do
@@ -1166,5 +1196,59 @@ defmodule Zebra.Api.InternalJobApiTest do
                self_hosted: false
              } = reply.job
     end
+  end
+
+  defp agent_job_request do
+    alias Zebra.Workers.JobRequestFactory.JobRequest
+
+    %{
+      "job_id" => Ecto.UUID.generate(),
+      "env_vars" => [
+        JobRequest.env_var("SEMAPHORE_JOB_ID", "job-id"),
+        JobRequest.env_var("SEMAPHORE_OIDC_TOKEN", "oidc-token"),
+        JobRequest.env_var("MY_SECRET", "s3cr3t")
+      ],
+      "files" => [
+        JobRequest.file("/home/semaphore/.npmrc", "//registry/:_authToken=abc", "0600")
+      ]
+    }
+  end
+
+  # Blocks until the stored request is sanitized, or until the deadline passes.
+  # Returns as soon as sanitization lands, so the caller never depends on timing
+  # to observe it.
+  defp await_sanitization(job_id, deadline_in_ms \\ 1_000) do
+    alias Zebra.Models.Job
+    alias Zebra.Workers.JobRequestFactory.JobRequest
+
+    deadline = System.monotonic_time(:millisecond) + deadline_in_ms
+
+    Stream.repeatedly(fn ->
+      {:ok, job} = Job.find(job_id)
+
+      if JobRequest.sanitized?(job.request) do
+        :sanitized
+      else
+        Process.sleep(10)
+        :pending
+      end
+    end)
+    |> Enum.find(fn result ->
+      result == :sanitized or System.monotonic_time(:millisecond) >= deadline
+    end)
+  end
+
+  defp assert_payload_decodable(payload) do
+    request = Poison.decode!(payload)
+
+    Enum.each(request["env_vars"], fn env_var ->
+      assert match?({:ok, _}, Base.decode64(env_var["value"])),
+             "env var #{env_var["name"]} is not decodable: #{inspect(env_var["value"])}"
+    end)
+
+    Enum.each(request["files"], fn file ->
+      assert match?({:ok, _}, Base.decode64(file["content"])),
+             "file #{file["path"]} is not decodable: #{inspect(file["content"])}"
+    end)
   end
 end

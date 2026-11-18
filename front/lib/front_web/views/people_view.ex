@@ -69,10 +69,16 @@ defmodule FrontWeb.PeopleView do
     %{
       organization_id: org_id,
       project_id: conn.assigns[:project_id],
+      user_id: conn.assigns[:user_id],
       permissions: %{
         view: permissions["organization.service_accounts.view"] || false,
         manage: permissions["organization.service_accounts.manage"] || false
       },
+      # A self-hosted install serves one organization, so an account's projects are not
+      # held to an owner's access there and there is nothing to show about one. Whether
+      # the rule is on decides only the wording, since owners are recorded before it is.
+      show_ownership: Front.saas?(),
+      ownership_enforced: Front.saas?() and Front.enforce_service_account_owner?(),
       roles: filtered_roles
     }
   end
@@ -211,7 +217,7 @@ defmodule FrontWeb.PeopleView do
              :ROLE_BINDING_SOURCE_BITBUCKET
            ] ->
         """
-          <span class= "f6 normal ml1 ph1 br2 bg-#{map_role_to_colour(role_binding.role.name)} white bg-pattern-wave flex items-center"
+          <span data-role-label class= "f6 normal ml1 ph1 br2 bg-#{map_role_to_colour(role_binding.role.name)} white bg-pattern-wave flex items-center"
             data-tippy-content="This role is automatically assigned through sync with Git repository.">
               #{git_icon(binding_source)}
               <span class="ml1">#{escape_unsafe_string(role_binding.role.name)}</span>
@@ -220,7 +226,7 @@ defmodule FrontWeb.PeopleView do
 
       :ROLE_BINDING_SOURCE_SCIM ->
         """
-          <span class= "f6 normal ml1 ph1 br2 bg-#{map_role_to_colour(role_binding.role.name)} white bg-pattern-wave flex items-center"
+          <span data-role-label class= "f6 normal ml1 ph1 br2 bg-#{map_role_to_colour(role_binding.role.name)} white bg-pattern-wave flex items-center"
             data-tippy-content="This role is automatically assigned through sync with your SCIM provider.">
               <span class="ml1">#{escape_unsafe_string(role_binding.role.name)}</span>
           </span>
@@ -228,7 +234,7 @@ defmodule FrontWeb.PeopleView do
 
       :ROLE_BINDING_SOURCE_SAML_JIT ->
         """
-          <span class= "f6 normal ml1 ph1 br2 bg-#{map_role_to_colour(role_binding.role.name)} white bg-pattern-wave flex items-center"
+          <span data-role-label class= "f6 normal ml1 ph1 br2 bg-#{map_role_to_colour(role_binding.role.name)} white bg-pattern-wave flex items-center"
             data-tippy-content="This role is automatically assigned through SAML JIT provisioning settings.">
               <span class="ml1">#{escape_unsafe_string(role_binding.role.name)}</span>
           </span>
@@ -236,7 +242,7 @@ defmodule FrontWeb.PeopleView do
 
       :ROLE_BINDING_SOURCE_INHERITED_FROM_ORG_ROLE ->
         """
-          <span class= "f6 normal ml1 ph1 br2 bg-#{map_role_to_colour(role_binding.role.name)} white bg-pattern-wave flex items-center"
+          <span data-role-label class= "f6 normal ml1 ph1 br2 bg-#{map_role_to_colour(role_binding.role.name)} white bg-pattern-wave flex items-center"
             data-tippy-content="The role was inherited through the organization role this user has.">
               <span class="ml1">#{escape_unsafe_string(role_binding.role.name)}</span>
           </span>
@@ -244,7 +250,7 @@ defmodule FrontWeb.PeopleView do
 
       _ ->
         """
-          <span class= "f6 normal ml1 ph1 br2 bg-#{map_role_to_colour(role_binding.role.name)} white">#{escape_unsafe_string(role_binding.role.name)}</span>
+          <span data-role-label class= "f6 normal ml1 ph1 br2 bg-#{map_role_to_colour(role_binding.role.name)} white">#{escape_unsafe_string(role_binding.role.name)}</span>
         """
     end
     |> raw()

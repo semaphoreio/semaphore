@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -118,10 +119,24 @@ func (s *Server) RefreshToken(w http.ResponseWriter, r *http.Request) {
 
 	logging.ForAgent(agent).Infof("Refresh token requested")
 
+	// a disabled agent is only allowed to sync until it shuts down.
+	if agent.DisabledAt != nil {
+		logging.ForAgent(agent).Warning("Agent is disabled")
+		respondWith404(w)
+		return
+	}
+
 	// agent is not assigned any jobs,
 	// so it should not be refreshing any tokens.
 	if agent.AssignedJobID == nil {
 		logging.ForAgent(agent).Warning("Agent is not assigned any jobs")
+		respondWith422(w)
+		return
+	}
+
+	// the job is being stopped, so no new tokens should be issued for it.
+	if agent.JobStopRequestedAt != nil {
+		logging.ForAgent(agent).Warningf("Job %s was stopped", agent.AssignedJobID.String())
 		respondWith422(w)
 		return
 	}
@@ -161,6 +176,13 @@ func (s *Server) DescribeJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// a disabled agent is only allowed to sync until it shuts down.
+	if agent.DisabledAt != nil {
+		logging.ForAgent(agent).Warningf("Agent is disabled - not serving job %s", jobID)
+		respondWith404(w)
+		return
+	}
+
 	payload, err := zebraclient.GetJobPayload(jobID)
 	if err != nil {
 		logging.ForAgent(agent).Errorf("Error fetching job payload for %s: %v", jobID, err)
@@ -169,8 +191,9 @@ func (s *Server) DescribeJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = respondWithString(w, http.StatusOK, payload)
+	err = respondWithJobPayload(w, payload)
 	if err != nil {
+		logging.ForAgent(agent).Errorf("Error serving job payload for %s: %v", strconv.Quote(jobID), err)
 		respondWith500(w)
 	}
 }
@@ -532,6 +555,12 @@ func (s *Server) Sync(w http.ResponseWriter, r *http.Request) {
 
 	response, err := agentsync.Process(r.Context(), s.quotaClient, s.agentCounter, s.publisher, agent, request)
 	if err != nil {
+		if errors.Is(err, agentsync.ErrInvalidStateTransition) {
+			logging.ForAgent(agent).Warningf("Invalid sync state transition: %v", err)
+			respondWith422(w)
+			return
+		}
+
 		logging.ForAgent(agent).Errorf("Error processing sync request: %v", err)
 		_ = watchman.IncrementWithTags("server.error", []string{"sync_error", orgID})
 		respondWith500(w)

@@ -99,7 +99,7 @@ defmodule Zebra.Workers.JobFinishedCallbackWorkerTest do
       refute is_nil(job.finished_at)
     end
 
-    test "when job is not found => raise error" do
+    test "when job is not found => drops the message without raising" do
       payload = %{"result" => "passed"} |> Poison.encode!()
 
       callback_message =
@@ -109,9 +109,22 @@ defmodule Zebra.Workers.JobFinishedCallbackWorkerTest do
         }
         |> Poison.encode!()
 
-      assert_raise MatchError, fn ->
-        W.handle_message(callback_message)
-      end
+      assert :ok = W.handle_message(callback_message)
+    end
+
+    test "when the result is not valid => drops the message without raising" do
+      {:ok, job} = Support.Factories.Job.create(:started)
+
+      payload = %{"result" => "not-a-result"} |> Poison.encode!()
+      callback_message = %{"job_hash_id" => job.id, "payload" => payload} |> Poison.encode!()
+
+      assert :ok = W.handle_message(callback_message)
+
+      {:ok, job} = Job.find(job.id)
+
+      assert Job.started?(job)
+      assert is_nil(job.finished_at)
+      assert is_nil(job.result)
     end
   end
 end

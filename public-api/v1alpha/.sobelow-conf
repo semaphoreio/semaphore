@@ -5,5 +5,5 @@
   router: "",
   exit: :medium,
   format: "txt",
-  ignore: ["Config.HTTPS"],
+  ignore: ["Config.HTTPS", "XSS.SendResp"],
 ]

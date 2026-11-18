@@ -21,6 +21,12 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
   @type repo_host :: :github | :bitbucket | :gitlab
 
+  @uid_taken_message "is already connected to another Semaphore user"
+
+  # A transient failure can briefly mark a healthy link revoked, so give it
+  # time to self-heal before another user can claim (and delete) it.
+  @revoked_claim_grace_seconds 2 * 60 * 60
+
   @type t :: %__MODULE__{
           login: String.t(),
           github_uid: String.t(),
@@ -46,8 +52,8 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     field(:user_id, :binary_id)
     field(:name, :string)
     field(:permission_scope, :string)
-    field(:token, :string)
-    field(:refresh_token, :string)
+    field(:token, :string, redact: true)
+    field(:refresh_token, :string, redact: true)
     field(:token_expires_at, :utc_datetime)
     field(:revoked, :boolean, default: false)
 
@@ -62,7 +68,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     do: from(r in __MODULE__, where: r.user_id == ^user_id) |> FrontRepo.aggregate(:count, :id)
 
   def create(data) do
-    result =
+    changeset =
       %__MODULE__{}
       |> Ecto.Changeset.cast(data, [
         :login,
@@ -83,7 +89,14 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         :name,
         :permission_scope
       ])
-      |> FrontRepo.insert()
+
+    result =
+      claim_uid(changeset, fn changeset, releasable ->
+        with {:ok, account} <- FrontRepo.insert(changeset) do
+          release_revoked_uid_rows(account, releasable)
+          {:ok, account}
+        end
+      end)
 
     case result do
       {:ok, account} ->
@@ -158,8 +171,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           token_tuple
 
         {:error, :revoked} ->
-          update_account(%{revoked: true}, rha)
-          {:error, :revoked}
+          revoke_or_recover(rha)
 
         {:error, reason} ->
           {:error, reason}
@@ -174,8 +186,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           token_tuple
 
         {:error, :revoked} ->
-          update_account(%{revoked: true}, rha)
-          {:error, :revoked}
+          revoke_or_recover(rha)
 
         {:error, reason} ->
           {:error, reason}
@@ -190,13 +201,109 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           token_tuple
 
         {:error, :revoked} ->
-          update_account(%{revoked: true}, rha)
-          {:error, :revoked}
+          revoke_or_recover(rha)
 
         {:error, reason} ->
           {:error, reason}
       end
     end)
+  end
+
+  # A provider classified the refresh as a genuine revocation (invalid_grant).
+  # Under single-use refresh-token rotation this can be a FALSE revoke: the
+  # loser of a concurrent refresh reuses the token the winner already rotated,
+  # and the provider answers invalid_grant even though a sibling worker just
+  # stored a healthy token. Blindly flipping `revoked: true` here would
+  # disconnect that healthy account (the mass-disconnect failure class).
+  #
+  # So re-read the row first and decide:
+  #   - the stored token CHANGED vs the snapshot we refreshed with -> a
+  #     concurrent winner rotated it; do NOT revoke. Return the winner's token
+  #     if it is usable, else :transient (the caller refreshes with the new
+  #     refresh_token next time).
+  #   - the stored token is UNCHANGED (still the one the provider just
+  #     rejected) -> a genuine revocation; flip `revoked: true` under an
+  #     optimistic lock so a winner committing between our reload and our write
+  #     cannot be clobbered by a stale revoke.
+  defp revoke_or_recover(%__MODULE__{} = rha) do
+    case reload(rha) do
+      %__MODULE__{} = fresh ->
+        if token_rotated_by_winner?(rha, fresh) do
+          recover_after_winner(fresh)
+        else
+          revoke_unrotated(rha, fresh)
+        end
+
+      nil ->
+        {:error, :revoked}
+    end
+  end
+
+  # No winner seen at reload: write revoked:true on the FRESH struct under an
+  # optimistic lock. If a winner commits in the gap, the locked write raises
+  # StaleEntryError (surfaced as {:error, :stale}) and we re-evaluate ONCE
+  # (no loop): recover if a rotation is now visible, otherwise degrade to
+  # :transient so the next request re-decides cleanly - never a blind revoke.
+  defp revoke_unrotated(%__MODULE__{} = rha, %__MODULE__{} = fresh) do
+    case update_account(%{revoked: true}, fresh, lock: true) do
+      {:ok, _} ->
+        {:error, :revoked}
+
+      {:error, :stale} ->
+        case reload(rha) do
+          %__MODULE__{} = refreshed ->
+            if token_rotated_by_winner?(rha, refreshed) do
+              recover_after_winner(refreshed)
+            else
+              {:error, :transient}
+            end
+
+          nil ->
+            {:error, :revoked}
+        end
+
+      {:error, reason} ->
+        # The revoke write itself failed to persist. Do NOT report {:error,
+        # :revoked}: that signals a permanent revocation (gRPC NOT_FOUND ->
+        # repohub disconnect) the DB never actually recorded. Degrade to
+        # :transient so the caller retries and re-decides cleanly.
+        Logger.error(
+          "Failed to persist revoke for rha=#{rha.id} user=#{rha.user_id} " <>
+            "#{rha.repo_host}: errors=#{changeset_error_fields(reason)}"
+        )
+
+        {:error, :transient}
+    end
+  end
+
+  defp token_rotated_by_winner?(%__MODULE__{} = rha, %__MODULE__{} = fresh) do
+    fresh.token != rha.token or fresh.refresh_token != rha.refresh_token
+  end
+
+  # NOTE (GitLab caveat): a token recovered here may still be dead. GitLab's
+  # token-family reuse-detection can revoke the WHOLE family when the burned
+  # token is replayed, so the winner's rotated token could already be
+  # family-revoked; that surfaces on the next validate/refresh. The real fix
+  # (single-flight before the refresh POST) is tracked separately.
+  defp recover_after_winner(%__MODULE__{} = fresh) do
+    nil_valid = fresh.repo_host == "github"
+
+    if not is_nil(fresh.token) and
+         Guard.Utils.OAuth.valid_token?(fresh.token_expires_at, nil_valid: nil_valid) do
+      Logger.info(
+        "OAuth refresh classified revoked but a concurrent winner rotated the token; " <>
+          "recovering rha=#{fresh.id} user=#{fresh.user_id} provider=#{fresh.repo_host}"
+      )
+
+      {:ok, {fresh.token, fresh.token_expires_at}}
+    else
+      Logger.info(
+        "OAuth refresh classified revoked, winner rotated but token not yet usable " <>
+          "rha=#{fresh.id} user=#{fresh.user_id} provider=#{fresh.repo_host}; retrying"
+      )
+
+      {:error, :transient}
+    end
   end
 
   # Negative cache for a row that is NOT yet revoked but just failed a
@@ -233,19 +340,259 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     end
   end
 
-  def update_token(rha, token, refresh_token, expires_at) do
-    params = %{
-      token: token,
-      refresh_token: refresh_token,
-      token_expires_at: expires_at,
-      # A successful token fetch is proof the account is not revoked -
-      # self-heal a row that got latched `revoked: true` by a past
-      # transient failure now correctly classified as such.
-      revoked: false
-    }
+  @doc """
+  Persist a freshly-refreshed token.
 
-    update_account(params, rha)
+  `refresh_token` may be `nil` (the provider returned a 2xx WITHOUT rotating
+  it - e.g. GitHub, or an unchanged token). In that case the stored
+  `refresh_token` is left UNTOUCHED rather than overwritten with a snapshot
+  value, which would risk clobbering a newer rotated token written by a
+  concurrent worker. `token`/`expires_at` are written only when present.
+
+  The write is optimistic-locked on `:updated_at` (single-use refresh-token
+  rotation means the losing side of a concurrent refresh must not overwrite
+  the winner's freshly-rotated token). On a lost race the caller gets
+  `{:error, :stale}` and MUST discard its own (older) refresh response.
+  """
+  def update_token(rha, token, refresh_token, expires_at) do
+    write_token(rha, token, refresh_token, expires_at, lock: true)
   end
+
+  defp write_token(rha, token, refresh_token, expires_at, opts) do
+    params =
+      %{
+        # A successful token fetch is proof the account is not revoked -
+        # self-heal a row that got latched `revoked: true` by a past
+        # transient failure now correctly classified as such.
+        revoked: false
+      }
+      |> put_present(:token, token)
+      |> put_present(:refresh_token, refresh_token)
+      |> put_present(:token_expires_at, expires_at)
+
+    case update_account(params, rha, opts) do
+      {:error, %Ecto.Changeset{} = changeset} ->
+        if uid_taken_error?(changeset) do
+          # Keep the credentials: providers rotate refresh tokens, so losing
+          # the new one replays a stale token until the grant dies.
+          Logger.warning(
+            "Keeping repo_host_account #{rha.id} revoked: uid is held by another " <>
+              "user. Refreshed credentials are still persisted."
+          )
+
+          update_account(Map.delete(params, :revoked), rha, opts)
+        else
+          {:error, changeset}
+        end
+
+      result ->
+        result
+    end
+  end
+
+  # Bound the re-apply retries so a pathological stream of unrelated writes
+  # cannot spin here; after this many lost locks we persist unconditionally.
+  @max_token_persist_attempts 3
+
+  @doc """
+  Concurrency-safe persistence of a freshly-refreshed (possibly rotated) token.
+
+  The write carries an optimistic lock on `:updated_at`, but losing that lock
+  must NEVER discard a just-rotated single-use refresh_token. On a lost race we
+  re-read and decide by comparing the stored credential against the snapshot we
+  refreshed with:
+
+    - the credential CHANGED -> an independent writer (a reconnect, or a
+      sibling refresh) rotated it; ours is superseded, so recover the winner's
+      token instead.
+    - the credential is UNCHANGED -> only an UNRELATED column write (profile
+      sync, revoke flip, ...) advanced `:updated_at`. Our rotation is still the
+      newest credential, so re-apply it onto the fresh row. After
+      `@max_token_persist_attempts` lost locks we persist via a credential
+      compare-and-set (write only while the stored credential is still the one
+      we reloaded), so an unrelated concurrent write can never strand the
+      rotated token while a concurrent reconnect still wins.
+
+  Returns `{:ok, {token, expires_at}}` (ours or the recovered winner's) or
+  `{:error, :transient}`.
+  """
+  @spec persist_refreshed_token(t(), String.t(), String.t() | nil, DateTime.t() | nil) ::
+          {:ok, {String.t(), DateTime.t() | nil}} | {:error, :transient}
+  def persist_refreshed_token(%__MODULE__{} = rha, token, refresh_token, expires_at) do
+    do_persist_refreshed_token(rha, token, refresh_token, expires_at, 1)
+  end
+
+  defp do_persist_refreshed_token(rha, token, refresh_token, expires_at, attempt) do
+    case write_token(rha, token, refresh_token, expires_at, lock: true) do
+      {:ok, account} ->
+        {:ok, {account.token, account.token_expires_at}}
+
+      {:error, :stale} ->
+        resolve_lost_token_write(rha, token, refresh_token, expires_at, attempt)
+
+      {:error, reason} ->
+        Logger.error(
+          "Failed to persist refreshed token rha=#{rha.id} user=#{rha.user_id} " <>
+            "#{rha.repo_host}: errors=#{changeset_error_fields(reason)}"
+        )
+
+        {:error, :transient}
+    end
+  end
+
+  defp resolve_lost_token_write(snapshot, token, refresh_token, expires_at, attempt) do
+    case reload(snapshot) do
+      %__MODULE__{} = fresh ->
+        cond do
+          token_rotated_by_winner?(snapshot, fresh) ->
+            # An independent writer rotated the credential; ours is superseded.
+            recover_after_winner(fresh)
+
+          attempt >= @max_token_persist_attempts ->
+            persist_rotated_token_unlocked(fresh, token, refresh_token, expires_at)
+
+          true ->
+            # Only an unrelated column write bumped :updated_at; our rotation is
+            # still authoritative. Re-apply it onto the fresh row.
+            do_persist_refreshed_token(fresh, token, refresh_token, expires_at, attempt + 1)
+        end
+
+      nil ->
+        {:error, :transient}
+    end
+  end
+
+  # Terminal fallback after repeated UNRELATED write races. The credential was
+  # verified unchanged vs the preceding reload, so our rotation is still the
+  # newest credential. Persist it with a COMPARE-AND-SET scoped to the
+  # credential columns: write only while the stored token AND refresh_token are
+  # still the ones we just reloaded. This closes the write without the
+  # optimistic lock on :updated_at (an unrelated column write cannot strand us)
+  # while STILL yielding to a reconnect: if reset_account/update_existing_account
+  # wrote a new authorization_code credential in the gap, the CAS matches zero
+  # rows and we recover the winner's token instead of clobbering it with our
+  # now-superseded (old-family) token.
+  defp persist_rotated_token_unlocked(fresh, token, refresh_token, expires_at) do
+    Logger.warning(
+      "Persisting rotated token via credential compare-and-set after repeated " <>
+        "unrelated write races rha=#{fresh.id} user=#{fresh.user_id} #{fresh.repo_host}"
+    )
+
+    # Only an un-revoke can hand this row a uid another account holds, and
+    # cas_may_unrevoke?/1 is an exists query - read outside a lock it decides on
+    # a claim that may commit a moment later, leaving two active links. Take the
+    # same lock claim_uid/2 takes, and only for that case: a refresh that is not
+    # un-revoking cannot create a duplicate, so the hot path stays lock-free.
+    if cas_claims_uid?(fresh) do
+      {:ok, result} =
+        FrontRepo.transaction(fn ->
+          lock_uid_values(fresh.repo_host, fresh.github_uid)
+          persist_rotated_cas(fresh, token, refresh_token, expires_at)
+        end)
+
+      result
+    else
+      persist_rotated_cas(fresh, token, refresh_token, expires_at)
+    end
+  end
+
+  defp cas_claims_uid?(%__MODULE__{revoked: true, repo_host: "github", github_uid: uid})
+       when uid not in [nil, ""],
+       do: true
+
+  defp cas_claims_uid?(_fresh), do: false
+
+  defp persist_rotated_cas(fresh, token, refresh_token, expires_at) do
+    unrevoke? = cas_may_unrevoke?(fresh)
+
+    if not unrevoke? do
+      Logger.warning(
+        "Keeping repo_host_account #{fresh.id} revoked on compare-and-set: another account " <>
+          "shares its uid, so un-revoking requires the claim path"
+      )
+    end
+
+    case FrontRepo.update_all(credential_cas_query(fresh),
+           set: token_cas_set(token, refresh_token, expires_at, unrevoke?)
+         ) do
+      {1, _} ->
+        Cachex.del(@oauth_refresh_failure_cache, fresh.id)
+
+        Logger.info(
+          "Persisted rotated token via compare-and-set rha=#{fresh.id} " <>
+            "user=#{fresh.user_id} #{fresh.repo_host}"
+        )
+
+        {:ok, {token, expires_at}}
+
+      {0, _} ->
+        # A concurrent reconnect committed a new credential between our reload
+        # and this CAS. Do NOT clobber it and do NOT strand ours as :transient
+        # (our refresh token is already burned upstream) - yield to the winner.
+        Logger.info(
+          "Compare-and-set missed - a concurrent credential write won; recovering " <>
+            "rha=#{fresh.id} user=#{fresh.user_id} #{fresh.repo_host}"
+        )
+
+        case reload(fresh) do
+          %__MODULE__{} = winner -> recover_after_winner(winner)
+          nil -> {:error, :transient}
+        end
+    end
+  end
+
+  # WHERE id = ? AND token <=> fresh.token AND refresh_token <=> fresh.refresh_token
+  # (nil-safe: a nil credential column matches with IS NULL, not `= NULL`).
+  defp credential_cas_query(%__MODULE__{} = fresh) do
+    from(r in __MODULE__, where: r.id == ^fresh.id)
+    |> cas_where(:token, fresh.token)
+    |> cas_where(:refresh_token, fresh.refresh_token)
+  end
+
+  defp cas_where(query, field, nil), do: from(r in query, where: is_nil(field(r, ^field)))
+  defp cas_where(query, field, value), do: from(r in query, where: field(r, ^field) == ^value)
+
+  # The CAS bypasses the changeset, so it cannot run the uid check or the claim
+  # an un-revoke implies. While another row shares the uid, leave the flag to
+  # the next changeset-based write.
+  defp cas_may_unrevoke?(%__MODULE__{revoked: true, repo_host: "github", github_uid: uid} = fresh)
+       when uid not in [nil, ""] do
+    not FrontRepo.exists?(
+      from(r in __MODULE__,
+        where: r.repo_host == ^fresh.repo_host and r.github_uid == ^uid and r.id != ^fresh.id
+      )
+    )
+  end
+
+  defp cas_may_unrevoke?(_fresh), do: true
+
+  # Mirror write_token's put_present semantics: bump `updated_at` (update_all
+  # does not touch timestamps automatically); write token/refresh_token/
+  # token_expires_at only when present.
+  defp token_cas_set(token, refresh_token, expires_at, unrevoke?) do
+    set =
+      [updated_at: DateTime.utc_now() |> DateTime.truncate(:second)]
+      |> put_set(:token, token)
+      |> put_set(:refresh_token, refresh_token)
+      |> put_set(:token_expires_at, expires_at)
+
+    if unrevoke?, do: [{:revoked, false} | set], else: set
+  end
+
+  defp put_set(set, _key, nil), do: set
+  defp put_set(set, _key, ""), do: set
+  defp put_set(set, key, value), do: set ++ [{key, value}]
+
+  defp put_present(map, _key, nil), do: map
+  defp put_present(map, _key, ""), do: map
+  defp put_present(map, key, value), do: Map.put(map, key, value)
+
+  @doc """
+  Re-read the row from the DB by id. Used to recover the winner's freshly
+  rotated token after losing an optimistic-lock race on the token write.
+  """
+  @spec reload(t()) :: t() | nil
+  def reload(%__MODULE__{id: id}), do: FrontRepo.get(__MODULE__, id)
 
   @doc """
   Write `:login` and/or `:name` only; other keys dropped. Strict writer:
@@ -323,15 +670,332 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
     case get_for_user_by_repo_host(user_id, repo_host) do
       {:ok, account} ->
-        update_existing_account(account, data, opts)
+        case update_existing_account(account, data, opts) do
+          # A claim deleted the row after it was read. Creating it again runs
+          # the uid check, so a claimed uid still comes back as taken.
+          {:error, :not_found} ->
+            create(data |> Map.merge(%{user_id: user_id, repo_host: repo_host}))
+
+          result ->
+            result
+        end
 
       {:error, :not_found} ->
         create(data |> Map.merge(%{user_id: user_id, repo_host: repo_host}))
     end
   end
 
+  @spec update_revoke_status(t(), boolean()) ::
+          {:ok, t()} | {:error, :not_found | Ecto.Changeset.t()}
   def update_revoke_status(rha, revoked) do
     update_account(%{revoked: revoked}, rha)
+  end
+
+  @doc """
+  Returns true when the changeset failed because the GitHub account is
+  already connected to another user.
+  """
+  @spec uid_taken_error?(term()) :: boolean()
+  def uid_taken_error?(%Ecto.Changeset{errors: errors}) do
+    Enum.any?(errors, fn
+      {:github_uid, {_msg, opts}} -> opts[:validation] == :unsafe_unique
+      _ -> false
+    end)
+  end
+
+  def uid_taken_error?(_), do: false
+
+  # At most one user per GitHub identity. A revoked link still blocks while it
+  # is inside the grace window, and is deleted only once it is past grace and
+  # the provider confirms its token is dead.
+  defp validate_github_uid_not_taken(changeset, unknown_ids) do
+    repo_host = Ecto.Changeset.get_field(changeset, :repo_host)
+    uid = Ecto.Changeset.get_field(changeset, :github_uid)
+
+    if repo_host == "github" and uid not in [nil, ""] and
+         uid_actively_held_by_other?(changeset, repo_host, uid, unknown_ids) do
+      Ecto.Changeset.add_error(changeset, :github_uid, @uid_taken_message,
+        validation: :unsafe_unique
+      )
+    else
+      changeset
+    end
+  end
+
+  defp unrevoke_transition?(changeset) do
+    Ecto.Changeset.get_change(changeset, :revoked) == false and changeset.data.revoked == true
+  end
+
+  @doc """
+  True when `user_id` still owns a link for this uid, revoked or not. False
+  once the link was deleted (claimed away) or points at a different uid.
+  """
+  @spec holds_uid?(String.t(), String.t(), String.t()) :: boolean()
+  def holds_uid?(repo_host, uid, user_id) do
+    from(r in __MODULE__,
+      where: r.repo_host == ^repo_host and r.github_uid == ^uid,
+      where: r.user_id == ^user_id
+    )
+    |> FrontRepo.exists?()
+  end
+
+  @doc """
+  The row that actively holds this uid, or nil.
+
+  A sync request names its claimer at enqueue time, and that snapshot goes
+  stale: by the time a delayed request runs, the uid may belong to someone
+  else entirely. Resolving the holder at run time is what keeps a stale
+  request from pushing to - or stripping - the wrong user.
+  """
+  @spec active_holder(String.t(), String.t()) :: t() | nil
+  def active_holder(repo_host, uid) do
+    from(r in __MODULE__,
+      where: r.repo_host == ^repo_host and r.github_uid == ^uid,
+      where: coalesce(r.revoked, false) == false,
+      order_by: [asc: r.created_at],
+      limit: 1
+    )
+    |> FrontRepo.one()
+  end
+
+  # Blocking and releasing answer different questions. This one is "may this
+  # row be active?", and a sharer blocks when it is active, still inside the
+  # grace window, or in a state the provider would not confirm.
+  #
+  # A revoked, past-grace sharer with a working token does not block: two
+  # revoked rows on one uid, which a bare 403 still produces, would otherwise
+  # block each other's un-revoke forever and strand both users. It is not
+  # released either - release_and_enqueue_sync/2 only takes confirmed-dead
+  # rows - so the claimer goes active and that row keeps its credentials.
+  #
+  # `unknown_ids` are the ones validate_token could not classify. They have to
+  # block: letting the claim through would commit it, keep the row and never
+  # enqueue the Keycloak move, with nothing to retry it. Blocking makes the
+  # claim uid_taken, which the caller can retry.
+  defp uid_actively_held_by_other?(changeset, repo_host, uid, unknown_ids) do
+    query =
+      from(r in __MODULE__,
+        where: r.repo_host == ^repo_host and r.github_uid == ^uid,
+        where:
+          coalesce(r.revoked, false) == false or
+            r.updated_at > ago(^@revoked_claim_grace_seconds, "second") or
+            r.id in ^unknown_ids
+      )
+
+    query =
+      case changeset.data.id do
+        nil -> query
+        id -> from(r in query, where: r.id != ^id)
+      end
+
+    FrontRepo.exists?(query)
+  end
+
+  # Classifies the revoked, past-grace sharers three ways, because collapsing
+  # them into two loses a case. `revoked` alone is not evidence of abandonment
+  # - the column carries a backlog of false positives latched by an older write
+  # path on any 4xx, and those rows still hold working credentials (see
+  # get_github_token/1) - so the provider decides:
+  #
+  #   dead    - rejected, so the claim may take the row
+  #   alive   - works, so do not take it and do not block on it
+  #   unknown - no usable answer, so block and let the caller retry
+  #
+  # Runs before the transaction opens: the provider call must not happen under
+  # the advisory lock, where a slow GitHub would stall every other claimant of
+  # the uid.
+  defp classify_sharers(changeset) do
+    repo_host = Ecto.Changeset.get_field(changeset, :repo_host)
+    uid = Ecto.Changeset.get_field(changeset, :github_uid)
+
+    if repo_host == "github" and uid not in [nil, ""] do
+      changeset
+      |> stale_revoked_sharers(repo_host, uid)
+      |> Enum.reduce({[], []}, fn sharer, {dead, unknown} ->
+        case classify_token(sharer) do
+          :dead -> {[sharer.id | dead], unknown}
+          :alive -> {dead, unknown}
+          :unknown -> {dead, [sharer.id | unknown]}
+        end
+      end)
+    else
+      {[], []}
+    end
+  end
+
+  defp stale_revoked_sharers(changeset, repo_host, uid) do
+    query =
+      from(r in __MODULE__,
+        where: r.repo_host == ^repo_host and r.github_uid == ^uid,
+        where: r.revoked == true,
+        where:
+          is_nil(r.updated_at) or
+            r.updated_at <= ago(^@revoked_claim_grace_seconds, "second"),
+        select: %{id: r.id, token: r.token}
+      )
+
+    query =
+      case changeset.data.id do
+        nil -> query
+        id -> from(r in query, where: r.id != ^id)
+      end
+
+    FrontRepo.all(query)
+  end
+
+  defp classify_token(%{token: token}) do
+    case Guard.Api.Github.validate_token(token) do
+      {:ok, false} ->
+        :dead
+
+      {:ok, true} ->
+        Logger.warning("Keeping a revoked github link: its token still works")
+        :alive
+
+      {:error, reason} ->
+        Logger.warning(
+          "Blocking a claim: could not confirm a revoked github link is dead (#{inspect(reason)})"
+        )
+
+        :unknown
+    end
+  end
+
+  # Serialises every claim on one (repo_host, uid). The uniqueness check is an
+  # exists query, so without this two claimers both read "free" under READ
+  # COMMITTED and both write. The lock is taken inside the transaction and
+  # released on commit or rollback, and the check is re-run under it - running
+  # it only outside, as the changeset builders do, decides on a stale read.
+  defp claim_uid(changeset, fun) do
+    {dead, unknown} = classify_sharers(changeset)
+
+    transact_claim(fn ->
+      case lock_uid(changeset) do
+        :locked ->
+          case recheck_uid(changeset, unknown) do
+            %Ecto.Changeset{valid?: true} = checked -> fun.(checked, dead)
+            invalid -> {:error, invalid}
+          end
+
+        :not_a_uid_claim ->
+          fun.(changeset, [])
+      end
+    end)
+  end
+
+  defp lock_uid(changeset) do
+    repo_host = Ecto.Changeset.get_field(changeset, :repo_host)
+    uid = Ecto.Changeset.get_field(changeset, :github_uid)
+
+    if repo_host == "github" and uid not in [nil, ""] do
+      lock_uid_values(repo_host, uid)
+      :locked
+    else
+      :not_a_uid_claim
+    end
+  end
+
+  defp lock_uid_values(repo_host, uid) do
+    FrontRepo.query!("SELECT pg_advisory_xact_lock($1)", [uid_lock_key(repo_host, uid)])
+    :ok
+  end
+
+  # Advisory locks are keyed by a bigint, so the pair has to be hashed. Done
+  # here rather than with the undocumented hashtext() so the key does not
+  # depend on a Postgres internal, and with sha256 rather than :erlang.phash2
+  # so it stays identical across OTP versions during a rolling deploy.
+  defp uid_lock_key(repo_host, uid) do
+    <<key::signed-integer-64, _rest::binary>> = :crypto.hash(:sha256, "#{repo_host}:#{uid}")
+    key
+  end
+
+  # An already-invalid changeset keeps its errors; re-running the check would
+  # only duplicate them.
+  defp recheck_uid(%Ecto.Changeset{valid?: false} = changeset, _unknown), do: changeset
+
+  defp recheck_uid(changeset, unknown),
+    do: validate_github_uid_not_taken(changeset, unknown)
+
+  # A claim is one unit of work: the uid write, the losers' deletion and the
+  # outbox row. Keycloak stays outside - FederatedIdentitySync defers while
+  # in_transaction?/0, and a caller that opened the transaction owns the
+  # deferrals.
+  defp transact_claim(fun) do
+    if FrontRepo.in_transaction?() do
+      fun.()
+    else
+      result =
+        try do
+          FrontRepo.transaction(fn ->
+            case fun.() do
+              {:ok, account} -> account
+              {:error, reason} -> FrontRepo.rollback(reason)
+            end
+          end)
+        rescue
+          exception ->
+            # Rolled back, so the deferrals must not outlive the transaction.
+            Guard.OIDC.FederatedIdentitySync.drop_deferred()
+            reraise exception, __STACKTRACE__
+        end
+
+      case result do
+        {:ok, account} ->
+          Guard.OIDC.FederatedIdentitySync.run_deferred()
+          {:ok, account}
+
+        {:error, reason} ->
+          Guard.OIDC.FederatedIdentitySync.drop_deferred()
+          {:error, reason}
+      end
+    end
+  end
+
+  defp release_revoked_uid_rows(%__MODULE__{repo_host: "github"} = account, releasable_ids) do
+    {count, released_user_ids, request} = release_and_enqueue_sync(account, releasable_ids)
+
+    if count > 0 do
+      Watchman.increment({"guard.repo_host_account.revoked_link_claimed", [account.repo_host]})
+
+      Logger.info(
+        "Released #{count} revoked repo_host_account row(s) for github uid #{account.github_uid} claimed by user #{account.user_id} from users #{inspect(released_user_ids)}"
+      )
+
+      Guard.OIDC.FederatedIdentitySync.sync_github_claim(account, released_user_ids, request)
+    end
+
+    account
+  end
+
+  defp release_revoked_uid_rows(account, _releasable_ids), do: account
+
+  # Same transaction as the deletion, so a committed claim always leaves a
+  # durable record of the Keycloak work it needs.
+  defp release_and_enqueue_sync(account, releasable_ids) do
+    {:ok, result} =
+      FrontRepo.transaction(fn ->
+        {count, released_user_ids} =
+          from(r in __MODULE__,
+            where: r.repo_host == ^account.repo_host and r.github_uid == ^account.github_uid,
+            where: r.id != ^account.id,
+            where: r.id in ^releasable_ids,
+            where: r.revoked == true,
+            where:
+              is_nil(r.updated_at) or
+                r.updated_at <= ago(^@revoked_claim_grace_seconds, "second"),
+            select: r.user_id
+          )
+          |> FrontRepo.delete_all()
+
+        request =
+          if count > 0 and Guard.OIDC.enabled?() do
+            FrontRepo.FederatedIdentitySyncRequest.enqueue(account, released_user_ids)
+          end
+
+        {count, released_user_ids, request}
+      end)
+
+    result
   end
 
   defp adjust_scope(%{permission_scope: scope} = data, _) when scope in @scopes_in_order, do: data
@@ -396,22 +1060,30 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     end
   end
 
-  defp update_account(data, account) when data == %{} do
+  @required_on_write [:github_uid, :login, :name, :permission_scope]
+
+  # `lock: true` guards against a concurrent writer clobbering a
+  # freshly-rotated token: the write carries an optimistic lock on
+  # `:updated_at`, and if another writer committed first the update raises
+  # `Ecto.StaleEntryError`, which we surface as `{:error, :stale}` so the
+  # losing caller can discard its own (older) response. Unlocked callers
+  # (revoke flips, reconnect, profile-less writes) never raise it.
+  defp update_account(data, account, opts \\ [])
+
+  defp update_account(data, account, _opts) when data == %{} do
     Logger.debug("Account for #{account.user_id} already up to date")
 
     {:ok, account}
   end
 
-  @required_on_write [:github_uid, :login, :name, :permission_scope]
-
-  defp update_account(data, account) do
+  defp update_account(data, account, opts) do
     # Validate only the required-schema keys the caller is actually writing.
     # The full @required_on_write list is checked at create/reset time; on a
     # partial update (e.g., flipping :revoked) we must not refuse the write
     # because an *untouched* legacy field happens to be nil.
     required_now = Map.keys(data) |> Enum.filter(&(&1 in @required_on_write))
 
-    result =
+    changeset =
       account
       |> Ecto.Changeset.cast(
         data,
@@ -427,12 +1099,32 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         ]
       )
       |> Ecto.Changeset.validate_required(required_now)
-      |> FrontRepo.update()
+
+    unrevoke? = unrevoke_transition?(changeset)
+
+    changeset =
+      if Keyword.get(opts, :lock, false),
+        do: maybe_lock_on_updated_at(changeset),
+        else: changeset
+
+    # Only an unrevoke claims a uid, so only that path needs the transaction.
+    # Token refreshes and profile syncs stay a plain UPDATE.
+    result =
+      if unrevoke? do
+        claim_uid(changeset, fn changeset, releasable ->
+          with {:ok, account} <- FrontRepo.update(changeset) do
+            release_revoked_uid_rows(account, releasable)
+            {:ok, account}
+          end
+        end)
+      else
+        FrontRepo.update(changeset)
+      end
 
     case result do
       {:ok, account} ->
         Logger.info(
-          "Successfully updated RepoHostAccount for #{account.user_id} #{account.repo_host} login=#{account.login}"
+          "Successfully updated RepoHostAccount rha=#{account.id} user=#{account.user_id} #{account.repo_host} login=#{account.login}"
         )
 
         maybe_invalidate_negative_cache(data, account)
@@ -440,11 +1132,33 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
       {:error, error} ->
         Logger.error(
-          "Failed to update RepoHostAccount for #{account.user_id} #{account.repo_host} login=#{account.login} errors=#{changeset_error_fields(error)}"
+          "Failed to update RepoHostAccount rha=#{account.id} user=#{account.user_id} #{account.repo_host} login=#{account.login} errors=#{changeset_error_fields(error)}"
         )
 
         {:error, error}
     end
+  rescue
+    Ecto.StaleEntryError ->
+      # Only the locked callers (token write, unrotated revoke) expect
+      # {:error, :stale}. An UNLOCKED write raises StaleEntryError only when
+      # the row was deleted between read and write - a claim releasing it.
+      if Keyword.get(opts, :lock, false) do
+        Logger.warning(
+          "Lost optimistic-lock race writing token for rha=#{account.id} user=#{account.user_id} #{account.repo_host}; discarding stale response"
+        )
+
+        {:error, :stale}
+      else
+        log_vanished(account)
+        {:error, :not_found}
+      end
+  end
+
+  defp log_vanished(account) do
+    Logger.warning(
+      "RepoHostAccount rha=#{account.id} user=#{account.user_id} #{account.repo_host} " <>
+        "was deleted before the write; another user claimed its uid"
+    )
   end
 
   # update_account/2 is the single write chokepoint for both self-heal
@@ -471,7 +1185,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   end
 
   defp reset_account(account, data, _opts) do
-    result =
+    changeset =
       account
       |> Ecto.Changeset.cast(
         data,
@@ -487,7 +1201,14 @@ defmodule Guard.FrontRepo.RepoHostAccount do
         ]
       )
       |> Ecto.Changeset.validate_required([:github_uid, :login, :name])
-      |> FrontRepo.update()
+
+    result =
+      claim_uid(changeset, fn changeset, releasable ->
+        with {:ok, account} <- FrontRepo.update(changeset) do
+          release_revoked_uid_rows(account, releasable)
+          {:ok, account}
+        end
+      end)
 
     case result do
       {:ok, account} ->
@@ -504,6 +1225,10 @@ defmodule Guard.FrontRepo.RepoHostAccount do
 
         {:error, error}
     end
+  rescue
+    Ecto.StaleEntryError ->
+      log_vanished(account)
+      {:error, :not_found}
   end
 
   def skip_credentials?(_, ""), do: true

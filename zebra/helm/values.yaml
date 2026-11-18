@@ -19,6 +19,9 @@ internalApi:
 publicApi:
   replicas: 1
   dbPoolSize: 2
+  # Used only by the minimal deployment, which runs the job request factory
+  # next to the APIs on this pool. Keep it below dbPoolSize.
+  jobRequestFactoryParallelism: 1
   resources:
     limits:
       cpu: '0.5'
@@ -30,6 +33,9 @@ publicApi:
 dbWorker:
   replicas: 1
   dbPoolSize: 5
+  # Each in-flight job holds a DB connection. Keep it below dbPoolSize, which
+  # the other db workers in this pod share.
+  jobRequestFactoryParallelism: 3
   resources:
     limits:
       cpu: '0.5'

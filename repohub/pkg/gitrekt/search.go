@@ -7,7 +7,7 @@ import (
 
 	doublestar "github.com/bmatcuk/doublestar"
 	git "github.com/libgit2/git2go/v34"
-	"github.com/renderedtext/go-watchman"
+	bench "github.com/semaphoreio/semaphore/repohub/pkg/bench"
 )
 
 type SearchOptionsSelectors struct {
@@ -21,9 +21,7 @@ type SearchOptions struct {
 }
 
 func Search(repo *Repository, rev Revision, options *SearchOptions) ([]*File, error) {
-	defer watchman.BenchmarkWithTags(time.Now(), "gitrekt.Search", []string{
-		repo.HttpURL,
-	})
+	defer bench.Observe(time.Now(), "gitrekt.Search", repo.HttpURL)
 
 	log.Printf(
 		"Search Started. Repo %s, revision %+v",

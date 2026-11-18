@@ -19,6 +19,28 @@ defmodule Test.Actions.BulkUpsertAndPruneImpl.Test do
     {:ok, params}
   end
 
+  test "carries the notification skip flags on create and update", ctx do
+    params =
+      base_params(ctx, [definition("alpha", "0 0 * * *", skip_scheduled_run_notifications: true)])
+
+    assert {:ok, %{upserted: [created]}} = BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
+    assert created.skip_scheduled_run_notifications == true
+    assert created.skip_manual_run_notifications == false
+
+    update =
+      base_params(ctx, [
+        definition("alpha", "0 0 * * *",
+          id: created.id,
+          skip_manual_run_notifications: true
+        )
+      ])
+
+    assert {:ok, %{upserted: [updated]}} = BulkUpsertAndPruneImpl.bulk_upsert_and_prune(update)
+
+    assert updated.skip_scheduled_run_notifications == false
+    assert updated.skip_manual_run_notifications == true
+  end
+
   test "creates all periodics on an empty project", ctx do
     params = base_params(ctx, [definition("alpha", "0 0 * * *"), definition("beta", "5 0 * * *")])
 
@@ -376,8 +398,7 @@ defmodule Test.Actions.BulkUpsertAndPruneImpl.Test do
         definition("valid-new", "0 0 * * *")
       ])
 
-    assert {:error, {:NOT_FOUND, message}} =
-             BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
+    assert {:error, {:NOT_FOUND, message}} = BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
 
     assert message =~ foreign.id
     assert message =~ "not found in project"
@@ -399,8 +420,7 @@ defmodule Test.Actions.BulkUpsertAndPruneImpl.Test do
 
     params = base_params(ctx, [definition("ghost", "0 0 * * *", id: unknown_id)])
 
-    assert {:error, {:NOT_FOUND, message}} =
-             BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
+    assert {:error, {:NOT_FOUND, message}} = BulkUpsertAndPruneImpl.bulk_upsert_and_prune(params)
 
     assert message =~ unknown_id
     assert message =~ "not found in project"
@@ -486,7 +506,10 @@ defmodule Test.Actions.BulkUpsertAndPruneImpl.Test do
       reference: Keyword.get(opts, :reference, "refs/heads/master"),
       at: at,
       pipeline_file: Keyword.get(opts, :pipeline_file, ".semaphore/cron.yml"),
-      parameters: Keyword.get(opts, :parameters, [])
+      parameters: Keyword.get(opts, :parameters, []),
+      skip_scheduled_run_notifications:
+        Keyword.get(opts, :skip_scheduled_run_notifications, false),
+      skip_manual_run_notifications: Keyword.get(opts, :skip_manual_run_notifications, false)
     }
   end
 

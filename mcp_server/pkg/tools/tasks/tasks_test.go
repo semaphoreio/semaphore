@@ -452,6 +452,71 @@ func TestListTasks_MissingProjectID(t *testing.T) {
 	}
 }
 
+func TestDescribeTask_SurfacesCommitStatusFlags(t *testing.T) {
+	taskID := "11111111-2222-3333-4444-555555555555"
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	projectID := "66666666-7777-8888-9999-aaaaaaaaaaaa"
+
+	resp := newDescribeResponse(taskID, projectID, orgID)
+	resp.Periodic.SkipScheduledRunNotifications = true
+	resp.Periodic.SkipManualRunNotifications = false
+
+	client := &support.SchedulerClientStub{DescribeResp: resp}
+
+	provider := &support.MockProvider{
+		SchedulerClient: client,
+		Timeout:         time.Second,
+		RBACClient:      support.NewRBACStub("project.scheduler.view"),
+	}
+
+	req := mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Arguments: map[string]any{
+				"task_id":         taskID,
+				"project_id":      projectID,
+				"organization_id": orgID,
+				"mode":            "detailed",
+			},
+		},
+	}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	res, err := describeHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler error: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("unexpected error result")
+	}
+
+	result, ok := res.StructuredContent.(describeResult)
+	if !ok {
+		t.Fatalf("unexpected structured content type: %T", res.StructuredContent)
+	}
+
+	if !result.Task.SkipScheduledRunNotifications {
+		t.Errorf("expected skip_scheduled_run_notifications=true")
+	}
+	if result.Task.SkipManualRunNotifications {
+		t.Errorf("expected skip_manual_run_notifications=false")
+	}
+
+	rendered, ok := res.Content[0].(mcp.TextContent)
+	if !ok {
+		t.Fatalf("expected text content, got %T", res.Content[0])
+	}
+
+	text := rendered.Text
+	if !strings.Contains(text, "Commit Statuses") {
+		t.Errorf("expected the commit status line in the rendered task, got:\n%s", text)
+	}
+	if !strings.Contains(text, "scheduled runs") {
+		t.Errorf("expected the silenced trigger named in the rendered task, got:\n%s", text)
+	}
+}
+
 func TestDescribeTask_InvalidTaskID(t *testing.T) {
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
 		"task_id":         "invalid-uuid",

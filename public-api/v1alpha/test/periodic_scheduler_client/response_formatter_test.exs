@@ -37,6 +37,15 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter.Test do
     assert message == "FAILED_PRECONDITION message from server"
   end
 
+  test "process_apply_response() returns service_unavailable when server returns UNAVAILABLE" do
+    response = apply_response(:UNAVAILABLE, "GitHub API temporarily unavailable")
+
+    assert {:error, {:service_unavailable, message}} =
+             ResponseFormatter.process_apply_response(response)
+
+    assert message == "GitHub API temporarily unavailable"
+  end
+
   test "process_apply_response() returns internal error when it receives {:ok, invalid_data}" do
     response = {:ok, "123"}
 
@@ -81,6 +90,15 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter.Test do
              ResponseFormatter.process_get_project_id_response(response)
 
     assert message == "NOT_FOUND message from server"
+  end
+
+  test "process_get_project_id_response() returns service_unavailable when server returns UNAVAILABLE" do
+    response = get_project_id_response(:UNAVAILABLE, "GitHub API temporarily unavailable")
+
+    assert {:error, {:service_unavailable, message}} =
+             ResponseFormatter.process_get_project_id_response(response)
+
+    assert message == "GitHub API temporarily unavailable"
   end
 
   test "process_get_project_id_response() returns internal error when it receives {:ok, invalid_data}" do
@@ -137,6 +155,29 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter.Test do
     assert resp.triggers |> Enum.at(1) |> Map.get(:scheduled_at) == "2018-12-12 09:26:53.765473Z"
   end
 
+  test "process_describe_response() exposes the notification skip flags as booleans" do
+    periodic = %{
+      id: UUID.uuid4(),
+      name: "First periodic",
+      project_id: UUID.uuid4(),
+      branch: "master",
+      at: "* * * * *",
+      pipeline_file: ".semaphore/semaphore.yml",
+      requester_id: UUID.uuid4(),
+      updated_at: %{nanos: 765_473_000, seconds: 1_544_606_813},
+      skip_scheduled_run_notifications: true,
+      skip_manual_run_notifications: false
+    }
+
+    params = %{periodic: periodic, triggers: [], status: %{code: :OK}}
+    assert {:ok, proto} = Proto.deep_new(DescribeResponse, params)
+
+    assert {:ok, resp} = ResponseFormatter.process_describe_response({:ok, proto})
+
+    assert resp.schedule.skip_scheduled_run_notifications == true
+    assert resp.schedule.skip_manual_run_notifications == false
+  end
+
   test "process_describe_response() returns error and server message when server returns
         INVALID_ARGUMENT or NOT_FOUND" do
     response = describe_response(:INVALID_ARGUMENT, "INVALID_ARGUMENT message from server")
@@ -148,6 +189,15 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter.Test do
 
     assert {:error, {:user, message}} = ResponseFormatter.process_describe_response(response)
     assert message == "NOT_FOUND message from server"
+  end
+
+  test "process_describe_response() returns service_unavailable when server returns UNAVAILABLE" do
+    response = describe_response(:UNAVAILABLE, "GitHub API temporarily unavailable")
+
+    assert {:error, {:service_unavailable, message}} =
+             ResponseFormatter.process_describe_response(response)
+
+    assert message == "GitHub API temporarily unavailable"
   end
 
   test "process_describe_response() returns internal error when it receives {:ok, invalid_data}" do
@@ -218,6 +268,15 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter.Test do
     assert message == "NOT_FOUND message from server"
   end
 
+  test "process_delete_response() returns service_unavailable when server returns UNAVAILABLE" do
+    response = delete_response(:UNAVAILABLE, "GitHub API temporarily unavailable")
+
+    assert {:error, {:service_unavailable, message}} =
+             ResponseFormatter.process_delete_response(response)
+
+    assert message == "GitHub API temporarily unavailable"
+  end
+
   test "process_delete_response() returns internal error when it receives {:ok, invalid_data}" do
     response = {:ok, "123"}
 
@@ -263,6 +322,15 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter.Test do
 
     assert {:error, {:user, message}} = ResponseFormatter.process_list_response(response)
     assert message == "INVALID_ARGUMENT message from server"
+  end
+
+  test "process_list_response() returns service_unavailable when server returns UNAVAILABLE" do
+    response = list_response(:UNAVAILABLE, "GitHub API temporarily unavailable")
+
+    assert {:error, {:service_unavailable, message}} =
+             ResponseFormatter.process_list_response(response)
+
+    assert message == "GitHub API temporarily unavailable"
   end
 
   test "process_list_response() returns internal error when it receives {:ok, invalid_data}" do
@@ -331,6 +399,15 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter.Test do
 
     assert {:error, {:user, message}} = ResponseFormatter.process_run_now_response(response)
     assert message == "RESOURCE_EXHAUSTED message from server"
+  end
+
+  test "process_run_now_response() returns service_unavailable when server returns UNAVAILABLE" do
+    response = run_now_response(:UNAVAILABLE, "GitHub API temporarily unavailable")
+
+    assert {:error, {:service_unavailable, message}} =
+             ResponseFormatter.process_run_now_response(response)
+
+    assert message == "GitHub API temporarily unavailable"
   end
 
   test "process_run_now_response() returns internal error when it receives {:ok, invalid_data}" do

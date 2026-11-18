@@ -8,7 +8,7 @@ OpenID Connect (OIDC) allows you to establish a more secure trust relationship b
 
 ## Overview
 
-<Available plans={['Enterprise']}/>
+<Available plans={['The Plan']}/>
 
 Semaphore users traditionally use [secrets](./secrets) to inject credentials or API keys in jobs that need to interact with cloud providers. Every time the CI pipeline needs to deploy an application or fetch resources from a Docker registry or S3 bucket, we need to supply a secret to authorize Semaphore to access your cloud.
 
@@ -343,6 +343,10 @@ Configure a policy that grants access to specific paths that will be accessed by
 2. Create a role to access the Vault resources
     - Replace `<REPOSITORY>` with your repository
     - Replace `<BRANCH>` with the branch that can access the Vault
+    - `user_claim` uses the [`actor`](../reference/openid) claim, so Vault creates a separate
+      identity (entity alias) for each distinct user who triggers a workflow. `actor` is empty
+      for debug jobs and for users without an account on the repository's provider. To get
+      one identity per project instead, use a claim such as `prj_id`
 
     ```shell title="Creating a role"
     vault write auth/jwt/role/example-role -<<EOF

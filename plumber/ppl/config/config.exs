@@ -33,7 +33,8 @@ config :vmstats,
 
 # Feature flags (FeatureHub). The Feature service address is read at call time
 # from INTERNAL_API_URL_FEATURE (see Ppl.FeatureClient). Results are cached in
-# the :feature_cache Cachex instance started by Ppl.Application.
+# the :feature_cache Cachex instance started by Ppl.Application. config/runtime.exs
+# switches to the YAML provider when FEATURE_YAML_PATH is set.
 config :ppl,
   feature_provider:
     {Ppl.FeatureHubProvider,
@@ -86,7 +87,11 @@ config :ppl, general_sleeping_period_ms: 1000
 # config :ppl, ppl_queuing_sp: 1000
 # config :ppl, ppl_running_sp: 1000
 # config :ppl, ppl_stopping_sp: 1000
-# config :ppl, ppl_blk_waiting_sp: 1000
+# Waiting blocks are scheduled when their pipeline is triggered (see
+# Ppl.PplBlocks.WaitingDrain), periodic scheduling is only a safety net.
+# Both can be overridden in runtime, see runtime.exs.
+config :ppl, ppl_blk_waiting_sp: 5000
+config :ppl, ppl_blk_waiting_drain_max_tasks: 1
 # config :ppl, ppl_blk_running_sp: 1000
 # config :ppl, ppl_blk_stopping_sp: 1000
 # config :ppl, ppl_sub_init_created_sp: 1000

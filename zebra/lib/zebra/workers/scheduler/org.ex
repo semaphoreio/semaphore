@@ -9,7 +9,7 @@ defmodule Zebra.Workers.Scheduler.Org do
   # 15 minutes
   @cache_timeout :timer.minutes(15)
 
-  defstruct [:id, :username, :suspended, :verified, :machines, :features]
+  defstruct [:id, :username, :suspended, :verified, :machines, :features, :created_at]
 
   @doc """
   Returns quota information for the given organization.
@@ -71,7 +71,8 @@ defmodule Zebra.Workers.Scheduler.Org do
       id: org_id,
       username: org.org_username,
       suspended: org.suspended,
-      verified: org.verified
+      verified: org.verified,
+      created_at: org.created_at
     }
   end
 

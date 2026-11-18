@@ -25,6 +25,10 @@ config :pipelines_api,
        :feature_api_endpoint,
        System.get_env("FEATURE_GRPC_URL") || "localhost:50051"
 
+config :pipelines_api,
+       :pre_flight_checks_grpc_url,
+       System.get_env("PRE_FLIGHT_CHECKS_GRPC_URL") || "localhost:50051"
+
 on_prem? = if(System.get_env("ON_PREM") == "true", do: true, else: false)
 config :pipelines_api, on_prem?: on_prem?
 

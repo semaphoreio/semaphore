@@ -1,6 +1,6 @@
 defmodule JobPage.Events do
   def fetch_events(job_id, starting_event) do
-    Watchman.benchmark({"fetch_events.duration", ["#{job_id}"]}, fn ->
+    Watchman.benchmark("fetch_events.duration", fn ->
       case JobPage.Api.Loghub.fetch(job_id, starting_event) do
         {:ok, events} ->
           recoded_events = events.events |> recode_events()
@@ -13,7 +13,7 @@ defmodule JobPage.Events do
   end
 
   def raw_events(job_id, starting_event, take) do
-    Watchman.benchmark({"raw_events.duration", ["#{job_id}"]}, fn ->
+    Watchman.benchmark("raw_events.duration", fn ->
       case JobPage.Api.Loghub.fetch(job_id, starting_event) do
         {:ok, events} ->
           events = limit_take(events, take)
@@ -27,7 +27,7 @@ defmodule JobPage.Events do
   end
 
   def raw_logs(job_id, starting_event, take) do
-    Watchman.benchmark({"raw_logs.duration", ["#{job_id}"]}, fn ->
+    Watchman.benchmark("raw_logs.duration", fn ->
       case JobPage.Api.Loghub.fetch(job_id, starting_event) do
         {:ok, events} ->
           events = limit_take(events, take)

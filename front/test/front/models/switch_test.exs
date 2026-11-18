@@ -202,6 +202,31 @@ defmodule Front.Models.SwitchTest do
     end
   end
 
+  describe ".extract_user_ids" do
+    test "lists each author once" do
+      switch = %Models.Switch{
+        targets: [
+          %Models.Switch.Target{
+            events: [
+              %Models.Switch.TriggerEvent{triggered_by: "9865c64d-783a-46e1-b659-2194b1d69494"},
+              %Models.Switch.TriggerEvent{triggered_by: "78114608-be8a-465a-b9cd-81970fb802c7"}
+            ]
+          },
+          %Models.Switch.Target{
+            events: [
+              %Models.Switch.TriggerEvent{triggered_by: "78114608-be8a-465a-b9cd-81970fb802c7"}
+            ]
+          }
+        ]
+      }
+
+      assert Models.Switch.extract_user_ids(switch) == [
+               "9865c64d-783a-46e1-b659-2194b1d69494",
+               "78114608-be8a-465a-b9cd-81970fb802c7"
+             ]
+    end
+  end
+
   describe ".preload_pipelines" do
     test "returns switch with pipeline for each trigger event" do
       switch = %Models.Switch{

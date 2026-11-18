@@ -63,5 +63,193 @@ defmodule Guard.Api.GitlabTest do
 
       assert updated_rha.token == "new_token"
     end
+
+    test "rate-limited token refresh is a transient failure, not a revocation",
+         %{repo_host_account: rha} do
+      rha = Map.put(rha, :token_expires_at, Support.Members.invalid_expires_at())
+
+      for status <- [408, 429] do
+        Tesla.Mock.mock_global(fn
+          %{method: :post, url: "https://gitlab.com/oauth/token"} ->
+            {:ok, %Tesla.Env{status: status, body: %{}}}
+        end)
+
+        assert {:error, :transient} = Gitlab.user_token(rha)
+      end
+    end
+
+    test "rejected token refresh still classifies as revoked", %{repo_host_account: rha} do
+      rha = Map.put(rha, :token_expires_at, Support.Members.invalid_expires_at())
+
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://gitlab.com/oauth/token"} ->
+          {:ok, %Tesla.Env{status: 400, body: %{"error" => "invalid_grant"}}}
+      end)
+
+      assert {:error, :revoked} = Gitlab.user_token(rha)
+    end
+  end
+
+  describe "validate_token/1" do
+    test "returns valid for successful responses with a live expiry" do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://gitlab.com/oauth/token/info"} ->
+          {:ok, %Tesla.Env{status: 200, body: %{"expires_in" => 3600}}}
+      end)
+
+      assert {:ok, true} = Gitlab.validate_token("token")
+    end
+
+    test "returns invalid when a 2xx carries an expiry that is not live" do
+      # The 2xx clause is the only one that decides validity from the body, so
+      # without this the clause could return a constant true and stay green.
+      for expires_in <- [nil, 0, -3600, 60] do
+        body = if expires_in, do: %{"expires_in" => expires_in}, else: %{}
+
+        Tesla.Mock.mock_global(fn
+          %{method: :get, url: "https://gitlab.com/oauth/token/info"} ->
+            {:ok, %Tesla.Env{status: 200, body: body}}
+        end)
+
+        assert {:ok, false} = Gitlab.validate_token("token")
+      end
+    end
+
+    test "returns invalid only for auth errors" do
+      for status <- [401, 403] do
+        Tesla.Mock.mock_global(fn
+          %{method: :get, url: "https://gitlab.com/oauth/token/info"} ->
+            {:ok, %Tesla.Env{status: status, body: %{}}}
+        end)
+
+        assert {:ok, false} = Gitlab.validate_token("token")
+      end
+    end
+
+    test "returns transient error for provider-side failures" do
+      for status <- [429, 500, 503] do
+        Tesla.Mock.mock_global(fn
+          %{method: :get, url: "https://gitlab.com/oauth/token/info"} ->
+            {:ok, %Tesla.Env{status: status, body: %{}}}
+        end)
+
+        assert {:error, :transient} = Gitlab.validate_token("token")
+      end
+    end
+
+    test "returns transient error for transport failures" do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://gitlab.com/oauth/token/info"} ->
+          {:error, :timeout}
+      end)
+
+      assert {:error, :transient} = Gitlab.validate_token("token")
+    end
+  end
+
+  describe "refresh-token rotation persistence (single-use rotation)" do
+    setup %{repo_host_account: rha} do
+      {:ok, rha: Map.put(rha, :token_expires_at, Support.Members.invalid_expires_at())}
+    end
+
+    test "persists the NEW rotated refresh_token from a raw JSON string 2xx body", %{rha: rha} do
+      # GitLab also rotates. The handler accepts a raw JSON string body (as
+      # well as a decoded map) - assert the rotation is stored either way.
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://gitlab.com/oauth/token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 200,
+             body:
+               Jason.encode!(%{
+                 "access_token" => "rotated_access",
+                 "refresh_token" => "rotated_refresh",
+                 "expires_in" => 3600
+               })
+           }}
+      end)
+
+      assert {:ok, {"rotated_access", _}} = Gitlab.user_token(rha)
+
+      reloaded = Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, rha.id)
+      assert reloaded.token == "rotated_access"
+      assert reloaded.refresh_token == "rotated_refresh"
+    end
+
+    test "a 2xx WITHOUT a refresh_token leaves the stored refresh_token unchanged", %{rha: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://gitlab.com/oauth/token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 200,
+             body: %{"access_token" => "rotated_access", "expires_in" => 3600}
+           }}
+      end)
+
+      assert {:ok, {"rotated_access", _}} = Gitlab.user_token(rha)
+
+      reloaded = Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, rha.id)
+      assert reloaded.token == "rotated_access"
+      assert reloaded.refresh_token == "example_refresh_token"
+    end
+
+    test "a 2xx with a MISSING expires_in STILL persists the rotated refresh_token", %{rha: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://gitlab.com/oauth/token"} ->
+          {:ok,
+           %Tesla.Env{
+             status: 200,
+             body: %{"access_token" => "rotated_access", "refresh_token" => "rotated_refresh"}
+           }}
+      end)
+
+      assert {:ok, {"rotated_access", _}} = Gitlab.user_token(rha)
+
+      reloaded = Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, rha.id)
+      assert reloaded.refresh_token == "rotated_refresh"
+      # token_expires_at must be refreshed to a conservative future value, not
+      # left at the old expired timestamp (churn against the single-use
+      # endpoint).
+      assert DateTime.compare(reloaded.token_expires_at, DateTime.utc_now()) == :gt
+    end
+
+    test "a transient 4xx does NOT null or rotate the stored token", %{rha: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://gitlab.com/oauth/token"} ->
+          {:ok, %Tesla.Env{status: 503, body: %{}}}
+      end)
+
+      assert {:error, :transient} = Gitlab.user_token(rha)
+
+      reloaded = Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, rha.id)
+      assert reloaded.token == "token"
+      assert reloaded.refresh_token == "example_refresh_token"
+    end
+
+    test "an empty-body 2xx is transient (no raise), stored token unchanged", %{rha: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://gitlab.com/oauth/token"} ->
+          {:ok, %Tesla.Env{status: 200, body: ""}}
+      end)
+
+      assert {:error, :transient} = Gitlab.user_token(rha)
+
+      reloaded = Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, rha.id)
+      assert reloaded.token == "token"
+      assert reloaded.refresh_token == "example_refresh_token"
+    end
+
+    test "a non-JSON (HTML) 2xx is transient (no raise), stored token unchanged", %{rha: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://gitlab.com/oauth/token"} ->
+          {:ok, %Tesla.Env{status: 200, body: "<html><body>gateway</body></html>"}}
+      end)
+
+      assert {:error, :transient} = Gitlab.user_token(rha)
+
+      reloaded = Guard.FrontRepo.get!(Guard.FrontRepo.RepoHostAccount, rha.id)
+      assert reloaded.token == "token"
+      assert reloaded.refresh_token == "example_refresh_token"
+    end
   end
 end

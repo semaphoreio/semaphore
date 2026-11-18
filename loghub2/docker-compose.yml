@@ -54,12 +54,19 @@ services:
       - 5672:5672
       - 15672:15672
   s3:
-    image: minio/minio:RELEASE.2021-04-22T15-44-28Z.hotfix.56647434e
+    image: rustfs/rustfs:1.0.0
     container_name: 's3'
     ports:
       - 9000:9000
+    environment:
+      RUSTFS_ACCESS_KEY: "minioadmin"
+      RUSTFS_SECRET_KEY: "minioadmin"
+      RUSTFS_REGION: "local"
+      RUSTFS_CHECK_UPDATE: "false"
+      RUSTFS_OBS_LOG_DIRECTORY: ""
+      RUSTFS_CONSOLE_ENABLE: "false"
     entrypoint: sh
-    command: -c 'mkdir -p /tmp/s3-data/semaphore-cache && minio server /tmp/s3-data'
+    command: -c 'mkdir -p /tmp/s3-data/semaphore-cache && exec /entrypoint.sh /tmp/s3-data'
   gcs:
     image: fsouza/fake-gcs-server
     container_name: 'gcs'

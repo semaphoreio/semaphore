@@ -95,8 +95,11 @@ type taskDetail struct {
 	Parameters   []taskParameter `json:"parameters,omitempty"`
 	Paused       bool            `json:"paused"`
 	Suspended    bool            `json:"suspended"`
-	CreatedAt    string          `json:"created_at,omitempty"`
-	UpdatedAt    string          `json:"updated_at,omitempty"`
+
+	SkipScheduledRunNotifications bool   `json:"skip_scheduled_run_notifications"`
+	SkipManualRunNotifications    bool   `json:"skip_manual_run_notifications"`
+	CreatedAt                     string `json:"created_at,omitempty"`
+	UpdatedAt                     string `json:"updated_at,omitempty"`
 }
 
 type trigger struct {
@@ -290,8 +293,11 @@ Double-check that:
 			Parameters:   params,
 			Paused:       periodic.GetPaused(),
 			Suspended:    periodic.GetSuspended(),
-			CreatedAt:    shared.FormatTimestamp(periodic.GetInsertedAt()),
-			UpdatedAt:    shared.FormatTimestamp(periodic.GetUpdatedAt()),
+
+			SkipScheduledRunNotifications: periodic.GetSkipScheduledRunNotifications(),
+			SkipManualRunNotifications:    periodic.GetSkipManualRunNotifications(),
+			CreatedAt:                     shared.FormatTimestamp(periodic.GetInsertedAt()),
+			UpdatedAt:                     shared.FormatTimestamp(periodic.GetUpdatedAt()),
 		}
 
 		result := describeResult{
@@ -330,6 +336,20 @@ Double-check that:
 	}
 }
 
+// silencedTriggers names the triggers whose pipelines do not report a commit
+// status, so a task that stays silent does not look like a delivery failure.
+func silencedTriggers(task taskDetail) string {
+	switch {
+	case task.SkipScheduledRunNotifications && task.SkipManualRunNotifications:
+		return "scheduled or manual runs"
+	case task.SkipScheduledRunNotifications:
+		return "scheduled runs"
+	case task.SkipManualRunNotifications:
+		return "manual runs"
+	default:
+		return ""
+	}
+}
 
 func formatTaskDescribeMarkdown(result describeResult, mode string) string {
 	mb := shared.NewMarkdownBuilder()
@@ -350,6 +370,10 @@ func formatTaskDescribeMarkdown(result describeResult, mode string) string {
 		status = "Suspended"
 	}
 	mb.KeyValue("Status", status)
+
+	if silenced := silencedTriggers(task); silenced != "" {
+		mb.KeyValue("Commit Statuses", fmt.Sprintf("not sent for %s", silenced))
+	}
 
 	if task.Branch != "" {
 		mb.KeyValue("Branch", task.Branch)

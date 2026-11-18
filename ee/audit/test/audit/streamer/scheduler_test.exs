@@ -64,7 +64,7 @@ defmodule Audit.Streamer.SchedulerTest do
           scheme: "http://"
         },
         cridentials: %{
-          key_id: "key-id",
+          key_id: "audit-key",
           key_secret: "the-cake-is-a-lie-secret"
         },
         paused: false,

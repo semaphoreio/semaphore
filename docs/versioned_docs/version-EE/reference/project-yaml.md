@@ -85,6 +85,8 @@ A task has the following properties:
 - `branch`: specifies which branch will be used for running the pipeline.
 - `pipeline_file`: defines the relative path to the pipeline definition file from the root of the project
 - `status`: `ACTIVE` if the scheduler is currently enabled, or `INACTIVE` if the scheduler is currently disabled. 
+- `skip_scheduled_run_notifications`: boolean. When `true`, pipelines this task starts on schedule do not send commit statuses to your Git provider. Defaults to `false`.
+- `skip_manual_run_notifications`: boolean. When `true`, pipelines this task starts with **Run now** do not send commit statuses. Defaults to `false`.
 - [`parameters`](#parameters-in-spec): list of parameters to pass to the workflow
 
 :::tip
@@ -307,6 +309,8 @@ spec:
       at: "5 4 * * *"
       pipeline_file: ".semaphore/cron.yml"
       status: ACTIVE
+      skip_scheduled_run_notifications: false
+      skip_manual_run_notifications: false
     - name: second-task
       description: "second-task description"
       scheduled: false

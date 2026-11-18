@@ -48,12 +48,16 @@ spec:
             - configMapRef:
                 name: {{ .Values.global.internalApi.configMapName }}
           env:
+            - name: FEATURE_YAML_PATH
+              value: "/app/features.yml"
             - name: START_CONSUMERS
               value: "true"
             - name: START_API
               value: "false"
             - name: LOG_LEVEL
               value: {{ .Values.consumer.logs.level | quote }}
+            - name: BLOCK_FINISHED_PREFETCH_COUNT
+              value: {{ .Values.consumer.blockFinishedPrefetchCount | quote }}
             - name: BASE_DOMAIN
               valueFrom:
                 configMapKeyRef:

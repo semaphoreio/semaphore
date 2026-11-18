@@ -119,6 +119,15 @@ module InternalApi
           else
             scope = InternalApi::RepositoryIntegrator::IntegrationScope::NO_CONNECTION
           end
+        elsif ::Semaphore::GuardUserClient.owns?(project.repository.integration_type)
+          valid, scope = guard_connection(project)
+        elsif project.repo_host_account.nil?
+          # A claim releases the losing rows outright, so the creator of a
+          # project can end up with no link at all. That is exactly no
+          # connection - reporting it beats dereferencing the nil and failing
+          # the RPC as an unexpected error.
+          valid = false
+          scope = InternalApi::RepositoryIntegrator::IntegrationScope::NO_CONNECTION
         else
           connection = update_revoke_status(project.repo_host_account)
           repository = project.repository
@@ -148,30 +157,98 @@ module InternalApi
           :valid => valid,
           :integration_scope => scope
         )
+      rescue ::RepoHost::RemoteException::TooManyRequests => e
+        # update_revoke_status raises this rather than guessing at a revoke
+        # while GitHub is throttling. Without this it leaves the RPC as an
+        # unexpected error, which notifies the error tracker and reports
+        # UNKNOWN; the caller cannot tell it apart from a real fault.
+        raise GRPC::ResourceExhausted, e.message
       rescue ActiveRecord::RecordNotFound
         raise GRPC::NotFound, "Project with id #{req.project_id} not found."
       end
 
       private
 
+      # A token guard can hand out is a usable connection. guard normalises the
+      # granted scope to a full one at connect time, so there is no partial
+      # state to report. Any failure is reported as no connection: the token is
+      # revoked, never connected, or guard cannot answer, and in each case the
+      # project cannot reach its repository.
+      def guard_connection(project)
+        ::Semaphore::GuardUserClient.repository_token(
+          project.creator_id,
+          project.repository.integration_type
+        )
+
+        [true, InternalApi::RepositoryIntegrator::IntegrationScope::FULL_CONNECTION]
+      rescue GRPC::BadStatus => e
+        Rails.logger.info(
+          "[CheckToken] guard reports no usable #{project.repository.integration_type} " \
+          "connection for project #{project.id}: #{e.class}"
+        )
+
+        [false, InternalApi::RepositoryIntegrator::IntegrationScope::NO_CONNECTION]
+      rescue StandardError => e
+        Rails.logger.error(
+          "[CheckToken] failed to reach guard for project #{project.id}: #{e.class}"
+        )
+
+        [false, InternalApi::RepositoryIntegrator::IntegrationScope::NO_CONNECTION]
+      end
+
+      # GitHub only: its OAuth tokens do not rotate, so validating one is free.
+      # Providers in GUARD_OWNED_INTEGRATIONS never reach this.
       def update_revoke_status(rha)
         if rha.repo_host == "github"
-          rha.update!(:revoked => !::RepoHost::Github::Client.new(rha.token).token_valid?)
-        end
-
-        if rha.repo_host == "bitbucket"
-          token, _ = ::Semaphore::Bitbucket::Token.user_token(rha)
-          validation_state = ::Semaphore::Bitbucket::Token.validation_state(token)
-
-          case validation_state
-          when :valid
-            rha.update!(:revoked => false)
-          when :invalid
-            rha.update!(:revoked => true)
-          end
+          update_revoked(rha, !::RepoHost::Github::Client.new(rha.token).token_valid?)
         end
 
         rha
+      end
+
+      # Re-activating a revoked GitHub account is a claim, and guard owns
+      # claims: it takes the advisory lock on the uid, deletes the rows it
+      # releases and moves the Keycloak federated identity, which this service
+      # has no OIDC configuration to do.
+      #
+      # It hands over even when no other row shares the uid. A competing claim
+      # is uncommitted until it lands, and READ COMMITTED hides it, so an
+      # unlocked "the uid is free" read here can be stale by the time this
+      # write commits - leaving two active links on one uid.
+      def update_revoked(rha, revoked)
+        if !revoked && rha.revoked? && rha.github_uid.present?
+          claim_through_guard(rha)
+        else
+          rha.update!(:revoked => revoked)
+        end
+      end
+
+      # An active holder blocks outright, so guard is spared a call it would
+      # only refuse. A stale read is safe here in a way it is not above: it can
+      # only hold the row revoked, and guard re-decides under the lock.
+      def claim_through_guard(rha)
+        if uid_actively_held_by_other?(rha)
+          Rails.logger.info(
+            "Keeping repo_host_account #{rha.id} revoked: uid is actively held by another account"
+          )
+        else
+          ::Semaphore::GuardUserClient.refresh_repository_provider(rha.user_id, :GITHUB)
+          rha.reload
+        end
+      rescue GRPC::BadStatus, ActiveRecord::RecordNotFound => e
+        Rails.logger.info(
+          "Keeping repo_host_account #{rha.id} revoked: guard did not re-activate it (#{e.class})"
+        )
+      end
+
+      def uid_actively_held_by_other?(rha)
+        other_uid_rows(rha).where(:revoked => [false, nil]).exists?
+      end
+
+      def other_uid_rows(rha)
+        ::RepoHostAccount
+          .where(:repo_host => rha.repo_host, :github_uid => rha.github_uid)
+          .where.not(:id => rha.id)
       end
 
       def extract_repository_name(full_name)
@@ -262,6 +339,13 @@ module InternalApi
           raise GRPC::NotFound, "User with id #{req.user_id} not found." unless user
 
           return token_service.bitbucket_oauth_token(user)
+        end
+
+        if req.integration_type == :GITLAB and req.user_id.present?
+          user = ::User.find_by(:id => req.user_id)
+          raise GRPC::NotFound, "User with id #{req.user_id} not found." unless user
+
+          return token_service.gitlab_oauth_token(user)
         end
 
         repository_remote_id = req.repository_remote_id.presence

@@ -169,7 +169,6 @@ defmodule FrontWeb.BillingController do
     conn
     |> put_resp_content_type("text/csv")
     |> put_resp_header("content-disposition", "attachment; filename=\"#{filename}.csv\"")
-    |> put_root_layout(false)
     |> send_resp(200, spending_csv)
   end
 
@@ -195,7 +194,6 @@ defmodule FrontWeb.BillingController do
     conn
     |> put_resp_content_type("text/csv")
     |> put_resp_header("content-disposition", "attachment; filename=\"#{filename}.csv\"")
-    |> put_root_layout(false)
     |> send_resp(200, projects_csv)
   end
 
@@ -289,6 +287,8 @@ defmodule FrontWeb.BillingController do
     case BillingModel.update_addon(org_id, addon_name, enabled) do
       :ok ->
         Front.Clients.Billing.invalidate_cache(:list_addons, %{org_id: org_id})
+        Front.Clients.Billing.invalidate_cache(:current_spending, %{org_id: org_id})
+        Front.Clients.Billing.invalidate_cache(:list_spendings, %{org_id: org_id})
         conn |> json(%{ok: true})
 
       {:error, error} ->

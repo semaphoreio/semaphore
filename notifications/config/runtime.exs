@@ -39,6 +39,9 @@ config :sentry,
   root_source_code_paths: [File.cwd!()],
   context_lines: 5
 
+config :notifications,
+  block_internal_endpoints: System.get_env("WEBHOOK_BLOCK_INTERNAL_ENDPOINTS") != "false"
+
 config :notifications, :migrations_path, System.get_env("MIGRATIONS_PATH") || "/app/priv/repo/migrations"
 
 if config_env() == :prod do

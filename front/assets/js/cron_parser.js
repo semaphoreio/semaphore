@@ -21,9 +21,9 @@ export var CronParser = {
 
     var expression = cron.getAttribute('expression');
 
-    cron.innerHTML = cronstrue.toString(expression, { verbose: true });
+    cron.textContent = cronstrue.toString(expression, { verbose: true });
     } catch (err) {
-      cron.innerHTML = err
+      cron.textContent = err
     }
   },
 
@@ -34,6 +34,6 @@ export var CronParser = {
     var options = {tz: 'utc'};
     var interval = parseExpression(expression, options)
 
-    cron.innerHTML = interval.next()._date.format('YYYY-MM-DD HH:mm:ss [UTC]');
+    cron.textContent = interval.next()._date.format('YYYY-MM-DD HH:mm:ss [UTC]');
   }
 };

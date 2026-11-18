@@ -41,6 +41,8 @@ spec:
   replicas: 1
   template:
     metadata:
+      annotations:
+        checksum/storage-credentials: {{ printf "%s\n%s" .Values.global.logs.username .Values.global.logs.password | sha256sum }}
       name: {{ .Chart.Name }}
       labels:
         app: {{ .Chart.Name }}

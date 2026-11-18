@@ -11,6 +11,8 @@ spec:
   replicas: {{ .Values.archivator.replicas }}
   template:
     metadata:
+      annotations:
+        checksum/storage-credentials: {{ printf "%s\n%s" .Values.global.logs.username .Values.global.logs.password | sha256sum }}
       name: {{ .Chart.Name }}-archivator
       labels:
         app: {{ .Chart.Name }}-archivator

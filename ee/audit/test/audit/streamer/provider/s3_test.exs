@@ -20,11 +20,6 @@ defmodule Audit.Streamer.Provider.S3Test do
       )
   end
 
-  @doc """
-  This test is disabled because adobe/s3mock does not have key/secret whitelist
-  any secret you provide will work. test this using minio/minio.
-  """
-  @tag disabled: true
   test "localhost checking access with bad config" do
     {:error, _} =
       Audit.Streamer.Provider.S3.check_access(

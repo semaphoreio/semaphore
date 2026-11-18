@@ -30,7 +30,13 @@ defimpl RepositoryHub.SyncRepositoryAction, for: RepositoryHub.GithubAdapter do
   end
 
   defp disconnect_error?(error) when is_binary(error) do
+    # guard answers this when the user has no repo_host_account for the
+    # provider at all - never connected, or the link was released by someone
+    # claiming its GitHub uid. Either way the repository has no usable
+    # connection, so it must not keep rendering as connected.
     error == "Token for not found." or
+      (String.starts_with?(error, "Integration '") and
+         String.ends_with?(error, " not found.")) or
       (String.starts_with?(error, "User with id ") and
          String.ends_with?(error, " not found")) or
       (String.starts_with?(error, "project ") and

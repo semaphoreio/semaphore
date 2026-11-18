@@ -17,6 +17,60 @@ defmodule Test.Actions.ApplyImpl.Test do
     {:ok, params}
   end
 
+  test "apply sets the notification skip flags, and omitting them preserves the stored values",
+       ctx do
+    with_flags = """
+    apiVersion: v1.1
+    kind: Schedule
+    metadata:
+      name: flagged periodic
+    spec:
+      project: Project 1
+      recurring: false
+      branch: master
+      at: ""
+      pipeline_file: .semaphore/cron.yml
+      skip_scheduled_run_notifications: true
+      skip_manual_run_notifications: true
+    """
+
+    assert {:ok, periodic_id} =
+             ApplyImpl.apply(%{
+               organization_id: ctx.org_id,
+               requester_id: ctx.usr_id,
+               yml_definition: with_flags
+             })
+
+    assert {:ok, periodic} = PeriodicsQueries.get_by_id(periodic_id)
+    assert periodic.skip_scheduled_run_notifications == true
+    assert periodic.skip_manual_run_notifications == true
+
+    without_flags = """
+    apiVersion: v1.1
+    kind: Schedule
+    metadata:
+      name: flagged periodic
+      id: #{periodic_id}
+    spec:
+      project: Project 1
+      recurring: false
+      branch: master
+      at: ""
+      pipeline_file: .semaphore/cron.yml
+    """
+
+    assert {:ok, ^periodic_id} =
+             ApplyImpl.apply(%{
+               organization_id: ctx.org_id,
+               requester_id: ctx.usr_id,
+               yml_definition: without_flags
+             })
+
+    assert {:ok, updated} = PeriodicsQueries.get_by_id(periodic_id)
+    assert updated.skip_scheduled_run_notifications == true
+    assert updated.skip_manual_run_notifications == true
+  end
+
   test "apply doesn't start quantum job when periodic is non-recurring", ctx do
     yml_definition = """
     apiVersion: v1.1

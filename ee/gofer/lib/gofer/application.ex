@@ -13,7 +13,8 @@ defmodule Gofer.Application do
   def start(_type, _args) do
     Supervisor.start_link(Enum.filter(@children, &start_child?/1),
       strategy: :one_for_one,
-      name: Gofer.Supervisor
+      name: Gofer.Supervisor,
+      max_restarts: 1000
     )
   end
 

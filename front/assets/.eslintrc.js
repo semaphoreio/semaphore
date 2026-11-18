@@ -29,6 +29,8 @@ module.exports = {
     "*.json",
     "!js/workflow_editor/models/agent.js",
     "!js/workflow_editor/models/agent.spec.js",
+    "!js/time_ago.js",
+    "!js/time_ago.spec.js",
   ],
   rules: {},
  overrides: [

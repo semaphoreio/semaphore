@@ -278,6 +278,7 @@ defmodule InternalApi.Repository.CreateBuildStatusRequest do
   field :description, 5, type: :string
   field :context, 6, type: :string
   field :source_id, 7, type: :string, json_name: "sourceId"
+  field :suppress, 8, type: :bool
 end
 
 defmodule InternalApi.Repository.CreateBuildStatusResponse do
@@ -584,6 +585,7 @@ defmodule InternalApi.Repository.UpdateRequest do
 
   field :whitelist, 6, type: InternalApi.Projecthub.Project.Spec.Repository.Whitelist
   field :default_branch, 7, type: :string, json_name: "defaultBranch"
+  field :user_id, 8, type: :string, json_name: "userId"
 end
 
 defmodule InternalApi.Repository.UpdateResponse do

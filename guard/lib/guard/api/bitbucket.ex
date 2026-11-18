@@ -97,7 +97,7 @@ defmodule Guard.Api.Bitbucket do
         OAuth.handle_ok_token_response(repo_host_account, body)
 
       {:ok, %Tesla.Env{status: status, body: body, headers: headers}} ->
-        log_response_headers(status, headers, repo_host_account.id)
+        log_response_headers(status, headers, repo_host_account.id, repo_host_account.user_id)
 
         case OAuth.classify_refresh_response(status, body) do
           :revoked ->
@@ -105,7 +105,7 @@ defmodule Guard.Api.Bitbucket do
               "Failed to refresh Bitbucket token (HTTP #{status}): " <>
                 "error=#{inspect(safe_oauth_error(body))} " <>
                 "error_description=#{inspect(safe_oauth_error_description(body))}. " <>
-                "User repo_host_account id: #{repo_host_account.id}"
+                "rha=#{repo_host_account.id} user=#{repo_host_account.user_id}"
             )
 
             {:error, :revoked}
@@ -115,7 +115,7 @@ defmodule Guard.Api.Bitbucket do
               "Transient failure refreshing Bitbucket token (HTTP #{status}): " <>
                 "error=#{inspect(safe_oauth_error(body))} " <>
                 "error_description=#{inspect(safe_oauth_error_description(body))}. " <>
-                "User repo_host_account id: #{repo_host_account.id}"
+                "rha=#{repo_host_account.id} user=#{repo_host_account.user_id}"
             )
 
             {:error, :transient}
@@ -127,7 +127,7 @@ defmodule Guard.Api.Bitbucket do
     end
   end
 
-  defp log_response_headers(status, headers, repo_host_account_id) do
+  defp log_response_headers(status, headers, repo_host_account_id, user_id) do
     curated =
       headers
       |> Enum.filter(fn {key, _value} -> String.downcase(key) in @diagnostic_headers end)
@@ -135,15 +135,33 @@ defmodule Guard.Api.Bitbucket do
 
     Logger.warning(
       "Bitbucket refresh failure (HTTP #{status}) response headers " <>
-        "for repo_host_account #{repo_host_account_id}: #{inspect(curated)}"
+        "for rha=#{repo_host_account_id} user=#{user_id}: #{inspect(curated)}"
     )
   end
 
+  # The refresh client has no JSON middleware, so a failure body arrives as a
+  # raw string - decode it to surface the OAuth `error` code, but never log
+  # the body itself (it can carry token material).
   defp safe_oauth_error(body) when is_map(body), do: Map.get(body, "error")
+
+  defp safe_oauth_error(body) when is_binary(body) do
+    case Jason.decode(body) do
+      {:ok, decoded} -> safe_oauth_error(decoded)
+      _ -> nil
+    end
+  end
+
   defp safe_oauth_error(_), do: nil
 
   defp safe_oauth_error_description(body) when is_map(body),
     do: Map.get(body, "error_description")
+
+  defp safe_oauth_error_description(body) when is_binary(body) do
+    case Jason.decode(body) do
+      {:ok, decoded} -> safe_oauth_error_description(decoded)
+      _ -> nil
+    end
+  end
 
   defp safe_oauth_error_description(_), do: nil
 

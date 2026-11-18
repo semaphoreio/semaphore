@@ -27,7 +27,7 @@ defmodule FrontWeb.ProjectPFCController do
       log_data = log_data_closure(organization_id, project_id, user_id, :show)
       maybe_model = Async.run(fetch_model(project_id))
 
-      with {:ok, params} <- fetch_params(organization_id, user_id),
+      with {:ok, params} <- fetch_params(organization_id, project_id, user_id),
            {:ok, model} <- Async.await(maybe_model) do
         Watchman.increment(watchman_name(:show, :success))
 
@@ -54,7 +54,7 @@ defmodule FrontWeb.ProjectPFCController do
 
       changeset = ProjectPFC.empty() |> ProjectPFC.changeset(pfc_params)
 
-      with {:ok, params} <- fetch_params(organization_id, user_id),
+      with {:ok, params} <- fetch_params(organization_id, project_id, user_id),
            {:ok, conn} <- validate_and_apply(conn, project_name_or_id, changeset, params) do
         Watchman.increment(watchman_name(:put, :success))
         conn
@@ -119,9 +119,9 @@ defmodule FrontWeb.ProjectPFCController do
     end)
   end
 
-  defp fetch_params(organization_id, user_id) do
+  defp fetch_params(organization_id, project_id, user_id) do
     maybe_organization = Async.run(fetch_organization(organization_id))
-    maybe_secrets = Async.run(fetch_secrets(organization_id, user_id))
+    maybe_secrets = Async.run(fetch_secrets(organization_id, project_id, user_id))
     maybe_cloud_agents = Async.run(fetch_cloud_agents(organization_id))
     maybe_self_hosted_agents = Async.run(fetch_self_hosted_agents(organization_id))
 
@@ -153,8 +153,19 @@ defmodule FrontWeb.ProjectPFCController do
       end
     end
 
-  defp fetch_secrets(organization_id, user_id),
-    do: fn -> Front.Models.Secret.list(user_id, organization_id, "", :ORGANIZATION, true) end
+  # Pre-flight checks may reference both organization-level secrets (visible to
+  # every project in the org) and project-level secrets (scoped to this
+  # project only). Mirrors the org+project secret fetch already used by
+  # FrontWeb.WorkflowController.edit/2 for the workflow editor's secret list.
+  defp fetch_secrets(organization_id, project_id, user_id),
+    do: fn ->
+      org_secrets = Front.Models.Secret.list(user_id, organization_id, "", :ORGANIZATION, true)
+
+      project_secrets =
+        Front.Models.Secret.list(user_id, organization_id, project_id, :PROJECT, true)
+
+      org_secrets ++ project_secrets
+    end
 
   defp fetch_cloud_agents(organization_id),
     do: fn -> Front.Models.AgentType.list(organization_id) end

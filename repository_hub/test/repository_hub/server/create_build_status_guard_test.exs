@@ -5,6 +5,7 @@ defmodule RepositoryHub.Server.CreateBuildStatusGuardTest do
 
   alias RepositoryHub.{
     BuildStatusGuard,
+    GithubChecksClient,
     GithubClient,
     GithubClientFactory,
     InternalApiFactory,
@@ -27,7 +28,16 @@ defmodule RepositoryHub.Server.CreateBuildStatusGuardTest do
   end
 
   describe "create_build_status/2 with a source_id" do
-    setup_with_mocks(GithubClientFactory.mocks(), context) do
+    # The flag is off, so a terminal status also looks for a same-named
+    # check-run to mirror to; the commit has none.
+    setup_with_mocks(
+      GithubClientFactory.mocks() ++ [{GithubChecksClient, [], [list_check_runs: fn _params, _opts -> {:ok, []} end]}],
+      context
+    ) do
+      Tesla.Mock.mock(fn %{method: :get, url: "https://api.github.com/rate_limit"} ->
+        Tesla.Mock.json(%{"rate" => %{"remaining" => 5000}})
+      end)
+
       context
     end
 
@@ -48,6 +58,29 @@ defmodule RepositoryHub.Server.CreateBuildStatusGuardTest do
       assert %CreateBuildStatusResponse{code: :OK, skipped: false} =
                Server.create_build_status(request(ctx, :SUCCESS), nil)
 
+      assert :meck.num_calls(GithubClient, :create_build_status, :_) == 2
+    end
+
+    test "suppressed statuses never reach the provider", ctx do
+      suppressed = %{request(ctx, :PENDING) | suppress: true}
+
+      assert %CreateBuildStatusResponse{code: :OK, skipped: true} =
+               Server.create_build_status(suppressed, nil)
+
+      assert :meck.num_calls(GithubClient, :create_build_status, :_) == 0
+    end
+
+    test "a suppressed terminal status still reconciles an outstanding pending", ctx do
+      assert %CreateBuildStatusResponse{code: :OK, skipped: false} =
+               Server.create_build_status(request(ctx, :PENDING), nil)
+
+      suppressed_success = %{request(ctx, :SUCCESS) | suppress: true}
+
+      assert %CreateBuildStatusResponse{code: :OK, skipped: false} =
+               Server.create_build_status(suppressed_success, nil)
+
+      # the pending went out, so the terminal must follow it - a check is never
+      # left pending forever because the policy flipped mid-pipeline
       assert :meck.num_calls(GithubClient, :create_build_status, :_) == 2
     end
 

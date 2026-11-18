@@ -10,7 +10,7 @@ services:
       target: dev
       args:
         - BUILD_ENV=development
-    command: "bundle exec spring server"
+    command: "bundle exec rails server -b 0.0.0.0"
     ports:
       - "3000:3000"
     volumes:
@@ -39,6 +39,8 @@ services:
       INTERNAL_API_URL_PLUMBER: "localhost:50051"
       INTERNAL_API_URL_REPOSITORY: "localhost:50051"
       INTERNAL_API_URL_HOOKS: "localhost:50051"
+      INTERNAL_API_URL_USER: "localhost:50051"
+      INTERNAL_API_URL_FEATURE: "localhost:50051"
       LOG_LEVEL: "debug"
     depends_on:
       redis:
