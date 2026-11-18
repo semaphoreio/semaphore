@@ -727,6 +727,60 @@ a.wf-map-triggered:hover {
   flex: none;
 }
 
+button.wf-map-reason {
+  gap: 1px;
+  padding-right: 3px;
+  border: 0;
+  cursor: pointer;
+}
+
+button.wf-map-reason:hover,
+button.wf-map-reason[aria-expanded="true"] {
+  background: #E1E6E8;
+  color: #202B30;
+}
+
+button.wf-map-reason .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.wf-map-details {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  height: 44px;
+  padding: 0 12px 0 36px;
+  border-bottom: 1px solid #D3DADE;
+  background: #F5F7F8;
+  font-size: 12px;
+  color: #495358;
+  cursor: default;
+}
+
+.wf-map-details-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.wf-map-details-row > span,
+.wf-map-details-when {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wf-map-details-when {
+  display: block;
+  color: #677278;
+}
+
+.wf-map-details ~ .wf-map-init-tab {
+  top: 110px;
+}
+
 .wf-map-after {
   margin: 21px 0 0 27px;
 }

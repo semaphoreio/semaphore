@@ -87,6 +87,15 @@ describe(`layoutMap`, () => {
     expect(tabbed.pipelines.get(`p`).h - plain.pipelines.get(`p`).h).to.equal(10);
   });
 
+  test(`moves the blocks and the after block down by the details band under the header`, async () => {
+    const wf = workflowWith([`build`], false, true);
+    const plain = await layout(wf, true, SIZE.h + 20);
+    const detailed = await layoutMap(wf, () => true, () => SIZE, CLOSED, () => SIZE.h + 20, () => 44);
+    expect(detailed.blocks.get(`after`).y - plain.blocks.get(`after`).y).to.equal(44);
+    expect(detailed.blocks.get(`build`).y - plain.blocks.get(`build`).y).to.equal(44);
+    expect(detailed.pipelines.get(`p`).h - plain.pipelines.get(`p`).h).to.equal(44);
+  });
+
   test(`opens a block without reordering: earlier blocks stay, its row's later blocks move right by its growth, later rows move down`, async () => {
     const wf = workflowOf([`a`, `b`, `c`, `d`, `e`, `f`, `g`, `h`].map((name): [string, string[]] => [name, []]));
     const before = await grown(wf, null, 0, 0);

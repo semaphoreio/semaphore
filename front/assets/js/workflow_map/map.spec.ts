@@ -34,6 +34,15 @@ describe(`structureKey`, () => {
     expect(structureKey(wf, new Set([`p`]), new Set())).to.not.equal(before);
   });
 
+  test(`changes when the stop details of a stopped pipeline open, and only then`, () => {
+    const wf = workflowWith([`passed`]);
+    const p = wf.pipelines[0];
+    Object.assign(p, { status: `passed`, resultReason: null });
+    expect(structureKey(wf, new Set([`p`]), new Set(), new Set([`p`]))).to.equal(structureKey(wf, new Set([`p`]), new Set()));
+    Object.assign(p, { status: `stopped`, resultReason: `STRATEGY` });
+    expect(structureKey(wf, new Set([`p`]), new Set(), new Set([`p`]))).to.not.equal(structureKey(wf, new Set([`p`]), new Set()));
+  });
+
   test(`changes when the after-pipeline node of a closed pipeline opens`, () => {
     const wf = workflowWith([`passed`]);
     wf.pipelines[0].blocks.push({ id: `a`, name: `After pipeline`, deps: [], jobs: [job(`passed`)], after: true } as Block);

@@ -6,7 +6,7 @@ import { act } from "preact/test-utils";
 import { defineTimeAgoElement } from "../time_ago";
 import { ApiTriggerer, Block, Job, Pipeline } from "./model";
 import { now } from "./store";
-import { BlockCard, BlockSummary, DOUBLE_CLICK_MS, JobRow, PipelineTitle, TimeAgo, Triggered } from "./ui";
+import { BlockCard, BlockSummary, DOUBLE_CLICK_MS, JobRow, PipelineTitle, StopDetails, StopReason, TimeAgo, Triggered } from "./ui";
 
 describe(`names the map may shorten`, () => {
   let root: HTMLElement;
@@ -308,5 +308,52 @@ describe(`how and when a pipeline was triggered`, () => {
     await act(() => render(<TimeAgo at={1700003600}/>, root));
     expect(time()).to.not.equal(first);
     expect(time().datetime).to.equal(`2023-11-14T23:13:20.000Z`);
+  });
+});
+
+describe(`why a pipeline stopped`, () => {
+  let root: HTMLElement;
+  const stopped = {
+    name: `Build`,
+    status: `stopped`,
+    resultReason: `STRATEGY`,
+    trigger: `INITIAL_WORKFLOW`,
+    triggerer: { text: `Triggered by push`, link: null, owner: `Ana Kowalska`, stopped: true, stopped_by: null },
+    createdAt: 1700000000,
+    runningAt: 1700000010,
+    doneAt: 1700000012,
+  } as Pipeline;
+
+  beforeEach(() => {
+    root = document.createElement(`div`);
+    document.body.appendChild(root);
+  });
+
+  afterEach(() => {
+    render(null, root);
+    root.remove();
+  });
+
+  test(`labels the reason, explains it on hover and toggles the details`, async () => {
+    let toggled = 0;
+    await act(() => render(<StopReason p={stopped} open={false} onToggle={() => toggled++}/>, root));
+    const button = root.querySelector<HTMLButtonElement>(`button.wf-map-reason`);
+    expect(button.textContent).to.equal(`Auto-cancelledexpand_more`);
+    expect(button.dataset.tippyContent).to.equal(`A newer pipeline started in the same queue (auto_cancel).`);
+    expect(button.getAttribute(`aria-expanded`)).to.equal(`false`);
+    await act(() => button.click());
+    expect(toggled).to.equal(1);
+  });
+
+  test(`shows the reason, how it was triggered and how long it ran`, async () => {
+    await act(() => render(<StopDetails p={stopped}/>, root));
+    const rows = [...root.querySelectorAll(`.wf-map-details-row`)].map((r) => r.textContent);
+    expect(rows[0]).to.equal(`A newer pipeline started in the same queue (auto_cancel).`);
+    expect(rows[1]).to.match(/^Triggered by push by Ana Kowalska · .+ · ran 00:02$/);
+  });
+
+  test(`shows nothing for a pipeline that was not stopped`, async () => {
+    await act(() => render(<StopDetails p={{ ...stopped, status: `passed` } as Pipeline}/>, root));
+    expect(root.innerHTML).to.equal(``);
   });
 });

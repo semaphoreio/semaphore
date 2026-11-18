@@ -122,9 +122,10 @@ export async function layoutMap(
   isOpen: (p: Pipeline) => boolean,
   blockSize: (b: Block) => { w: number, h: number, },
   closed: { w: number, h: number, },
-  band: (p: Pipeline) => number
+  band: (p: Pipeline) => number,
+  head: (p: Pipeline) => number = () => 0
 ): Promise<MapLayout> {
-  const top = (p: Pipeline) => PIPE_PAD.top + (p.initJob ? INIT_TAB : 0);
+  const top = (p: Pipeline) => PIPE_PAD.top + head(p) + (p.initJob ? INIT_TAB : 0);
   const inners = await Promise.all(wf.pipelines.map((p) => (isOpen(p) && p.blocks?.some((b) => !b.after) ? inner(p, blockSize, top(p) + band(p)) : null)));
   const outer = await elk.layout({
     id: `workflow`,

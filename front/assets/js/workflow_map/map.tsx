@@ -6,7 +6,7 @@ import { focus, hits, layoutError, popover, rerunPipeline, selected, stopPipelin
 import { MapLayout, Point, layoutMap, promotionLabel } from "./layout";
 import { PromoteButton } from "./promote";
 import { Chips, Search, Stepper } from "./toolbar";
-import { BlockCard, BlockSummary, Chevron, Counts, Duration, Name, PipelineTitle, StatusBar, StatusIcon, StopReason, Triggered, plainClick } from "./ui";
+import { BlockCard, BlockSummary, Chevron, Counts, Duration, Name, PipelineTitle, StatusBar, StatusIcon, StopDetails, StopReason, Triggered, plainClick } from "./ui";
 import { BLOCK_GAP, JOB_ROW_H, blockSize, jobTop } from "./lines";
 
 const CARD = { w: 300, h: 72 };
@@ -15,6 +15,9 @@ const CLICKABLE = { pointerEvents: `all` as const };
 
 export const openPipelines = signal<Set<string>>(new Set());
 export const openBlocks = signal<Set<string>>(new Set());
+export const openDetails = signal<Set<string>>(new Set());
+export const DETAILS_H = 44;
+export const detailsBand = (p: Pipeline, open: Set<string>) => (open.has(p.id) && stopReason(p) ? DETAILS_H : 0);
 const hovered = signal<string | null>(null);
 
 const lineage = computed(() => {
@@ -264,10 +267,18 @@ const PipelineNode = ({ data, width, positionAbsoluteX, positionAbsoluteY }: Nod
         </div>
         <div className="wf-map-pipeline-row wf-map-pipeline-sub">
           <Name className="wf-map-pipeline-meta">{p.yamlFile}</Name>
-          <StopReason p={p}/>
+          <StopReason
+            p={p}
+            open={openDetails.value.has(p.id)}
+            onToggle={() => {
+              aim({ id: p.id, how: `keep`, at });
+              toggle(openDetails, p.id);
+            }}
+          />
           <PipelineActions p={p}/>
         </div>
       </div>
+      {detailsBand(p, openDetails.value) > 0 && <StopDetails p={p}/>}
       {p.initJob && <InitTab job={p.initJob}/>}
       {after && <AfterBand block={after} at={at}/>}
       <Handle type="source" id="out" position={Position.Right} isConnectable={false} style={{ top: 34 }}/>
@@ -396,13 +407,13 @@ export function seedBlocks(pipelines: Pipeline[], open: Set<string>, seeded: Set
   return next;
 }
 
-export function structureKey(wf: Workflow, open: Set<string>, openB: Set<string>) {
+export function structureKey(wf: Workflow, open: Set<string>, openB: Set<string>, details: Set<string> = new Set()) {
   return wf.pipelines
     .map((p) => {
       const blocks = open.has(p.id) && p.blocks ? p.blocks.map((b) => `${b.name}:${b.deps.length}:${openB.has(b.id) ? b.jobs.length : `-`}`).join(`,`) : `closed`;
       const promotions = p.promotions?.map((promotion) => `${promotion.name}:${promotion.pipelines.length}`).join(`,`) ?? ``;
       const after = p.blocks?.find((b) => b.after);
-      return `${p.id}${p.initJob ? `+init` : ``}<${p.parent?.id ?? ``}>${blocks}[${promotions}]${after ? `+${openB.has(after.id) ? after.jobs.length : `-`}` : ``}`;
+      return `${p.id}${p.initJob ? `+init` : ``}${detailsBand(p, details) ? `+details` : ``}<${p.parent?.id ?? ``}>${blocks}[${promotions}]${after ? `+${openB.has(after.id) ? after.jobs.length : `-`}` : ``}`;
     })
     .join(`|`);
 }
@@ -421,6 +432,7 @@ const WorkflowMap = () => {
   const wf = workflow.value;
   const P = openPipelines.value;
   const B = openBlocks.value;
+  const D = openDetails.value;
   const f = focus.value;
   const h = hits.value;
   const zoom = useStore((s) => s.transform[2]);
@@ -429,7 +441,7 @@ const WorkflowMap = () => {
   const [layout, setLayout] = useState<MapLayout | null>(null);
   const handledSeq = useRef(0);
   const seeded = useRef(new Set<string>());
-  const key = wf ? structureKey(wf, P, B) : ``;
+  const key = wf ? structureKey(wf, P, B, D) : ``;
 
   useEffect(() => {
     const next = wf && seedBlocks(wf.pipelines, P, seeded.current, openBlocks.value);
@@ -465,7 +477,7 @@ const WorkflowMap = () => {
     if (!wf) return;
     let alive = true;
     document.fonts.ready
-      .then(() => layoutMap(wf, (p) => P.has(p.id), (b) => blockSize(b, B.has(b.id)), CARD, (p) => afterBand(p, B)))
+      .then(() => layoutMap(wf, (p) => P.has(p.id), (b) => blockSize(b, B.has(b.id)), CARD, (p) => afterBand(p, B), (p) => detailsBand(p, D)))
       .then((L) => alive && setLayout(L))
       .catch(() => {
         if (alive) layoutError.value = `Couldn't lay out this workflow. Reload the page to try again.`;
