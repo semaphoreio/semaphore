@@ -127,6 +127,55 @@ defmodule Ppl.PplSubInits.STMHandler.RegularInitState.Test do
     assert {:ok, %{state: "done", result: "canceled", result_reason: "internal"}} = exit_result
   end
 
+  @tag :integration
+  test "stuck abort waits for regular_init to commit its blocks and then terminates them" do
+    {:ok, %{ppl_id: ppl_id}} =
+      %{"repo_name" => "2_basic"}
+      |> Test.Helpers.schedule_request_factory(:local)
+      |> Actions.schedule()
+
+    loopers = start_loopers_until_regular_init()
+    psi = wait_for_psi_state(ppl_id, "regular_init", 5_000)
+    Test.Helpers.stop_all_loopers(loopers)
+
+    assert psi.state == "regular_init"
+    assert {:ok, exit_func} = RegularInitState.scheduling_handler(psi)
+
+    Ppls
+    |> where(ppl_id: ^ppl_id)
+    |> update(set: [recovery_count: 100, in_scheduling: true])
+    |> Repo.update_all([])
+
+    test_pid = self()
+
+    exit_transaction =
+      Task.async(fn ->
+        Repo.transaction(fn ->
+          result = exit_func.(Repo, %{})
+          send(test_pid, :blocks_created)
+
+          receive do
+            :commit -> result
+          end
+        end)
+      end)
+
+    assert_receive :blocks_created, 5_000
+
+    assert {:ok, beholder} = Beholder.start_link()
+    :timer.sleep(2_000)
+    assert %{state: "initializing"} = Repo.get_by(Ppls, ppl_id: ppl_id)
+
+    send(exit_transaction.pid, :commit)
+    assert {:ok, {:ok, %{state: "done", result: "passed"}}} = Task.await(exit_transaction)
+
+    assert {:ok, _} = Test.Helpers.wait_for_ppl_state(ppl_id, "done", 5_000)
+    assert :ok = Beholder.stop(beholder)
+
+    assert {:ok, blocks} = PplBlocksQueries.get_all_by_id(ppl_id)
+    assert Enum.all?(blocks, &(&1.terminate_request == "cancel"))
+  end
+
   defp start_loopers_until_regular_init do
     []
     |> Enum.concat([Task.Supervisor.start_link(name: PplsTaskSupervisor)])
