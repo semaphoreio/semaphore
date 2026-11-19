@@ -56,7 +56,9 @@ defmodule Ppl.Ppls.Beholder do
   catch
     kind, reason ->
       Logger.error(
-        "Ppl.Ppls.Beholder #{step} failed for ppl_id: #{ppl.ppl_id}, #{kind}: #{error_name(reason)}"
+        "Ppl.Ppls.Beholder #{step} failed for ppl_id: #{ppl.ppl_id}, #{kind}: #{
+          error_name(reason)
+        }"
       )
   end
 
