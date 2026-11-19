@@ -16,6 +16,7 @@ defmodule Ppl.Ppls.Beholder do
   alias Ppl.Ppls.STMHandler.Common
   alias Looper.STM.Publisher
   alias Ppl.PplBlocks.Model.PplBlocksQueries
+  alias Ppl.PplSubInits.Model.PplSubInitsQueries
 
   @period_sec Application.compile_env!(:ppl, :beholder_sleep_period_sec)
   @threshold_sec Application.compile_env!(:ppl, :beholder_threshold_sec)
@@ -38,6 +39,10 @@ defmodule Ppl.Ppls.Beholder do
   def post_proccessing(ppl) do
     set_done_at_timestamp(ppl)
 
+    # Must precede terminate_ppl_blks/1: this write waits on the sub-init row lock
+    # held while regular_init creates blocks, so those blocks are visible below.
+    terminate_sub_init(ppl)
+
     terminate_ppl_blks(ppl)
 
     Publisher.publish(Map.take(ppl, [:ppl_id]),
@@ -49,12 +54,13 @@ defmodule Ppl.Ppls.Beholder do
     PplTracesQueries.set_timestamp(ppl.ppl_id, :done_at)
   end
 
-  def terminate_ppl_blks(ppl) do
-    {:ok, blocks} = PplBlocksQueries.get_all_by_id(ppl.ppl_id)
+  def terminate_sub_init(ppl) do
+    with {:ok, psi} <- PplSubInitsQueries.get_by_id(ppl.ppl_id) do
+      PplSubInitsQueries.terminate(psi, "stop", "Pipeline terminated")
+    end
+  end
 
-    blocks
-    |> Enum.each(fn block ->
-      block |> PplBlocksQueries.terminate("cancel", "Pipeline terminated")
-    end)
+  def terminate_ppl_blks(ppl) do
+    PplBlocksQueries.terminate_all(ppl.ppl_id, "cancel", "Pipeline terminated")
   end
 end

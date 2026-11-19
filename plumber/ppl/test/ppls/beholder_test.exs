@@ -90,6 +90,16 @@ defmodule Ppl.Ppls.Beholder.Test do
     assert Beholder.child_spec([]) |> is_map()
   end
 
+  test "terminating blocks of a pipeline that has no blocks yet does not raise" do
+    request = Test.Helpers.schedule_request_factory(:local)
+    {:ok, ppl_req} = PplRequestsQueries.insert_request(request)
+    {:ok, ppl} = PplsQueries.insert(ppl_req)
+
+    assert {:error, _} = PplBlocksQueries.get_all_by_id(ppl.ppl_id)
+
+    assert {:ok, 0} = Beholder.terminate_ppl_blks(ppl)
+  end
+
   @tag :integration
   test "PplBlocks are terminated when ppl is stuck-aborted" do
     import Ecto.Query
@@ -101,17 +111,25 @@ defmodule Ppl.Ppls.Beholder.Test do
 
     {:ok, _ppl} = Ppl.Ppls.Model.PplsQueries.get_by_id(ppl_id)
 
+    sub_init_loopers =
+      [Task.Supervisor.start_link(name: PplsTaskSupervisor)]
+      |> Test.Helpers.start_sub_init_loopers()
+
+    {:ok, _} =
+      Test.Helpers.assert_finished_for_less_than(__MODULE__, :do_wait_blocks_created, [ppl_id], 10_000)
+
+    Test.Helpers.stop_all_loopers(sub_init_loopers)
+
     Ppls
     |> where(ppl_id: ^ppl_id)
     |> update(set: [recovery_count: 100, in_scheduling: true])
     |> Repo.update_all([])
 
-    {:ok, _ppl} = Ppl.Ppls.Model.PplsQueries.get_by_id(ppl_id)
-
     assert {:ok, pid} = Beholder.start_link()
-    loopers = Test.Helpers.start_all_loopers()
 
     {:ok, ppl} =  Test.Helpers.wait_for_ppl_state(ppl_id, "done", 10_000)
+
+    loopers = Test.Helpers.start_all_loopers()
 
     {:ok, _} =
       Test.Helpers.assert_finished_for_less_than(
@@ -124,6 +142,14 @@ defmodule Ppl.Ppls.Beholder.Test do
     Test.Helpers.stop_all_loopers(loopers)
 
     assert ppl.result == "failed"
+  end
+
+  def do_wait_blocks_created(ppl_id) do
+    :timer.sleep 100
+    case PplBlocksQueries.get_all_by_id(ppl_id) do
+      {:ok, blocks} -> blocks
+      _ -> do_wait_blocks_created(ppl_id)
+    end
   end
 
   def do_wait_block_status(ppl_id, desired_status) do
