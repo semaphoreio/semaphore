@@ -18,6 +18,7 @@ defmodule FrontWeb.BranchControllerTest do
 
     project = DB.first(:projects)
     PermissionPatrol.allow_everything()
+    Support.Stubs.Feature.enable_feature(organization.id, :workflow_filtering)
 
     conn =
       conn
@@ -141,9 +142,67 @@ defmodule FrontWeb.BranchControllerTest do
 
       assert html_response(conn, 200) =~ "That’s uncommon"
     end
+
+    test "with an unknown trigger => shows all workflows", %{
+      conn: conn,
+      branch_id: branch_id,
+      user: user
+    } do
+      create_scheduled_workflow(user)
+
+      html =
+        conn |> get(branch_path(conn, :show, branch_id, trigger: "foo")) |> html_response(200)
+
+      assert html =~ "by scheduler"
+      assert html =~ "by jane"
+    end
+
+    test "with trigger=git => hides scheduled workflows", %{
+      conn: conn,
+      branch_id: branch_id,
+      user: user
+    } do
+      create_scheduled_workflow(user)
+
+      html =
+        conn |> get(branch_path(conn, :show, branch_id, trigger: "git")) |> html_response(200)
+
+      refute html =~ "by scheduler"
+      assert html =~ "by jane"
+      assert html =~ ~s(data-poll-param-trigger="git")
+    end
+
+    test "with trigger=tasks => shows only scheduled workflows", %{
+      conn: conn,
+      branch_id: branch_id,
+      user: user
+    } do
+      create_scheduled_workflow(user)
+
+      html =
+        conn |> get(branch_path(conn, :show, branch_id, trigger: "tasks")) |> html_response(200)
+
+      assert html =~ "by scheduler"
+      refute html =~ "by jane"
+      assert html =~ ~r/<option[^>]*selected[^>]*value="tasks"/
+    end
   end
 
   describe "GET poll" do
+    test "with trigger=git => hides scheduled workflows and keeps the filter for polling", %{
+      conn: conn,
+      branch_id: branch_id,
+      user: user
+    } do
+      create_scheduled_workflow(user)
+
+      conn = get(conn, branch_path(conn, :workflows, branch_id, trigger: "git"))
+
+      html = html_response(conn, 200)
+      refute html =~ "by scheduler"
+      assert html =~ ~s(data-poll-param-trigger="git")
+    end
+
     test "when the user requests next page => renders paginated workflows", %{
       conn: conn,
       branch_id: branch_id
@@ -182,5 +241,16 @@ defmodule FrontWeb.BranchControllerTest do
       assert conn.status == 200
       assert html_response(conn, 200) =~ "Pull new workflows on the branch page"
     end
+  end
+
+  defp create_scheduled_workflow(user) do
+    hook = DB.first(:hooks)
+
+    workflow =
+      Support.Stubs.Workflow.create(hook, user,
+        triggered_by: InternalApi.PlumberWF.TriggeredBy.value(:SCHEDULE)
+      )
+
+    Support.Stubs.Pipeline.create_initial(workflow)
   end
 end

@@ -77,7 +77,7 @@ defmodule Support.Stubs.Workflow do
       branch_name: "master",
       commit_sha: hook.api_model.head_commit_sha,
       created_at: Google.Protobuf.Timestamp.new(seconds: params[:created_at]),
-      triggered_by: 0,
+      triggered_by: params[:triggered_by] || 0,
       rerun_of: ""
     )
   end
@@ -154,8 +154,11 @@ defmodule Support.Stubs.Workflow do
       Response.new(workflows: wfs)
     end
 
-    def list_keyset(_req, _) do
-      wfs = DB.all(:workflows) |> DB.extract(:api_model)
+    def list_keyset(req, _) do
+      wfs =
+        DB.all(:workflows)
+        |> DB.extract(:api_model)
+        |> filter_by_triggerers(req.triggerers)
 
       InternalApi.PlumberWF.ListKeysetResponse.new(
         workflows: wfs,
@@ -164,6 +167,18 @@ defmodule Support.Stubs.Workflow do
         status: ok()
       )
     end
+
+    defp filter_by_triggerers(wfs, []), do: wfs
+
+    defp filter_by_triggerers(wfs, triggerers) do
+      allowed = Enum.map(triggerers, &triggered_by_key/1)
+      Enum.filter(wfs, &(triggered_by_key(&1.triggered_by) in allowed))
+    end
+
+    defp triggered_by_key(value) when is_integer(value),
+      do: InternalApi.PlumberWF.TriggeredBy.key(value)
+
+    defp triggered_by_key(value), do: value
 
     def reschedule(_req, _) do
       hook = DB.last(:hooks)
