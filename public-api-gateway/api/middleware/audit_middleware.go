@@ -3,6 +3,7 @@ package middleware
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"regexp"
 	"strings"
@@ -158,11 +159,11 @@ func createDefaultAuditEvent(r *http.Request, resource auditProto.Event_Resource
 // taking into account various proxy headers
 func detectRemoteAddress(r *http.Request) string {
 	// Check for X-Forwarded-For header
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		// X-Forwarded-For can contain multiple IPs, the second from the end is the original client
+	if xff := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); xff != "" {
+		// X-Forwarded-For can contain multiple IPs; the original client is the first entry.
 		ips := strings.Split(xff, ",")
-		if len(ips) >= 2 {
-			ip := strings.TrimSpace(ips[len(ips)-2])
+		for _, entry := range ips {
+			ip := strings.TrimSpace(entry)
 			if ip != "" {
 				return ip
 			}
@@ -170,12 +171,20 @@ func detectRemoteAddress(r *http.Request) string {
 	}
 
 	// Check for X-Real-IP header
-	if xrip := r.Header.Get("X-Real-IP"); xrip != "" {
+	if xrip := strings.TrimSpace(r.Header.Get("X-Real-IP")); xrip != "" {
 		return xrip
 	}
 
-	// Fall back to RemoteAddr if no proxy headers are found
-	return r.RemoteAddr
+	// Fall back to RemoteAddr if no proxy headers are found.
+	// RemoteAddr often contains host:port, so extract host when possible.
+	remoteAddr := strings.TrimSpace(r.RemoteAddr)
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err == nil && host != "" {
+		return host
+	}
+
+	// Keep compatibility with unexpected RemoteAddr shapes.
+	return remoteAddr
 }
 
 func detectEventMedium(r *http.Request) auditProto.Event_Medium {
