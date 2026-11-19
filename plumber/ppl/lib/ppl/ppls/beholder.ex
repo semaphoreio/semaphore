@@ -52,14 +52,16 @@ defmodule Ppl.Ppls.Beholder do
   end
 
   defp run_step(step, ppl) do
-    apply(__MODULE__, step, [ppl])
+    case apply(__MODULE__, step, [ppl]) do
+      {:error, reason} -> log_failure(step, ppl, "error: #{error_name(reason)}")
+      result -> result
+    end
   catch
-    kind, reason ->
-      Logger.error(
-        "Ppl.Ppls.Beholder #{step} failed for ppl_id: #{ppl.ppl_id}, #{kind}: #{
-          error_name(reason)
-        }"
-      )
+    kind, reason -> log_failure(step, ppl, "#{kind}: #{error_name(reason)}")
+  end
+
+  defp log_failure(step, ppl, details) do
+    Logger.error("Ppl.Ppls.Beholder #{step} failed for ppl_id: #{ppl.ppl_id}, #{details}")
   end
 
   defp error_name(reason) when is_exception(reason), do: inspect(reason.__struct__)

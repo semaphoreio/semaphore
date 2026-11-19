@@ -154,6 +154,26 @@ defmodule Ppl.Ppls.Beholder.Test do
     assert_done_event_published(ppl_id)
   end
 
+  test "a failed abort step is logged with the pipeline id" do
+    request = Test.Helpers.schedule_request_factory(:local)
+    {:ok, ppl_req} = PplRequestsQueries.insert_request(request)
+    {:ok, ppl} = PplsQueries.insert(ppl_req)
+
+    log =
+      ExUnit.CaptureLog.capture_log(fn ->
+        with_mocks [
+          {PplBlocksQueries, [:passthrough],
+           terminate_all: fn _ppl_id, _request, _desc -> {:error, :update_failed} end},
+          {Looper.Publisher.AMQP, [], publish: capture_publish()}
+        ] do
+          Beholder.post_proccessing(ppl)
+        end
+      end)
+
+    assert log =~ "terminate_ppl_blks failed for ppl_id: #{ppl.ppl_id}"
+    assert_done_event_published(ppl.ppl_id)
+  end
+
   defp capture_publish do
     test_pid = self()
 

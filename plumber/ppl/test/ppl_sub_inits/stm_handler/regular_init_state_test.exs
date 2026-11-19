@@ -101,6 +101,32 @@ defmodule Ppl.PplSubInits.STMHandler.RegularInitState.Test do
     assert {:ok, %{state: "done", result: "canceled", result_reason: "internal"}} = exit_result
   end
 
+  @tag :integration
+  test "regular_init must not create blocks for a pipeline that is already done" do
+    {:ok, %{ppl_id: ppl_id}} =
+      %{"repo_name" => "2_basic"}
+      |> Test.Helpers.schedule_request_factory(:local)
+      |> Actions.schedule()
+
+    loopers = start_loopers_until_regular_init()
+    psi = wait_for_psi_state(ppl_id, "regular_init", 5_000)
+    Test.Helpers.stop_all_loopers(loopers)
+
+    assert psi.state == "regular_init"
+    assert {:ok, exit_func} = RegularInitState.scheduling_handler(psi)
+
+    # The pipeline reached done without a terminate request on the sub-init.
+    Ppls
+    |> where(ppl_id: ^ppl_id)
+    |> update(set: [state: "done", result: "failed", result_reason: "stuck"])
+    |> Repo.update_all([])
+
+    {:ok, exit_result} = Repo.transaction(fn -> exit_func.(Repo, %{}) end)
+
+    assert {:error, _} = PplBlocksQueries.get_all_by_id(ppl_id)
+    assert {:ok, %{state: "done", result: "canceled", result_reason: "internal"}} = exit_result
+  end
+
   defp start_loopers_until_regular_init do
     []
     |> Enum.concat([Task.Supervisor.start_link(name: PplsTaskSupervisor)])
