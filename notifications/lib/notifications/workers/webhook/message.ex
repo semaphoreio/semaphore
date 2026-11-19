@@ -1,4 +1,9 @@
 defmodule Notifications.Workers.Webhook.Message do
+  alias InternalApi.RepoProxy.Hook
+
+  def construct(data = %{hook: nil, pipeline: pipeline}),
+    do: construct(%{data | hook: hook_from_pipeline(pipeline)})
+
   def construct(%{
         workflow: workflow,
         pipeline: pipeline,
@@ -78,6 +83,28 @@ defmodule Notifications.Workers.Webhook.Message do
           }
         end)
     }
+  end
+
+  # Without a hook only the pipeline's commit and reference are known; the
+  # payload keeps its shape and the repository and sender fields stay empty.
+  defp hook_from_pipeline(pipeline = %{branch_name: "refs/tags/" <> tag_name}) do
+    Hook.new(
+      git_ref_type: :TAG,
+      git_ref: pipeline.branch_name,
+      tag_name: tag_name,
+      head_commit_sha: pipeline.commit_sha,
+      commit_message: pipeline.commit_message
+    )
+  end
+
+  defp hook_from_pipeline(pipeline) do
+    Hook.new(
+      git_ref_type: :BRANCH,
+      git_ref: "refs/heads/#{pipeline.branch_name}",
+      branch_name: pipeline.branch_name,
+      head_commit_sha: pipeline.commit_sha,
+      commit_message: pipeline.commit_message
+    )
   end
 
   defp reference_type(git_ref_type) do
