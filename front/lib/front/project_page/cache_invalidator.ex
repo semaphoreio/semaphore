@@ -149,53 +149,49 @@ defmodule Front.ProjectPage.CacheInvalidator do
 
     Models.Workflow.invalidate(pipeline.workflow_id)
 
-    project = Models.Project.find_by_id(pipeline.project_id)
-    hook = Models.RepoProxy.find(pipeline.hook_id)
+    case Models.Project.find_by_id(pipeline.project_id) do
+      nil ->
+        Logger.info(
+          "#{@log_prefix} [PIPELINE EVENT] [pipeline_id=#{pipeline_id}] Project not found, nothing to invalidate"
+        )
 
-    ref_type = hook.type
-
-    git_ref_type_params =
-      struct!(ProjectPage.Model.LoadParams,
-        project_id: project.id,
-        organization_id: project.organization_id,
-        user_page?: false,
-        ref_types: [ref_type]
-      )
-
-    all_git_ref_types_params =
-      struct!(ProjectPage.Model.LoadParams,
-        project_id: project.id,
-        organization_id: project.organization_id,
-        user_page?: false,
-        ref_types: [""]
-      )
-
-    if Application.get_env(:front, :preheat_project_page) == "true" do
-      refresh_git_ref_type =
-        Async.run(fn ->
-          {:ok, _data, :from_api} = git_ref_type_params |> ProjectPage.Model.refresh()
+      project ->
+        pipeline.hook_id
+        |> ref_types()
+        |> Enum.map(fn ref_type ->
+          struct!(ProjectPage.Model.LoadParams,
+            project_id: project.id,
+            organization_id: project.organization_id,
+            user_page?: false,
+            ref_types: [ref_type]
+          )
         end)
-
-      refresh_all_git_ref_types =
-        Async.run(fn ->
-          {:ok, _data, :from_api} = all_git_ref_types_params |> ProjectPage.Model.refresh()
-        end)
-
-      {:ok, _} = Async.await(refresh_git_ref_type)
-      {:ok, _} = Async.await(refresh_all_git_ref_types)
-    else
-      invalidate_git_ref_type =
-        Async.run(fn ->
-          git_ref_type_params |> ProjectPage.Model.invalidate()
-        end)
-
-      invalidate_all_git_ref_types =
-        Async.run(fn ->
-          all_git_ref_types_params |> ProjectPage.Model.invalidate()
-        end)
-
-      {:ok, _} = Async.await(invalidate_git_ref_type)
-      {:ok, _} = Async.await(invalidate_all_git_ref_types)
+        |> refresh_or_invalidate()
     end
+  end
+
+  # Pipelines started by the API or a task get their hook after the initializing
+  # event, so without a hook only the page that lists every ref type is updated.
+  defp ref_types(hook_id) do
+    case find_hook(hook_id) do
+      nil -> [""]
+      hook -> [hook.type, ""]
+    end
+  end
+
+  defp find_hook(hook_id) when hook_id in [nil, ""], do: nil
+  defp find_hook(hook_id), do: Models.RepoProxy.find(hook_id)
+
+  defp refresh_or_invalidate(params_list) do
+    update =
+      if Application.get_env(:front, :preheat_project_page) == "true" do
+        fn params -> {:ok, _data, :from_api} = ProjectPage.Model.refresh(params) end
+      else
+        &ProjectPage.Model.invalidate/1
+      end
+
+    params_list
+    |> Enum.map(fn params -> Async.run(fn -> update.(params) end) end)
+    |> Enum.each(fn task -> {:ok, _} = Async.await(task) end)
   end
 end

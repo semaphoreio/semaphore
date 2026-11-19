@@ -1,6 +1,8 @@
 defmodule Front.BranchPage.CacheInvalidatorTest do
   use ExUnit.Case
 
+  import ExUnit.CaptureLog
+
   alias Support.Stubs.DB
 
   alias Front.BranchPage.CacheInvalidator
@@ -45,5 +47,55 @@ defmodule Front.BranchPage.CacheInvalidatorTest do
 
       refute Cacheman.exists?(:front, cache_key)
     end
+
+    test "skips the branch page when the pipeline has no branch yet" do
+      pipeline = DB.first(:workflows) |> Support.Stubs.Pipeline.create(hook_id: "", branch_id: "")
+
+      log =
+        capture_log(fn ->
+          InternalApi.Plumber.PipelineEvent.new(
+            pipeline_id: pipeline.id,
+            timestamp: %Google.Protobuf.Timestamp{seconds: 1, nanos: 1}
+          )
+          |> InternalApi.Plumber.PipelineEvent.encode()
+          |> CacheInvalidator.pipeline_event()
+        end)
+
+      assert log =~ "Processing finished"
+      refute log =~ "branch_id=/"
+    end
+  end
+
+  describe "pr_unmergeable_event" do
+    test "invalidates the branch page of the latest workflow on the branch", %{branch: branch} do
+      cache_key = "branch_page_model/#{Model.cache_version()}/branch_id=#{branch.id}/"
+      Cacheman.put(:front, cache_key, "test content")
+
+      branch.project_id
+      |> pr_unmergeable_event(branch.name)
+      |> CacheInvalidator.pr_unmergeable_event()
+
+      refute Cacheman.exists?(:front, cache_key)
+    end
+
+    test "does nothing when the branch has no workflow", %{branch: branch} do
+      cache_key = "branch_page_model/#{Model.cache_version()}/branch_id=#{branch.id}/"
+      Cacheman.put(:front, cache_key, "test content")
+
+      Ecto.UUID.generate()
+      |> pr_unmergeable_event(branch.name)
+      |> CacheInvalidator.pr_unmergeable_event()
+
+      assert Cacheman.exists?(:front, cache_key)
+    end
+  end
+
+  defp pr_unmergeable_event(project_id, branch_name) do
+    InternalApi.RepoProxy.PullRequestUnmergeable.new(
+      project_id: project_id,
+      branch_name: branch_name,
+      timestamp: %Google.Protobuf.Timestamp{seconds: 1, nanos: 1}
+    )
+    |> InternalApi.RepoProxy.PullRequestUnmergeable.encode()
   end
 end

@@ -7,8 +7,8 @@ defmodule Support.Stubs.Hook do
     __MODULE__.Grpc.init()
   end
 
-  def create(branch) do
-    hook = build(branch)
+  def create(branch, params \\ []) do
+    hook = build(branch, params)
 
     DB.insert(:hooks, %{
       id: hook.hook_id,
@@ -18,8 +18,8 @@ defmodule Support.Stubs.Hook do
     })
   end
 
-  def build(branch) do
-    InternalApi.RepoProxy.Hook.new(
+  def build(branch, params \\ []) do
+    [
       hook_id: UUID.gen(),
       head_commit_sha: "474488cb82e4784b8de8a91d3e58ed188fea4dbd",
       commit_message: "Pull new workflows on the branch page",
@@ -35,7 +35,9 @@ defmodule Support.Stubs.Hook do
       pr_branch_name: branch.name,
       pr_number: "5",
       git_ref_type: InternalApi.RepoProxy.Hook.Type.value(:BRANCH)
-    )
+    ]
+    |> Keyword.merge(params)
+    |> InternalApi.RepoProxy.Hook.new()
   end
 
   defmodule Grpc do
@@ -51,9 +53,19 @@ defmodule Support.Stubs.Hook do
     end
 
     def describe(req, _) do
-      hook = DB.find_by(:hooks, :id, req.hook_id)
+      case DB.find_by(:hooks, :id, req.hook_id) do
+        nil ->
+          DescribeResponse.new(
+            status:
+              InternalApi.ResponseStatus.new(
+                code: InternalApi.ResponseStatus.Code.value(:BAD_PARAM),
+                message: "Hook with id #{req.hook_id} not found"
+              )
+          )
 
-      DescribeResponse.new(status: ok(), hook: hook.api_model)
+        hook ->
+          DescribeResponse.new(status: ok(), hook: hook.api_model)
+      end
     end
 
     def describe_many(req, _) do

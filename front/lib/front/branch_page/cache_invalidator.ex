@@ -99,9 +99,7 @@ defmodule Front.BranchPage.CacheInvalidator do
 
     Models.Workflow.invalidate(pipeline.workflow_id)
 
-    {:ok, _} =
-      struct!(BranchPage.Model.LoadParams, branch_id: pipeline.branch_id)
-      |> BranchPage.Model.invalidate()
+    invalidate_branch(pipeline.branch_id)
   end
 
   defp invalidate_with_pr_branch(project_id, branch_name) do
@@ -110,17 +108,24 @@ defmodule Front.BranchPage.CacheInvalidator do
     # and invalidate the cache for it, since it's from that workflow
     # that we determine the conflict status of the branch.
     #
-    workflow =
-      Models.Workflow.find_latest(
-        project_id: project_id,
-        branch_name: branch_name
-      )
+    case Models.Workflow.find_latest(project_id: project_id, branch_name: branch_name) do
+      nil ->
+        :ok
 
-    Models.RepoProxy.invalidate(workflow.hook_id)
-    Models.Workflow.invalidate(workflow.id)
+      workflow ->
+        Models.RepoProxy.invalidate(workflow.hook_id)
+        Models.Workflow.invalidate(workflow.id)
 
+        invalidate_branch(workflow.branch_id)
+    end
+  end
+
+  # Pipelines started by the API or a task have no branch until their hook exists.
+  defp invalidate_branch(branch_id) when branch_id in [nil, ""], do: :ok
+
+  defp invalidate_branch(branch_id) do
     {:ok, _} =
-      struct!(BranchPage.Model.LoadParams, branch_id: workflow.branch_id)
+      struct!(BranchPage.Model.LoadParams, branch_id: branch_id)
       |> BranchPage.Model.invalidate()
   end
 end
