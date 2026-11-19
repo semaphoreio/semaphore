@@ -163,7 +163,7 @@ defmodule Ppl.PplSubInits.STMHandler.RegularInitState.Test do
     assert_receive :blocks_created, 5_000
 
     assert {:ok, beholder} = Beholder.start_link()
-    :timer.sleep(2_000)
+    wait_for_abort_blocked_on_lock()
     assert %{state: "initializing"} = Repo.get_by(Ppls, ppl_id: ppl_id)
 
     send(exit_transaction.pid, :commit)
@@ -174,6 +174,27 @@ defmodule Ppl.PplSubInits.STMHandler.RegularInitState.Test do
 
     assert {:ok, blocks} = PplBlocksQueries.get_all_by_id(ppl_id)
     assert Enum.all?(blocks, &(&1.terminate_request == "cancel"))
+  end
+
+  defp wait_for_abort_blocked_on_lock(attempts \\ 100)
+
+  defp wait_for_abort_blocked_on_lock(0),
+    do: flunk("the stuck abort never waited on a lock held by regular_init")
+
+  defp wait_for_abort_blocked_on_lock(attempts) do
+    query = """
+    SELECT count(*) FROM pg_locks l JOIN pg_stat_activity a ON a.pid = l.pid
+    WHERE NOT l.granted AND a.query LIKE 'UPDATE "pipelines"%'
+    """
+
+    case Repo.query!(query) do
+      %{rows: [[0]]} ->
+        :timer.sleep(100)
+        wait_for_abort_blocked_on_lock(attempts - 1)
+
+      _ ->
+        :ok
+    end
   end
 
   defp start_loopers_until_regular_init do
