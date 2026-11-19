@@ -6,7 +6,26 @@ defmodule Support.GitHooks do
 
   - tag
   - branch
+  - skip_branch
+  - deleted_branch
+  - unsupported_hook_type
   """
+
+  # What the post-receive hook sends when a branch is deleted: git's new revision
+  # is all zeros and `git log` has nothing to say about it.
+  def deleted_branch do
+    %{
+      "reference" => "refs/heads/master",
+      "commit" => %{
+        "sha" => "0000000000000000000000000000000000000000",
+        "message" => ""
+      },
+      "author" => %{
+        "name" => "",
+        "email" => ""
+      }
+    }
+  end
 
   def tag do
     %{
