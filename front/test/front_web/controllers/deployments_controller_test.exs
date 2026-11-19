@@ -341,17 +341,15 @@ defmodule FrontWeb.DeploymentsControllerTest do
 
       setup_deployment(context)
 
+      Deployments.Grpc.expect(:history, fn ->
+        Process.sleep(2_000)
+        raise GRPC.RPCError, status: :unknown, message: "query timed out"
+      end)
+
       with_mocks [
         {Watchman, [:passthrough], [increment: fn _ -> nil end]},
         {Front.Async, [:passthrough],
-         [
-           await: fn task ->
-             case passthrough([task]) do
-               {:ok, %Front.Models.DeploymentDetails.HistoryPage{}} -> nil
-               result -> result
-             end
-           end
-         ]}
+         [await: fn task -> passthrough([task, [timeout: 1_000]]) end]}
       ] do
         {conn, log} = with_log(fn -> call_show(conn, project_id, target_id) end)
         html = html_response(conn, 200)

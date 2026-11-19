@@ -57,7 +57,8 @@ defmodule FrontWeb.DeploymentsController do
             case Async.await(maybe_history) do
               {:ok, history} -> {conn, history}
               {:exit, {reason, _stacktrace}} -> history_failed(conn, target_id, reason)
-              nil -> history_failed(conn, target_id, :timeout)
+              {:exit, reason} -> history_failed(conn, target_id, reason)
+              {:error, :timeout} -> history_failed(conn, target_id, :timeout)
             end
 
           maybe_target_details = Async.run(fetch_target_details(target, history, conn.assigns))
