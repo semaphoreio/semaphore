@@ -5,6 +5,7 @@ defmodule Ppl.Ppls.Beholder.Test do
 
   alias InternalApi.Plumber.PipelineEvent
   alias Ppl.PplSubInits.Model.PplSubInitsQueries
+  alias Ppl.PplTraces.Model.PplTracesQueries
   alias InternalApi.Plumber.Pipeline.Result
   alias Ppl.Actions
   alias Ppl.Ppls.Beholder
@@ -215,6 +216,39 @@ defmodule Ppl.Ppls.Beholder.Test do
 
     assert log =~ "publish_done failed for ppl_id: #{ppl.ppl_id}, exit: :timeout"
     refute log =~ "broker-password"
+  end
+
+  test "stuck abort requests a stop of an unfinished sub-init" do
+    {:ok, %{ppl_id: ppl_id}} =
+      %{"repo_name" => "13_free_topology"}
+      |> Test.Helpers.schedule_request_factory(:local)
+      |> Actions.schedule()
+
+    {:ok, ppl} = PplsQueries.get_by_id(ppl_id)
+
+    with_mock Looper.Publisher.AMQP, publish: capture_publish() do
+      Beholder.post_proccessing(ppl)
+    end
+
+    assert {:ok, psi} = PplSubInitsQueries.get_by_id(ppl_id)
+    assert psi.terminate_request == "stop"
+    assert psi.terminate_request_desc == "Pipeline terminated"
+  end
+
+  test "stuck abort sets the done_at timestamp" do
+    {:ok, %{ppl_id: ppl_id}} =
+      %{"repo_name" => "13_free_topology"}
+      |> Test.Helpers.schedule_request_factory(:local)
+      |> Actions.schedule()
+
+    {:ok, ppl} = PplsQueries.get_by_id(ppl_id)
+    assert {:ok, %{done_at: nil}} = PplTracesQueries.get_by_id(ppl_id)
+
+    with_mock Looper.Publisher.AMQP, publish: capture_publish() do
+      Beholder.post_proccessing(ppl)
+    end
+
+    assert {:ok, %{done_at: %DateTime{}}} = PplTracesQueries.get_by_id(ppl_id)
   end
 
   test "a user stop already recorded on the sub-init is kept" do
