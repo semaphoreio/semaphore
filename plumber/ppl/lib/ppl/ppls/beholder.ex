@@ -80,8 +80,15 @@ defmodule Ppl.Ppls.Beholder do
   end
 
   def terminate_sub_init(ppl) do
-    with {:ok, psi} <- PplSubInitsQueries.get_by_id(ppl.ppl_id) do
-      PplSubInitsQueries.terminate(psi, "stop", "Pipeline terminated")
+    case PplSubInitsQueries.get_by_id(ppl.ppl_id) do
+      {:ok, %{state: state, terminate_request: nil} = psi} when state != "done" ->
+        PplSubInitsQueries.terminate(psi, "stop", "Pipeline terminated")
+
+      {:ok, psi} ->
+        {:ok, psi}
+
+      error ->
+        error
     end
   end
 

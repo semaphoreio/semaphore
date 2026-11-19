@@ -174,6 +174,40 @@ defmodule Ppl.Ppls.Beholder.Test do
     assert_done_event_published(ppl.ppl_id)
   end
 
+  test "a user stop already recorded on the sub-init is kept" do
+    {:ok, %{ppl_id: ppl_id}} =
+      %{"repo_name" => "13_free_topology"}
+      |> Test.Helpers.schedule_request_factory(:local)
+      |> Actions.schedule()
+
+    {:ok, ppl} = PplsQueries.get_by_id(ppl_id)
+    {:ok, psi} = PplSubInitsQueries.get_by_id(ppl_id)
+    {:ok, _} = PplSubInitsQueries.terminate(psi, "stop", "API call")
+
+    Beholder.terminate_sub_init(ppl)
+
+    assert {:ok, psi} = PplSubInitsQueries.get_by_id(ppl_id)
+    assert psi.terminate_request == "stop"
+    assert psi.terminate_request_desc == "API call"
+  end
+
+  @tag :integration
+  test "a finished sub-init is left unchanged" do
+    {:ok, %{ppl_id: ppl_id}} =
+      %{"repo_name" => "13_free_topology"}
+      |> Test.Helpers.schedule_request_factory(:local)
+      |> Actions.schedule()
+
+    create_blocks(ppl_id)
+    {:ok, ppl} = PplsQueries.get_by_id(ppl_id)
+    {:ok, psi_before} = PplSubInitsQueries.get_by_id(ppl_id)
+    assert psi_before.state == "done"
+
+    Beholder.terminate_sub_init(ppl)
+
+    assert {:ok, psi_before} == PplSubInitsQueries.get_by_id(ppl_id)
+  end
+
   defp capture_publish do
     test_pid = self()
 
