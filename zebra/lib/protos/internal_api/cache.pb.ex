@@ -111,6 +111,55 @@ defmodule InternalApi.Cache.Cache do
   field(:url, 3, type: :string)
 end
 
+defmodule InternalApi.Cache.GetS3CredentialsRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          project_id: String.t(),
+          min_validity_seconds: integer
+        }
+  defstruct [:project_id, :min_validity_seconds]
+
+  field(:project_id, 1, type: :string)
+  field(:min_validity_seconds, 2, type: :int64)
+end
+
+defmodule InternalApi.Cache.GetS3CredentialsResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          status: InternalApi.ResponseStatus.t(),
+          region: String.t(),
+          bucket: String.t(),
+          prefix: String.t(),
+          access_key_id: String.t(),
+          secret_access_key: String.t(),
+          session_token: String.t(),
+          expires_at: Google.Protobuf.Timestamp.t()
+        }
+  defstruct [
+    :status,
+    :region,
+    :bucket,
+    :prefix,
+    :access_key_id,
+    :secret_access_key,
+    :session_token,
+    :expires_at
+  ]
+
+  field(:status, 1, type: InternalApi.ResponseStatus)
+  field(:region, 2, type: :string)
+  field(:bucket, 3, type: :string)
+  field(:prefix, 4, type: :string)
+  field(:access_key_id, 5, type: :string)
+  field(:secret_access_key, 6, type: :string)
+  field(:session_token, 7, type: :string)
+  field(:expires_at, 8, type: Google.Protobuf.Timestamp)
+end
+
 defmodule InternalApi.Cache.CacheService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Cache.CacheService"
@@ -119,6 +168,12 @@ defmodule InternalApi.Cache.CacheService.Service do
   rpc(:Describe, InternalApi.Cache.DescribeRequest, InternalApi.Cache.DescribeResponse)
   rpc(:Destroy, InternalApi.Cache.DestroyRequest, InternalApi.Cache.DestroyResponse)
   rpc(:Update, InternalApi.Cache.UpdateRequest, InternalApi.Cache.UpdateResponse)
+
+  rpc(
+    :GetS3Credentials,
+    InternalApi.Cache.GetS3CredentialsRequest,
+    InternalApi.Cache.GetS3CredentialsResponse
+  )
 end
 
 defmodule InternalApi.Cache.CacheService.Stub do

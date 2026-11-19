@@ -18,7 +18,7 @@ defmodule Zebra.Workers.JobFinishedCallbackWorker do
       Zebra.LegacyRepo.transaction(fn ->
         log(job_id, "Looking up job.")
 
-        case Job.find(job_id) do
+        case Job.find_for_update(job_id) do
           {:ok, job} ->
             log(job_id, "Job found.")
             finish(job, result)

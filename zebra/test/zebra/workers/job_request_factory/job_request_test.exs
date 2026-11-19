@@ -289,6 +289,38 @@ defmodule Zebra.Workers.JobRequestFactory.JobRequestTest do
              } = JobRequest.sanitize(request)
     end
 
+    test "sanitizes the S3 cache and registry credentials" do
+      request = %{
+        "env_vars" => [
+          JobRequest.env_var("SEMAPHORE_CACHE_BACKEND", "s3"),
+          JobRequest.env_var("SEMAPHORE_CACHE_S3_BUCKET", "bucket"),
+          JobRequest.env_var("SEMAPHORE_CACHE_S3_REGION", "us-east-1"),
+          JobRequest.env_var("SEMAPHORE_CACHE_S3_KEY", "key"),
+          JobRequest.env_var("SEMAPHORE_CACHE_S3_SECRET", "secret"),
+          JobRequest.env_var("SEMAPHORE_CACHE_S3_SESSION_TOKEN", "token"),
+          JobRequest.env_var("SEMAPHORE_REGISTRY_HOST", "registry.example.com"),
+          JobRequest.env_var("SEMAPHORE_REGISTRY_URL", "registry.example.com/orgs/1"),
+          JobRequest.env_var("SEMAPHORE_REGISTRY_USERNAME", "AWS"),
+          JobRequest.env_var("SEMAPHORE_REGISTRY_PASSWORD", "password")
+        ]
+      }
+
+      assert JobRequest.sanitize(request) == %{
+               "env_vars" => [
+                 JobRequest.env_var("SEMAPHORE_CACHE_BACKEND", "s3"),
+                 JobRequest.env_var("SEMAPHORE_CACHE_S3_BUCKET", "bucket"),
+                 JobRequest.env_var("SEMAPHORE_CACHE_S3_REGION", "us-east-1"),
+                 %{"name" => "SEMAPHORE_CACHE_S3_KEY", "value" => "{SANITIZED}"},
+                 %{"name" => "SEMAPHORE_CACHE_S3_SECRET", "value" => "{SANITIZED}"},
+                 %{"name" => "SEMAPHORE_CACHE_S3_SESSION_TOKEN", "value" => "{SANITIZED}"},
+                 JobRequest.env_var("SEMAPHORE_REGISTRY_HOST", "registry.example.com"),
+                 JobRequest.env_var("SEMAPHORE_REGISTRY_URL", "registry.example.com/orgs/1"),
+                 JobRequest.env_var("SEMAPHORE_REGISTRY_USERNAME", "AWS"),
+                 %{"name" => "SEMAPHORE_REGISTRY_PASSWORD", "value" => "{SANITIZED}"}
+               ]
+             }
+    end
+
     test "sanitize all files" do
       request = %{
         "files" => [

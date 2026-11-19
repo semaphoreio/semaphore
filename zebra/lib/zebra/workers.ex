@@ -20,10 +20,31 @@ defmodule Zebra.Workers do
   def active do
     @all
     |> Enum.filter(fn s -> System.get_env(s.flag) == "true" end)
+    |> Enum.concat(agent_lost_worker())
     |> Enum.concat([
       # Cache invalidator should always be started,
       %{name: Zebra.FeatureProviderInvalidatorWorker}
     ])
     |> Enum.map(fn %{name: name} -> name end)
+  end
+
+  # Lost agents are reported only by the secondary agent provider. Unless
+  # START_AGENT_LOST_WORKER says otherwise, the worker runs next to the
+  # teardown callback worker whenever that provider is configured.
+  def agent_lost_worker do
+    start? =
+      case System.get_env("START_AGENT_LOST_WORKER") do
+        "true" ->
+          true
+
+        "false" ->
+          false
+
+        _ ->
+          System.get_env("START_JOB_TEARDOWN_CALLBACK_WORKER") == "true" and
+            Zebra.Workers.Agent.HostedAgent.secondary_endpoint_configured?()
+      end
+
+    if start?, do: [%{name: Zebra.Workers.AgentLostWorker}], else: []
   end
 end

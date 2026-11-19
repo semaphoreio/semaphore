@@ -81,6 +81,7 @@ defmodule Zebra.Application do
       Support.FakeServers.SecretsApi,
       Support.FakeServers.ArtifactApi,
       Support.FakeServers.CacheApi,
+      Support.FakeServers.RegistryApi,
       Support.FakeServers.RepoProxyApi,
       Support.FakeServers.ChmuraApi,
       Support.FakeServers.SelfHosted,

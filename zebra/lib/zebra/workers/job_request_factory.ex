@@ -2,6 +2,7 @@ defmodule Zebra.Workers.JobRequestFactory do
   require Logger
 
   alias Zebra.Models.Job
+  alias Zebra.Workers.Agent.HostedAgent
 
   alias Zebra.Workers.JobRequestFactory.{
     Artifacthub,
@@ -14,6 +15,7 @@ defmodule Zebra.Workers.JobRequestFactory do
     OpenIDConnect,
     Organization,
     Project,
+    Registry,
     RepoProxy,
     Repository,
     ReservedEnvVars,
@@ -23,6 +25,11 @@ defmodule Zebra.Workers.JobRequestFactory do
     TestResults,
     ToolboxInstall
   }
+
+  # Credentials for a job must outlast its wait in the queue and its time limit,
+  # within the 12 hours temporary credentials can last.
+  @credentials_queue_margin 60 * 60
+  @credentials_max_validity 12 * 60 * 60
 
   def init do
     settings = Settings.load!()
@@ -57,6 +64,7 @@ defmodule Zebra.Workers.JobRequestFactory do
     org_id = job.organization_id
     spec = Job.decode_spec(job.spec)
     job_type = Job.detect_type(job)
+    secondary? = secondary_provider?(job)
 
     find_project = Task.async(fn -> Project.find(job.project_id) end)
     find_org = Task.async(fn -> Organization.find(org_id) end)
@@ -93,10 +101,10 @@ defmodule Zebra.Workers.JobRequestFactory do
          {:ok, repo_proxy} <- await(find_repo_proxy, :repo_proxy),
          find_cache <-
            Task.async(fn ->
-             if Job.self_hosted?(job.machine_type),
-               do: {:ok, nil},
-               else: Cache.find(project.cache_id, repo_proxy, org_id, job_type, project)
+             find_cache(job, project, repo_proxy, job_type, secondary?)
            end),
+         find_registry <-
+           Task.async(fn -> find_registry(job, repo_proxy, secondary?) end),
          find_secrets <-
            Task.async(fn -> Secrets.load(org_id, job.id, spec, project, repo_proxy, job_type) end),
          {:ok, repository, private_git_key} <- await(find_repository, :repository),
@@ -108,15 +116,18 @@ defmodule Zebra.Workers.JobRequestFactory do
          {:ok, organization} <- await(find_org, :organization),
          {:ok, cache} <- await(find_cache, :cache),
          {:ok, cache_files} <- Cache.files(job, cache),
-         {:ok, cache_env_vars} <- Cache.env_vars(job, cache, org_id),
+         {:ok, registry} <- await(find_registry, :registry),
          {:ok, all_secrets} <- await(find_secrets, :secrets),
          {:ok, artifact_env_var} <- await(find_artifact_token, :artifact_token),
          {:ok, loghub2_token} <- await(generate_token, :loghub2_token),
          :ok <- ReservedEnvVars.validate_secrets(job, all_secrets),
+         own_names <- own_env_var_names(spec, spec_env_vars, all_secrets),
+         {:ok, cache_env_vars} <- Cache.env_vars(job, cache, org_id, own_names),
+         {:ok, registry_env_vars} <- Registry.env_vars(registry, own_names),
          {:ok, open_id_token_env_vars} <-
            OpenIDConnect.load(job, repo_env_vars, organization, project, job_type, spec_env_vars),
          {:ok, callback_token} <- CallbackToken.generate(job) do
-      log_dropped_cache_vars(job, project, repo_proxy, cache_env_vars)
+      log_dropped_cache_vars(job, project, repo_proxy, cache)
 
       org_url = "https://#{organization.org_username}.#{Application.get_env(:zebra, :domain)}"
 
@@ -124,6 +135,7 @@ defmodule Zebra.Workers.JobRequestFactory do
         env_vars(job, job_type, project.name, org_url) ++
           artifact_env_var ++
           cache_env_vars ++
+          registry_env_vars ++
           ToolboxInstall.env_vars(job) ++
           TestResults.env_vars(org_id) ++
           GitCheckout.env_vars(job, org_id) ++
@@ -249,10 +261,48 @@ defmodule Zebra.Workers.JobRequestFactory do
     end
   end
 
-  defp log_dropped_cache_vars(job, project, repo_proxy, cache_env_vars) do
-    # Forked-PR cache skips are intentional (gated by the disable_forked_pr_cache
-    # feature flag in Cache.find/3), so they are not a dropped-vars condition.
-    if cache_env_vars == [] and not Job.self_hosted?(job.machine_type) and
+  # Decided once, so the cache and the registry agree on where the job's agent runs.
+  defp secondary_provider?(job) do
+    Job.hosted?(job.machine_type) and
+      HostedAgent.provider_for(job) == HostedAgent.secondary_provider()
+  end
+
+  defp find_cache(job, project, repo_proxy, job_type, secondary?) do
+    cond do
+      Job.self_hosted?(job.machine_type) ->
+        {:ok, nil}
+
+      secondary? ->
+        Cache.find_s3(job, project, repo_proxy, job_type, credentials_validity(job))
+
+      true ->
+        Cache.find(project.cache_id, repo_proxy, job.organization_id, job_type, project)
+    end
+  end
+
+  defp find_registry(job, repo_proxy, true),
+    do: Registry.find(job.organization_id, repo_proxy, credentials_validity(job))
+
+  defp find_registry(_job, _repo_proxy, false), do: {:ok, nil}
+
+  defp credentials_validity(%{execution_time_limit: limit}) when is_integer(limit) and limit > 0,
+    do: min(limit + @credentials_queue_margin, @credentials_max_validity)
+
+  defp credentials_validity(_job), do: @credentials_max_validity
+
+  # The names the job sets itself, in its YAML or through its secrets.
+  defp own_env_var_names(spec, spec_env_vars, all_secrets) do
+    secrets = all_secrets.job_secrets ++ List.flatten(all_secrets.container_secrets)
+
+    Enum.map(spec_env_vars, & &1["name"]) ++
+      Enum.flat_map(spec.agent.containers, fn c -> Enum.map(c.env_vars, & &1.name) end) ++
+      Enum.flat_map(secrets, fn s -> Enum.map(s.env_vars, & &1["name"]) end)
+  end
+
+  defp log_dropped_cache_vars(job, project, repo_proxy, cache) do
+    # Forked-PR cache skips are intentional (Cache.find/5, Cache.find_s3/5), so they are
+    # not a dropped-vars condition. Neither is a job that sets its own cache variables.
+    if is_nil(cache) and not Job.self_hosted?(job.machine_type) and
          not is_nil(project.cache_id) and
          not Cache.forked_pr?(repo_proxy, job.organization_id, project) do
       Logger.warning(

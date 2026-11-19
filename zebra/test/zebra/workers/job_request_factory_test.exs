@@ -6,6 +6,7 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
 
   alias Zebra.Models.Job
   alias Zebra.Workers.JobRequestFactory, as: Worker
+  alias Zebra.Workers.JobRequestFactory.JobRequest
 
   @artifact_token "asdfg"
   @project_id Ecto.UUID.generate()
@@ -1750,7 +1751,16 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
       "SEMAPHORE_GIT_DIR",
       "SEMAPHORE_CACHE_ARCHIVE_METHOD",
       "SEMAPHORE_TOOLBOX_METRICS_ENABLED",
-      "SEMAPHORE_TEST_RESULTS_NO_TRIM"
+      "SEMAPHORE_TEST_RESULTS_NO_TRIM",
+      "SEMAPHORE_CACHE_S3_BUCKET",
+      "SEMAPHORE_CACHE_S3_REGION",
+      "SEMAPHORE_CACHE_S3_KEY",
+      "SEMAPHORE_CACHE_S3_SECRET",
+      "SEMAPHORE_CACHE_S3_SESSION_TOKEN",
+      "SEMAPHORE_REGISTRY_HOST",
+      "SEMAPHORE_REGISTRY_URL",
+      "SEMAPHORE_REGISTRY_USERNAME",
+      "SEMAPHORE_REGISTRY_PASSWORD"
     ]
 
     for machine_type <- ["e1-standard-2", "s1-test-1"] do
@@ -1793,6 +1803,266 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
 
       assert "SEMAPHORE_CACHE_ARCHIVE_METHOD" in names
       assert "SEMAPHORE_GIT_CLONE_SLOW_RETRY" in names
+    end
+  end
+
+  describe "jobs of organizations on the secondary agent provider" do
+    @s3_secret "s3-secret-access-key"
+    @s3_session_token "s3-session-token"
+    @registry_host "registry.example.com"
+    @registry_password "registry-password"
+
+    setup do
+      Application.put_env(:zebra, :chmura_secondary_endpoint, "localhost:50051")
+      on_exit(fn -> Application.delete_env(:zebra, :chmura_secondary_endpoint) end)
+
+      test_pid = self()
+
+      GrpcMock.stub(Support.FakeServers.CacheApi, :get_s3_credentials, fn req, _ ->
+        send(test_pid, {:get_s3_credentials, req})
+        s3_credentials_response()
+      end)
+
+      GrpcMock.stub(Support.FakeServers.RegistryApi, :get_credentials, fn req, _ ->
+        send(test_pid, {:get_registry_credentials, req})
+        registry_credentials_response(req.organization_id)
+      end)
+
+      :ok
+    end
+
+    test "get S3 cache and registry credentials instead of the SFTP cache" do
+      enable_secondary_provider()
+      job = create_pending_job(%{execution_time_limit: 60 * 60})
+
+      {:ok, job} = Worker.process(job)
+      assert job.aasm_state == "enqueued"
+
+      names = Enum.map(job.request["env_vars"], & &1["name"])
+
+      assert names |> Enum.drop_while(&(&1 != "SEMAPHORE_ARTIFACT_TOKEN")) |> Enum.take(12) == [
+               "SEMAPHORE_ARTIFACT_TOKEN",
+               "SEMAPHORE_CACHE_BACKEND",
+               "SEMAPHORE_CACHE_S3_BUCKET",
+               "SEMAPHORE_CACHE_S3_REGION",
+               "SEMAPHORE_CACHE_S3_KEY",
+               "SEMAPHORE_CACHE_S3_SECRET",
+               "SEMAPHORE_CACHE_S3_SESSION_TOKEN",
+               "SEMAPHORE_REGISTRY_HOST",
+               "SEMAPHORE_REGISTRY_URL",
+               "SEMAPHORE_REGISTRY_USERNAME",
+               "SEMAPHORE_REGISTRY_PASSWORD",
+               "SEMAPHORE_TOOLBOX_METRICS_ENABLED"
+             ]
+
+      assert env_value(job, "SEMAPHORE_CACHE_BACKEND") == "s3"
+      assert env_value(job, "SEMAPHORE_CACHE_S3_BUCKET") == "cache-bucket"
+      assert env_value(job, "SEMAPHORE_CACHE_S3_REGION") == "us-east-1"
+      assert env_value(job, "SEMAPHORE_CACHE_S3_KEY") == "s3-access-key-id"
+      assert env_value(job, "SEMAPHORE_CACHE_S3_SECRET") == @s3_secret
+      assert env_value(job, "SEMAPHORE_CACHE_S3_SESSION_TOKEN") == @s3_session_token
+      assert env_value(job, "SEMAPHORE_REGISTRY_HOST") == @registry_host
+
+      assert env_value(job, "SEMAPHORE_REGISTRY_URL") ==
+               "#{@registry_host}/orgs/#{job.organization_id}"
+
+      assert env_value(job, "SEMAPHORE_REGISTRY_USERNAME") == "AWS"
+      assert env_value(job, "SEMAPHORE_REGISTRY_PASSWORD") == @registry_password
+
+      refute "SSH_PRIVATE_KEY_PATH" in names
+      refute "SEMAPHORE_CACHE_URL" in names
+
+      refute Enum.any?(
+               job.request["files"],
+               &String.ends_with?(&1["path"], "semaphore_cache_key")
+             )
+
+      assert_received {:get_s3_credentials, s3_request}
+      assert s3_request.project_id == job.project_id
+      assert s3_request.min_validity_seconds == 2 * 60 * 60
+
+      assert_received {:get_registry_credentials, registry_request}
+      assert registry_request.organization_id == job.organization_id
+      assert registry_request.min_validity_seconds == 2 * 60 * 60
+    end
+
+    test "credentials are asked to last at most 12 hours" do
+      enable_secondary_provider()
+      job = create_pending_job(%{execution_time_limit: 24 * 60 * 60})
+
+      {:ok, _job} = Worker.process(job)
+
+      assert_received {:get_s3_credentials, %{min_validity_seconds: 43_200}}
+      assert_received {:get_registry_credentials, %{min_validity_seconds: 43_200}}
+    end
+
+    test "jobs of other organizations keep the SFTP cache and get no registry" do
+      job = create_pending_job()
+
+      {:ok, job} = Worker.process(job)
+      assert job.aasm_state == "enqueued"
+
+      names = Enum.map(job.request["env_vars"], & &1["name"])
+
+      assert env_value(job, "SEMAPHORE_CACHE_BACKEND") == "sftp"
+      assert "SSH_PRIVATE_KEY_PATH" in names
+      assert "SEMAPHORE_CACHE_URL" in names
+      refute Enum.any?(names, &String.starts_with?(&1, "SEMAPHORE_CACHE_S3_"))
+      refute Enum.any?(names, &String.starts_with?(&1, "SEMAPHORE_REGISTRY_"))
+
+      assert Enum.any?(
+               job.request["files"],
+               &(&1["path"] == "/home/semaphore/.ssh/semaphore_cache_key")
+             )
+
+      refute_received {:get_s3_credentials, _}
+      refute_received {:get_registry_credentials, _}
+    end
+
+    test "self-hosted jobs get neither" do
+      enable_secondary_provider()
+      job = create_pending_job(%{machine_type: "s1-test-1"})
+
+      {:ok, job} = Worker.process(job)
+      assert job.aasm_state == "enqueued"
+
+      refute Enum.any?(job.request["env_vars"], &platform_cache_or_registry_var?/1)
+      refute_received {:get_s3_credentials, _}
+      refute_received {:get_registry_credentials, _}
+    end
+
+    test "forked pull requests get neither" do
+      enable_secondary_provider()
+      stub_forked_pull_request()
+      job = create_pending_job()
+
+      {:ok, job} = Worker.process(job)
+      assert job.aasm_state == "enqueued"
+
+      refute Enum.any?(job.request["env_vars"], &platform_cache_or_registry_var?/1)
+      refute_received {:get_s3_credentials, _}
+      refute_received {:get_registry_credentials, _}
+    end
+
+    test "a job whose secret sets a SEMAPHORE_CACHE_* variable gets none of the S3 ones" do
+      enable_secondary_provider()
+      stub_secret_env_vars([{"A", "B"}, {"SEMAPHORE_CACHE_S3_BUCKET", "own-bucket"}])
+      job = create_pending_job()
+
+      {:ok, job} = Worker.process(job)
+      assert job.aasm_state == "enqueued"
+
+      assert Enum.filter(
+               job.request["env_vars"],
+               &String.starts_with?(&1["name"], "SEMAPHORE_CACHE_")
+             ) ==
+               [%{"name" => "SEMAPHORE_CACHE_S3_BUCKET", "value" => Base.encode64("own-bucket")}]
+
+      assert env_value(job, "SEMAPHORE_REGISTRY_PASSWORD") == @registry_password
+    end
+
+    test "a job whose YAML sets a SEMAPHORE_REGISTRY_* variable gets none of the registry ones" do
+      enable_secondary_provider()
+
+      spec =
+        Map.update!(
+          @job_spec,
+          "env_vars",
+          &(&1 ++ [%{"name" => "SEMAPHORE_REGISTRY_URL", "value" => "own.example.com/team"}])
+        )
+
+      job = create_pending_job(%{spec: spec})
+
+      {:ok, job} = Worker.process(job)
+      assert job.aasm_state == "enqueued"
+
+      assert Enum.filter(
+               job.request["env_vars"],
+               &String.starts_with?(&1["name"], "SEMAPHORE_REGISTRY_")
+             ) ==
+               [
+                 %{
+                   "name" => "SEMAPHORE_REGISTRY_URL",
+                   "value" => Base.encode64("own.example.com/team")
+                 }
+               ]
+
+      assert env_value(job, "SEMAPHORE_CACHE_BACKEND") == "s3"
+    end
+
+    test "the credentials are blanked when the request is sanitized" do
+      enable_secondary_provider()
+      job = create_pending_job()
+
+      {:ok, job} = Worker.process(job)
+      sanitized = JobRequest.sanitize(job.request)
+
+      for name <- [
+            "SEMAPHORE_CACHE_S3_KEY",
+            "SEMAPHORE_CACHE_S3_SECRET",
+            "SEMAPHORE_CACHE_S3_SESSION_TOKEN",
+            "SEMAPHORE_REGISTRY_PASSWORD"
+          ] do
+        assert raw_env_value(sanitized, name) == "{SANITIZED}"
+      end
+
+      for name <- [
+            "SEMAPHORE_CACHE_BACKEND",
+            "SEMAPHORE_CACHE_S3_BUCKET",
+            "SEMAPHORE_CACHE_S3_REGION",
+            "SEMAPHORE_REGISTRY_HOST",
+            "SEMAPHORE_REGISTRY_URL",
+            "SEMAPHORE_REGISTRY_USERNAME"
+          ] do
+        assert raw_env_value(sanitized, name) == raw_env_value(job.request, name)
+      end
+    end
+
+    test "cachehub errors leave the job without the credentials, and it still runs" do
+      enable_secondary_provider()
+
+      GrpcMock.stub(Support.FakeServers.CacheApi, :get_s3_credentials, fn _, _ ->
+        raise "boom"
+      end)
+
+      GrpcMock.stub(Support.FakeServers.RegistryApi, :get_credentials, fn _, _ ->
+        raise "boom"
+      end)
+
+      job = create_pending_job()
+      test_pid = self()
+
+      log =
+        capture_log(fn ->
+          send(test_pid, {:processed, Worker.process(job)})
+        end)
+
+      assert_received {:processed, {:ok, job}}
+      assert Job.enqueued?(job)
+      refute Enum.any?(job.request["env_vars"], &platform_cache_or_registry_var?/1)
+
+      assert log =~ "Cache env vars not injected into job"
+      assert log =~ "Failed to fetch registry credentials from cachehub"
+    end
+
+    test "set only names that are reserved or documented as user-settable" do
+      enable_secondary_provider()
+      job = create_pending_job()
+
+      {:ok, job} = Worker.process(job)
+
+      user_names = Enum.map(@job_spec["env_vars"], & &1["name"])
+
+      injected =
+        job.request["env_vars"]
+        |> Enum.map(& &1["name"])
+        |> Enum.filter(&String.starts_with?(&1, "SEMAPHORE"))
+        |> Enum.reject(&(&1 in user_names))
+
+      assert "SEMAPHORE_CACHE_S3_SESSION_TOKEN" in injected
+      assert "SEMAPHORE_REGISTRY_PASSWORD" in injected
+
+      assert Enum.reject(injected, &(EnvVarPolicy.reserved?(&1) or &1 in @user_settable)) == []
     end
   end
 
@@ -1926,5 +2196,128 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
 
     assert worker.parallelism ==
              Zebra.Workers.JobRequestFactory.Settings.fit_to_pool(10, pool_size)
+  end
+
+  defp enable_secondary_provider do
+    Mox.stub(Support.MockedProvider, :provide_features, fn org_id, opts ->
+      {:ok, features} = Support.StubbedProvider.provide_features(org_id, opts)
+
+      {:ok,
+       features ++
+         [Support.StubbedProvider.feature("secondary_hosted_agent_provider", [:enabled])]}
+    end)
+  end
+
+  defp create_pending_job(params \\ %{}) do
+    {:ok, task} = Support.Factories.Task.create()
+
+    {:ok, job} =
+      Support.Factories.Job.create(
+        :pending,
+        Map.merge(%{spec: @job_spec, build_id: task.id}, params)
+      )
+
+    job
+  end
+
+  defp env_value(job, name), do: job.request |> raw_env_value(name) |> Base.decode64!()
+
+  defp raw_env_value(request, name) do
+    request["env_vars"] |> Enum.find(&(&1["name"] == name)) |> Map.fetch!("value")
+  end
+
+  defp platform_cache_or_registry_var?(%{"name" => name}) do
+    String.starts_with?(name, ["SEMAPHORE_CACHE_", "SEMAPHORE_REGISTRY_"]) or
+      name == "SSH_PRIVATE_KEY_PATH"
+  end
+
+  defp s3_credentials_response do
+    InternalApi.Cache.GetS3CredentialsResponse.new(
+      status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+      region: "us-east-1",
+      bucket: "cache-bucket",
+      prefix: "project-prefix",
+      access_key_id: "s3-access-key-id",
+      secret_access_key: @s3_secret,
+      session_token: @s3_session_token
+    )
+  end
+
+  defp registry_credentials_response(org_id) do
+    InternalApi.Registry.GetCredentialsResponse.new(
+      status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+      host: @registry_host,
+      repository_prefix: "orgs/#{org_id}",
+      username: "AWS",
+      password: @registry_password
+    )
+  end
+
+  defp stub_secret_env_vars(env_vars) do
+    GrpcMock.stub(Support.FakeServers.SecretsApi, :checkout_many, fn _, _ ->
+      InternalApi.Secrethub.CheckoutManyResponse.new(
+        secrets: [
+          InternalApi.Secrethub.Secret.new(
+            metadata: InternalApi.Secrethub.Secret.Metadata.new(name: "aws-secrets"),
+            data:
+              InternalApi.Secrethub.Secret.Data.new(
+                env_vars:
+                  Enum.map(env_vars, fn {name, value} ->
+                    InternalApi.Secrethub.Secret.EnvVar.new(name: name, value: value)
+                  end)
+              )
+          )
+        ]
+      )
+    end)
+  end
+
+  defp stub_forked_pull_request do
+    GrpcMock.stub(Support.FakeServers.ProjecthubApi, :describe, fn _, _ ->
+      alias InternalApi.Projecthub.ResponseMeta
+      alias InternalApi.Projecthub.Project
+      meta = ResponseMeta.new(status: ResponseMeta.Status.new(code: ResponseMeta.Code.value(:OK)))
+
+      project =
+        Project.new(
+          metadata: Project.Metadata.new(name: "zebra"),
+          spec:
+            Project.Spec.new(
+              repository:
+                Project.Spec.Repository.new(
+                  url: "git@github.com:/test-org/test-repo.git",
+                  forked_pull_requests:
+                    Project.Spec.Repository.ForkedPullRequests.new(
+                      allowed_secrets: ["aws-secrets"]
+                    )
+                ),
+              cache_id: @cache_id,
+              artifact_store_id: Ecto.UUID.generate()
+            )
+        )
+
+      InternalApi.Projecthub.DescribeResponse.new(metadata: meta, project: project)
+    end)
+
+    GrpcMock.stub(Support.FakeServers.RepoProxyApi, :describe, fn _, _ ->
+      status = InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK))
+
+      hook =
+        InternalApi.RepoProxy.Hook.new(
+          head_commit_sha: "8d762d04c7c753c2181030a9385b496559e5a885",
+          commit_range: "123...456",
+          repo_slug: "test-org/test-repo",
+          git_ref: "refs/pull/1/merge",
+          git_ref_type: InternalApi.RepoProxy.Hook.Type.value(:PR),
+          pr_slug: "fork-org/test-repo",
+          pr_name: "Change from a fork",
+          pr_number: "1",
+          pr_sha: "1f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c",
+          branch_name: "master",
+          pr_branch_name: "fork-branch"
+        )
+
+      %InternalApi.RepoProxy.DescribeResponse{status: status, hook: hook}
+    end)
   end
 end

@@ -1,6 +1,16 @@
 defmodule Zebra.Workers.JobRequestFactory.JobRequest do
   @sanitized "{SANITIZED}"
 
+  @sensitive_semaphore_env_vars [
+    "SEMAPHORE_OIDC_TOKEN",
+    "SEMAPHORE_ARTIFACT_TOKEN",
+    "SEMAPHORE_CACHE_USERNAME",
+    "SEMAPHORE_CACHE_S3_KEY",
+    "SEMAPHORE_CACHE_S3_SECRET",
+    "SEMAPHORE_CACHE_S3_SESSION_TOKEN",
+    "SEMAPHORE_REGISTRY_PASSWORD"
+  ]
+
   def env_var(name, nil) do
     %{"name" => name, "value" => ""}
   end
@@ -257,7 +267,7 @@ defmodule Zebra.Workers.JobRequestFactory.JobRequest do
         true
 
       # Some SEMAPHORE prefixed env vars are also sensitive
-      name in ["SEMAPHORE_OIDC_TOKEN", "SEMAPHORE_ARTIFACT_TOKEN", "SEMAPHORE_CACHE_USERNAME"] ->
+      name in @sensitive_semaphore_env_vars ->
         true
 
       # Everything else is not sensitive
