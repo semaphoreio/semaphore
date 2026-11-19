@@ -3,6 +3,8 @@ defmodule Zebra.MonitorTest do
 
   alias Zebra.Monitor
 
+  import Mock
+
   setup do
     GrpcMock.stub(Support.FakeServers.OrganizationApi, :describe, fn _, _ ->
       InternalApi.Organization.DescribeResponse.new(
@@ -27,6 +29,29 @@ defmodule Zebra.MonitorTest do
       Zebra.Monitor.stop_jobs_on_suspended_orgs()
 
       assert {:ok, _} = Zebra.Models.JobStopRequest.find_by_job_id(job.id)
+    end
+
+    test "loads only the columns it needs" do
+      stub_org(true)
+
+      {:ok, job} = create_job()
+      refute is_nil(job.spec)
+
+      test_pid = self()
+
+      with_mock Zebra.Workers.JobStopper, [:passthrough],
+        request_stop_async: fn j ->
+          send(test_pid, {:stop_requested, j})
+          {:ok, nil}
+        end do
+        Zebra.Monitor.stop_jobs_on_suspended_orgs()
+      end
+
+      assert_received {:stop_requested, stopped}
+      assert stopped.id == job.id
+      assert stopped.build_id == job.build_id
+      assert stopped.organization_id == job.organization_id
+      assert is_nil(stopped.spec)
     end
 
     test "doesn't stop job for non-suspended orgs" do
