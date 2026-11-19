@@ -152,6 +152,7 @@ defmodule Front.Models.CommitJob do
       "export GIT_PASSWORD=$(cat .workflow_editor/git_password.txt)",
       # Prepare URL used for pushing with temporary user access token as a credential
       "export GIT_REPO_URL=\"${SEMAPHORE_GIT_URL/://}\"",
+      "export GIT_REPO_URL=\"${GIT_REPO_URL/#git@ssh.bitbucket.org\\//git@bitbucket.org/}\"",
       "export GIT_REPO_URL=\"${GIT_REPO_URL/git@/https:\/\/$GIT_USERNAME:$GIT_PASSWORD@}\"",
       # Configure the branch that checkout should use
       "export SEMAPHORE_GIT_BRANCH=#{params.initial_branch}",

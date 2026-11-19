@@ -171,6 +171,52 @@ defmodule Front.Models.CommitJobTest do
       assert {:ok, spec} = CommitJob.create_job_spec(agent, creds, params)
       assert expected_spec == spec
     end
+
+    test "pushes over HTTPS to the web host of the repository" do
+      params = %{
+        user: %{name: "John Doe", email: "jdoe@example.com"},
+        initial_branch: "master",
+        target_branch: "master",
+        commit_message: "Update Semaphore configuration",
+        changes: []
+      }
+
+      agent = %{os_image: "ubuntu2004", type: "e2-standard-2"}
+      creds = %{username: "x-token-auth", token: "token"}
+
+      assert {:ok, spec} = CommitJob.create_job_spec(agent, creds, params)
+
+      script =
+        spec.commands
+        |> Enum.filter(&String.starts_with?(&1, "export GIT_REPO_URL="))
+        |> Enum.concat(["echo \"$GIT_REPO_URL\""])
+        |> Enum.join("\n")
+
+      push_url = fn git_url ->
+        {out, 0} =
+          System.cmd("bash", ["-c", script],
+            env: [
+              {"SEMAPHORE_GIT_URL", git_url},
+              {"GIT_USERNAME", "x-token-auth"},
+              {"GIT_PASSWORD", "token"}
+            ]
+          )
+
+        String.trim(out)
+      end
+
+      assert push_url.("git@ssh.bitbucket.org:ws/repo.git") ==
+               "https://x-token-auth:token@bitbucket.org/ws/repo.git"
+
+      assert push_url.("git@bitbucket.org:ws/repo.git") ==
+               "https://x-token-auth:token@bitbucket.org/ws/repo.git"
+
+      assert push_url.("git@github.com:owner/repo.git") ==
+               "https://x-token-auth:token@github.com/owner/repo.git"
+
+      assert push_url.("git@gitlab.example.com:group/sub/repo.git") ==
+               "https://x-token-auth:token@gitlab.example.com/group/sub/repo.git"
+    end
   end
 
   defp get_expected_spec(target_branch) do
@@ -209,6 +255,7 @@ defmodule Front.Models.CommitJobTest do
           "export GIT_USERNAME=$(cat .workflow_editor/git_username.txt)",
           "export GIT_PASSWORD=$(cat .workflow_editor/git_password.txt)",
           "export GIT_REPO_URL=\"${SEMAPHORE_GIT_URL/://}\"",
+          "export GIT_REPO_URL=\"${GIT_REPO_URL/#git@ssh.bitbucket.org\\//git@bitbucket.org/}\"",
           "export GIT_REPO_URL=\"${GIT_REPO_URL/git@/https:\/\/$GIT_USERNAME:$GIT_PASSWORD@}\"",
           "export SEMAPHORE_GIT_BRANCH=master",
           "checkout",
