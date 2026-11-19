@@ -12,6 +12,8 @@ defmodule Ppl.Ppls.Beholder do
   pipeline will transition to `done`.
   """
 
+  require Logger
+
   alias Ppl.PplTraces.Model.PplTracesQueries
   alias Ppl.Ppls.STMHandler.Common
   alias Looper.STM.Publisher
@@ -36,15 +38,32 @@ defmodule Ppl.Ppls.Beholder do
     external_metric: "Pipelines.state",
     callback: fn ppl -> apply(__MODULE__, :post_proccessing, [ppl]) end
 
+  # terminate_sub_init/1 must precede terminate_ppl_blks/1: its write waits on the
+  # sub-init row lock held while regular_init creates blocks, so they are visible.
+  @post_processing_steps [
+    :set_done_at_timestamp,
+    :terminate_sub_init,
+    :terminate_ppl_blks,
+    :publish_done
+  ]
+
   def post_proccessing(ppl) do
-    set_done_at_timestamp(ppl)
+    Enum.each(@post_processing_steps, &run_step(&1, ppl))
+  end
 
-    # Must precede terminate_ppl_blks/1: this write waits on the sub-init row lock
-    # held while regular_init creates blocks, so those blocks are visible below.
-    terminate_sub_init(ppl)
+  defp run_step(step, ppl) do
+    apply(__MODULE__, step, [ppl])
+  catch
+    kind, reason ->
+      Logger.error(
+        "Ppl.Ppls.Beholder #{step} failed for ppl_id: #{ppl.ppl_id}, #{kind}: #{error_name(reason)}"
+      )
+  end
 
-    terminate_ppl_blks(ppl)
+  defp error_name(reason) when is_exception(reason), do: inspect(reason.__struct__)
+  defp error_name(_reason), do: "non-exception reason"
 
+  def publish_done(ppl) do
     Publisher.publish(
       Map.take(ppl, [:ppl_id]),
       "done",

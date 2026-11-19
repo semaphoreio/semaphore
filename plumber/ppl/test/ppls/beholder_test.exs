@@ -1,6 +1,10 @@
 defmodule Ppl.Ppls.Beholder.Test do
   use Ppl.IntegrationCase
 
+  import Mock
+
+  alias InternalApi.Plumber.PipelineEvent
+  alias Ppl.PplSubInits.Model.PplSubInitsQueries
   alias InternalApi.Plumber.Pipeline.Result
   alias Ppl.Actions
   alias Ppl.Ppls.Beholder
@@ -112,17 +116,59 @@ defmodule Ppl.Ppls.Beholder.Test do
     assert {:ok, 0} = Beholder.terminate_ppl_blks(ppl)
   end
 
-  @tag :integration
-  test "PplBlocks are terminated when ppl is stuck-aborted" do
-    import Ecto.Query
+  test "done event is published when a stuck pipeline without blocks is aborted" do
+    request = Test.Helpers.schedule_request_factory(:local)
+    {:ok, ppl_req} = PplRequestsQueries.insert_request(request)
+    {:ok, ppl} = PplsQueries.insert(ppl_req)
 
+    assert {:error, _} = PplBlocksQueries.get_all_by_id(ppl.ppl_id)
+
+    with_mock Looper.Publisher.AMQP, publish: capture_publish() do
+      Beholder.post_proccessing(ppl)
+    end
+
+    assert_done_event_published(ppl.ppl_id)
+  end
+
+  @tag :integration
+  test "blocks are terminated and done event is published when terminating the sub-init fails" do
     {:ok, %{ppl_id: ppl_id}} =
       %{"repo_name" => "13_free_topology"}
       |> Test.Helpers.schedule_request_factory(:local)
       |> Actions.schedule()
 
-    {:ok, _ppl} = Ppl.Ppls.Model.PplsQueries.get_by_id(ppl_id)
+    create_blocks(ppl_id)
+    {:ok, ppl} = PplsQueries.get_by_id(ppl_id)
 
+    with_mocks [
+      {PplSubInitsQueries, [:passthrough],
+       terminate: fn _psi, _request, _desc -> raise "sub-init update failed" end},
+      {Looper.Publisher.AMQP, [], publish: capture_publish()}
+    ] do
+      Beholder.post_proccessing(ppl)
+    end
+
+    {:ok, blocks} = PplBlocksQueries.get_all_by_id(ppl_id)
+    assert Enum.all?(blocks, &(&1.terminate_request == "cancel"))
+
+    assert_done_event_published(ppl_id)
+  end
+
+  defp capture_publish do
+    test_pid = self()
+
+    fn params ->
+      send(test_pid, {:published, params})
+      :ok
+    end
+  end
+
+  defp assert_done_event_published(ppl_id) do
+    assert_received {:published, %{routing_key: "done", message: message}}
+    assert PipelineEvent.decode(message).pipeline_id == ppl_id
+  end
+
+  defp create_blocks(ppl_id) do
     sub_init_loopers =
       [Task.Supervisor.start_link(name: PplsTaskSupervisor)]
       |> Test.Helpers.start_sub_init_loopers()
@@ -136,6 +182,20 @@ defmodule Ppl.Ppls.Beholder.Test do
       )
 
     Test.Helpers.stop_all_loopers(sub_init_loopers)
+  end
+
+  @tag :integration
+  test "PplBlocks are terminated when ppl is stuck-aborted" do
+    import Ecto.Query
+
+    {:ok, %{ppl_id: ppl_id}} =
+      %{"repo_name" => "13_free_topology"}
+      |> Test.Helpers.schedule_request_factory(:local)
+      |> Actions.schedule()
+
+    {:ok, _ppl} = Ppl.Ppls.Model.PplsQueries.get_by_id(ppl_id)
+
+    create_blocks(ppl_id)
 
     Ppls
     |> where(ppl_id: ^ppl_id)
