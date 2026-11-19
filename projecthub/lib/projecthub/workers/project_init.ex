@@ -61,6 +61,9 @@ defmodule Projecthub.Workers.ProjectInit do
       Watchman.benchmark("#{@metric_name}.tick.duration", fn ->
         Projecthub.Models.Project
         |> where([p], p.state == ^StateMachine.initializing() or p.state == ^StateMachine.initializing_skip())
+        # A project deleted while still initializing is not one to finish setting up:
+        # provisioning its storage now leaves one nothing will ever purge.
+        |> where([p], is_nil(p.deleted_at))
         |> select([p], p.id)
         |> Projecthub.Repo.all()
       end)
@@ -72,6 +75,8 @@ defmodule Projecthub.Workers.ProjectInit do
 
       ids |> Enum.each(fn id -> lock_and_process(id) end)
     end
+
+    ids
   end
 
   @doc """
@@ -96,12 +101,22 @@ defmodule Projecthub.Workers.ProjectInit do
           |> lock("FOR UPDATE SKIP LOCKED")
           |> Repo.one()
 
-        if is_nil(project) do
-          Watchman.increment("#{@metric_name}.process.lock_missed")
-        else
-          Watchman.increment("#{@metric_name}.process.lock_obtained")
+        cond do
+          is_nil(project) ->
+            Watchman.increment("#{@metric_name}.process.lock_missed")
 
-          process(project)
+          # Re-checked under the lock, since the delete can land in between, and
+          # counted apart from a missed lock, which means something quite different.
+          not is_nil(project.deleted_at) ->
+            Watchman.increment("#{@metric_name}.process.skipped_deleted")
+            Logger.info("Project #{project_id} was deleted while initializing, not setting it up")
+
+            :deleted
+
+          true ->
+            Watchman.increment("#{@metric_name}.process.lock_obtained")
+
+            process(project)
         end
       end)
     end)

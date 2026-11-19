@@ -18,6 +18,7 @@ type Worker struct {
 	amqpOptions                   *tackle.Options
 	consumer                      *tackle.Consumer
 	client                        storage.Client
+	reconnectAttempts             int
 	NumberOfPagesToProcessInOneGo int
 }
 
@@ -56,7 +57,29 @@ func workerConnName() string {
 }
 
 func (w *Worker) Start() {
-	go w.consumer.Start(w.amqpOptions, w.handleMessage)
+	log.Printf("BucketCleaner: Starting consumer for exchange=%s routing_key=%s",
+		BucketCleanerExchange, BucketCleanerRoutingKey)
+
+	// Retries the initial connect, like the other workers. Without it, one failed first
+	// attempt leaves the cleaner with no consumer until the process restarts.
+	go func() {
+		for {
+			err := w.consumer.Start(w.amqpOptions, w.handleMessage)
+			if err != nil {
+				log.Printf("BucketCleaner: error starting consumer %s", err)
+				w.reconnectAttempts++
+				waitTime := min(w.reconnectAttempts*2, 60)
+				time.Sleep(time.Duration(waitTime) * time.Second)
+
+				continue
+			}
+
+			// go-tackle owns reconnection once the consumer has run.
+			log.Printf("BucketCleaner: consumer returned, go-tackle owns reconnection from here")
+
+			return
+		}
+	}()
 }
 
 func (w *Worker) Stop() {
@@ -111,12 +134,13 @@ func (w *Worker) CleanBucket(cleanRequest *CleanRequest) error {
 		cleaner := NewBatchCleaner(w.client, cleanRequest, w.NumberOfPagesToProcessInOneGo)
 		token, err := cleaner.Run(tx)
 
-		log.Printf("BucketCleaner: Cleaning bucket %s - visited=%d deleted=%d pagination-finished=%t destroyed=%t",
+		log.Printf("BucketCleaner: Cleaning bucket %s - visited=%d deleted=%d pagination-finished=%t destroyed=%t purged=%t",
 			cleanRequest.ArtifactBucketID,
 			cleaner.visitedObjectCount,
 			cleaner.deletedObjectCount,
 			cleaner.paginationEnded,
 			cleaner.artifactDeleted,
+			cleaner.purgeCompleted,
 		)
 
 		nextPageToken = token

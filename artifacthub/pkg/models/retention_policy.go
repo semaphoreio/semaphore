@@ -111,6 +111,30 @@ func UpdateRetentionPolicyWithTx(tx *gorm.DB, artifactID uuid.UUID, project, wor
 	return r, nil
 }
 
+// ScheduleForCleaningWithTx makes an artifact due on the scheduler's next pass. The
+// scheduler only visits artifacts with a policy row, so one without is given an empty
+// row, which changes nothing about what the cleaner deletes under a policy.
+func ScheduleForCleaningWithTx(tx *gorm.DB, artifactID uuid.UUID) error {
+	policy, err := FindRetentionPolicyWithTx(tx, artifactID)
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+
+		noRules := RetentionPolicyRules{}
+		_, err = CreateRetentionPolicyWithTx(tx, artifactID, noRules, noRules, noRules)
+
+		return err
+	}
+
+	// Both timestamps go back to NULL so the scheduler picks the artifact up on its
+	// next tick. Leaving last_cleaned_at set would hold the work back for a day.
+	return tx.Model(policy).Updates(map[string]interface{}{
+		"scheduled_for_cleaning_at": nil,
+		"last_cleaned_at":           nil,
+	}).Error
+}
+
 func (r *RetentionPolicy) Validate() error {
 	err := r.ProjectLevelPolicies.Validate()
 	if err != nil {

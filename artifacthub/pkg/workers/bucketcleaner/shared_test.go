@@ -1,6 +1,7 @@
 package bucketcleaner
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -13,6 +14,21 @@ import (
 //
 // Shared utilities for testing the bucketcleaner package.
 //
+
+// Purging is off unless the feature is enabled, and most tests here exercise it.
+func TestMain(m *testing.M) {
+	PurgeEnabled = true
+	os.Exit(m.Run())
+}
+
+func withPurgeEnabled(t *testing.T, enabled bool) {
+	t.Helper()
+
+	previous := PurgeEnabled
+	PurgeEnabled = enabled
+
+	t.Cleanup(func() { PurgeEnabled = previous })
+}
 
 func changeScheduledForCleaningAtTimestamp(t *testing.T, policy *models.RetentionPolicy, byDurationFromNow time.Duration) {
 	timestamp := time.Now().Add(byDurationFromNow)

@@ -119,6 +119,34 @@ defmodule Projecthub.Workers.ProjectInitTest do
       assert reload(project).state == StateMachine.initializing_skip()
     end
 
+    test "when the project was deleted while initializing => it does not finish setting it up", %{
+      project: project
+    } do
+      {:ok, project} =
+        Projecthub.Models.Project.update_record(project, %{
+          deleted_at: DateTime.utc_now() |> DateTime.truncate(:second)
+        })
+
+      # Declined: setting it up now would create a storage that nothing ever purges.
+      assert lock_and_process(project.id) == {:ok, :deleted}
+
+      {:ok, deleted} = Projecthub.Models.Project.find(project.id, true)
+      assert deleted.artifact_store_id == nil
+      assert deleted.state == StateMachine.initializing_skip()
+    end
+
+    test "a project deleted while initializing is not picked up by the sweep", %{project: project} do
+      {:ok, _} =
+        Projecthub.Models.Project.update_record(project, %{
+          deleted_at: DateTime.utc_now() |> DateTime.truncate(:second)
+        })
+
+      refute project.id in Projecthub.Workers.ProjectInit.tick()
+
+      {:ok, deleted} = Projecthub.Models.Project.find(project.id, true)
+      assert deleted.artifact_store_id == nil
+    end
+
     test "when project has been initializing for 20 minutes => it moves the project to error state",
          %{project: project} do
       more_than_20_mins_ago = DateTime.to_unix(DateTime.utc_now()) - 22 * 60
