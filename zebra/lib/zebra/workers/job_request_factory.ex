@@ -8,6 +8,7 @@ defmodule Zebra.Workers.JobRequestFactory do
     Artifacthub,
     Cache,
     CallbackToken,
+    CredentialRefresh,
     GitCheckout,
     JobRequest,
     Loghub2,
@@ -273,7 +274,14 @@ defmodule Zebra.Workers.JobRequestFactory do
         {:ok, nil}
 
       secondary? ->
-        Cache.find_s3(job, project, repo_proxy, job_type, credentials_validity(job))
+        Cache.find_s3(
+          job,
+          project,
+          repo_proxy,
+          job_type,
+          credentials_validity(job),
+          CredentialRefresh.validity(job)
+        )
 
       true ->
         Cache.find(project.cache_id, repo_proxy, job.organization_id, job_type, project)
@@ -281,7 +289,12 @@ defmodule Zebra.Workers.JobRequestFactory do
   end
 
   defp find_registry(job, repo_proxy, true),
-    do: Registry.find(job.organization_id, repo_proxy, credentials_validity(job))
+    do:
+      Registry.find(job.organization_id, repo_proxy, credentials_validity(job),
+        job_id: job.id,
+        project_id: job.project_id,
+        validity_seconds: CredentialRefresh.validity(job)
+      )
 
   defp find_registry(_job, _repo_proxy, false), do: {:ok, nil}
 

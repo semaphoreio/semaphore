@@ -117,12 +117,24 @@ defmodule InternalApi.Cache.GetS3CredentialsRequest do
 
   @type t :: %__MODULE__{
           project_id: String.t(),
-          min_validity_seconds: integer
+          min_validity_seconds: integer,
+          job_id: String.t(),
+          organization_id: String.t(),
+          refresh_validity_seconds: integer
         }
-  defstruct [:project_id, :min_validity_seconds]
+  defstruct [
+    :project_id,
+    :min_validity_seconds,
+    :job_id,
+    :organization_id,
+    :refresh_validity_seconds
+  ]
 
   field(:project_id, 1, type: :string)
   field(:min_validity_seconds, 2, type: :int64)
+  field(:job_id, 3, type: :string)
+  field(:organization_id, 4, type: :string)
+  field(:refresh_validity_seconds, 5, type: :int64)
 end
 
 defmodule InternalApi.Cache.GetS3CredentialsResponse do
@@ -137,7 +149,9 @@ defmodule InternalApi.Cache.GetS3CredentialsResponse do
           access_key_id: String.t(),
           secret_access_key: String.t(),
           session_token: String.t(),
-          expires_at: Google.Protobuf.Timestamp.t()
+          expires_at: Google.Protobuf.Timestamp.t(),
+          refresh_token: String.t(),
+          refresh_token_expires_at: Google.Protobuf.Timestamp.t()
         }
   defstruct [
     :status,
@@ -147,7 +161,9 @@ defmodule InternalApi.Cache.GetS3CredentialsResponse do
     :access_key_id,
     :secret_access_key,
     :session_token,
-    :expires_at
+    :expires_at,
+    :refresh_token,
+    :refresh_token_expires_at
   ]
 
   field(:status, 1, type: InternalApi.ResponseStatus)
@@ -158,6 +174,8 @@ defmodule InternalApi.Cache.GetS3CredentialsResponse do
   field(:secret_access_key, 6, type: :string)
   field(:session_token, 7, type: :string)
   field(:expires_at, 8, type: Google.Protobuf.Timestamp)
+  field(:refresh_token, 9, type: :string)
+  field(:refresh_token_expires_at, 10, type: Google.Protobuf.Timestamp)
 end
 
 defmodule InternalApi.Cache.CacheService.Service do

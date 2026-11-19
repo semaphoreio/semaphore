@@ -9,11 +9,22 @@ defmodule Zebra.Workers.JobRequestFactory.Registry do
 
   alias InternalApi.Registry.GetCredentialsRequest, as: Request
   alias InternalApi.Registry.RegistryService.Stub
-  alias Zebra.Workers.JobRequestFactory.{Cache, JobRequest}
+  alias Zebra.Workers.JobRequestFactory.{Cache, CredentialRefresh, JobRequest}
 
-  def find(org_id, repo_proxy, min_validity_seconds) do
+  @doc """
+  `refresh` asks for a refresh grant: `job_id`, `project_id` and
+  `validity_seconds`. Without it, cachehub issues none.
+  """
+  def find(org_id, repo_proxy, min_validity_seconds, refresh \\ []) do
     Watchman.benchmark("external.cachehub.get_registry_credentials", fn ->
-      req = Request.new(organization_id: org_id, min_validity_seconds: min_validity_seconds)
+      req =
+        Request.new(
+          organization_id: org_id,
+          min_validity_seconds: min_validity_seconds,
+          project_id: Keyword.get(refresh, :project_id, ""),
+          job_id: Keyword.get(refresh, :job_id, ""),
+          refresh_validity_seconds: Keyword.get(refresh, :validity_seconds, 0)
+        )
 
       # Jobs of forked pull requests get no registry credentials, approved or not.
       with false <- Cache.forked_pr?(repo_proxy),
@@ -55,7 +66,7 @@ defmodule Zebra.Workers.JobRequestFactory.Registry do
          JobRequest.env_var("SEMAPHORE_REGISTRY_URL", url(credentials)),
          JobRequest.env_var("SEMAPHORE_REGISTRY_USERNAME", credentials.username),
          JobRequest.env_var("SEMAPHORE_REGISTRY_PASSWORD", credentials.password)
-       ]}
+       ] ++ CredentialRefresh.env_vars("SEMAPHORE_REGISTRY", :registry, credentials)}
     end
   end
 

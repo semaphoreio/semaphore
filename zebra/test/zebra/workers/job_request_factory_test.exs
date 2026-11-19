@@ -1760,7 +1760,13 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
       "SEMAPHORE_REGISTRY_HOST",
       "SEMAPHORE_REGISTRY_URL",
       "SEMAPHORE_REGISTRY_USERNAME",
-      "SEMAPHORE_REGISTRY_PASSWORD"
+      "SEMAPHORE_REGISTRY_PASSWORD",
+      "SEMAPHORE_CACHE_S3_EXPIRES_AT",
+      "SEMAPHORE_CACHE_S3_REFRESH_TOKEN",
+      "SEMAPHORE_CACHE_S3_REFRESH_URL",
+      "SEMAPHORE_REGISTRY_EXPIRES_AT",
+      "SEMAPHORE_REGISTRY_REFRESH_TOKEN",
+      "SEMAPHORE_REGISTRY_REFRESH_URL"
     ]
 
     for machine_type <- ["e1-standard-2", "s1-test-1"] do
@@ -2064,6 +2070,114 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
 
       assert Enum.reject(injected, &(EnvVarPolicy.reserved?(&1) or &1 in @user_settable)) == []
     end
+
+    test "with the job API configured, jobs get refresh grants scoped to them" do
+      enable_secondary_provider()
+      configure_credential_refresh()
+      stub_refresh_grants()
+      job = create_pending_job(%{execution_time_limit: 60 * 60})
+
+      {:ok, job} = Worker.process(job)
+      assert job.aasm_state == "enqueued"
+
+      assert env_value(job, "SEMAPHORE_CACHE_S3_REFRESH_TOKEN") == "s3-grant"
+
+      assert env_value(job, "SEMAPHORE_CACHE_S3_REFRESH_URL") ==
+               "https://cachehub.example.com/api/v1/credentials/s3"
+
+      assert env_value(job, "SEMAPHORE_REGISTRY_REFRESH_TOKEN") == "registry-grant"
+
+      assert env_value(job, "SEMAPHORE_REGISTRY_REFRESH_URL") ==
+               "https://cachehub.example.com/api/v1/credentials/registry"
+
+      assert env_value(job, "SEMAPHORE_CACHE_S3_EXPIRES_AT") == "1800000000"
+      assert env_value(job, "SEMAPHORE_REGISTRY_EXPIRES_AT") == "1800000000"
+
+      assert_received {:get_s3_credentials, s3_request}
+      assert s3_request.job_id == job.id
+      assert s3_request.organization_id == job.organization_id
+      assert s3_request.refresh_validity_seconds == 2 * 60 * 60
+
+      assert_received {:get_registry_credentials, registry_request}
+      assert registry_request.job_id == job.id
+      assert registry_request.project_id == job.project_id
+      assert registry_request.refresh_validity_seconds == 2 * 60 * 60
+
+      sanitized = JobRequest.sanitize(job.request)
+
+      for name <- ["SEMAPHORE_CACHE_S3_REFRESH_TOKEN", "SEMAPHORE_REGISTRY_REFRESH_TOKEN"] do
+        assert raw_env_value(sanitized, name) == "{SANITIZED}"
+      end
+
+      assert raw_env_value(sanitized, "SEMAPHORE_CACHE_S3_REFRESH_URL") ==
+               raw_env_value(job.request, "SEMAPHORE_CACHE_S3_REFRESH_URL")
+    end
+
+    test "refresh grants of 24 hour jobs last 25 hours" do
+      enable_secondary_provider()
+      configure_credential_refresh()
+      stub_refresh_grants()
+      job = create_pending_job(%{execution_time_limit: 24 * 60 * 60})
+
+      {:ok, _job} = Worker.process(job)
+
+      assert_received {:get_s3_credentials, %{refresh_validity_seconds: 90_000}}
+      assert_received {:get_registry_credentials, %{refresh_validity_seconds: 90_000}}
+    end
+
+    test "without the job API configured, jobs get no refresh variables" do
+      enable_secondary_provider()
+      stub_refresh_grants()
+      job = create_pending_job()
+
+      {:ok, job} = Worker.process(job)
+
+      names = Enum.map(job.request["env_vars"], & &1["name"])
+      refute Enum.any?(names, &String.contains?(&1, "_REFRESH_"))
+      assert "SEMAPHORE_CACHE_S3_SESSION_TOKEN" in names
+    end
+
+    test "a job that sets its own cache variables gets no S3 refresh grant" do
+      enable_secondary_provider()
+      configure_credential_refresh()
+      stub_refresh_grants()
+      stub_secret_env_vars([{"SEMAPHORE_CACHE_S3_BUCKET", "own-bucket"}])
+      job = create_pending_job()
+
+      {:ok, job} = Worker.process(job)
+
+      names = Enum.map(job.request["env_vars"], & &1["name"])
+      refute "SEMAPHORE_CACHE_S3_REFRESH_TOKEN" in names
+      assert "SEMAPHORE_REGISTRY_REFRESH_TOKEN" in names
+    end
+
+    test "same-repository pull requests get refresh grants" do
+      enable_secondary_provider()
+      configure_credential_refresh()
+      stub_refresh_grants()
+      stub_same_repo_pull_request()
+      job = create_pending_job()
+
+      {:ok, job} = Worker.process(job)
+      assert job.aasm_state == "enqueued"
+
+      assert env_value(job, "SEMAPHORE_CACHE_S3_REFRESH_TOKEN") == "s3-grant"
+      assert env_value(job, "SEMAPHORE_REGISTRY_REFRESH_TOKEN") == "registry-grant"
+    end
+
+    test "forked pull requests get no refresh grant" do
+      enable_secondary_provider()
+      configure_credential_refresh()
+      stub_refresh_grants()
+      stub_forked_pull_request()
+      job = create_pending_job()
+
+      {:ok, job} = Worker.process(job)
+
+      refute Enum.any?(job.request["env_vars"], &platform_cache_or_registry_var?/1)
+      refute_received {:get_s3_credentials, _}
+      refute_received {:get_registry_credentials, _}
+    end
   end
 
   test "when the organization service raises an exception => doesn't process the job" do
@@ -2269,6 +2383,61 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
           )
         ]
       )
+    end)
+  end
+
+  defp configure_credential_refresh do
+    Application.put_env(:zebra, :cachehub_job_api_url, "https://cachehub.example.com")
+    on_exit(fn -> Application.delete_env(:zebra, :cachehub_job_api_url) end)
+  end
+
+  # Cachehub answers a grant when asked for one, as it does with keys configured.
+  defp stub_refresh_grants do
+    test_pid = self()
+    expires_at = Google.Protobuf.Timestamp.new(seconds: 1_800_000_000)
+
+    GrpcMock.stub(Support.FakeServers.CacheApi, :get_s3_credentials, fn req, _ ->
+      send(test_pid, {:get_s3_credentials, req})
+      token = if req.job_id != "" and req.refresh_validity_seconds > 0, do: "s3-grant", else: ""
+      %{s3_credentials_response() | expires_at: expires_at, refresh_token: token}
+    end)
+
+    GrpcMock.stub(Support.FakeServers.RegistryApi, :get_credentials, fn req, _ ->
+      send(test_pid, {:get_registry_credentials, req})
+
+      token =
+        if req.job_id != "" and req.refresh_validity_seconds > 0,
+          do: "registry-grant",
+          else: ""
+
+      %{
+        registry_credentials_response(req.organization_id)
+        | expires_at: expires_at,
+          refresh_token: token
+      }
+    end)
+  end
+
+  defp stub_same_repo_pull_request do
+    GrpcMock.stub(Support.FakeServers.RepoProxyApi, :describe, fn _, _ ->
+      status = InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK))
+
+      hook =
+        InternalApi.RepoProxy.Hook.new(
+          head_commit_sha: "8d762d04c7c753c2181030a9385b496559e5a885",
+          commit_range: "123...456",
+          repo_slug: "test-org/test-repo",
+          git_ref: "refs/pull/1/merge",
+          git_ref_type: InternalApi.RepoProxy.Hook.Type.value(:PR),
+          pr_slug: "test-org/test-repo",
+          pr_name: "Change from a branch",
+          pr_number: "1",
+          pr_sha: "1f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c",
+          branch_name: "master",
+          pr_branch_name: "feature-branch"
+        )
+
+      %InternalApi.RepoProxy.DescribeResponse{status: status, hook: hook}
     end)
   end
 

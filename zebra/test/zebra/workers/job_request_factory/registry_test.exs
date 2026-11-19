@@ -25,6 +25,31 @@ defmodule Zebra.Workers.JobRequestFactory.RegistryTest do
       assert_received {:get_credentials, req}
       assert req.organization_id == @org_id
       assert req.min_validity_seconds == 7_200
+      assert req.job_id == ""
+      assert req.refresh_validity_seconds == 0
+    end
+
+    test "asks for a refresh grant for the job when given one" do
+      test_pid = self()
+      job_id = Ecto.UUID.generate()
+      project_id = Ecto.UUID.generate()
+
+      GrpcMock.stub(Support.FakeServers.RegistryApi, :get_credentials, fn req, _ ->
+        send(test_pid, {:get_credentials, req})
+        credentials()
+      end)
+
+      assert {:ok, _credentials} =
+               Registry.find(@org_id, nil, 7_200,
+                 job_id: job_id,
+                 project_id: project_id,
+                 validity_seconds: 9_000
+               )
+
+      assert_received {:get_credentials, req}
+      assert req.job_id == job_id
+      assert req.project_id == project_id
+      assert req.refresh_validity_seconds == 9_000
     end
 
     test "logs a warning and returns {:ok, nil} on a non-OK status" do
@@ -110,8 +135,37 @@ defmodule Zebra.Workers.JobRequestFactory.RegistryTest do
                     "value" => Base.encode64("#{@host}/orgs/#{@org_id}")
                   },
                   %{"name" => "SEMAPHORE_REGISTRY_USERNAME", "value" => Base.encode64("AWS")},
-                  %{"name" => "SEMAPHORE_REGISTRY_PASSWORD", "value" => Base.encode64(@password)}
+                  %{"name" => "SEMAPHORE_REGISTRY_PASSWORD", "value" => Base.encode64(@password)},
+                  %{
+                    "name" => "SEMAPHORE_REGISTRY_EXPIRES_AT",
+                    "value" => Base.encode64("1800000000")
+                  }
                 ]}
+    end
+
+    test "a refresh grant comes with its URL when the job API is configured" do
+      credentials = %{credentials() | refresh_token: "grant"}
+      names = fn {:ok, vars} -> Enum.map(vars, & &1["name"]) end
+
+      refute "SEMAPHORE_REGISTRY_REFRESH_TOKEN" in names.(Registry.env_vars(credentials, []))
+
+      for url <- ["http://cachehub.example.com", "cachehub.example.com", "https://", " "] do
+        Application.put_env(:zebra, :cachehub_job_api_url, url)
+        refute "SEMAPHORE_REGISTRY_REFRESH_TOKEN" in names.(Registry.env_vars(credentials, []))
+      end
+
+      Application.put_env(:zebra, :cachehub_job_api_url, "https://cachehub.example.com")
+      on_exit(fn -> Application.delete_env(:zebra, :cachehub_job_api_url) end)
+
+      {:ok, vars} = Registry.env_vars(credentials, [])
+      values = Map.new(vars, &{&1["name"], Base.decode64!(&1["value"])})
+
+      assert values["SEMAPHORE_REGISTRY_REFRESH_TOKEN"] == "grant"
+
+      assert values["SEMAPHORE_REGISTRY_REFRESH_URL"] ==
+               "https://cachehub.example.com/api/v1/credentials/registry"
+
+      refute "SEMAPHORE_REGISTRY_REFRESH_TOKEN" in names.(Registry.env_vars(credentials(), []))
     end
 
     test "sets none when the job sets a SEMAPHORE_REGISTRY_* variable itself" do
@@ -120,7 +174,7 @@ defmodule Zebra.Workers.JobRequestFactory.RegistryTest do
     end
 
     test "variables of other groups do not count" do
-      assert {:ok, [_, _, _, _]} =
+      assert {:ok, [_, _, _, _, _]} =
                Registry.env_vars(credentials(), ["SEMAPHORE_CACHE_S3_BUCKET", "DOCKER_HOST"])
     end
   end
