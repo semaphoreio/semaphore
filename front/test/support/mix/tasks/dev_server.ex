@@ -39,6 +39,7 @@ defmodule Mix.Tasks.Dev.Server do
     seed_service_accounts(org.id, user.id, first_user.id)
 
     Stubs.Feature.set_org_defaults(org.id)
+    Stubs.Feature.enable_feature(org.id, :workflow_filtering)
     Stubs.Billing.set_org_defaults(org.id)
 
     # Create agents
@@ -364,6 +365,17 @@ defmodule Mix.Tasks.Dev.Server do
     Stubs.Branch.create(project, name: "staging")
 
     hook = Stubs.Hook.create(branch)
+
+    for i <- 1..3 do
+      scheduled =
+        Stubs.Workflow.create(hook, user,
+          triggered_by: InternalApi.PlumberWF.TriggeredBy.value(:SCHEDULE),
+          created_at: DateTime.utc_now() |> DateTime.add(-i * 3600) |> DateTime.to_unix()
+        )
+
+      Stubs.Pipeline.create_initial(scheduled, name: "Nightly", organization_id: org.id)
+    end
+
     workflow = Stubs.Workflow.create(hook, user)
 
     pipeline =

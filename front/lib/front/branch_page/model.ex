@@ -5,6 +5,7 @@ defmodule Front.BranchPage.Model do
   alias Front.Models
 
   alias InternalApi.PlumberWF.ListKeysetRequest.Direction
+  alias InternalApi.PlumberWF.TriggeredBy
 
   require Logger
 
@@ -38,6 +39,7 @@ defmodule Front.BranchPage.Model do
       field(:date_from, String.t())
       field(:date_to, String.t())
       field(:author, String.t())
+      field(:trigger, String.t())
     end
   end
 
@@ -148,6 +150,7 @@ defmodule Front.BranchPage.Model do
       |> inject_date_filter_param(params.date_from, :date_from)
       |> inject_date_filter_param(params.date_to, :date_to)
       |> inject_requesters_param(params.author, params.organization_id, params.project_id)
+      |> inject_triggerers_param(params.trigger)
 
     {wfs, next_page_token, previous_page_token} =
       api_params
@@ -172,6 +175,22 @@ defmodule Front.BranchPage.Model do
         api_params
     end
   end
+
+  defp inject_triggerers_param(api_params, trigger) do
+    case triggerers(trigger) do
+      [] ->
+        api_params
+
+      triggerers ->
+        Keyword.put(api_params, :triggerers, Enum.map(triggerers, &TriggeredBy.value/1))
+    end
+  end
+
+  @spec triggerers(String.t() | nil) :: [atom()]
+  def triggerers("git"), do: [:HOOK]
+  def triggerers("tasks"), do: [:SCHEDULE, :MANUAL_RUN]
+  def triggerers("api"), do: [:API]
+  def triggerers(_), do: []
 
   defp inject_date_filter_param(api_params, date, _) when date in [nil, ""], do: api_params
 
@@ -218,6 +237,6 @@ defmodule Front.BranchPage.Model do
 
     Enum.all?(filter_fields, fn field ->
       is_nil(Map.get(params, field)) || Map.get(params, field) == ""
-    end)
+    end) and triggerers(params.trigger) == []
   end
 end

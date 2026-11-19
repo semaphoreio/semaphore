@@ -141,6 +141,7 @@ defmodule Support.Stubs.Feature do
       {"ui_reports", state: :ENABLED, quantity: 1},
       {"ui_partial_ppl_rebuild", state: :ENABLED, quantity: 1},
       {"ui_workflow_map", state: :HIDDEN, quantity: 0},
+      {"workflow_filtering", state: :HIDDEN, quantity: 0},
       {"service_accounts", state: :ENABLED, quantity: 1},
       {"rbac__project_roles", state: :ENABLED, quantity: 1}
     ]
