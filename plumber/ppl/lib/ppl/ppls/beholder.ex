@@ -38,8 +38,8 @@ defmodule Ppl.Ppls.Beholder do
     external_metric: "Pipelines.state",
     callback: fn ppl -> apply(__MODULE__, :post_proccessing, [ppl]) end
 
-  # terminate_sub_init/1 must precede terminate_ppl_blks/1: its write waits on the
-  # sub-init row lock held while regular_init creates blocks, so they are visible.
+  # Stopping the sub-init first spares it further work. Correctness does not depend
+  # on the order: regular_init creates no blocks once the pipeline is 'done'.
   @post_processing_steps [
     :set_done_at_timestamp,
     :terminate_sub_init,
