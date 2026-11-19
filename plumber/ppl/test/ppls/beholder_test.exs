@@ -170,8 +170,51 @@ defmodule Ppl.Ppls.Beholder.Test do
         end
       end)
 
-    assert log =~ "terminate_ppl_blks failed for ppl_id: #{ppl.ppl_id}"
+    assert log =~ "terminate_ppl_blks failed for ppl_id: #{ppl.ppl_id}, error: :update_failed"
     assert_done_event_published(ppl.ppl_id)
+  end
+
+  test "a database error is logged by its code, without row data" do
+    request = Test.Helpers.schedule_request_factory(:local)
+    {:ok, ppl_req} = PplRequestsQueries.insert_request(request)
+    {:ok, ppl} = PplsQueries.insert(ppl_req)
+
+    error = %Postgrex.Error{
+      postgres: %{code: :unique_violation, detail: "Key (owner)=(row-value) already exists."}
+    }
+
+    log =
+      ExUnit.CaptureLog.capture_log(fn ->
+        with_mocks [
+          {PplBlocksQueries, [:passthrough],
+           terminate_all: fn _ppl_id, _request, _desc -> {:error, error} end},
+          {Looper.Publisher.AMQP, [], publish: capture_publish()}
+        ] do
+          Beholder.post_proccessing(ppl)
+        end
+      end)
+
+    assert log =~ "terminate_ppl_blks failed for ppl_id: #{ppl.ppl_id}"
+    assert log =~ "Postgrex.Error unique_violation"
+    refute log =~ "row-value"
+  end
+
+  test "an exit is logged by its tag, without the payload it carries" do
+    request = Test.Helpers.schedule_request_factory(:local)
+    {:ok, ppl_req} = PplRequestsQueries.insert_request(request)
+    {:ok, ppl} = PplsQueries.insert(ppl_req)
+
+    payload = {GenServer, :call, [self(), {:publish, %{url: "amqp://user:broker-password@host"}}]}
+
+    log =
+      ExUnit.CaptureLog.capture_log(fn ->
+        with_mock Looper.Publisher.AMQP, publish: fn _params -> exit({:timeout, payload}) end do
+          Beholder.post_proccessing(ppl)
+        end
+      end)
+
+    assert log =~ "publish_done failed for ppl_id: #{ppl.ppl_id}, exit: :timeout"
+    refute log =~ "broker-password"
   end
 
   test "a user stop already recorded on the sub-init is kept" do

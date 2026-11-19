@@ -64,8 +64,18 @@ defmodule Ppl.Ppls.Beholder do
     Logger.error("Ppl.Ppls.Beholder #{step} failed for ppl_id: #{ppl.ppl_id}, #{details}")
   end
 
+  # Only a tag is logged: database error details carry row values and exit
+  # payloads can carry the AMQP URL.
+  defp error_name(%Postgrex.Error{postgres: %{code: code}}), do: "Postgrex.Error #{code}"
+
+  defp error_name(%DBConnection.ConnectionError{message: message}),
+    do: "DBConnection.ConnectionError #{String.slice(message, 0, 200)}"
+
   defp error_name(reason) when is_exception(reason), do: inspect(reason.__struct__)
-  defp error_name(_reason), do: "non-exception reason"
+  defp error_name(reason) when is_atom(reason), do: inspect(reason)
+  defp error_name(reason) when is_binary(reason), do: String.slice(reason, 0, 200)
+  defp error_name({tag, _payload}) when is_atom(tag), do: inspect(tag)
+  defp error_name(_reason), do: "unrecognized reason"
 
   def publish_done(ppl) do
     Publisher.publish(
