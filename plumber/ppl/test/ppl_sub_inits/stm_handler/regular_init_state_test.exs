@@ -6,6 +6,10 @@ defmodule Ppl.PplSubInits.STMHandler.RegularInitState.Test do
   alias Ppl.PplSubInits.Model.PplSubInitsQueries
   alias Ppl.PplSubInits.STMHandler.RegularInitState
   alias Ppl.PplBlocks.Model.PplBlocksQueries
+  alias Ppl.Ppls.Beholder
+  alias Ppl.Ppls.Model.Ppls
+
+  import Ecto.Query
 
   setup_all do
     Test.Support.GrpcServerHelper.start_server_with_cleanup(Test.MockGoferService)
@@ -64,6 +68,63 @@ defmodule Ppl.PplSubInits.STMHandler.RegularInitState.Test do
     # and the sub_init should end up canceled.
     assert {:error, _} = PplBlocksQueries.get_all_by_id(ppl_id)
     assert {:ok, %{state: "done", result: "canceled"}} = exit_result
+  end
+
+  @tag :integration
+  test "stuck abort of the pipeline while regular_init is scheduling must not leave orphaned blocks" do
+    {:ok, %{ppl_id: ppl_id}} =
+      %{"repo_name" => "2_basic"}
+      |> Test.Helpers.schedule_request_factory(:local)
+      |> Actions.schedule()
+
+    loopers = start_loopers_until_regular_init()
+    psi = wait_for_psi_state(ppl_id, "regular_init", 5_000)
+    Test.Helpers.stop_all_loopers(loopers)
+
+    assert psi.state == "regular_init"
+    assert {:ok, exit_func} = RegularInitState.scheduling_handler(psi)
+
+    # The pipeline is aborted as stuck after the scheduling snapshot was taken
+    # but before the exit function commits.
+    Ppls
+    |> where(ppl_id: ^ppl_id)
+    |> update(set: [recovery_count: 100, in_scheduling: true])
+    |> Repo.update_all([])
+
+    assert {:ok, beholder} = Beholder.start_link()
+    assert {:ok, _} = Test.Helpers.wait_for_ppl_state(ppl_id, "done", 5_000)
+    assert :ok = Beholder.stop(beholder)
+
+    {:ok, exit_result} = Repo.transaction(fn -> exit_func.(Repo, %{}) end)
+
+    assert {:error, _} = PplBlocksQueries.get_all_by_id(ppl_id)
+    assert {:ok, %{state: "done", result: "canceled", result_reason: "internal"}} = exit_result
+  end
+
+  @tag :integration
+  test "regular_init must not create blocks for a pipeline that is already done" do
+    {:ok, %{ppl_id: ppl_id}} =
+      %{"repo_name" => "2_basic"}
+      |> Test.Helpers.schedule_request_factory(:local)
+      |> Actions.schedule()
+
+    loopers = start_loopers_until_regular_init()
+    psi = wait_for_psi_state(ppl_id, "regular_init", 5_000)
+    Test.Helpers.stop_all_loopers(loopers)
+
+    assert psi.state == "regular_init"
+    assert {:ok, exit_func} = RegularInitState.scheduling_handler(psi)
+
+    # The pipeline reached done without a terminate request on the sub-init.
+    Ppls
+    |> where(ppl_id: ^ppl_id)
+    |> update(set: [state: "done", result: "failed", result_reason: "stuck"])
+    |> Repo.update_all([])
+
+    {:ok, exit_result} = Repo.transaction(fn -> exit_func.(Repo, %{}) end)
+
+    assert {:error, _} = PplBlocksQueries.get_all_by_id(ppl_id)
+    assert {:ok, %{state: "done", result: "canceled", result_reason: "internal"}} = exit_result
   end
 
   defp start_loopers_until_regular_init do
