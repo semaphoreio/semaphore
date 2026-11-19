@@ -1,5 +1,6 @@
 defmodule Zebra.Workers.Agent.HostedAgent do
   require Logger
+  import Ecto.Query
   defstruct [:id, :name, :ip_address, :ctrl_port, :auth_token, :ssh_port, :provider]
 
   alias InternalApi.Chmura.Chmura.Stub
@@ -65,8 +66,49 @@ defmodule Zebra.Workers.Agent.HostedAgent do
     end
   end
 
-  def occupy(job) do
+  @doc """
+  For each provider, how many of the given jobs (in dispatch order) wait for
+  it from each job onward, that job included: %{provider => %{job_id => n}},
+  providers keyed like provider_for/1. Counting from the job onward leaves
+  out the jobs ahead of it, which the same tick may already have served.
+  With no secondary endpoint every job goes to the default provider, so no
+  query is needed.
+  """
+  def waiting_by_provider([]), do: %{}
+
+  def waiting_by_provider(job_ids) do
+    if secondary_endpoint() do
+      providers =
+        Zebra.Models.Job
+        |> where([j], j.id in ^job_ids)
+        |> select([j], {j.id, j.organization_id})
+        |> Zebra.LegacyRepo.all()
+        |> Map.new(fn {id, org_id} -> {id, provider_for_org(org_id)} end)
+
+      job_ids
+      |> Enum.filter(&Map.has_key?(providers, &1))
+      |> Enum.group_by(&Map.fetch!(providers, &1))
+      |> Map.new(fn {provider, ids} -> {provider, waiting_from_each(ids)} end)
+    else
+      %{nil => waiting_from_each(job_ids)}
+    end
+  end
+
+  defp waiting_from_each(ids) do
+    n = length(ids)
+
+    ids |> Enum.with_index() |> Map.new(fn {id, i} -> {id, n - i} end)
+  end
+
+  @doc """
+  Asks the job's provider for an agent. waiting_by_provider is from
+  waiting_by_provider/1: the job's count goes with the request, so the
+  provider knows its whole queue even when the dispatcher stops asking after
+  a NOT_FOUND. A job missing from it sends 0, which means unknown.
+  """
+  def occupy(job, waiting_by_provider \\ %{}) do
     provider = provider_for(job)
+    waiting = waiting_by_provider |> Map.get(provider, %{}) |> Map.get(job.id, 0)
 
     Task.async(fn ->
       Watchman.benchmark("zebra.external.chmura.occupy", fn ->
@@ -75,6 +117,9 @@ defmodule Zebra.Workers.Agent.HostedAgent do
         request =
           OccupyAgentRequest.new(
             request_id: job.id,
+            organization_id: job.organization_id || "",
+            project_id: job.project_id || "",
+            waiting: waiting,
             machine:
               InternalApi.Chmura.Agent.Machine.new(
                 type: machine_type,
@@ -128,8 +173,10 @@ defmodule Zebra.Workers.Agent.HostedAgent do
   end
 
   @doc "The provider that serves the job's hosted agent: the secondary one, or nil for the default."
-  def provider_for(job) do
-    if secondary_endpoint() && secondary_provider_enabled?(job.organization_id) do
+  def provider_for(job), do: provider_for_org(job.organization_id)
+
+  defp provider_for_org(org_id) do
+    if secondary_endpoint() && secondary_provider_enabled?(org_id) do
       @secondary_provider
     else
       nil
