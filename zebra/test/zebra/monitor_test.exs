@@ -3,6 +3,8 @@ defmodule Zebra.MonitorTest do
 
   alias Zebra.Monitor
 
+  import Mock
+
   setup do
     GrpcMock.stub(Support.FakeServers.OrganizationApi, :describe, fn _, _ ->
       InternalApi.Organization.DescribeResponse.new(
@@ -317,16 +319,41 @@ defmodule Zebra.MonitorTest do
            }
   end
 
-  test "count_pending_jobs" do
-    {:ok, _} = Support.Factories.Job.create(:pending)
+  for state <- [:pending, :enqueued] do
+    @state state
 
-    assert Monitor.count_pending_jobs() == 1
-  end
+    test "count_#{state}_jobs splits by tier and keeps the total series" do
+      state = @state
+      name = "monitor.jobs.#{state}"
 
-  test "count_enqueued_jobs" do
-    {:ok, _} = Support.Factories.Job.create(:enqueued)
+      {:ok, _} = Support.Factories.Job.create(state)
+      {:ok, _} = Support.Factories.Job.create(state, %{machine_type: "e1-standard-4"})
+      {:ok, _} = Support.Factories.Job.create(state, %{machine_type: "s1-local-testing"})
 
-    assert Monitor.count_enqueued_jobs() == 1
+      with_mock Watchman, [:passthrough],
+        submit: fn _, _ -> nil end,
+        submit: fn _, _, _ -> nil end do
+        assert apply(Monitor, :"count_#{state}_jobs", []) == {2, 1}
+
+        # total keeps counting every job in the state
+        assert_called(
+          Watchman.submit(
+            [internal: name, external: {"state", [state: "#{state}"]}],
+            3
+          )
+        )
+
+        assert_called(Watchman.submit({"#{name}_by_tier", ["cloud"]}, 2))
+        assert_called(Watchman.submit({"#{name}_by_tier", ["self_hosted"]}, 1))
+
+        # the breakdown never reuses the total's name
+        assert_not_called(Watchman.submit({name, :_}, :_))
+      end
+    end
+
+    test "count_#{state}_jobs reports zeros when there are no jobs" do
+      assert apply(Monitor, :"count_#{@state}_jobs", []) == {0, 0}
+    end
   end
 
   test "count_scheduled_jobs" do
