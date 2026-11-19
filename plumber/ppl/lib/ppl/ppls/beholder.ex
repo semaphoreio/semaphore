@@ -45,9 +45,11 @@ defmodule Ppl.Ppls.Beholder do
 
     terminate_ppl_blks(ppl)
 
-    Publisher.publish(Map.take(ppl, [:ppl_id]),
-                      "done",
-                      fn params -> Common.publisher_callback(params) end)
+    Publisher.publish(
+      Map.take(ppl, [:ppl_id]),
+      "done",
+      fn params -> Common.publisher_callback(params) end
+    )
   end
 
   def set_done_at_timestamp(ppl) do

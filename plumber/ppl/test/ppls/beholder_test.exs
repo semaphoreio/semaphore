@@ -22,9 +22,12 @@ defmodule Ppl.Ppls.Beholder.Test do
 
     assert {:ok, ppl} = PplsQueries.insert(ppl_req)
     assert ppl.state == "initializing"
-    assert {:ok, ppl} = ppl
-      |> Ppls.changeset(%{recovery_count: 5, in_scheduling: true})
-      |> Repo.update
+
+    assert {:ok, ppl} =
+             ppl
+             |> Ppls.changeset(%{recovery_count: 5, in_scheduling: true})
+             |> Repo.update()
+
     assert ppl.recovery_count == 5
     assert ppl.in_scheduling == true
 
@@ -38,6 +41,7 @@ defmodule Ppl.Ppls.Beholder.Test do
     ppl = Repo.get(Ppls, ppl.id)
     transitioned_to_done(ppl.state, ppl, pid)
   end
+
   def transitioned_to_done("done", ppl, pid) do
     assert ppl.state == "done"
     assert ppl.in_scheduling == true
@@ -57,15 +61,22 @@ defmodule Ppl.Ppls.Beholder.Test do
     assert ppl.in_scheduling == true
 
     Test.Helpers.assert_finished_for_less_than(
-      __MODULE__, :recovery_count_is_incremented_assert,
+      __MODULE__,
+      :recovery_count_is_incremented_assert,
       [ppl.recovery_count, ppl, looper_pid],
-      5_000)
+      5_000
+    )
   end
 
   def query_params() do
-    %{initial_query: Ppl.Ppls.Model.Ppls, cooling_time_sec: -2,
-      repo: Ppl.EctoRepo, schema: Ppl.Ppls.Model.Ppls, returning: [:id, :ppl_id],
-      allowed_states: ~w(initializing pending queuing running stopping done)}
+    %{
+      initial_query: Ppl.Ppls.Model.Ppls,
+      cooling_time_sec: -2,
+      repo: Ppl.EctoRepo,
+      schema: Ppl.Ppls.Model.Ppls,
+      returning: [:id, :ppl_id],
+      allowed_states: ~w(initializing pending queuing running stopping done)
+    }
   end
 
   def to_scheduling(state) do
@@ -75,12 +86,13 @@ defmodule Ppl.Ppls.Beholder.Test do
   end
 
   def recovery_count_is_incremented_assert(recovery_count, ppl, looper_pid)
-  when recovery_count == 0 do
+      when recovery_count == 0 do
     :timer.sleep(100)
     ppl = Repo.get(Ppls, ppl.id)
 
     recovery_count_is_incremented_assert(ppl.recovery_count, ppl, looper_pid)
   end
+
   def recovery_count_is_incremented_assert(_recovery_count, ppl, looper_pid) do
     assert ppl.recovery_count > 0
     Process.exit(looper_pid, :normal)
@@ -116,7 +128,12 @@ defmodule Ppl.Ppls.Beholder.Test do
       |> Test.Helpers.start_sub_init_loopers()
 
     {:ok, _} =
-      Test.Helpers.assert_finished_for_less_than(__MODULE__, :do_wait_blocks_created, [ppl_id], 10_000)
+      Test.Helpers.assert_finished_for_less_than(
+        __MODULE__,
+        :do_wait_blocks_created,
+        [ppl_id],
+        10_000
+      )
 
     Test.Helpers.stop_all_loopers(sub_init_loopers)
 
@@ -127,16 +144,26 @@ defmodule Ppl.Ppls.Beholder.Test do
 
     assert {:ok, pid} = Beholder.start_link()
 
-    {:ok, ppl} =  Test.Helpers.wait_for_ppl_state(ppl_id, "done", 10_000)
+    {:ok, ppl} = Test.Helpers.wait_for_ppl_state(ppl_id, "done", 10_000)
 
     loopers = Test.Helpers.start_all_loopers()
 
     {:ok, _} =
       Test.Helpers.assert_finished_for_less_than(
-        __MODULE__, :do_wait_block_status, [ppl_id,
-        %{"A" => [state: "done", result: "canceled"], "B" => [state: "done", result: "canceled"],
-        "C" => [state: "done", result: "canceled"], "D" => [state: "done", result: "canceled"],
-        "E" =>[state: "done", result: "canceled"]}], 10_000)
+        __MODULE__,
+        :do_wait_block_status,
+        [
+          ppl_id,
+          %{
+            "A" => [state: "done", result: "canceled"],
+            "B" => [state: "done", result: "canceled"],
+            "C" => [state: "done", result: "canceled"],
+            "D" => [state: "done", result: "canceled"],
+            "E" => [state: "done", result: "canceled"]
+          }
+        ],
+        10_000
+      )
 
     assert :ok = Beholder.stop(pid)
     Test.Helpers.stop_all_loopers(loopers)
@@ -145,7 +172,8 @@ defmodule Ppl.Ppls.Beholder.Test do
   end
 
   def do_wait_blocks_created(ppl_id) do
-    :timer.sleep 100
+    :timer.sleep(100)
+
     case PplBlocksQueries.get_all_by_id(ppl_id) do
       {:ok, blocks} -> blocks
       _ -> do_wait_blocks_created(ppl_id)
@@ -153,8 +181,9 @@ defmodule Ppl.Ppls.Beholder.Test do
   end
 
   def do_wait_block_status(ppl_id, desired_status) do
-    :timer.sleep 100
+    :timer.sleep(100)
     {:ok, blocks} = PplBlocksQueries.get_all_by_id(ppl_id)
+
     if reached_desired_status?(blocks, desired_status) do
       blocks
     else
@@ -164,12 +193,14 @@ defmodule Ppl.Ppls.Beholder.Test do
 
   defp reached_desired_status?(blocks, desired_status) do
     Enum.map(desired_status, fn {k, v} ->
-      Enum.find_value(blocks,
-      fn block ->
-        block.name == k && block.state == Keyword.get(v, :state) && block.result == Keyword.get(v, :result)
-      end)
+      Enum.find_value(
+        blocks,
+        fn block ->
+          block.name == k && block.state == Keyword.get(v, :state) &&
+            block.result == Keyword.get(v, :result)
+        end
+      )
     end)
-    |> Enum.all?(fn(x) -> x != nil end)
+    |> Enum.all?(fn x -> x != nil end)
   end
-
 end
