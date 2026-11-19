@@ -8,6 +8,7 @@ defmodule Guard.McpOAuth.Authorize do
 
   require Logger
 
+  alias Guard.McpOAuth.{ClientDocument, Computers}
   alias Guard.Store.McpOAuthClient
 
   @doc """
@@ -16,12 +17,15 @@ defmodule Guard.McpOAuth.Authorize do
   ## Parameters
   - params: Map with authorization request parameters
     - response_type (required): Must be "code"
-    - client_id (required): Registered client ID
+    - client_id (required): Registered client ID, or the https URL of the
+      client's metadata document (Client ID Metadata Documents)
     - redirect_uri (required): Must match registered URI
     - code_challenge (required): PKCE challenge
     - code_challenge_method (required): Must be "S256"
     - state (optional): Client state for CSRF protection
     - scope (optional): Requested scopes
+    - resource (optional): The server the token is for (RFC 8707); one of
+      semaphore.computer's MCP servers gets a token for it, any other is ignored
 
   ## Returns
   - `{:ok, validated_params}` on success
@@ -33,14 +37,24 @@ defmodule Guard.McpOAuth.Authorize do
          {:ok, client} <- validate_client(params),
          :ok <- validate_redirect_uri(client, params),
          :ok <- validate_pkce(params) do
+      resource = if Computers.mcp_resource?(params["resource"]), do: params["resource"]
+
       {:ok,
        %{
          client_id: params["client_id"],
          client_name: client.client_name || params["client_id"],
+         client_host:
+           if(ClientDocument.document?(params["client_id"]),
+             do: URI.parse(params["client_id"]).host
+           ),
+         local_redirect:
+           URI.parse(params["redirect_uri"]).host in ["localhost", "127.0.0.1", "::1"],
          redirect_uri: params["redirect_uri"],
          code_challenge: params["code_challenge"],
          state: params["state"],
-         scope: params["scope"] || "mcp"
+         scope: if(resource, do: Computers.scope(), else: params["scope"] || "mcp"),
+         resource: resource,
+         prompt: params["prompt"]
        }}
     end
   end
@@ -99,6 +113,9 @@ defmodule Guard.McpOAuth.Authorize do
 
           {:error, :not_found} ->
             {:error, direct_error("invalid_client", "Unknown client_id")}
+
+          {:error, reason} ->
+            {:error, direct_error("invalid_client", "client_id's metadata document #{reason}")}
         end
     end
   end

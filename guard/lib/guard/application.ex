@@ -206,6 +206,13 @@ defmodule Guard.Application do
       },
       %{
         worker:
+          Supervisor.child_spec({Cachex, Guard.McpOAuth.ClientDocument.cache()},
+            id: Guard.McpOAuth.ClientDocument.cache()
+          ),
+        active: true
+      },
+      %{
+        worker:
           Supervisor.child_spec({Cachex, :oauth_refresh_failure_cache},
             id: :oauth_refresh_failure_cache
           ),
