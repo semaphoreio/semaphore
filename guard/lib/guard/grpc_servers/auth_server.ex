@@ -159,6 +159,13 @@ defmodule Guard.GrpcServers.AuthServer do
         Logger.debug("[AuthServer] process_session session not found id=#{session_id}")
         {:error, :session_process_error}
 
+      # A nil refresh_token_enc means the session was revoked (see
+      # Guard.Store.OIDCSession.remove_refresh_token/1) and must not authenticate.
+      # This rejection plus the expiry check below is captured by the shared
+      # Guard.Store.OIDCSession.valid_for_auth?/1 predicate; keep them in sync
+      # (the MCP OAuth authorize flow gates solely on that predicate). It is not
+      # reused verbatim here because an expired-but-refreshable session takes the
+      # refresh branch below rather than being rejected.
       {:ok, %Guard.Repo.OIDCSession{refresh_token_enc: nil}} ->
         Logger.debug("[AuthServer] process_session refresh_token missing id=#{session_id}")
         {:error, :session_process_error}
