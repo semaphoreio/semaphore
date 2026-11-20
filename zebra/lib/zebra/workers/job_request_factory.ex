@@ -98,7 +98,17 @@ defmodule Zebra.Workers.JobRequestFactory do
                else: Cache.find(project.cache_id, repo_proxy, org_id, job_type, project)
            end),
          find_secrets <-
-           Task.async(fn -> Secrets.load(org_id, job.id, spec, project, repo_proxy, job_type) end),
+           Task.async(fn ->
+             Secrets.load(
+               org_id,
+               job.id,
+               spec,
+               project,
+               repo_proxy,
+               job_type,
+               job.deployment_target_id
+             )
+           end),
          {:ok, repository, private_git_key} <- await(find_repository, :repository),
          {:ok, repo_files} <- Repository.files(private_git_key),
          {:ok, repo_env_vars} <- Repository.env_vars(repository, repo_proxy, job_type),
