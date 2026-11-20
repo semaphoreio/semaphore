@@ -80,6 +80,7 @@ defmodule PipelinesAPI.Router do
   alias PipelinesAPI.ServiceAccounts.Reactivate, as: ReactivateServiceAccount
   alias PipelinesAPI.ServiceAccounts.RegenerateToken, as: RegenerateTokenServiceAccount
 
+  plug(Plug.RewriteOn, [:x_forwarded_proto])
   plug(PipelinesAPI.Plug.Logger)
   plug(PipelinesAPI.Plug.ClientMetrics)
 
