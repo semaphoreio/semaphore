@@ -8,4 +8,8 @@ defmodule Audit.Cache do
   def expire(key, ttl) do
     Cachex.expire(Cache, key, ttl)
   end
+
+  def put(key, value, ttl) do
+    Cachex.put(Cache, key, value, ttl: ttl)
+  end
 end
