@@ -1,6 +1,6 @@
 import { computed, signal } from "@preact/signals";
 import * as APIRequest from "js/toolbox/api_request";
-import { ApiPipeline, ApiPipelineDetail, ApiWorkflow, Block, Job, Pipeline, Promotion, Status, blockStatus, buildWorkflow } from "./model";
+import { ApiPipeline, ApiPipelineDetail, ApiWorkflow, Block, Job, Pipeline, Promotion, Status, blockStatus, buildWorkflow, plural } from "./model";
 
 export interface Config {
   workflowUrl: string;
@@ -109,7 +109,7 @@ export const results = computed<SearchResult[]>(() => {
     }
     for (const b of p.blocks ?? []) {
       if (includes(b.name, q) && (!st.size || b.jobs.some((j) => st.has(j.status)))) {
-        out.push({ kind: `block`, id: b.id, label: b.name, pipeline: p, status: blockStatus(b), context: `${b.jobs.length} jobs` });
+        out.push({ kind: `block`, id: b.id, label: b.name, pipeline: p, status: blockStatus(b), context: plural(b.jobs.length, `job`) });
       }
       for (const j of b.jobs) {
         if (includes(j.name, q) && (!st.size || st.has(j.status))) {
@@ -203,16 +203,17 @@ export async function refresh(config: Config, open: Set<string>): Promise<boolea
   if (treeChanged) tree.value = nextTree;
 
   const known = details.value;
-  const fresh = (id: string) =>
+  const before = new Map(previous?.pipelines.map((p) => [p.id, p]));
+  const fresh = ({ id, switch_id }: ApiPipeline) =>
     !known[id] ||
     stale.has(id) ||
+    before.get(id)?.switch_id !== switch_id ||
     known[id].promotions.some((promotion) => promotion.events.some((e) => !e.processed)) ||
     children(nextTree, id) > children(previous, id);
-  const before = new Map(previous?.pipelines.map((p) => [p.id, p]));
   const moved = (p: ApiPipeline) => before.get(p.id)?.state !== p.state || before.get(p.id)?.result !== p.result;
-  const due = nextTree.pipelines.filter((p) => fresh(p.id) || moved(p) || (open.has(p.id) && (p.state !== `DONE` || !known[p.id].done)));
+  const due = nextTree.pipelines.filter((p) => fresh(p) || moved(p) || (open.has(p.id) && (p.state !== `DONE` || !known[p.id].done)));
   if (!due.length) return treeChanged;
-  const withPromotions = due.filter((p) => fresh(p.id) || p.state === `DONE`).map((p) => p.id);
+  const withPromotions = due.filter((p) => fresh(p) || p.state === `DONE`).map((p) => p.id);
   const params = new URLSearchParams({ ids: due.map((p) => p.id).join(`,`), promotions: withPromotions.join(`,`) });
   due.forEach((p) => stale.delete(p.id));
 
