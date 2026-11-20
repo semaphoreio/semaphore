@@ -203,16 +203,17 @@ export async function refresh(config: Config, open: Set<string>): Promise<boolea
   if (treeChanged) tree.value = nextTree;
 
   const known = details.value;
-  const fresh = (id: string) =>
+  const before = new Map(previous?.pipelines.map((p) => [p.id, p]));
+  const fresh = ({ id, switch_id }: ApiPipeline) =>
     !known[id] ||
     stale.has(id) ||
+    before.get(id)?.switch_id !== switch_id ||
     known[id].promotions.some((promotion) => promotion.events.some((e) => !e.processed)) ||
     children(nextTree, id) > children(previous, id);
-  const before = new Map(previous?.pipelines.map((p) => [p.id, p]));
   const moved = (p: ApiPipeline) => before.get(p.id)?.state !== p.state || before.get(p.id)?.result !== p.result;
-  const due = nextTree.pipelines.filter((p) => fresh(p.id) || moved(p) || (open.has(p.id) && (p.state !== `DONE` || !known[p.id].done)));
+  const due = nextTree.pipelines.filter((p) => fresh(p) || moved(p) || (open.has(p.id) && (p.state !== `DONE` || !known[p.id].done)));
   if (!due.length) return treeChanged;
-  const withPromotions = due.filter((p) => fresh(p.id) || p.state === `DONE`).map((p) => p.id);
+  const withPromotions = due.filter((p) => fresh(p) || p.state === `DONE`).map((p) => p.id);
   const params = new URLSearchParams({ ids: due.map((p) => p.id).join(`,`), promotions: withPromotions.join(`,`) });
   due.forEach((p) => stale.delete(p.id));
 

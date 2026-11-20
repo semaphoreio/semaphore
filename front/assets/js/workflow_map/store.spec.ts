@@ -297,6 +297,19 @@ describe(`refresh`, () => {
     expect(details.value.ci.promotions.map((p) => p.name)).to.deep.eq([`Staging`]);
   });
 
+  test(`fetches the promotions of a pipeline once its switch appears`, async () => {
+    served = { root_pipeline_id: `ci`, pipelines: [{ ...pipeline(`ci`, `Build & test`, null), state: `INITIALIZING`, result: `` }] };
+    pipelines.ci = { ...detail(`ci`, []), state: `INITIALIZING`, result: ``, done: false };
+    await refresh(config, open);
+    served = { root_pipeline_id: `ci`, pipelines: [{ ...pipeline(`ci`, `Build & test`, null), state: `RUNNING`, result: ``, switch_id: `switch-1` }] };
+    pipelines.ci = { ...detail(`ci`, []), state: `RUNNING`, result: ``, done: false, promotions: [{ ...starting, events: [] }] };
+    await refresh(config, open);
+    await refresh(config, open);
+
+    expect(batches.map((b) => b.promotions)).to.deep.eq([[`ci`], [`ci`], [``]]);
+    expect(details.value.ci.promotions.map((p) => p.name)).to.deep.eq([`Staging`]);
+  });
+
   test(`fetches a finished pipeline again when a new promoted pipeline appears under it`, async () => {
     pipelines.ci = detail(`ci`, []);
     await refresh(config, open);
