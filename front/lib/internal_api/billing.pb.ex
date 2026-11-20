@@ -1588,9 +1588,19 @@ defmodule InternalApi.Billing.Addon do
           price: String.t(),
           enabled: boolean,
           modifiable: boolean,
-          last_modified_at: Google.Protobuf.Timestamp.t()
+          last_modified_at: Google.Protobuf.Timestamp.t(),
+          self_service: boolean
         }
-  defstruct [:name, :display_name, :description, :price, :enabled, :modifiable, :last_modified_at]
+  defstruct [
+    :name,
+    :display_name,
+    :description,
+    :price,
+    :enabled,
+    :modifiable,
+    :last_modified_at,
+    :self_service
+  ]
 
   field(:name, 1, type: :string)
   field(:display_name, 2, type: :string)
@@ -1599,6 +1609,7 @@ defmodule InternalApi.Billing.Addon do
   field(:enabled, 5, type: :bool)
   field(:modifiable, 6, type: :bool)
   field(:last_modified_at, 7, type: Google.Protobuf.Timestamp)
+  field(:self_service, 8, type: :bool)
 end
 
 defmodule InternalApi.Billing.AddonGroup do
@@ -1610,15 +1621,27 @@ defmodule InternalApi.Billing.AddonGroup do
           display_name: String.t(),
           description: String.t(),
           type: integer,
-          addons: [InternalApi.Billing.Addon.t()]
+          addons: [InternalApi.Billing.Addon.t()],
+          disabling_is_final: boolean,
+          on_cooldown: boolean
         }
-  defstruct [:name, :display_name, :description, :type, :addons]
+  defstruct [
+    :name,
+    :display_name,
+    :description,
+    :type,
+    :addons,
+    :disabling_is_final,
+    :on_cooldown
+  ]
 
   field(:name, 1, type: :string)
   field(:display_name, 2, type: :string)
   field(:description, 3, type: :string)
   field(:type, 4, type: InternalApi.Billing.AddonGroupType, enum: true)
   field(:addons, 5, repeated: true, type: InternalApi.Billing.Addon)
+  field(:disabling_is_final, 6, type: :bool)
+  field(:on_cooldown, 7, type: :bool)
 end
 
 defmodule InternalApi.Billing.UpdateAddonRequest do

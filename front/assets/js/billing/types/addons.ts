@@ -11,6 +11,7 @@ export class Addon {
   price: string;
   enabled: boolean;
   modifiable: boolean;
+  selfService: boolean;
 
   static fromJSON(json: any): Addon {
     const addon = new Addon();
@@ -20,6 +21,7 @@ export class Addon {
     addon.price = json.price as string;
     addon.enabled = json.enabled as boolean;
     addon.modifiable = json.modifiable as boolean;
+    addon.selfService = json.self_service as boolean;
     return addon;
   }
 }
@@ -30,6 +32,8 @@ export class AddonGroup {
   description: string;
   type: GroupType;
   addons: Addon[];
+  disablingIsFinal: boolean;
+  onCooldown: boolean;
 
   static fromJSON(json: any): AddonGroup {
     const group = new AddonGroup();
@@ -38,6 +42,8 @@ export class AddonGroup {
     group.description = json.description as string;
     group.type = parseType(json.type as string);
     group.addons = (json.addons || []).map(Addon.fromJSON);
+    group.disablingIsFinal = json.disabling_is_final as boolean;
+    group.onCooldown = json.on_cooldown as boolean;
     return group;
   }
 }
