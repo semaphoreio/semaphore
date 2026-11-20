@@ -421,6 +421,28 @@ defmodule Zebra.Api.PublicJobApiTest do
              }
     end
 
+    test "when the job has a deployment target => checks its secrets with the target" do
+      stub_describe_many_and_report_target()
+      {:ok, task} = Support.Factories.Task.create()
+
+      {:ok, job} =
+        Support.Factories.Job.create(:started, %{
+          project_id: hd(@authorized_projects),
+          private_ssh_key: Zebra.RSA.generate().private_key,
+          organization_id: @org_id,
+          build_id: task.id,
+          deployment_target_id: @dt_id,
+          spec: Zebra.Models.Job.encode_spec(job_spec_with_secret())
+        })
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      {:ok, reply} = channel |> Stub.get_job_debug_ssh_key(Request.new(job_id: job.id), @options)
+
+      assert reply.key == job.private_ssh_key
+      assert_receive {:deployment_target_id, @dt_id}
+    end
+
     test "when the job is not found => returns not found" do
       {:ok, channel} = GRPC.Stub.connect("localhost:50051")
 
@@ -1074,6 +1096,39 @@ defmodule Zebra.Api.PublicJobApiTest do
              }
     end
 
+    test "when deployment target allows user => checks secrets with the target and copies it to the debug job" do
+      GrpcMock.stub(Support.FakeServers.DeploymentTargetsApi, :verify, fn _, _ ->
+        InternalApi.Gofer.DeploymentTargets.VerifyResponse.new(
+          status: InternalApi.Gofer.DeploymentTargets.VerifyResponse.Status.value(:ACCESS_GRANTED)
+        )
+      end)
+
+      stub_describe_many_and_report_target()
+      mock_repo_proxy(:BRANCH, "master", "test-org/test-repo", "")
+
+      alias Semaphore.Jobs.V1alpha.JobsApi.Stub, as: Stub
+
+      {:ok, task} = Support.Factories.Task.create()
+
+      {:ok, job} =
+        Support.Factories.Job.create(:pending, %{
+          project_id: hd(@authorized_projects),
+          organization_id: @org_id,
+          deployment_target_id: @dt_id,
+          build_id: task.id,
+          spec: Zebra.Models.Job.encode_spec(job_spec_with_secret())
+        })
+
+      req = Semaphore.Jobs.V1alpha.CreateDebugJobRequest.new(job_id: job.id)
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+      {:ok, reply} = channel |> Stub.create_debug_job(req, @options)
+
+      assert_receive {:deployment_target_id, @dt_id}
+      assert {:ok, debug_job} = Zebra.Models.Job.find(reply.metadata.id)
+      assert debug_job.deployment_target_id == @dt_id
+    end
+
     test "when the project belongs to restricted org and blocks debug on pull request => raise error" do
       mock_repo_proxy(:PR, "", "test-org/test-repo", "test-org/test-repo")
       mock_project([], [])
@@ -1480,6 +1535,29 @@ defmodule Zebra.Api.PublicJobApiTest do
   end
 
   # Utility functions
+  defp stub_describe_many_and_report_target do
+    test_pid = self()
+
+    GrpcMock.stub(Support.FakeServers.SecretsApi, :describe_many, fn req, _ ->
+      send(test_pid, {:deployment_target_id, req.deployment_target_id})
+
+      InternalApi.Secrethub.DescribeManyResponse.new(
+        secrets: [
+          InternalApi.Secrethub.Secret.new(
+            metadata: InternalApi.Secrethub.Secret.Metadata.new(name: "dt-secret")
+          )
+        ]
+      )
+    end)
+  end
+
+  defp job_spec_with_secret do
+    %{
+      Support.Factories.Job.spec()
+      | secrets: [Semaphore.Jobs.V1alpha.Job.Spec.Secret.new(name: "dt-secret")]
+    }
+  end
+
   def mock_repository(default_branch) do
     GrpcMock.stub(Support.FakeServers.RepositoryApi, :describe, fn _, _ ->
       key = "--BEGIN....lalalala..private_key...END---"
