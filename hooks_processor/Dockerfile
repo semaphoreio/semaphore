@@ -57,7 +57,7 @@ HEALTHCHECK NONE
 
 RUN apk update && \
     apk add --no-cache \
-    openssh-keygen \
+    "openssh-keygen>=10.0_p1-r11" \
     ncurses-libs \
     libstdc++
 
