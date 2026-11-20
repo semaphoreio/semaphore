@@ -427,9 +427,18 @@ defmodule FrontWeb.WorkflowControllerTest do
                  "name" => "Build & Test",
                  "parent_id" => nil,
                  "trigger" => "INITIAL_WORKFLOW",
+                 "triggerer" => %{
+                   "text" => "Triggered by push",
+                   "link" => nil,
+                   "owner" => owner,
+                   "stopped" => false,
+                   "stopped_by" => nil
+                 },
                  "switch_id" => switch_id
                }
              ] = json["pipelines"]
+
+      assert is_binary(owner)
 
       assert id == pipeline.id
       assert is_binary(switch_id)
@@ -789,7 +798,12 @@ defmodule FrontWeb.WorkflowControllerTest do
 
       conn = recycle(conn, anonymous)
       json = conn |> get("/workflows/#{workflow.id}/map") |> json_response(200)
-      assert [%{"stop_url" => nil}] = json["pipelines"]
+      assert [%{"stop_url" => nil, "triggerer" => triggerer}] = json["pipelines"]
+      assert is_binary(triggerer["owner"])
+
+      conn = recycle(conn, anonymous)
+      tree = conn |> get("/workflows/#{workflow.id}/status") |> html_response(200)
+      assert tree =~ "#{triggerer["text"]} by #{triggerer["owner"]}"
 
       conn = recycle(conn, anonymous)
 
