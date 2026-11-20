@@ -42,6 +42,7 @@ defmodule FrontWeb.BranchController do
     date_from = params["date_from"] || ""
     date_to = params["date_to"] || ""
     author = params["author"] || ""
+    trigger = params["trigger"] || ""
 
     branch = conn.assigns.branch
     project = conn.assigns.project
@@ -56,7 +57,8 @@ defmodule FrontWeb.BranchController do
         direction: direction,
         date_from: date_from,
         date_to: date_to,
-        author: author
+        author: author,
+        trigger: trigger
       )
 
     {:ok, model, source} = params |> BranchPage.Model.get()
@@ -69,7 +71,8 @@ defmodule FrontWeb.BranchController do
         direction: direction,
         date_from: date_from,
         date_to: date_to,
-        author: author
+        author: author,
+        trigger: trigger
       ]
     }
 
@@ -82,6 +85,7 @@ defmodule FrontWeb.BranchController do
         workflows: model.workflows,
         pagination: model.pagination,
         pollman: pollman,
+        trigger: trigger,
         title: compose_title(branch, project, model.organization),
         conflict_info: determine_conflict(model.workflows)
       }
@@ -101,6 +105,7 @@ defmodule FrontWeb.BranchController do
     date_from = params["date_from"] || ""
     date_to = params["date_to"] || ""
     author = params["author"] || ""
+    trigger = params["trigger"] || ""
 
     branch = conn.assigns.branch
     project = conn.assigns.project
@@ -115,7 +120,8 @@ defmodule FrontWeb.BranchController do
         direction: direction,
         date_from: date_from,
         date_to: date_to,
-        author: author
+        author: author,
+        trigger: trigger
       )
 
     {:ok, model, source} = params |> BranchPage.Model.get()
@@ -128,7 +134,8 @@ defmodule FrontWeb.BranchController do
         direction: direction,
         date_from: date_from,
         date_to: date_to,
-        author: author
+        author: author,
+        trigger: trigger
       ]
     }
 
