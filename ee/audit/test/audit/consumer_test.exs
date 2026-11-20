@@ -1,6 +1,8 @@
 defmodule Audit.ConsumerTest do
   use Support.DataCase
 
+  import ExUnit.CaptureLog
+
   alias InternalApi, as: IA
   alias InternalApi.Audit.Event.{Resource, Operation, Medium}
 
@@ -68,6 +70,18 @@ defmodule Audit.ConsumerTest do
 
     Audit.Consumer.handle_message(secret_event(org_id))
     assert length(Audit.Event.all(%{org_id: org_id})) == 1
+  end
+
+  test "logs an event it skips for an organization without audit_logs" do
+    stub_user()
+    stub_feature(:HIDDEN)
+
+    org_id = Ecto.UUID.generate()
+
+    log = capture_log(fn -> Audit.Consumer.handle_message(secret_event(org_id)) end)
+
+    assert Audit.Event.all(%{org_id: org_id}) == []
+    assert log =~ "Skipping Secret.Added event for org #{org_id}: audit_logs is not enabled"
   end
 
   defp secret_event(org_id) do
