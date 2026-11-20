@@ -84,17 +84,22 @@ export class TimeAgo extends HTMLElement {
         const now = new Date();
         const diffInSeconds = Math.floor((now - date) / 1000);
         const diffInHours = Math.floor(diffInSeconds / 3600);
+        const alwaysRelative = this.hasAttribute("always-relative");
 
-        if (diffInHours >= 1) return this.formatDateWithTime(date);
-        return this.formatRelativeTime(diffInSeconds);
+        if (diffInHours >= 1 && !alwaysRelative) return this.formatDateWithTime(date);
+        return this.formatRelativeTime(diffInSeconds, alwaysRelative);
     }
 
-    formatRelativeTime(seconds) {
+    formatRelativeTime(seconds, longUnits) {
         const rtf = new Intl.RelativeTimeFormat(this.locale, { numeric: "auto" });
+        const day = 86400;
 
         if (Math.abs(seconds) < 60) return rtf.format(-seconds, "second");
         if (Math.abs(seconds) < 3600) return rtf.format(-Math.floor(seconds / 60), "minute");
-        return rtf.format(-Math.floor(seconds / 3600), "hour");
+        if (Math.abs(seconds) < day || !longUnits) return rtf.format(-Math.floor(seconds / 3600), "hour");
+        if (Math.abs(seconds) < 30 * day) return rtf.format(-Math.floor(seconds / day), "day");
+        if (Math.abs(seconds) < 365 * day) return rtf.format(-Math.floor(seconds / (30 * day)), "month");
+        return rtf.format(-Math.floor(seconds / (365 * day)), "year");
     }
 
     formatDateWithTime(date) {

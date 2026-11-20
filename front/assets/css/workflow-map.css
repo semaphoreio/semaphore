@@ -4,6 +4,7 @@
   --wf-map-running: #1570ff;
   --wf-map-queued: #fd7e14;
   --wf-map-stopped: #667979;
+  --wf-map-canceled: #8c9c9c;
   --wf-map-pending: #b4c0c0;
   --wf-map-skipped: #8c9c9c;
   --wf-map-edge: #a3b0b5;
@@ -19,6 +20,7 @@
 .wf-map-st-running { --wf-map-st: var(--wf-map-running); }
 .wf-map-st-queued { --wf-map-st: var(--wf-map-queued); }
 .wf-map-st-stopped { --wf-map-st: var(--wf-map-stopped); }
+.wf-map-st-canceled { --wf-map-st: var(--wf-map-canceled); }
 .wf-map-st-pending { --wf-map-st: var(--wf-map-pending); }
 .wf-map-st-skipped { --wf-map-st: var(--wf-map-skipped); }
 
@@ -514,15 +516,34 @@
   font-size: 13px;
 }
 
-.wf-map-init-log {
-  flex: none;
-  font-size: 13px;
-  color: #677278;
+.wf-map-init-tab {
+  position: absolute;
+  top: 66px;
+  left: 44px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 21px;
+  padding: 0 8px 0 4px;
+  border: 1px solid #D3DADE;
+  border-top: 0;
+  border-radius: 0 0 9px 9px;
+  background: #fff;
+  box-shadow: 0 2px 3px rgba(32, 43, 48, .08);
+  font-size: 12px;
+  color: #495358;
+  text-decoration: none;
   white-space: nowrap;
 }
 
-.wf-map-init-log.failed {
-  color: var(--wf-map-failed);
+.wf-map-init-tab:hover {
+  border-color: #96A0A6;
+  color: #202B30;
+}
+
+.wf-map-init-tab + .wf-map-after {
+  margin-top: 31px;
 }
 
 .wf-map-card {
@@ -628,13 +649,136 @@
 }
 
 .wf-map-pipeline-meta {
-  flex: 1;
+  flex: 0 1 auto;
+  margin-right: auto;
   font-size: 13px;
   color: #677278;
 }
 
 .wf-map-pipeline-head {
   cursor: pointer;
+}
+
+.wf-map-triggered {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: #677278;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+a.wf-map-triggered:hover {
+  color: #202B30;
+}
+
+.wf-map-triggered .material-symbols-outlined {
+  font-size: 15px;
+}
+
+.wf-map-sep {
+  flex: none;
+  width: 1px;
+  height: 14px;
+  background: #C9D1D6;
+}
+
+.wf-map-pipeline-row > .wf-map-counts {
+  flex: none;
+}
+
+.wf-map-pipeline-row > .wf-map-counts:empty {
+  display: none;
+}
+
+.wf-map-card-meta > :first-child {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wf-map-reason {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 9px;
+  background: #EEF1F2;
+  font-size: 12px;
+  font-weight: 500;
+  color: #495358;
+  white-space: nowrap;
+}
+
+.wf-map-pipeline-meta:has(+ .wf-map-reason) {
+  margin-right: 0;
+}
+
+.wf-map-pipeline-sub > .wf-map-reason {
+  margin: 0 auto 0 8px;
+}
+
+.wf-map-card-meta > .wf-map-reason {
+  flex: none;
+}
+
+button.wf-map-reason {
+  gap: 1px;
+  padding-right: 3px;
+  border: 0;
+  cursor: pointer;
+}
+
+button.wf-map-reason:hover,
+button.wf-map-reason[aria-expanded="true"] {
+  background: #E1E6E8;
+  color: #202B30;
+}
+
+button.wf-map-reason .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.wf-map-details {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  height: 48px;
+  padding: 0 12px 0 36px;
+  border-bottom: 1px solid #D3DADE;
+  background: #F5F7F8;
+  font-size: 12px;
+  color: #495358;
+  cursor: default;
+}
+
+.wf-map-details-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.wf-map-details-row > span,
+.wf-map-details-when {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wf-map-details-when {
+  display: block;
+  color: #677278;
+}
+
+.wf-map-details ~ .wf-map-init-tab {
+  top: 114px;
 }
 
 .wf-map-after {
@@ -1094,12 +1238,21 @@ a.wf-map-job:hover {
 
 .wf-head-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 2px 6px;
   min-width: 0;
   font-size: 14px;
   color: #677278;
   white-space: nowrap;
+}
+
+.wf-head-meta > * {
+  max-width: 100%;
+}
+
+.wf-head-branch {
+  max-width: min(48ch, 100%);
 }
 
 .wf-head-actions {
@@ -1116,15 +1269,16 @@ a.wf-map-job:hover {
 
 .wf-compact-head .wf-head-summary {
   display: flex;
-  align-items: baseline;
-  gap: 16px;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .wf-compact-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 4px 16px;
   margin-top: 2px;
 }
 
