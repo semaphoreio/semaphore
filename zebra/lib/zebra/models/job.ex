@@ -155,11 +155,26 @@ defmodule Zebra.Models.Job do
     end
   end
 
-  def update(job, params \\ %{}) do
+  def update(job, params \\ %{}), do: update_with(job, params, & &1)
+
+  # The debug SSH key is only served while the job is running (see
+  # PublicJobApi.Getter), so it is dropped on every transition to finished.
+  # force_change writes the NULL even when the caller loaded the job without
+  # that column, where a plain nil param would not register as a change.
+  defp finish_update(job, params) do
+    update_with(job, params, &force_change(&1, :private_ssh_key, nil))
+  end
+
+  # The agent auth token is kept at finish: it is still needed by post-job
+  # processing for a while. Workers.FinishedJobCleaner clears it a few days
+  # later.
+
+  defp update_with(job, params, changes_fun) do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
     params = params |> Map.merge(%{updated_at: now})
 
     changeset(job, params)
+    |> changes_fun.()
     |> LegacyRepo.update()
     |> case do
       {:ok, job} ->
@@ -320,7 +335,7 @@ defmodule Zebra.Models.Job do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 
     {:ok, job} =
-      update(job, %{
+      finish_update(job, %{
         aasm_state: state_finished(),
         finished_at: now,
         result: result_failed(),
@@ -365,7 +380,7 @@ defmodule Zebra.Models.Job do
         request: sanitized_request(j)
       }
 
-      case update(j, params) do
+      case finish_update(j, params) do
         {:ok, _} ->
           Logger.info("Forcefully finished #{j.id}")
 
@@ -631,7 +646,7 @@ defmodule Zebra.Models.Job do
           request: sanitized_request(job)
         }
 
-        case update(job, params) do
+        case finish_update(job, params) do
           {:ok, job} ->
             optimisticaly_finish_task(job)
 
@@ -666,7 +681,7 @@ defmodule Zebra.Models.Job do
         machine_type: job.machine_type || ""
       }
 
-      case update(job, params) do
+      case finish_update(job, params) do
         {:ok, job} ->
           optimisticaly_finish_task(job)
           :ok = publish_finished_event(job)
