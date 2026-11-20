@@ -1,9 +1,9 @@
 <div class="wf-head-summary">
-  <h1 class="wf-head-title"><%= commit_message(@hook) %></h1>
+  <h1 class="wf-head-title" title="<%= commit_message(@hook) %>"><%= commit_message(@hook) %></h1>
   <div class="wf-head-meta">
     <%= link get_header_navigation_element(@breadcrumbs, :project, :name), to: get_header_navigation_element(@breadcrumbs, :project, :url) %>
     <span>›</span>
-    <%= link get_header_navigation_element(@breadcrumbs, :branch, :name), to: get_header_navigation_element(@breadcrumbs, :branch, :url), class: "truncate" %>
+    <%= link get_header_navigation_element(@breadcrumbs, :branch, :name), to: get_header_navigation_element(@breadcrumbs, :branch, :url), class: "truncate wf-head-branch", title: get_header_navigation_element(@breadcrumbs, :branch, :name) %>
     <span>·</span>
     <%= if @hook.type == "pr" do %>
       <%= link "#{pr_commit_sha(@hook)}", to: pr_commit_url(@hook), target: "_blank", class: "link gray hover-dark-gray" %>
