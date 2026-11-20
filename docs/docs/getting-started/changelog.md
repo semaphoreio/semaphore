@@ -8,6 +8,135 @@ Thank you for using Semaphore!
 We continuously deploy changes that improve our product for our customers.
 This page is updated on a weekly basis.
 
+### Week of October 26, 2026
+
+**(Improved) Ubuntu 22.04 image update**
+
+**(Updated)** Updated packages:
+
+- Kernel: 6.8.0-84.84.1 -> 6.8.0-149.149.1
+- Git: 2.51.0 -> 2.56.1
+- Gitlfs: 3.7.0 -> 3.8.1
+- Gh: 2.80.0 -> 2.105.0
+- Geckodriver: 0.36.0 -> 0.37.1
+- Chrome: 140.0.7339.207 -> 158.0.8127.36
+- Chromedriver: 140.0.7339.207 -> 158.0.8127.36
+- Docker: 28.4.0 -> 29.10.0
+- Docker compose v2: 2.39.4 -> 5.8.0
+- Dockerize: 0.9.6 -> 0.16.0
+- Docker buildx: 0.28.0 -> 0.39.0
+- Containerd.io: 1.7.27 -> 2.4.2
+- Aws v2: 2.31.1 -> 2.41.1
+- Azure: 2.77.0 -> 2.93.0
+- Doctl: 1.142.0 -> 2.6.0
+- Gcloud: 540.0.0 -> 594.0.0
+- Heroku: 10.13.2 -> 11.14.0
+- Terraform: 1.13.3 -> 1.17.2
+- Helm: 3.19.0 -> 4.3.2
+- Helmfile: 1.1.7 -> 1.8.4
+- Go: 1.25.1 -> 1.27.4
+- Java 11: 11.0.28 -> 11.0.33.1
+- Java 17: 17.0.16 -> 17.0.21.1
+- Maven: 3.9.11 -> 3.10.1
+- Gradle: 9.1 -> 9.9.1
+- Bazel: 8.4.1 -> 9.3.2
+- Nodejs: 22.19.0 -> 26.13.1
+- Npm: 10.9.3 -> 11.20.0
+- Php: 8.1.32 -> 8.3.36
+- Pip: 25.2 -> 26.3
+- Virtualenv: 20.34.0 -> 21.15.9
+- Sbt: 1.11.6 -> 2.1.0
+- Yq: 4.47.2 -> 4.54.3
+- Rust: 1.90.0 -> 1.100.0
+- Ruby: 3.4.5 -> 3.4.13
+- Swiftly: 1.0.1 -> 1.2.0
+
+To learn more about this image, check our [Ubuntu 22.04 page](https://docs.semaphoreci.com/reference/os-ubuntu-images/ubuntu-2204-image/).
+
+**(Improved) Ubuntu 24.04 image update**
+
+**(Updated)** Updated packages:
+
+- Kernel: 6.8.0-139.139 -> 6.8.0-151.151
+- Git: 2.55.0 -> 2.56.1
+- Gitlfs: 3.8.0 -> 3.8.1
+- Gh: 2.101.0 -> 2.105.0
+- Chrome: 153.0.8010.52 -> 158.0.8127.36
+- Chromedriver: 153.0.8010.52 -> 158.0.8127.36
+- Edge: 153.0.4234.48 -> 157.0.4341.60
+- Docker: 29.8.1 -> 29.10.0
+- Docker compose v2: 5.5.1 -> 5.8.0
+- Dockerize: 0.15.1 -> 0.16.0
+- Docker buildx: 0.37.1 -> 0.39.0
+- Aws v2: 2.36.49 -> 2.41.1
+- Azure: 2.90.0 -> 2.93.0
+- Doctl: 1.169.0 -> 2.6.0
+- Gcloud: 585.0.0 -> 594.0.0
+- Heroku: 11.10.0 -> 11.14.0
+- Terraform: 1.16.3 -> 1.17.2
+- Helm: 4.3.0 -> 4.3.2
+- Helmfile: 1.8.0 -> 1.8.4
+- Go: 1.27.1 -> 1.27.4
+- Java 11: 11.0.32 -> 11.0.33
+- Java 17: 17.0.20 -> 17.0.21.1
+- Java 21: 21.0.12 -> 21.0.13.1
+- Java 25: 25.0.4.1 -> 25.0.5.1
+- Maven: 3.9.16 -> 3.10.1
+- Gradle: 9.7.1 -> 9.9.1
+- Bazel: 9.2.0 -> 9.3.2
+- Nodejs: 24.21.0 -> 26.13.1
+- Npm: 11.19.0 -> 11.20.0
+- Nvm: 0.40.8 -> 0.41.0
+- Bun: 1.4.2 -> 1.4.5
+- Php: 8.1.34 -> 8.3.36
+- Pip: 26.2.1 -> 26.3
+- Virtualenv: 21.9.0 -> 21.15.9
+- Sbt: 2.0.9 -> 2.1.0
+- Yq: 4.53.6 -> 4.54.3
+- Rust: 1.98.1 -> 1.100.0
+- .NET: 10.0.112 -> 10.0.115
+- PowerShell: 7.6.6 -> 7.7.0
+- Ruby: 3.4.9 -> 3.4.13
+- Swiftly: 1.1.4 -> 1.2.0
+
+To learn more about this image, check our [Ubuntu 24.04 page](https://docs.semaphoreci.com/reference/os-ubuntu-images/ubuntu-2404-image/).
+
+**(Improved) Ubuntu 24.04 ARM image update**
+
+**(Updated)** Updated packages:
+
+- Kernel: 6.8.0-139.139 -> 6.8.0-151.151
+- Git: 2.55.0 -> 2.56.1
+- Gitlfs: 3.8.0 -> 3.8.1
+- Gh: 2.101.0 -> 2.105.0
+- Firefox: 140.16.0esr -> 140.17.0esr
+- Chromedriver: 153.0.8010.52 -> 156.0.8078.73
+- Docker: 29.8.1 -> 29.10.0
+- Docker compose v2: 5.5.1 -> 5.8.0
+- Dockerize: 0.15.1 -> 0.16.0
+- Docker buildx: 0.37.1 -> 0.39.1
+- Aws v2: 2.36.49 -> 2.41.1
+- Azure: 2.90.0 -> 2.93.0
+- Doctl: 1.169.0 -> 2.6.0
+- Gcloud: 585.0.0 -> 594.0.0
+- Terraform: 1.16.3 -> 1.17.2
+- Helm: 4.3.0 -> 4.3.2
+- Go: 1.27.1 -> 1.27.4
+- Java 11: 11.0.32.1 -> 11.0.33.1
+- Java 17: 17.0.20.1 -> 17.0.21.1
+- Java 21: 21.0.12.1 -> 21.0.13.1
+- Maven: 3.9.16 -> 3.10.1
+- Gradle: 9.7.1 -> 9.9.1
+- Nodejs: 24.21.0 -> 26.13.1
+- Npm: 11.19.0 -> 11.20.0
+- Nvm: 0.40.8 -> 0.41.0
+- Php: 8.1.34 -> 8.3.36
+- Pip: 26.2.1 -> 26.3
+- Virtualenv: 21.9.0 -> 21.15.9
+- Ruby: 3.4.9 -> 3.4.12
+
+To learn more about this image, check our [Ubuntu 24.04 ARM page](https://docs.semaphoreci.com/reference/os-ubuntu-images/ubuntu-2404-arm-image/).
+
 ### Week of September 28, 2026
 
 **(Improved) Ubuntu 24.04 image update**
