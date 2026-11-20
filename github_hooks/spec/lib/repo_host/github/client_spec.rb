@@ -481,7 +481,7 @@ RSpec.describe RepoHost::Github::Client do
     context "account allowing public access to the GitHub API",
             :vcr => {
               :allow_playback_repeats => true,
-              :cassette_name => "Github/Client/public_repositories"
+              :cassette_name => "GitHub/Client/public_repositories"
             } do
 
       before do
@@ -494,7 +494,6 @@ RSpec.describe RepoHost::Github::Client do
       #
       describe "#repositories" do
         before do
-          pending("for some reason failing after moving project to alles")
           @repositories = @github_client.repositories
           @repo = @repositories.first
         end
@@ -518,7 +517,6 @@ RSpec.describe RepoHost::Github::Client do
       #
       describe "#group_repositories" do
         before do
-          pending("for some reason failing after moving project to alles")
           @repositories = @github_client.group_repositories
           @repo = @repositories.first
         end
