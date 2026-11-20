@@ -56,6 +56,10 @@ func (e *AESGCMEncryptor) Decrypt(cyphertext []byte, associatedData []byte) ([]b
 	// We know the nonce is prepended in the cyphertext
 	// and we know its size, so can easily separate the two.
 	nonceSize := gcm.NonceSize()
+	if len(cyphertext) < nonceSize {
+		return nil, fmt.Errorf("ciphertext too short")
+	}
+
 	nonce := cyphertext[:nonceSize]
 	ciphertext := cyphertext[nonceSize:]
 
