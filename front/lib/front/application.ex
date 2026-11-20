@@ -61,6 +61,14 @@ defmodule Front.Application do
     [
       {Cacheman, [:front, front_opts]},
       Supervisor.child_spec({Cachex, :feature_provider_cache}, id: :feature_provider_cache),
+      # Short-lived per-org activity monitor data, shared by every open tab
+      # polling the same org.
+      Supervisor.child_spec(
+        {Cachex,
+         name: Front.ActivityMonitor.Repo.cache_name(),
+         expiration: expiration(default: :timer.seconds(5))},
+        id: Front.ActivityMonitor.Repo.cache_name()
+      ),
 
       # old, deprecated caches. Do not use.
       Supervisor.child_spec({Cachex, :front_cache}, id: :front_cache),

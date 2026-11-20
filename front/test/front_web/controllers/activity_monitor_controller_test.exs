@@ -67,6 +67,69 @@ defmodule FrontWeb.ActivityMonitorControllerTest do
     end
   end
 
+  describe "index when activity data cannot be loaded" do
+    test "renders the page with empty activity instead of failing", %{conn: conn} = ctx do
+      with_mock Front.ActivityMonitor.Repo, load: fn _, _, _ -> {:error, rpc_error()} end do
+        add_permissions(ctx, ["organization.view", "organization.activity_monitor.view"])
+
+        conn = get(conn, activity_monitor_path(conn, :index))
+
+        assert html_response(conn, 200) =~ "Everything currently running across all projects"
+      end
+    end
+  end
+
+  describe "activity_data" do
+    test "returns 404 without activity monitor permission", %{conn: conn} = ctx do
+      add_permissions(ctx, ["organization.view"])
+
+      conn = get(conn, activity_monitor_path(conn, :activity_data))
+
+      assert conn.status == 404
+    end
+
+    test "returns the activity as JSON", %{conn: conn} = ctx do
+      with_mock Front.ActivityMonitor.Repo, load: fn _, _, _ -> {:ok, repo_data()} end do
+        add_permissions(ctx, ["organization.view", "organization.activity_monitor.view"])
+
+        conn = get(conn, activity_monitor_path(conn, :activity_data))
+
+        assert %{
+                 "org_name" => "TestOrg",
+                 "agent_stats" => %{"agent_types" => _},
+                 "items" => %{
+                   "lobby" => %{"items" => [], "non_visible_pipelines_count" => 0},
+                   "waiting" => %{"items" => [], "non_visible_job_count" => 0},
+                   "running" => %{"items" => [], "non_visible_job_count" => 0}
+                 }
+               } = json_response(conn, 200)
+      end
+    end
+
+    test "returns 503 with an error message when loading fails", %{conn: conn} = ctx do
+      with_mock Front.ActivityMonitor.Repo, load: fn _, _, _ -> {:error, rpc_error()} end do
+        add_permissions(ctx, ["organization.view", "organization.activity_monitor.view"])
+
+        conn = get(conn, activity_monitor_path(conn, :activity_data))
+
+        assert %{"error" => "Activity data is temporarily unavailable"} = json_response(conn, 503)
+      end
+    end
+  end
+
+  defp rpc_error, do: %GRPC.RPCError{status: 4, message: "deadline exceeded"}
+
+  defp repo_data do
+    %{
+      org: %{name: "TestOrg"},
+      accessable_projects: [],
+      users: [],
+      active_pipelines: [],
+      active_jobs: [],
+      active_debug_sessions: []
+    }
+  end
+
   defp add_permissions(ctx, permissions) do
     Support.Stubs.PermissionPatrol.add_permissions(
       ctx.organization_id,
