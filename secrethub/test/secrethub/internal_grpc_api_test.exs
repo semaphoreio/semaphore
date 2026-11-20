@@ -242,7 +242,8 @@ defmodule Secrethub.InternalGrpcApi.Test do
       req =
         DescribeManyRequest.new(
           metadata: meta,
-          names: [s1.name, dts.name, random_name, s1.name, dts.name]
+          names: [s1.name, dts.name, random_name, s1.name, dts.name],
+          deployment_target_id: dts.dt_id
         )
 
       {:ok, channel} = GRPC.Stub.connect("localhost:50051")
@@ -255,6 +256,39 @@ defmodule Secrethub.InternalGrpcApi.Test do
                s1.name,
                s1.name
              ]
+    end
+
+    test "names with DT secret in request and no deployment target => it skips DT secrets" do
+      meta = req_meta()
+
+      {:ok, s1} = Support.Factories.Secret.create("aws-1", meta.org_id, [], [])
+      {:ok, dts} = create_dt_secret(meta.org_id)
+
+      req = DescribeManyRequest.new(metadata: meta, names: [s1.name, dts.name])
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+      {:ok, response} = SecretService.Stub.describe_many(channel, req)
+
+      assert Enum.map(response.secrets, fn s -> s.metadata.name end) == [s1.name]
+    end
+
+    test "names with DT secret in request and another deployment target => it skips DT secrets" do
+      meta = req_meta()
+
+      {:ok, s1} = Support.Factories.Secret.create("aws-1", meta.org_id, [], [])
+      {:ok, dts} = create_dt_secret(meta.org_id)
+
+      req =
+        DescribeManyRequest.new(
+          metadata: meta,
+          names: [s1.name, dts.name],
+          deployment_target_id: Ecto.UUID.generate()
+        )
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+      {:ok, response} = SecretService.Stub.describe_many(channel, req)
+
+      assert Enum.map(response.secrets, fn s -> s.metadata.name end) == [s1.name]
     end
 
     test "empty request => empty response" do
@@ -292,6 +326,7 @@ defmodule Secrethub.InternalGrpcApi.Test do
           metadata: meta,
           names: [s1.name, dts.name, random_name, s1.name, dts.name],
           project_id: Ecto.UUID.generate(),
+          deployment_target_id: dts.dt_id,
           checkout_metadata: CheckoutMetadata.new(job_id: Ecto.UUID.generate())
         )
 
@@ -305,6 +340,47 @@ defmodule Secrethub.InternalGrpcApi.Test do
                s1.name,
                s1.name
              ]
+    end
+
+    test "names with DT secret in request and no deployment target => it skips DT secrets" do
+      meta = req_meta()
+
+      {:ok, s1} = Support.Factories.Secret.create("aws-1", meta.org_id, [], [])
+      {:ok, dts} = create_dt_secret(meta.org_id)
+
+      req =
+        CheckoutManyRequest.new(
+          metadata: meta,
+          names: [s1.name, dts.name],
+          project_id: Ecto.UUID.generate(),
+          checkout_metadata: CheckoutMetadata.new(job_id: Ecto.UUID.generate())
+        )
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+      {:ok, response} = SecretService.Stub.checkout_many(channel, req)
+
+      assert Enum.map(response.secrets, fn s -> s.metadata.name end) == [s1.name]
+    end
+
+    test "names with DT secret in request and another deployment target => it skips DT secrets" do
+      meta = req_meta()
+
+      {:ok, s1} = Support.Factories.Secret.create("aws-1", meta.org_id, [], [])
+      {:ok, dts} = create_dt_secret(meta.org_id)
+
+      req =
+        CheckoutManyRequest.new(
+          metadata: meta,
+          names: [s1.name, dts.name],
+          project_id: Ecto.UUID.generate(),
+          deployment_target_id: Ecto.UUID.generate(),
+          checkout_metadata: CheckoutMetadata.new(job_id: Ecto.UUID.generate())
+        )
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+      {:ok, response} = SecretService.Stub.checkout_many(channel, req)
+
+      assert Enum.map(response.secrets, fn s -> s.metadata.name end) == [s1.name]
     end
 
     test "names of project level secret in request => it returns project level secrets" do
@@ -1484,5 +1560,16 @@ defmodule Secrethub.InternalGrpcApi.Test do
       filename = "#{key_id}#{ext}"
       File.copy!(Path.join(@keys_path, filename), Path.join(@vault_path, filename))
     end
+  end
+
+  defp create_dt_secret(org_id) do
+    Secrethub.DeploymentTargets.Store.create(%{
+      name: "DT123456",
+      dt_id: Ecto.UUID.generate(),
+      org_id: org_id,
+      content: %{env_vars: [], files: []},
+      created_by: Ecto.UUID.generate(),
+      updated_by: Ecto.UUID.generate()
+    })
   end
 end

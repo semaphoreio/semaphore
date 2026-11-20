@@ -384,7 +384,6 @@ sem-popover {
 }
 
 .c-insights-failure-rate-chart .tooltip {
-    display: none;
     font-size: 10px;
     color: white;
     background-color: black;
@@ -432,7 +431,6 @@ sem-popover {
 }
 
 .c-insights-frequency-chart .tooltip {
-    display: none;
     font-size: 10px;
     color: white;
     background-color: black;
