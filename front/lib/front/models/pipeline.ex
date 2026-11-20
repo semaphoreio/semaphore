@@ -157,6 +157,16 @@ defmodule Front.Models.Pipeline do
   @model_cache_version :crypto.hash(:md5, File.read(__ENV__.file) |> elem(1)) |> Base.encode64()
 
   def cache_key(id), do: "#{@model_cache_prefix}/#{@model_cache_version}/#{id}"
+  @doc """
+  Confirms that a pipeline struct actually belongs to the given organization
+  and workflow, so callers that resolve a pipeline from request params don't
+  act on a pipeline from a different workflow/organization.
+  """
+  def belongs_to_workflow?(pipeline, organization_id, workflow_id) do
+    not is_nil(pipeline) && pipeline.organization_id == organization_id &&
+      pipeline.workflow_id == workflow_id
+  end
+
   # Helper functions for storing and retrieving the cache
   def encode(model), do: :erlang.term_to_binary(model)
   def decode(model), do: Plug.Crypto.non_executable_binary_to_term(model, [:safe])
