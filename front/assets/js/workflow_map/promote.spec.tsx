@@ -1,9 +1,10 @@
 import { expect } from "chai";
-import { afterEach, beforeEach, describe, test } from "mocha";
+import { afterEach, before, beforeEach, describe, test } from "mocha";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 
-import { Pipeline, Promotion } from "./model";
+import { defineTimeAgoElement } from "../time_ago";
+import { ApiPromotionEvent, Pipeline, Promotion } from "./model";
 import { PromoteButton, PromoteDialog, Promotions, promoting } from "./promote";
 import { popover } from "./store";
 
@@ -219,5 +220,70 @@ describe(`promotions menu reasons`, () => {
       expect(note.classList.contains(`blocked`)).to.equal(false);
       expect(row(name).querySelector(`button`).disabled).to.equal(false);
     }
+  });
+});
+
+describe(`promotions menu times`, () => {
+  let root: HTMLElement;
+  const event = (triggered_at: number, over: Partial<ApiPromotionEvent> = {}): ApiPromotionEvent => ({ pipeline_id: `p${triggered_at}`, processed: true, result: `PASSED`, auto: false, triggered_at, author: `Ana Kowalska`, ...over });
+  const promotion = (events: ApiPromotionEvent[], over: Partial<Promotion> = {}) => ({ name: `Production`, events, can_promote: true, deployment: null, parameters: [], starting: false, ...over }) as unknown as Promotion;
+  const show = (...promotions: Promotion[]) => act(() => render(<Promotions p={{ id: `ci`, name: `Build`, promotions } as unknown as Pipeline}/>, root));
+  const notes = () => [...root.querySelectorAll(`.wf-map-promotion-note`)].map((n) => n.textContent);
+  const time = () => root.querySelector<HTMLElement & { datetime: string, }>(`.wf-map-promotion-note time-ago`);
+
+  before(() => {
+    globalThis.customElements = document.defaultView.customElements;
+    defineTimeAgoElement();
+  });
+
+  beforeEach(() => {
+    root = document.createElement(`div`);
+    document.body.appendChild(root);
+  });
+
+  afterEach(() => {
+    render(null, root);
+    root.remove();
+  });
+
+  test(`shows who promoted last and how long ago, on one line, with the full name on hover`, async () => {
+    await show(promotion([event(1700000000), event(1700003600, { author: `Bo Svensson` })]));
+    expect(notes()).to.deep.equal([`Bo S. · ${time().textContent}`]);
+    expect(time().textContent).to.match(/ago$/);
+    expect(time().datetime).to.equal(`2023-11-14T23:13:20.000Z`);
+    expect(root.querySelector(`.wf-map-promotion-note`).getAttribute(`title`)).to.equal(`Bo Svensson`);
+  });
+
+  test(`says auto-promoted for an automatic promotion`, async () => {
+    await show(promotion([event(1700000000, { auto: true, author: null })]));
+    expect(notes()).to.deep.equal([`Auto-promoted · ${time().textContent}`]);
+  });
+
+  test(`shows the time of a failed promotion too`, async () => {
+    await show(promotion([event(1700000000, { result: `FAILED`, pipeline_id: null })]));
+    expect(notes()).to.deep.equal([`Failed to promote · ${time().textContent}`]);
+    expect(time().datetime).to.equal(`2023-11-14T22:13:20.000Z`);
+  });
+
+  test(`shows no time while a promotion is starting or before the first one`, async () => {
+    await show(promotion([event(1700000000), event(1700003600, { processed: false, result: `` })], { starting: true }));
+    expect(notes()).to.deep.equal([`Starting promotion…`]);
+    await show(promotion([]));
+    expect(notes()).to.deep.equal([`Not promoted yet`]);
+    expect(time()).to.equal(null);
+  });
+
+  test(`still shows the latest promotion to someone who may not promote, next to the reason`, async () => {
+    await show(promotion([event(1700000000)], { can_promote: false }));
+    expect(notes()).to.deep.equal([`Ana K. · ${time().textContent}`, `You don't have permission to promote`]);
+    expect(time().datetime).to.equal(`2023-11-14T22:13:20.000Z`);
+  });
+
+  test(`moves to the new time when another promotion comes in`, async () => {
+    await show(promotion([event(1700000000)]));
+    const first = time();
+    await show(promotion([event(1700000000), event(1700007200)]));
+    expect(time()).to.not.equal(first);
+    expect(time().datetime).to.equal(`2023-11-15T00:13:20.000Z`);
   });
 });
