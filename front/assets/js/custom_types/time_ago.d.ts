@@ -5,6 +5,7 @@ import { h } from "preact";
 
 interface TimeAgoProps extends h.JSX.HTMLAttributes<HTMLElement> {
   datetime: string;
+  [`always-relative`]?: boolean;
 }
 // eslint-disable-next-line
 declare module "preact" {
