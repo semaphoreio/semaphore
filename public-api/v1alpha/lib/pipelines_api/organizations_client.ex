@@ -14,6 +14,9 @@ defmodule PipelinesAPI.OrganizationsClient do
   defp billing_url, do: System.get_env("INTERNAL_API_URL_BILLING")
   defp opts, do: [{:timeout, Application.get_env(:pipelines_api, :grpc_timeout)}]
 
+  defp can_setup_timeout,
+    do: Application.get_env(:pipelines_api, :can_setup_organization_timeout, 10_000)
+
   # Organization.IsValid — name/username validation (mirrors validate_organization).
   @spec is_valid(String.t(), String.t(), String.t()) :: :ok | {:error, tuple()}
   def is_valid(name, username, owner_id) do
@@ -42,9 +45,12 @@ defmodule PipelinesAPI.OrganizationsClient do
   end
 
   # Billing gate — boolean allow/deny for the user, no inline payment.
+  # Called right before create/3 with reserve: true. The reserving check can
+  # take longer than other calls, so it gets its own deadline.
   @spec can_setup_organization(String.t()) :: :ok | {:error, tuple()}
   def can_setup_organization(owner_id) do
     case Wormhole.capture(__MODULE__, :can_setup_organization_, [owner_id],
+           timeout: can_setup_timeout() + 1_000,
            stacktrace: true,
            skip_log: true
          ) do
@@ -59,8 +65,8 @@ defmodule PipelinesAPI.OrganizationsClient do
     Metrics.benchmark("PipelinesAPI.organizations_client", ["can_setup_organization"], fn ->
       channel
       |> BillingService.Stub.can_setup_organization(
-        %CanSetupOrganizationRequest{owner_id: owner_id},
-        opts()
+        %CanSetupOrganizationRequest{owner_id: owner_id, reserve: true},
+        timeout: can_setup_timeout()
       )
       |> process_billing()
     end)

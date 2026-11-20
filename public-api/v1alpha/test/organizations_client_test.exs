@@ -75,6 +75,8 @@ defmodule PipelinesAPI.OrganizationsClient.Test do
 
       assert_receive {:billing_request, req}, 1_000
       assert req.owner_id == @owner_id
+      # Called right before Create, with reserve: true.
+      assert req.reserve == true
     end
 
     test "billing denies with reasons -> user error joining them" do
@@ -87,6 +89,33 @@ defmodule PipelinesAPI.OrganizationsClient.Test do
 
       assert {:error, {:user, "Payment method missing, Trial expired"}} =
                OrganizationsClient.can_setup_organization(@owner_id)
+    end
+
+    test "a reserving check slower than the default 5s capture still completes" do
+      GrpcMock.stub(BillingMock, :can_setup_organization, fn _, _ ->
+        Process.sleep(6_000)
+        CanSetupOrganizationResponse.new(allowed: true)
+      end)
+
+      assert :ok = OrganizationsClient.can_setup_organization(@owner_id)
+    end
+
+    test "the reserving check honours its configured deadline" do
+      original = Application.get_env(:pipelines_api, :can_setup_organization_timeout)
+      Application.put_env(:pipelines_api, :can_setup_organization_timeout, 200)
+
+      on_exit(fn ->
+        if original,
+          do: Application.put_env(:pipelines_api, :can_setup_organization_timeout, original),
+          else: Application.delete_env(:pipelines_api, :can_setup_organization_timeout)
+      end)
+
+      GrpcMock.stub(BillingMock, :can_setup_organization, fn _, _ ->
+        Process.sleep(2_000)
+        CanSetupOrganizationResponse.new(allowed: true)
+      end)
+
+      refute OrganizationsClient.can_setup_organization(@owner_id) == :ok
     end
 
     test "billing denies without reasons -> fallback user error" do
