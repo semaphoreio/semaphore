@@ -30,6 +30,60 @@ defmodule FrontWeb.SharedHelpersTest do
     end
   end
 
+  describe "human_accessible_repository_url for a generic git project" do
+    setup do
+      project = %Front.Models.Project{
+        integration_type: :GIT,
+        repo_url: "ssh://git@git.example.com/acme/app.git",
+        repo_owner: "acme",
+        repo_name: "app"
+      }
+
+      {:ok, project: project}
+    end
+
+    test "links the repository to the web URL derived from the git remote", %{project: project} do
+      assert FrontWeb.SharedHelpers.human_accessible_repository_url(project) ==
+               "https://git.example.com/acme/app"
+    end
+
+    test "links branches, tags and pull requests to the repository", %{project: project} do
+      branch = %{type: "branch", name: "main", display_name: "main"}
+      tag = %{type: "tag", name: "v1.0", display_name: "v1.0"}
+      pr = %{type: "pr", name: "pull-request-7", display_name: "7", pr_number: "7"}
+
+      for ref <- [branch, tag, pr] do
+        assert FrontWeb.SharedHelpers.human_accessible_repository_url(project, ref) ==
+                 "https://git.example.com/acme/app"
+      end
+    end
+
+    test "falls back to an empty URL when no web URL can be derived from the remote" do
+      project = %Front.Models.Project{integration_type: :GIT, repo_url: "/srv/git/app.git"}
+
+      assert FrontWeb.SharedHelpers.human_accessible_repository_url(project) == ""
+    end
+
+    test "keeps linking other integrations to their provider", %{project: project} do
+      project = %{project | integration_type: :GITHUB_APP}
+
+      assert FrontWeb.SharedHelpers.human_accessible_repository_url(project) ==
+               "https://github.com/acme/app"
+    end
+  end
+
+  describe "commit_url/1" do
+    test "builds the commit URL from the repository web URL of the hook" do
+      hook = %{
+        repo_host_url: "https://git.example.com/acme/app",
+        head_commit_sha: "273b85fbebf7a9493af8c4102d40eb059c9fc6e7"
+      }
+
+      assert FrontWeb.SharedHelpers.commit_url(hook) ==
+               "https://git.example.com/acme/app/commit/273b85fbebf7a9493af8c4102d40eb059c9fc6e7"
+    end
+  end
+
   describe "livechat_enabled?/1" do
     setup do
       original_snippet = Application.get_env(:front, :zendesk_snippet_id)
