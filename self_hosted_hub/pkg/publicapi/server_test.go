@@ -1307,6 +1307,7 @@ func Test__DisconnectAfterFinishedJob(t *testing.T) {
 	})
 
 	checkFinishedEventReceived(t, jobID.String(), agentsync.JobResultPassed)
+	checkTeardownFinishedEventReceived(t, jobID.String())
 	_ = purgeExchangeAndQueue()
 
 	synced, err := models.FindAgentByToken(agent.OrganizationID.String(), agent.TokenHash)
@@ -1634,7 +1635,7 @@ func purgeExchangeAndQueue() error {
 		return err
 	}
 
-	_, err = channel.QueueDelete("test_queue.teardown_finished", false, false, true)
+	_, err = channel.QueueDelete("test_queue.job_teardown_finished", false, false, true)
 	if err != nil {
 		return err
 	}
