@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -312,6 +313,48 @@ func Test__Disconnect(t *testing.T) {
 		agent, err = FindAgentByToken(orgID.String(), agent.TokenHash)
 		require.NoError(t, err)
 		require.Equal(t, agent.State, AgentStateDisconnected)
+	})
+}
+
+func Test__CountAgentsInState(t *testing.T) {
+	database.TruncateTables()
+
+	orgID := database.UUID()
+	requesterID := database.UUID()
+
+	_, _, err := CreateAgentTypeWithSettings(
+		orgID, &requesterID, "s1-count", AgentNameSettings{ReleaseNameAfter: 60},
+	)
+	require.NoError(t, err)
+
+	_, _, err = RegisterAgent(orgID, "s1-count", "idle", AgentMetadata{})
+	require.NoError(t, err)
+
+	busy, _, err := RegisterAgent(orgID, "s1-count", "busy", AgentMetadata{})
+	require.NoError(t, err)
+	_, err = ForcefullyOccupyAgentWithJobID(busy)
+	require.NoError(t, err)
+
+	disconnectedIdle, _, err := RegisterAgent(orgID, "s1-count", "disconnected-idle", AgentMetadata{})
+	require.NoError(t, err)
+	require.NoError(t, disconnectedIdle.Disconnect())
+
+	disconnectedBusy, _, err := RegisterAgent(orgID, "s1-count", "disconnected-busy", AgentMetadata{})
+	require.NoError(t, err)
+	_, err = ForcefullyOccupyAgentWithJobID(disconnectedBusy)
+	require.NoError(t, err)
+	require.NoError(t, disconnectedBusy.Disconnect())
+
+	t.Run("counts only registered agents of the agent type", func(t *testing.T) {
+		counts, err := CountAgentsInStateForType(context.Background(), orgID.String(), "s1-count")
+		require.NoError(t, err)
+		require.Equal(t, AgentsInState{Idle: 1, Busy: 1}, *counts)
+	})
+
+	t.Run("counts only registered agents overall", func(t *testing.T) {
+		counts, err := CountAllAgentsInState()
+		require.NoError(t, err)
+		require.Equal(t, AgentsInState{Idle: 1, Busy: 1}, *counts)
 	})
 }
 

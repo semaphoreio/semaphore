@@ -301,7 +301,7 @@ func CountAllAgentsInState() (*AgentsInState, error) {
 				COUNT(*) FILTER (WHERE assigned_job_id IS NULL) idle,
 				COUNT(*) FILTER (WHERE assigned_job_id IS NOT NULL) busy
 			FROM (
-				select assigned_job_id from agents
+				select assigned_job_id from agents where state = 'registered'
 			) as ids;
 		`).
 		Scan(&counts).
@@ -323,7 +323,7 @@ func CountAgentsInStateForType(ctx context.Context, orgID, agentTypeName string)
 				COUNT(*) FILTER (WHERE assigned_job_id IS NULL) idle,
 				COUNT(*) FILTER (WHERE assigned_job_id IS NOT NULL) busy
 			FROM (
-				select assigned_job_id from agents where organization_id = ? and agent_type_name = ?
+				select assigned_job_id from agents where organization_id = ? and agent_type_name = ? and state = 'registered'
 			) as ids;
 		`, orgID, agentTypeName).
 		Scan(&counts).
