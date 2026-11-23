@@ -2,12 +2,14 @@ package agentsync
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/semaphoreio/semaphore/self_hosted_hub/pkg/amqp"
 	database "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/database"
 	models "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/models"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func Test__FinishedJobMark(t *testing.T) {
@@ -57,6 +59,25 @@ func Test__FinishedJobMark(t *testing.T) {
 		agent, err := finishJob(ctx, t, "not-published", true)
 
 		require.Error(t, err)
+		require.NotNil(t, agent.AssignedJobID)
+		require.Nil(t, agent.JobFinishedAt)
+	})
+
+	t.Run("the sync fails when the job cannot be marked as finished", func(t *testing.T) {
+		callback := "test:fail_job_finished_mark"
+		err := database.Conn().Callback().Update().Before("gorm:update").Register(callback, func(tx *gorm.DB) {
+			if updates, ok := tx.Statement.Dest.(map[string]interface{}); ok {
+				if _, marking := updates["job_finished_at"]; marking {
+					_ = tx.AddError(errors.New("marking failed"))
+				}
+			}
+		})
+		require.NoError(t, err)
+		defer func() { _ = database.Conn().Callback().Update().Remove(callback) }()
+
+		agent, err := finishJob(context.Background(), t, "not-marked", true)
+
+		require.ErrorContains(t, err, "marking failed")
 		require.NotNil(t, agent.AssignedJobID)
 		require.Nil(t, agent.JobFinishedAt)
 	})
