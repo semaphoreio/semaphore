@@ -11,6 +11,7 @@ defmodule Ppl.PplSubInits.STMHandler.RegularInitState do
   alias Ppl.PplRequests.Model.PplRequestsQueries
   alias Ppl.PplOrigins.Model.PplOriginsQueries
   alias Ppl.PplSubInits.Model.PplSubInits
+  alias Ppl.Ppls.Model.Ppls
   alias Ppl.PplSubInits.STMHandler.Common
   alias Ppl.{DefinitionReviser, PplsReviser, Ctx}
   alias Ppl.PplBlocks.Model.{PplBlocksQueries, PplBlockConectionsQueries}
@@ -139,7 +140,7 @@ defmodule Ppl.PplSubInits.STMHandler.RegularInitState do
       # it observes our committed blocks (and terminates them) - never in between.
       psi = lock_sub_init(repo, ppl_req.id)
 
-      if terminate_requested?(psi) do
+      if terminate_requested?(psi) or pipeline_done?(repo, ppl_req.id) do
         {:ok, %{state: "done", result: "canceled", result_reason: determin_reason(psi)}}
       else
         {:ok, _} = create_ppl_blocks(ppl_req, duplicate?)
@@ -157,6 +158,17 @@ defmodule Ppl.PplSubInits.STMHandler.RegularInitState do
 
   defp terminate_requested?(%{terminate_request: tr}) when tr in ["stop", "cancel"], do: true
   defp terminate_requested?(_), do: false
+
+  # The shared lock serializes against an abort that moves the pipeline to 'done'
+  # without recording a terminate_request on the sub_init.
+  defp pipeline_done?(repo, ppl_id) do
+    Ppls
+    |> where(ppl_id: ^ppl_id)
+    |> lock("FOR SHARE")
+    |> select([p], p.state)
+    |> repo.one()
+    |> Kernel.==("done")
+  end
 
   defp handle_validate({:error, {:malformed, msg}}) do
     desc = "Error: #{inspect(msg)}"
