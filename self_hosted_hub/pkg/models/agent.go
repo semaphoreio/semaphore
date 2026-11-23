@@ -57,6 +57,7 @@ type Agent struct {
 	AssignedJobID      *uuid.UUID
 	JobAssignedAt      *time.Time
 	JobStopRequestedAt *time.Time
+	JobFinishedAt      *time.Time
 	LastStateChangeAt  *time.Time
 
 	AgentMetadata
@@ -301,7 +302,7 @@ func CountAllAgentsInState() (*AgentsInState, error) {
 				COUNT(*) FILTER (WHERE assigned_job_id IS NULL) idle,
 				COUNT(*) FILTER (WHERE assigned_job_id IS NOT NULL) busy
 			FROM (
-				select assigned_job_id from agents
+				select assigned_job_id from agents where state = 'registered'
 			) as ids;
 		`).
 		Scan(&counts).
@@ -323,7 +324,7 @@ func CountAgentsInStateForType(ctx context.Context, orgID, agentTypeName string)
 				COUNT(*) FILTER (WHERE assigned_job_id IS NULL) idle,
 				COUNT(*) FILTER (WHERE assigned_job_id IS NOT NULL) busy
 			FROM (
-				select assigned_job_id from agents where organization_id = ? and agent_type_name = ?
+				select assigned_job_id from agents where organization_id = ? and agent_type_name = ? and state = 'registered'
 			) as ids;
 		`, orgID, agentTypeName).
 		Scan(&counts).
@@ -489,12 +490,13 @@ func OccupyAgentInTransaction(tx *gorm.DB, agent *Agent, requestJobID *uuid.UUID
 			AssignedJobID:      &jobID,
 			JobAssignedAt:      &now,
 			JobStopRequestedAt: nil,
+			JobFinishedAt:      nil,
 		}
 
 		// Select() is required so the nil stop request is written too;
 		// Updates() alone skips zero-valued fields.
 		err = db.Model(agent).
-			Select("assigned_job_id", "job_assigned_at", "job_stop_requested_at").
+			Select("assigned_job_id", "job_assigned_at", "job_stop_requested_at", "job_finished_at").
 			Updates(fieldsToUpdate).Error
 		if err != nil {
 			return err
@@ -539,6 +541,7 @@ func ReleaseAgent(orgID uuid.UUID, agentTypeName string, jobID uuid.UUID) (*Agen
 		agent.JobAssignedAt = nil
 		agent.AssignedJobID = nil
 		agent.JobStopRequestedAt = nil
+		agent.JobFinishedAt = nil
 
 		return db.Save(agent).Error
 	})
@@ -603,15 +606,32 @@ func StopJob(orgID uuid.UUID, jobID uuid.UUID) error {
 		}
 
 		now := time.Now()
-		agent.JobStopRequestedAt = &now
 
-		return db.Save(agent).Error
+		// Saving the whole row would overwrite columns changed since it was read.
+		return db.Model(&agent).Update("job_stop_requested_at", &now).Error
 	})
 
 	if err != nil {
 		return err
 	}
 
+	return nil
+}
+
+// MarkJobFinished records that the finished callback of the assigned job was published.
+func (a *Agent) MarkJobFinished(ctx context.Context) error {
+	now := time.Now()
+
+	err := database.Conn().WithContext(ctx).
+		Model(&Agent{}).
+		Where("id = ?", a.ID).
+		Where("assigned_job_id = ?", a.AssignedJobID).
+		Update("job_finished_at", &now).Error
+	if err != nil {
+		return err
+	}
+
+	a.JobFinishedAt = &now
 	return nil
 }
 
@@ -633,11 +653,18 @@ func (a *Agent) DisconnectWithContext(ctx context.Context) error {
 		return database.Conn().Delete(a).Error
 	}
 
-	now := time.Now()
-	return database.Conn().WithContext(ctx).
-		Model(&a).
-		Updates(map[string]interface{}{
-			"state":           AgentStateDisconnected,
-			"disconnected_at": now,
-		}).Error
+	updates := map[string]interface{}{
+		"state":           AgentStateDisconnected,
+		"disconnected_at": time.Now(),
+	}
+
+	// A job whose finished callback was not published stays assigned,
+	// so the agent cleaner still finalizes it.
+	if a.JobFinishedAt != nil {
+		updates["assigned_job_id"] = nil
+		updates["job_assigned_at"] = nil
+		updates["job_stop_requested_at"] = nil
+	}
+
+	return database.Conn().WithContext(ctx).Model(&a).Updates(updates).Error
 }
