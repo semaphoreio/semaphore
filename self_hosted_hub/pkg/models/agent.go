@@ -19,9 +19,6 @@ import (
 var ErrAgentCantBeRegistered = errors.New("agent can't be registered")
 var AgentStateRegistered = "registered"
 var AgentStateDisconnected = "disconnected"
-
-const AgentSyncStateFinishedJob = "finished-job"
-
 var agentNameRegex = regexp.MustCompile("^[a-zA-Z0-9-_/+]+$")
 var agentNameMaxCharacters = 80
 
@@ -60,6 +57,7 @@ type Agent struct {
 	AssignedJobID      *uuid.UUID
 	JobAssignedAt      *time.Time
 	JobStopRequestedAt *time.Time
+	JobFinishedAt      *time.Time
 	LastStateChangeAt  *time.Time
 
 	AgentMetadata
@@ -492,12 +490,13 @@ func OccupyAgentInTransaction(tx *gorm.DB, agent *Agent, requestJobID *uuid.UUID
 			AssignedJobID:      &jobID,
 			JobAssignedAt:      &now,
 			JobStopRequestedAt: nil,
+			JobFinishedAt:      nil,
 		}
 
 		// Select() is required so the nil stop request is written too;
 		// Updates() alone skips zero-valued fields.
 		err = db.Model(agent).
-			Select("assigned_job_id", "job_assigned_at", "job_stop_requested_at").
+			Select("assigned_job_id", "job_assigned_at", "job_stop_requested_at", "job_finished_at").
 			Updates(fieldsToUpdate).Error
 		if err != nil {
 			return err
@@ -542,6 +541,7 @@ func ReleaseAgent(orgID uuid.UUID, agentTypeName string, jobID uuid.UUID) (*Agen
 		agent.JobAssignedAt = nil
 		agent.AssignedJobID = nil
 		agent.JobStopRequestedAt = nil
+		agent.JobFinishedAt = nil
 
 		return db.Save(agent).Error
 	})
@@ -618,6 +618,23 @@ func StopJob(orgID uuid.UUID, jobID uuid.UUID) error {
 	return nil
 }
 
+// MarkJobFinished records that the finished callback of the assigned job was published.
+func (a *Agent) MarkJobFinished(ctx context.Context) error {
+	now := time.Now()
+
+	err := database.Conn().WithContext(ctx).
+		Model(&Agent{}).
+		Where("id = ?", a.ID).
+		Where("assigned_job_id = ?", a.AssignedJobID).
+		Update("job_finished_at", &now).Error
+	if err != nil {
+		return err
+	}
+
+	a.JobFinishedAt = &now
+	return nil
+}
+
 func (a *Agent) IsRunningJob(jobID string) bool {
 	return a.AssignedJobID != nil && a.AssignedJobID.String() == jobID
 }
@@ -641,9 +658,9 @@ func (a *Agent) DisconnectWithContext(ctx context.Context) error {
 		"disconnected_at": time.Now(),
 	}
 
-	// A job that was not reported as finished stays assigned,
+	// A job whose finished callback was not published stays assigned,
 	// so the agent cleaner still finalizes it.
-	if a.LastSyncState == AgentSyncStateFinishedJob {
+	if a.JobFinishedAt != nil {
 		updates["assigned_job_id"] = nil
 		updates["job_assigned_at"] = nil
 		updates["job_stop_requested_at"] = nil
