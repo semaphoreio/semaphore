@@ -156,6 +156,13 @@ CREATE INDEX index_agents_on_org_and_assigned_job_id ON public.agents USING btre
 
 
 --
+-- Name: index_agents_on_organization_id_and_token_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agents_on_organization_id_and_token_hash ON public.agents USING btree (organization_id, token_hash);
+
+
+--
 -- Name: ix_agents_registered_org_type; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -233,7 +240,7 @@ SET row_security = off;
 --
 
 COPY public.schema_migrations (version, dirty) FROM stdin;
-20261123120200	f
+20261123120300	f
 \.
 
 

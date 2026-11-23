@@ -522,8 +522,9 @@ func Test__StopJob(t *testing.T) {
 
 func Test__AgentLookupIndexes(t *testing.T) {
 	indexes := map[string]string{
-		"index_agents_on_org_and_assigned_job_id": "(organization_id, assigned_job_id) WHERE (assigned_job_id IS NOT NULL)",
-		"ix_agents_registered_org_type":           "(organization_id, agent_type_name) WHERE (state = 'registered'::text)",
+		"index_agents_on_org_and_assigned_job_id":        "(organization_id, assigned_job_id) WHERE (assigned_job_id IS NOT NULL)",
+		"index_agents_on_organization_id_and_token_hash": "(organization_id, token_hash)",
+		"ix_agents_registered_org_type":                  "(organization_id, agent_type_name) WHERE (state = 'registered'::text)",
 	}
 
 	for name, definition := range indexes {
