@@ -708,6 +708,7 @@ defmodule FrontWeb.ProjectControllerTest do
         "export GIT_USERNAME=$(cat .workflow_editor/git_username.txt)",
         "export GIT_PASSWORD=$(cat .workflow_editor/git_password.txt)",
         "export GIT_REPO_URL=\"${SEMAPHORE_GIT_URL/://}\"",
+        "export GIT_REPO_URL=\"${GIT_REPO_URL/#git@ssh.bitbucket.org\\//git@bitbucket.org/}\"",
         "export GIT_REPO_URL=\"${GIT_REPO_URL/git@/https:\/\/$GIT_USERNAME:$GIT_PASSWORD@}\"",
         "export SEMAPHORE_GIT_BRANCH=master",
         "checkout",
