@@ -280,6 +280,22 @@ defmodule FrontWeb.JobControllerTest do
              |> get(job_path(conn, :status, job.id))
              |> html_response(200) =~ "Attaching is disabled for this job"
     end
+
+    test "a failed debug permission check shows debugging as disabled", %{conn: conn, job: job} do
+      stub_finished_job()
+
+      GrpcMock.stub(InternalJobMock, :can_debug, fn _, _ ->
+        raise GRPC.RPCError, status: GRPC.Status.internal(), message: "internal"
+      end)
+
+      assert conn |> get(job_path(conn, :show, job.id)) |> html_response(200) =~
+               "Debugging is disabled for this job"
+
+      Cacheman.clear(:front)
+
+      assert conn |> get(job_path(conn, :status, job.id)) |> html_response(200) =~
+               "Debugging is disabled for this job"
+    end
   end
 
   describe "status_badge" do
