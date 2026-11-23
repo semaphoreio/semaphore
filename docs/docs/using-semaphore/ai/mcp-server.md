@@ -63,6 +63,17 @@ If your MCP client supports OAuth for remote MCP servers:
 
 OAuth-capable clients use discovery and dynamic client registration automatically.
 
+#### How long you stay signed in
+
+After you sign in, your client gets an access token that's valid for one hour, and a refresh token. When the access token expires, the client uses the refresh token to get a new pair, so you don't need to sign in again:
+
+- A refresh token works only once: each refresh returns a new one
+- A refresh token expires after 30 days without use, and 90 days after you signed in. After that, your client asks you to sign in again in the browser
+- If an already used refresh token is sent again later, Semaphore revokes that sign-in as a precaution, and you need to sign in again
+- If your account is blocked or deactivated, your client can't refresh its tokens
+
+Clients that don't support refresh tokens ask you to sign in again every hour.
+
 ### Connect with an API token
 
 If your client does not support OAuth yet, use an API token instead.

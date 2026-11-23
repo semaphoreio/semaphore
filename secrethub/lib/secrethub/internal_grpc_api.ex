@@ -250,7 +250,7 @@ defmodule Secrethub.InternalGrpcApi do
           fn -> DTStore.find_by_id(req.metadata.org_id, :skip, req.id) end
 
         not String.equivalent?(req.name, "") ->
-          fn -> DTStore.find_by_name(req.metadata.org_id, req.name) end
+          fn -> DTStore.find_by_name(req.metadata.org_id, req.deployment_target_id, req.name) end
 
         true ->
           fn -> {:error, :not_found} end
@@ -363,7 +363,7 @@ defmodule Secrethub.InternalGrpcApi do
     alias Secrethub.DeploymentTargets.Mapper, as: DTMapper
 
     names = Map.get(req, :names, [])
-    secrets = DTStore.list_by_names(req.metadata.org_id, names)
+    secrets = DTStore.list_by_names(req.metadata.org_id, req.deployment_target_id, names)
 
     checkout_params = Map.from_struct(req.checkout_metadata)
     secrets = DTStore.checkout_many(secrets, checkout_params)
@@ -409,7 +409,7 @@ defmodule Secrethub.InternalGrpcApi do
     alias Secrethub.DeploymentTargets.Mapper, as: DTMapper
 
     names = Map.get(req, :names, [])
-    secrets = DTStore.list_by_names(req.metadata.org_id, names)
+    secrets = DTStore.list_by_names(req.metadata.org_id, req.deployment_target_id, names)
     secrets |> List.wrap() |> Enum.into([], &DTMapper.encode/1)
   end
 

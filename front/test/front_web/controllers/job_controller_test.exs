@@ -228,6 +228,76 @@ defmodule FrontWeb.JobControllerTest do
     end
   end
 
+  describe "SSH debug and attach permission" do
+    setup do
+      Cacheman.clear(:front)
+      :ok
+    end
+
+    test "a debug permission granted after a denial shows up once the denial expires",
+         %{conn: conn, job: job} do
+      stub_finished_job()
+      stub_can_debug(false)
+
+      assert conn |> get(job_path(conn, :status, job.id)) |> html_response(200) =~
+               "Debugging is disabled for this job"
+
+      stub_can_debug(true)
+      Process.sleep(200)
+
+      assert conn |> get(job_path(conn, :status, job.id)) |> html_response(200) =~
+               "sem debug job #{job.id}"
+    end
+
+    test "a granted debug permission is served from the cache", %{conn: conn, job: job} do
+      stub_finished_job()
+      stub_can_debug(true)
+
+      assert conn |> get(job_path(conn, :status, job.id)) |> html_response(200) =~
+               "sem debug job #{job.id}"
+
+      stub_can_debug(false)
+
+      assert conn |> get(job_path(conn, :status, job.id)) |> html_response(200) =~
+               "sem debug job #{job.id}"
+    end
+
+    test "attach permission is cached per user", %{conn: conn, job: job} do
+      allowed_user = DB.first(:users)
+      denied_user = Support.Stubs.User.create(id: UUID.uuid4())
+      organization = DB.first(:organizations)
+      Support.Stubs.PermissionPatrol.allow_everything(organization.id, denied_user.id)
+
+      GrpcMock.stub(InternalJobMock, :can_attach, fn req, _ ->
+        InternalApi.ServerFarm.Job.CanAttachResponse.new(allowed: req.user_id == allowed_user.id)
+      end)
+
+      assert conn |> get(job_path(conn, :status, job.id)) |> html_response(200) =~
+               "sem attach #{job.id}"
+
+      assert conn
+             |> put_req_header("x-semaphore-user-id", denied_user.id)
+             |> get(job_path(conn, :status, job.id))
+             |> html_response(200) =~ "Attaching is disabled for this job"
+    end
+
+    test "a failed debug permission check shows debugging as disabled", %{conn: conn, job: job} do
+      stub_finished_job()
+
+      GrpcMock.stub(InternalJobMock, :can_debug, fn _, _ ->
+        raise GRPC.RPCError, status: GRPC.Status.internal(), message: "internal"
+      end)
+
+      assert conn |> get(job_path(conn, :show, job.id)) |> html_response(200) =~
+               "Debugging is disabled for this job"
+
+      Cacheman.clear(:front)
+
+      assert conn |> get(job_path(conn, :status, job.id)) |> html_response(200) =~
+               "Debugging is disabled for this job"
+    end
+  end
+
   describe "status_badge" do
     test "renders badge", %{conn: conn, job: job} do
       conn = get(conn, job_path(conn, :status_badge, job.id))
@@ -235,5 +305,39 @@ defmodule FrontWeb.JobControllerTest do
       assert html_response(conn, 200) ==
                "<div\n  class=\"flex mt1\"\n  data-poll-background\n  data-poll-state=\"poll\"\n  data-poll-href=\"/jobs/job-id/status_badge\"\n>\n  <span class=\"bg-indigo white br1 ph2\">\nRunning\n  </span>\n</div>\n"
     end
+  end
+
+  defp stub_can_debug(allowed) do
+    GrpcMock.stub(InternalJobMock, :can_debug, fn _, _ ->
+      InternalApi.ServerFarm.Job.CanDebugResponse.new(allowed: allowed)
+    end)
+  end
+
+  defp stub_finished_job do
+    GrpcMock.stub(InternalJobMock, :describe, fn req, _ ->
+      found = DB.find(:jobs, req.job_id)
+      task = DB.find(:tasks, found.task_id)
+      task_job = found |> DB.extract(:api_model)
+
+      DescribeResponse.new(
+        status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+        job:
+          Job.new(
+            id: task_job.id,
+            project_id: task.project_id,
+            branch_id: task.branch_id,
+            hook_id: task.api_model.hook_id,
+            ppl_id: task.api_model.ppl_id,
+            timeline: Job.Timeline.new(),
+            state: Job.State.value(:FINISHED),
+            result: Job.Result.value(:PASSED),
+            machine_type: "e1-standard-2",
+            self_hosted: false,
+            name: task_job.name,
+            index: task_job.index,
+            is_debug_job: false
+          )
+      )
+    end)
   end
 end
