@@ -568,6 +568,14 @@
   box-shadow: 0 0 0 1.5px #B5BCC0, var(--wf-map-shadow);
 }
 
+.wf-map-card.failed,
+.wf-map-summary.failed,
+.wf-map-block.failed {
+  outline: 2px solid var(--wf-map-failed);
+  outline-offset: -1px;
+  background: #FFF4F3;
+}
+
 .wf-map-card.selected {
   box-shadow: 0 0 0 2.5px var(--wf-map-select), var(--wf-map-shadow);
 }
@@ -1010,6 +1018,11 @@ a.wf-map-job:hover {
   text-align: right;
 }
 
+.wf-map-job.failed {
+  background: #FDE3E1;
+  color: #202B30;
+}
+
 .wf-map-job.hit {
   background: var(--wf-map-mark-soft);
   color: #202B30;
@@ -1371,6 +1384,11 @@ a.wf-map-job:hover {
 
 .wf-map .react-flow .react-flow__edge .react-flow__edge-path.wf-map-edge-queued {
   stroke: var(--wf-map-queued);
+}
+
+.wf-map .react-flow .react-flow__edge .react-flow__edge-path.wf-map-edge-failed {
+  stroke: var(--wf-map-failed);
+  stroke-width: 2;
 }
 
 .wf-map-bar-running {

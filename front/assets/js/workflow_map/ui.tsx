@@ -119,7 +119,7 @@ export const JobRow = ({ job, text = job.name, height }: { job: Job, text?: stri
   const h = hits.value;
   const f = focus.value;
   const flash = f?.kind === `job` && f.id === job.key;
-  const cls = [`wf-map-job`, h.active && !h.jobs.has(job) ? `dim` : ``, h.active && h.jobs.has(job) ? `hit` : ``, flash ? `flash` : ``].join(` `);
+  const cls = [`wf-map-job`, job.status === `failed` ? `failed` : ``, h.active && !h.jobs.has(job) ? `dim` : ``, h.active && h.jobs.has(job) ? `hit` : ``, flash ? `flash` : ``].join(` `);
   const body = (
     <>
       <StatusIcon status={job.status} size={14}/>
@@ -169,7 +169,7 @@ const AfterInfo = () => (
 export const BlockSummary = ({ block, onClick }: { block: Block, onClick: () => void, }) => {
   const f = focus.value;
   return (
-    <button className={`wf-map-summary ${f && (f.id === block.id || f.id.startsWith(`${block.id}#`)) ? `focused` : ``}`} aria-expanded={false} onClick={(e) => plainClick(e, onClick)}>
+    <button className={`wf-map-summary ${blockStatus(block) === `failed` ? `failed` : ``} ${f && (f.id === block.id || f.id.startsWith(`${block.id}#`)) ? `focused` : ``}`} aria-expanded={false} onClick={(e) => plainClick(e, onClick)}>
       <span className="wf-map-summary-name">
         <Chevron open={false}/>
         <StatusIcon status={blockStatus(block)}/>
@@ -190,7 +190,7 @@ export const BlockCard = ({ block, onHeaderClick }: { block: Block, onHeaderClic
   const focused = f && (f.id === block.id || f.id.startsWith(`${block.id}#`));
   const st = blockStatus(block);
   return (
-    <div className={`wf-map-block ${h.active && !h.blocks.has(block) ? `dim` : ``} ${focused ? `focused` : ``}`}>
+    <div className={`wf-map-block ${st === `failed` ? `failed` : ``} ${h.active && !h.blocks.has(block) ? `dim` : ``} ${focused ? `focused` : ``}`}>
       <button className="wf-map-block-head" aria-expanded={true} onClick={(e) => plainClick(e, () => onHeaderClick?.())}>
         <Chevron open/>
         <StatusIcon status={st}/>

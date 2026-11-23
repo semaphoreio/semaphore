@@ -136,7 +136,7 @@ const CardNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node
       tabIndex={0}
       data-popover-trigger={p.errorHtml ? `` : undefined}
       aria-expanded={p.errorHtml ? undefined : false}
-      className={`wf-map-card ${selected.value === p.id ? `selected` : ``} ${h.active && !n ? `dim` : ``}`}
+      className={`wf-map-card ${p.status === `failed` ? `failed` : ``} ${selected.value === p.id ? `selected` : ``} ${h.active && !n ? `dim` : ``}`}
       onClick={(e) => plainClick(e, open)}
       onKeyDown={(e) => (e.key === `Enter` || e.key === ` `) && (e.preventDefault(), open(e.currentTarget))}
     >
@@ -335,7 +335,7 @@ const flowing = (target: string) => {
   const wf = workflow.value;
   const b = wf?.blocks.get(target);
   const st = b ? blockStatus(b) : wf?.pipelineById.get(target)?.status;
-  return st === `running` || st === `queued` ? `wf-map-edge-${st}` : ``;
+  return st === `running` || st === `queued` || st === `failed` ? `wf-map-edge-${st}` : ``;
 };
 
 const RouteEdge = ({ id, data, source, target }: EdgeProps<Edge<{ points: Point[], label?: string, labelAt?: Point, }>>) => {

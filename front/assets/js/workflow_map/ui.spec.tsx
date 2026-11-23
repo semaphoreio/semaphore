@@ -48,6 +48,18 @@ describe(`names the map may shorten`, () => {
     expect(root.querySelector<HTMLElement>(`.wf-map-job`).style.height).to.equal(``);
   });
 
+  test(`marks a failed block and its failed job, collapsed or open`, async () => {
+    const jobs = [`passed`, `failed`].map((status, i) => ({ key: `b#${i}`, id: null, name: `job ${i}`, status, startedAt: null, finishedAt: null, reused: false }) as Job);
+    const block = { id: `b`, name: `tests`, deps: [], jobs } as Block;
+
+    await act(() => render(<BlockSummary block={block} onClick={() => undefined}/>, root));
+    expect(root.querySelector(`.wf-map-summary`).classList.contains(`failed`)).to.equal(true);
+
+    await act(() => render(<BlockCard block={block}/>, root));
+    expect(root.querySelector(`.wf-map-block`).classList.contains(`failed`)).to.equal(true);
+    expect([...root.querySelectorAll(`.wf-map-job`)].map((r) => r.classList.contains(`failed`))).to.deep.equal([false, true]);
+  });
+
   test(`a collapsed block shows the full name, selectable in place`, async () => {
     const block = { id: `b`, name: `a very long block name`, deps: [], jobs: [] } as Block;
 
