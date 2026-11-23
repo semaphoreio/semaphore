@@ -34,9 +34,10 @@ export const Popover = () => {
   }, [open?.kind, open?.id]);
 
   if (!p || (open.kind === `promote` ? !p.promotions?.length : !p.errorHtml)) return null;
-  const width = open.kind === `promote` ? 340 : 480;
+  const width = Math.min(open.kind === `promote` ? 560 : 480, window.innerWidth - 32);
+  const top = open.kind === `promote` ? Math.min(open.y, window.innerHeight * 0.4) : open.y;
   return (
-    <div className="wf-map-menu" style={{ width, left: Math.min(open.x, window.innerWidth - width - 16), top: open.y, maxHeight: window.innerHeight - open.y - 16 }}>
+    <div className="wf-map-menu" style={{ width, left: Math.min(open.x, window.innerWidth - width - 16), top, maxHeight: window.innerHeight - top - 16 }}>
       {open.kind === `promote` ? <Promotions key={p.id} p={p}/> : <PipelineError p={p}/>}
     </div>
   );

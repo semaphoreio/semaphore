@@ -6,7 +6,7 @@ import { act } from "preact/test-utils";
 import { defineTimeAgoElement } from "../time_ago";
 import { ApiPromotionEvent, Pipeline, Promotion } from "./model";
 import { PromoteButton, PromoteDialog, Promotions, promoting } from "./promote";
-import { popover } from "./store";
+import { focus, popover } from "./store";
 
 describe(`promote dialog`, () => {
   const realFetch = globalThis.fetch;
@@ -107,7 +107,7 @@ describe(`promote button`, () => {
 describe(`promotions menu filter`, () => {
   let root: HTMLElement;
   let closeOnEscape: (e: KeyboardEvent) => void;
-  const promotion = (name: string) => ({ name, events: [], can_promote: true, parameters: [] }) as unknown as Promotion;
+  const promotion = (name: string) => ({ name, events: [], can_promote: true, parameters: [], pipelines: [] }) as unknown as Promotion;
   const p = { id: `ci`, name: `Build`, promotions: [promotion(`Staging`), promotion(`Production EU`), promotion(`Production US`), promotion(`Canary`)] } as unknown as Pipeline;
   const names = () => [...root.querySelectorAll(`.wf-map-promotion-name`)].map((n) => n.textContent);
   const filter = () => root.querySelector<HTMLInputElement>(`.wf-map-promotion-filter`);
@@ -176,7 +176,7 @@ describe(`promotions menu filter`, () => {
 
 describe(`promotions menu reasons`, () => {
   let root: HTMLElement;
-  const promotion = (name: string, can_promote: boolean, deployment: Promotion[`deployment`] = null) => ({ name, events: [], can_promote, deployment, parameters: [] }) as unknown as Promotion;
+  const promotion = (name: string, can_promote: boolean, deployment: Promotion[`deployment`] = null) => ({ name, events: [], can_promote, deployment, parameters: [], pipelines: [] }) as unknown as Promotion;
   const row = (name: string) => [...root.querySelectorAll(`.wf-map-promotion`)].find((r) => r.querySelector(`.wf-map-promotion-name`).textContent === name);
   const show = (...promotions: Promotion[]) => act(() => render(<Promotions p={{ id: `ci`, name: `Build`, promotions } as unknown as Pipeline}/>, root));
 
@@ -212,12 +212,10 @@ describe(`promotions menu reasons`, () => {
     }
   });
 
-  test(`keeps the history note when the promotion can run`, async () => {
+  test(`shows no note for a promotion that can run and never ran`, async () => {
     await show(promotion(`Staging`, true), promotion(`Production`, true, { name: `prod`, allowed: true, message: `You can deploy to prod Deployment Target` }));
     for (const name of [`Staging`, `Production`]) {
-      const note = row(name).querySelector(`.wf-map-promotion-note`);
-      expect(note.textContent).to.equal(`Not promoted yet`);
-      expect(note.classList.contains(`blocked`)).to.equal(false);
+      expect(row(name).querySelector(`.wf-map-promotion-note`)).to.equal(null);
       expect(row(name).querySelector(`button`).disabled).to.equal(false);
     }
   });
@@ -226,7 +224,7 @@ describe(`promotions menu reasons`, () => {
 describe(`promotions menu times`, () => {
   let root: HTMLElement;
   const event = (triggered_at: number, over: Partial<ApiPromotionEvent> = {}): ApiPromotionEvent => ({ pipeline_id: `p${triggered_at}`, processed: true, result: `PASSED`, auto: false, triggered_at, author: `Ana Kowalska`, ...over });
-  const promotion = (events: ApiPromotionEvent[], over: Partial<Promotion> = {}) => ({ name: `Production`, events, can_promote: true, deployment: null, parameters: [], starting: false, ...over }) as unknown as Promotion;
+  const promotion = (events: ApiPromotionEvent[], over: Partial<Promotion> = {}) => ({ name: `Production`, events, can_promote: true, deployment: null, parameters: [], pipelines: [], starting: false, ...over }) as unknown as Promotion;
   const show = (...promotions: Promotion[]) => act(() => render(<Promotions p={{ id: `ci`, name: `Build`, promotions } as unknown as Pipeline}/>, root));
   const notes = () => [...root.querySelectorAll(`.wf-map-promotion-note`)].map((n) => n.textContent);
   const time = () => root.querySelector<HTMLElement & { datetime: string, }>(`.wf-map-promotion-note time-ago`);
@@ -269,7 +267,7 @@ describe(`promotions menu times`, () => {
     await show(promotion([event(1700000000), event(1700003600, { processed: false, result: `` })], { starting: true }));
     expect(notes()).to.deep.equal([`Starting promotion…`]);
     await show(promotion([]));
-    expect(notes()).to.deep.equal([`Not promoted yet`]);
+    expect(notes()).to.deep.equal([]);
     expect(time()).to.equal(null);
   });
 
@@ -285,5 +283,63 @@ describe(`promotions menu times`, () => {
     await show(promotion([event(1700000000), event(1700007200)]));
     expect(time()).to.not.equal(first);
     expect(time().datetime).to.equal(`2023-11-15T00:13:20.000Z`);
+  });
+});
+
+describe(`promotions menu runs`, () => {
+  let root: HTMLElement;
+  const run = (id: string, name: string, createdAt: number, over: Partial<Pipeline> = {}) =>
+    ({ id, name, createdAt, runningAt: createdAt, doneAt: createdAt + 90, status: `passed`, attempt: 1, parameters: [], ...over }) as Pipeline;
+  const promotion = (name: string, pipelines: Pipeline[]) =>
+    ({ name, events: pipelines.map((r) => ({ pipeline_id: r.id, processed: true, result: `PASSED`, auto: false, triggered_at: r.createdAt, author: `Ana Kowalska` })), can_promote: true, deployment: null, parameters: [], pipelines, starting: false }) as unknown as Promotion;
+  const show = (...promotions: Promotion[]) => act(() => render(<Promotions p={{ id: `ci`, name: `Build`, promotions } as unknown as Pipeline}/>, root));
+  const runs = () => [...root.querySelectorAll(`.wf-map-run`)].map((r) => [r.querySelector(`.wf-map-run-name`).textContent, r.querySelector(`.wf-map-run-params`)?.textContent ?? null]);
+
+  beforeEach(() => {
+    root = document.createElement(`div`);
+    document.body.appendChild(root);
+    focus.value = null;
+  });
+
+  afterEach(() => {
+    render(null, root);
+    root.remove();
+  });
+
+  test(`lists every run under its promotion, newest first, with the parameters its name does not already say`, async () => {
+    await show(
+      promotion(`05 - Delete image`, [
+        run(`a`, `Delete image`, 1700000000, { parameters: [{ name: `IMAGE_DATE`, value: `2026-11-01` }] }),
+        run(`b`, `Delete image`, 1700003600, { attempt: 2, parameters: [{ name: `IMAGE_DATE`, value: `2026-11-08` }] }),
+      ]),
+      promotion(`PHP Noble`, [run(`c`, `PHP 8.5.11`, 1700000000, { parameters: [{ name: `PHP_VERSION_noble`, value: `8.5.11` }] })])
+    );
+    expect(runs()).to.deep.equal([
+      [`Delete image#2`, `IMAGE_DATE=2026-11-08`],
+      [`Delete image`, `IMAGE_DATE=2026-11-01`],
+      [`PHP 8.5.11`, null],
+    ]);
+    expect(root.querySelector(`.wf-map-promotion-note`)).to.equal(null);
+  });
+
+  test(`shows a run on the map and closes the menu when it is clicked`, async () => {
+    popover.value = { kind: `promote`, id: `ci`, x: 0, y: 0 } as typeof popover.value;
+    await show(promotion(`Staging`, [run(`s1`, `Staging`, 1700000000)]));
+    await act(() => root.querySelector<HTMLButtonElement>(`.wf-map-run`).click());
+    expect(popover.value).to.equal(null);
+    expect(focus.value).to.include({ kind: `pipeline`, id: `s1` });
+  });
+
+  test(`finds a promotion by a parameter of one of its runs`, async () => {
+    await show(
+      promotion(`05 - Delete image`, [run(`a`, `Delete image`, 1700000000, { parameters: [{ name: `IMAGE_DATE`, value: `2026-11-01` }] })]),
+      promotion(`Staging`, [])
+    );
+    const filter = root.querySelector<HTMLInputElement>(`.wf-map-promotion-filter`);
+    await act(() => {
+      filter.value = `11-01`;
+      filter.dispatchEvent(new Event(`input`, { bubbles: true }));
+    });
+    expect([...root.querySelectorAll(`.wf-map-promotion-name`)].map((n) => n.textContent)).to.deep.equal([`05 - Delete image`]);
   });
 });

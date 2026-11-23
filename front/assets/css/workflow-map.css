@@ -1081,7 +1081,7 @@ a.wf-map-job:hover {
   padding: 8px 10px 8px 12px;
 }
 
-.wf-map-promotion + .wf-map-promotion {
+.wf-map-promotion-group + .wf-map-promotion-group {
   border-top: 1px solid #E5E8EA;
 }
 
@@ -1098,11 +1098,67 @@ a.wf-map-job:hover {
 }
 
 .wf-map-promotion-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
   font-weight: 500;
   color: #202B30;
+}
+
+.wf-map-runs {
+  margin: -4px 0 0;
+  padding: 0 10px 8px 38px;
+  list-style: none;
+}
+
+.wf-map-run {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% + 12px);
+  margin: 0 -6px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  font-size: 12px;
+  line-height: 16px;
+  color: #495358;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wf-map-run:hover {
+  background: #F5F8F9;
+  color: #202B30;
+}
+
+.wf-map-run-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.wf-map-run-name,
+.wf-map-run-params {
+  overflow-wrap: anywhere;
+}
+
+.wf-map-run-params {
+  font-size: 11px;
+  color: #677278;
+}
+
+.wf-map-run .wf-map-time,
+.wf-map-run-ago {
+  flex: none;
+  font-size: 11px;
+  color: #677278;
+}
+
+.wf-map-run-ago {
+  min-width: 44px;
+  text-align: right;
 }
 
 .wf-map-promotion-note {
@@ -1120,11 +1176,6 @@ a.wf-map-job:hover {
 
 .wf-map-promotion-note.failed {
   color: var(--wf-map-failed);
-}
-
-.wf-map-promotion-note.fresh {
-  color: #202B30;
-  font-weight: 500;
 }
 
 .wf-map-promote-count {

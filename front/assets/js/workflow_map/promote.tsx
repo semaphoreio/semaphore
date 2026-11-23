@@ -1,8 +1,8 @@
 import { signal } from "@preact/signals";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { Pipeline, Promotion, shortName } from "./model";
-import { popover, promote, togglePopover } from "./store";
-import { Name, TimeAgo } from "./ui";
+import { Pipeline, Promotion, formatAgo, shortName } from "./model";
+import { focusOn, now, popover, promote, togglePopover } from "./store";
+import { Duration, Name, StatusIcon, TimeAgo } from "./ui";
 
 export const promoting = signal<{ pipeline: Pipeline, promotion: Promotion, } | null>(null);
 
@@ -30,14 +30,16 @@ export const Promotions = ({ p }: { p: Pipeline, }) => {
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => input.current?.focus(), []);
   const q = filter.trim().toLowerCase();
-  const shown = p.promotions?.filter((promotion) => promotion.name.toLowerCase().includes(q)) ?? [];
+  const extra = (run: Pipeline) => run.parameters.filter((v) => v.value && !run.name.toLowerCase().includes(v.value.toLowerCase()));
+  const runText = (run: Pipeline) => [run.name, ...extra(run).map((v) => `${v.name}=${v.value}`)].join(` `).toLowerCase();
+  const shown = p.promotions?.filter((promotion) => promotion.name.toLowerCase().includes(q) || promotion.pipelines.some((run) => runText(run).includes(q))) ?? [];
   return (
     <div role="menu" aria-label={`Promotions of ${p.name}`}>
       <input
         ref={input}
         type="text"
         className="form-control form-control-small wf-map-promotion-filter"
-        placeholder="Filter promotions"
+        placeholder="Filter promotions and runs"
         aria-label="Filter promotions"
         value={filter}
         onInput={(e) => setFilter(e.currentTarget.value)}
@@ -53,47 +55,80 @@ export const Promotions = ({ p }: { p: Pipeline, }) => {
       {!shown.length && <p className="wf-map-promotion-none">No promotion matches “{filter.trim()}”</p>}
       {shown.map((promotion) => {
         const latest = promotion.events.reduce((a, e) => (!a || e.triggered_at > a.triggered_at ? e : a), null);
+        const runs = [...promotion.pipelines].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
         const note = promotion.starting
           ? `Starting promotion…`
           : !latest
-            ? `Not promoted yet`
+            ? null
             : latest.processed && latest.result === `FAILED`
               ? `Failed to promote`
-              : latest.auto ? `Auto-promoted` : shortName(latest.author ?? `Someone`);
+              : runs.length ? null : latest.auto ? `Auto-promoted` : shortName(latest.author ?? `Someone`);
         const why = !promotion.can_promote && (promotion.deployment && !promotion.deployment.allowed
           ? promotion.deployment.message ?? `Blocked by the ${promotion.deployment.name} deployment target`
           : `You don't have permission to promote`);
         return (
-          <div key={promotion.name} className="wf-map-promotion" role="menuitem">
-            <span className="material-symbols-outlined wf-map-promotion-icon" aria-hidden="true">
-              {promotion.deployment ? (promotion.deployment.allowed ? `lock_open` : `lock`) : `rocket_launch`}
-            </span>
-            <span className="wf-map-promotion-text">
-              <Name className="wf-map-promotion-name">{promotion.name}</Name>
-              {(latest || !why) && (
-                <span className={`wf-map-promotion-note ${latest?.result === `FAILED` ? `failed` : ``} ${latest ? `` : `fresh`}`} title={latest?.author ?? undefined}>
-                  {note}
-                  {latest && !promotion.starting && (
-                    <>
-                      {` · `}
-                      <TimeAgo at={latest.triggered_at}/>
-                    </>
-                  )}
-                </span>
-              )}
-              {why && <span className="wf-map-promotion-note blocked">{why}</span>}
-            </span>
-            <button
-              className="btn btn-secondary btn-small"
-              disabled={!promotion.can_promote || promotion.starting}
-              title={why || `Promote ${p.name} to ${promotion.name}`}
-              onClick={() => {
-                popover.value = null;
-                promoting.value = { pipeline: p, promotion };
-              }}
-            >
-            Promote
-            </button>
+          <div key={promotion.name} className="wf-map-promotion-group">
+            <div className="wf-map-promotion" role="menuitem">
+              <span className="material-symbols-outlined wf-map-promotion-icon" aria-hidden="true">
+                {promotion.deployment ? (promotion.deployment.allowed ? `lock_open` : `lock`) : `rocket_launch`}
+              </span>
+              <span className="wf-map-promotion-text">
+                <Name className="wf-map-promotion-name">{promotion.name}</Name>
+                {note && (
+                  <span className={`wf-map-promotion-note ${latest?.result === `FAILED` ? `failed` : ``}`} title={latest?.author ?? undefined}>
+                    {note}
+                    {latest && !promotion.starting && (
+                      <>
+                        {` · `}
+                        <TimeAgo at={latest.triggered_at}/>
+                      </>
+                    )}
+                  </span>
+                )}
+                {why && <span className="wf-map-promotion-note blocked">{why}</span>}
+              </span>
+              <button
+                className="btn btn-secondary btn-small"
+                disabled={!promotion.can_promote || promotion.starting}
+                title={why || `Promote ${p.name} to ${promotion.name}`}
+                onClick={() => {
+                  popover.value = null;
+                  promoting.value = { pipeline: p, promotion };
+                }}
+              >
+              Promote
+              </button>
+            </div>
+            {runs.length > 0 && (
+              <ul className="wf-map-runs" aria-label={`Runs of ${promotion.name}`}>
+                {runs.map((run) => {
+                  const params = extra(run);
+                  return (
+                    <li key={run.id}>
+                      <button
+                        className="wf-map-run"
+                        title={`Show ${run.name} on the map`}
+                        onClick={() => {
+                          popover.value = null;
+                          focusOn(`pipeline`, run.id);
+                        }}
+                      >
+                        <StatusIcon status={run.status} size={14}/>
+                        <span className="wf-map-run-text">
+                          <span className="wf-map-run-name">
+                            {run.name}
+                            {run.attempt > 1 && <span className="wf-map-attempt">#{run.attempt}</span>}
+                          </span>
+                          {params.length > 0 && <span className="wf-map-run-params">{params.map((v) => `${v.name}=${v.value}`).join(` · `)}</span>}
+                        </span>
+                        <Duration start={run.runningAt} end={run.doneAt} running={run.status === `running`}/>
+                        <span className="wf-map-run-ago">{run.createdAt && formatAgo(now.value - run.createdAt)}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
         );
       })}

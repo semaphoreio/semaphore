@@ -67,6 +67,7 @@ defmodule FrontWeb.WorkflowView do
       state: pipeline.state,
       result: pipeline.result,
       result_reason: pipeline.result_reason,
+      parameters: pipeline.env_vars || [],
       parent_id: map_parent_id(pipeline),
       trigger: triggerer.trigger_type,
       triggerer: %{
