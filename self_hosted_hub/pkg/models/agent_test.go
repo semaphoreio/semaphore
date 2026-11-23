@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -439,4 +440,28 @@ func Test__StopJob(t *testing.T) {
 		require.NoError(t, err)
 		require.WithinDuration(t, now, *agent.JobStopRequestedAt, 100*time.Millisecond)
 	})
+}
+
+func Test__AgentLookupIndexes(t *testing.T) {
+	indexes := map[string]string{
+		"ix_agents_registered_org_type": "(organization_id, agent_type_name) WHERE (state = 'registered'::text)",
+	}
+
+	for name, definition := range indexes {
+		var found struct {
+			Indexdef   string
+			Indisvalid bool
+		}
+
+		err := database.Conn().Raw(`
+			select pg_get_indexdef(i.indexrelid) as indexdef, i.indisvalid
+			from pg_index i
+			join pg_class c on c.oid = i.indexrelid
+			where i.indrelid = 'agents'::regclass and c.relname = ?
+		`, name).Scan(&found).Error
+
+		require.NoError(t, err)
+		require.True(t, strings.HasSuffix(found.Indexdef, "USING btree "+definition), "%s: %q", name, found.Indexdef)
+		require.True(t, found.Indisvalid, name)
+	}
 }
