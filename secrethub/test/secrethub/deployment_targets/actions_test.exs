@@ -263,13 +263,43 @@ defmodule Secrethub.DeploymentTargets.ActionsTest do
                }
              } =
                Actions.describe(
-                 API.DescribeRequest.new(metadata: ctx.request_meta, name: ctx.secret.name)
+                 API.DescribeRequest.new(
+                   metadata: ctx.request_meta,
+                   name: ctx.secret.name,
+                   deployment_target_id: ctx.secret.dt_id
+                 )
                )
     end
 
     test "when name does not match then raises error", ctx do
       assert_raise GRPC.RPCError, "secret not found", fn ->
-        Actions.describe(API.DescribeRequest.new(metadata: ctx.request_meta, name: "random_name"))
+        Actions.describe(
+          API.DescribeRequest.new(
+            metadata: ctx.request_meta,
+            name: "random_name",
+            deployment_target_id: ctx.secret.dt_id
+          )
+        )
+      end
+    end
+
+    test "when name matches but no DT ID is given then raises error", ctx do
+      assert_raise GRPC.RPCError, "secret not found", fn ->
+        Actions.describe(
+          API.DescribeRequest.new(metadata: ctx.request_meta, name: ctx.secret.name)
+        )
+      end
+    end
+
+    test "when name matches but DT ID does not then raises error", ctx do
+      assert_raise GRPC.RPCError, "secret not found", fn ->
+        Actions.describe(
+          API.DescribeRequest.new(
+            metadata: ctx.request_meta,
+            name: ctx.secret.name,
+            deployment_target_id: Ecto.UUID.generate()
+          )
+        )
       end
     end
 

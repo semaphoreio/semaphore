@@ -1387,6 +1387,29 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
     assert job.aasm_state == "pending"
   end
 
+  test "sends the job's deployment target to secrethub" do
+    test_pid = self()
+    deployment_target_id = Ecto.UUID.generate()
+
+    GrpcMock.stub(Support.FakeServers.SecretsApi, :checkout_many, fn req, _ ->
+      send(test_pid, {:deployment_target_id, req.deployment_target_id})
+      InternalApi.Secrethub.CheckoutManyResponse.new(secrets: [])
+    end)
+
+    {:ok, task} = Support.Factories.Task.create()
+
+    {:ok, job} =
+      Support.Factories.Job.create(:pending, %{
+        spec: @job_spec,
+        build_id: task.id,
+        deployment_target_id: deployment_target_id
+      })
+
+    Worker.process(job)
+
+    assert_receive {:deployment_target_id, ^deployment_target_id}
+  end
+
   test "when we can't find a secret => force fails the job" do
     GrpcMock.stub(Support.FakeServers.SecretsApi, :checkout_many, fn _, _ ->
       InternalApi.Secrethub.CheckoutManyResponse.new(secrets: [])
