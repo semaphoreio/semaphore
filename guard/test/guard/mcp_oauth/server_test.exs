@@ -917,6 +917,7 @@ defmodule Guard.McpOAuth.Server.Test do
   @computers_client_secret "computers-secret"
   @computers_redirect_uri "https://semaphore.computer.test/auth/callback"
   @computers_audience "https://api.semaphore.computer.test"
+  @computers_mcp_resource "https://api.semaphore.computer.test/mcp"
 
   defp computers_authorize(user_id, redirect_uri \\ @computers_redirect_uri) do
     query =
@@ -957,6 +958,58 @@ defmodule Guard.McpOAuth.Server.Test do
     response
   end
 
+  # Drives an MCP client through GET /authorize -> POST /grant-selection ->
+  # POST /token for resource, as a browser would: the grant form carries what
+  # the consent page put in it. Returns the consent page and the token answer.
+  defp resource_flow(client, user_id, resource, token_params \\ %{}) do
+    query =
+      authorize_query(client.client_id) <> "&" <> URI.encode_query(%{"resource" => resource})
+
+    {:ok, consent} = HTTPoison.get(mcp_oauth_url("/authorize#{query}"), session_headers(user_id))
+    200 = consent.status_code
+
+    [_, granted] = Regex.run(~r/name="resource" value="([^"]*)"/, consent.body)
+
+    {:ok, grant} =
+      HTTPoison.post(
+        mcp_oauth_url("/grant-selection"),
+        grant_form_body(client.client_id, extract_csrf_token(consent.body)) <>
+          "&" <> URI.encode_query(%{"resource" => granted}),
+        [
+          {"content-type", "application/x-www-form-urlencoded"},
+          {"cookie", extract_session_cookie(consent)}
+        ] ++ default_headers(),
+        follow_redirect: false
+      )
+
+    302 = grant.status_code
+
+    answer =
+      post_token(
+        Map.merge(
+          %{
+            "grant_type" => "authorization_code",
+            "code" => grant |> get_header("location") |> extract_code(),
+            "redirect_uri" => @redirect_uri,
+            "client_id" => client.client_id,
+            "code_verifier" => @code_verifier,
+            "resource" => resource
+          },
+          token_params
+        )
+      )
+
+    {consent.body, answer}
+  end
+
+  defp computers_claims(access_token) do
+    {:ok, jwks_resp} = HTTPoison.get(mcp_oauth_url("/jwks"), default_headers())
+    [key] = Jason.decode!(jwks_resp.body)["keys"]
+
+    {true, jwt, _jws} = JOSE.JWT.verify_strict(JOSE.JWK.from_map(key), ["RS256"], access_token)
+    jwt.fields
+  end
+
   describe "semaphore.computer's client" do
     setup do
       {_, pem} = {:rsa, 2048} |> JOSE.JWK.generate_key() |> JOSE.JWK.to_pem()
@@ -966,6 +1019,8 @@ defmodule Guard.McpOAuth.Server.Test do
         "COMPUTERS_OAUTH_CLIENT_SECRET" => @computers_client_secret,
         "COMPUTERS_OAUTH_REDIRECT_URIS" => @computers_redirect_uri,
         "COMPUTERS_OAUTH_AUDIENCE" => @computers_audience,
+        "COMPUTERS_MCP_RESOURCES" =>
+          "https://other.computer.test/mcp, #{@computers_mcp_resource}",
         "COMPUTERS_OAUTH_SIGNING_KEY" => String.replace(pem, "\n", "\\n")
       }
 
@@ -1084,6 +1139,51 @@ defmodule Guard.McpOAuth.Server.Test do
 
       {:ok, jwks_resp} = HTTPoison.get(mcp_oauth_url("/jwks"), default_headers())
       assert Jason.decode!(jwks_resp.body)["keys"] == []
+    end
+
+    test "gives an MCP client its RS256 tokens for its MCP server, and refreshes them", %{
+      user_id: user_id
+    } do
+      client = create_test_client()
+
+      {consent, {200, tokens}} = resource_flow(client, user_id, @computers_mcp_resource)
+      assert consent =~ "wants to use Semaphore Computer as you."
+      assert tokens["scope"] == "computers"
+
+      claims = computers_claims(tokens["access_token"])
+      assert claims["aud"] == @computers_mcp_resource
+      assert claims["scope"] == "computers"
+      assert claims["semaphore_user_id"] == user_id
+
+      assert {200, refreshed} = refresh(tokens["refresh_token"], client.client_id)
+      assert refreshed["scope"] == "computers"
+      assert computers_claims(refreshed["access_token"])["aud"] == @computers_mcp_resource
+
+      System.put_env("COMPUTERS_MCP_RESOURCES", "https://other.computer.test/mcp")
+
+      assert {400, %{"error" => "invalid_grant"}} =
+               refresh(refreshed["refresh_token"], client.client_id)
+    end
+
+    test "gives a code for its MCP server for that server alone", %{user_id: user_id} do
+      {_consent, answer} =
+        resource_flow(create_test_client(), user_id, @computers_mcp_resource, %{
+          "resource" => "https://other.computer.test/mcp"
+        })
+
+      assert {400, %{"error" => "invalid_target"}} = answer
+    end
+
+    test "leaves a client that asks for any other resource as it was", %{user_id: user_id} do
+      {consent, {200, tokens}} =
+        resource_flow(create_test_client(), user_id, "https://mcp.semaphoreci.com/mcp")
+
+      assert consent =~ "wants to access your Semaphore account via MCP."
+      assert tokens["scope"] == "mcp"
+
+      signer = Joken.Signer.create("HS256", System.get_env("MCP_OAUTH_JWT_KEYS"))
+      assert {:ok, claims} = Joken.verify(tokens["access_token"], signer)
+      assert claims["aud"] == Guard.McpOAuth.JWT.audience()
     end
 
     test "leaves MCP clients as they were: consent, and MCP tokens", %{user_id: user_id} do

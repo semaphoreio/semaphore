@@ -22,7 +22,7 @@ defmodule Guard.McpOAuth.Metadata do
       "grant_types_supported" => ["authorization_code", "refresh_token"],
       "code_challenge_methods_supported" => ["S256"],
       "token_endpoint_auth_methods_supported" => ["none", "client_secret_post"],
-      "scopes_supported" => ["mcp"],
+      "scopes_supported" => ["mcp", "computers"],
       "service_documentation" => "https://docs.semaphoreci.com/mcp",
       # OpenID Connect Discovery 1.0 required fields for OIDC-compliant clients
       # Note: MCP tokens are HS256 (symmetric), so JWKS has only semaphore.computer's RS256 key.

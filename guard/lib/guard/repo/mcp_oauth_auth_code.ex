@@ -15,6 +15,7 @@ defmodule Guard.Repo.McpOAuthAuthCode do
     field(:client_id, :string)
     field(:redirect_uri, :string)
     field(:code_challenge, :string)
+    field(:resource, :string)
     field(:expires_at, :utc_datetime)
     field(:used_at, :utc_datetime)
 
@@ -31,6 +32,7 @@ defmodule Guard.Repo.McpOAuthAuthCode do
       :user_id,
       :redirect_uri,
       :code_challenge,
+      :resource,
       :expires_at,
       :used_at
     ])

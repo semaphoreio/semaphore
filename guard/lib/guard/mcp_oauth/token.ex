@@ -30,6 +30,7 @@ defmodule Guard.McpOAuth.Token do
     - code_verifier (required for authorization_code): PKCE verifier
     - refresh_token (required for refresh_token): Refresh token
     - scope (optional for refresh_token): Must be the scope originally granted
+    - resource (optional for authorization_code): Must be the one authorized
 
   ## Returns
   - `{:ok, token_response}` on success
@@ -51,10 +52,18 @@ defmodule Guard.McpOAuth.Token do
       with {:ok, auth_code} <- lock_code(params),
            :ok <- validate_pkce(auth_code, params),
            :ok <- validate_redirect_uri(auth_code, params),
+           :ok <- validate_resource(auth_code, params),
            {:ok, _} <- McpOAuthAuthCode.mark_code_used(auth_code),
-           scope = scope(auth_code.client_id),
-           {:ok, response} <- issue(auth_code.user_id, scope) do
-        refresh_token = McpOAuthRefreshToken.create(auth_code.client_id, auth_code.user_id, scope)
+           scope = scope(auth_code.client_id, auth_code.resource),
+           {:ok, response} <- issue(auth_code.user_id, scope, auth_code.resource) do
+        refresh_token =
+          McpOAuthRefreshToken.create(
+            auth_code.client_id,
+            auth_code.user_id,
+            scope,
+            auth_code.resource
+          )
+
         Map.put(response, "refresh_token", refresh_token)
       else
         {:error, error_map} -> Repo.rollback(error_map)
@@ -78,7 +87,7 @@ defmodule Guard.McpOAuth.Token do
          :ok <- validate_reuse(refresh_token),
          :ok <- validate_scope(family, scope),
          :ok <- validate_user(family),
-         {:ok, response} <- issue(family.user_id, family.scope) do
+         {:ok, response} <- issue(family.user_id, family.scope, family.resource) do
       {:ok, Map.put(response, "refresh_token", McpOAuthRefreshToken.rotate(refresh_token))}
     end
   end
@@ -165,6 +174,18 @@ defmodule Guard.McpOAuth.Token do
     end
   end
 
+  # A code for one of semaphore.computer's MCP servers is for that server
+  # alone (RFC 8707). Any other code was issued as before resource was read.
+  defp validate_resource(%{resource: nil}, _params), do: :ok
+
+  defp validate_resource(%{resource: resource}, params) do
+    if params["resource"] in [nil, resource] do
+      :ok
+    else
+      {:error, error_response("invalid_target", "resource must be the one authorized")}
+    end
+  end
+
   defp refresh_params(%{"refresh_token" => token, "client_id" => client_id})
        when is_binary(token) and is_binary(client_id),
        do: {:ok, token, client_id}
@@ -180,9 +201,10 @@ defmodule Guard.McpOAuth.Token do
   end
 
   # The scope check refuses a Computers family whose client is no longer the
-  # configured one, as authenticate_client/1 did not authenticate it.
+  # configured one, as authenticate_client/1 did not authenticate it, and one
+  # for an MCP server no longer configured.
   defp validate_client(family, client_id) do
-    if family.client_id == client_id and family.scope == scope(client_id) do
+    if family.client_id == client_id and family.scope == scope(client_id, family.resource) do
       :ok
     else
       {:error, invalid_refresh_token()}
@@ -236,15 +258,19 @@ defmodule Guard.McpOAuth.Token do
     {:error, invalid_refresh_token()}
   end
 
-  defp scope(client_id), do: if(Computers.client?(client_id), do: Computers.scope(), else: "mcp")
+  defp scope(client_id, resource) do
+    if Computers.client?(client_id) or Computers.mcp_resource?(resource),
+      do: Computers.scope(),
+      else: "mcp"
+  end
 
-  defp issue(user_id, "computers" = scope) do
-    with {:ok, token} <- Computers.create_token(user_id) do
+  defp issue(user_id, "computers" = scope, resource) do
+    with {:ok, token} <- Computers.create_token(user_id, resource) do
       {:ok, build_response(token, Computers.ttl_seconds(), scope)}
     end
   end
 
-  defp issue(user_id, "mcp" = scope) do
+  defp issue(user_id, "mcp" = scope, _resource) do
     with {:ok, token} <- JWT.create_token(%{user_id: user_id}) do
       {:ok, build_response(token, JWT.default_token_ttl_seconds(), scope)}
     end

@@ -352,11 +352,11 @@ defmodule Guard.McpOAuth.Server do
         <p class="user-info">Logged in as: #{html_escape(user.name || user.id)}</p>
         <div class="client-info">
           <span class="client-name">#{html_escape(validated_params.client_name)}</span>
-          <p>wants to access your Semaphore account via MCP.</p>
+          <p>#{if validated_params.resource, do: "wants to use Semaphore Computer as you.", else: "wants to access your Semaphore account via MCP."}</p>
         </div>
         <div class="scope-info">
           <strong>Requested permissions:</strong>
-          <div class="scope-item">Access to MCP tools based on your permissions</div>
+          <div class="scope-item">#{if validated_params.resource, do: "Create Computers and Storage, and run commands, as your roles allow", else: "Access to MCP tools based on your permissions"}</div>
         </div>
         <form action="/mcp/oauth/grant-selection" method="post">
           <input type="hidden" name="client_id" value="#{html_escape(validated_params.client_id)}" />
@@ -364,6 +364,7 @@ defmodule Guard.McpOAuth.Server do
           <input type="hidden" name="code_challenge" value="#{html_escape(validated_params.code_challenge)}" />
           <input type="hidden" name="state" value="#{html_escape(validated_params.state || "")}" />
           <input type="hidden" name="scope" value="#{html_escape(validated_params.scope)}" />
+          <input type="hidden" name="resource" value="#{html_escape(validated_params.resource || "")}" />
           <input type="hidden" name="_csrf_token" value="#{Plug.CSRFProtection.get_csrf_token()}" />
           <div class="buttons">
             <a class="cancel-btn" href="#{html_escape(Authorize.build_error_redirect(validated_params.redirect_uri, "access_denied", "User denied access", validated_params.state))}">Cancel</a>
@@ -407,6 +408,7 @@ defmodule Guard.McpOAuth.Server do
     redirect_uri = params["redirect_uri"]
     code_challenge = params["code_challenge"]
     state = params["state"]
+    resource = if Computers.mcp_resource?(params["resource"]), do: params["resource"]
 
     Logger.debug("[McpOAuth.Server] Grant selection: client=#{client_id}, user=#{user_id}")
 
@@ -428,6 +430,7 @@ defmodule Guard.McpOAuth.Server do
             user_id: user_id,
             redirect_uri: redirect_uri,
             code_challenge: code_challenge,
+            resource: resource,
             expires_at: expires_at
           }
 
@@ -470,16 +473,22 @@ defmodule Guard.McpOAuth.Server do
 
   defp redirect_to_login(conn, validated_params) do
     # Build the return URL with all OAuth params so user comes back after login
-    return_params =
-      URI.encode_query(%{
-        "client_id" => validated_params.client_id,
-        "redirect_uri" => validated_params.redirect_uri,
-        "code_challenge" => validated_params.code_challenge,
-        "code_challenge_method" => "S256",
-        "response_type" => "code",
-        "scope" => validated_params.scope,
-        "state" => validated_params.state || ""
-      })
+    query = %{
+      "client_id" => validated_params.client_id,
+      "redirect_uri" => validated_params.redirect_uri,
+      "code_challenge" => validated_params.code_challenge,
+      "code_challenge_method" => "S256",
+      "response_type" => "code",
+      "scope" => validated_params.scope,
+      "state" => validated_params.state || ""
+    }
+
+    query =
+      if validated_params.resource,
+        do: Map.put(query, "resource", validated_params.resource),
+        else: query
+
+    return_params = URI.encode_query(query)
 
     domain = Application.fetch_env!(:guard, :base_domain)
     return_url = "#{JWT.issuer()}/authorize?#{return_params}"
