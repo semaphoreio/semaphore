@@ -518,3 +518,18 @@ func Test__AgentLookupIndexes(t *testing.T) {
 		require.True(t, found.Indisvalid, name)
 	}
 }
+
+func Test__DuplicateAgentTypeIndexIsDropped(t *testing.T) {
+	var names []string
+
+	err := database.Conn().Raw(`
+		select c.relname
+		from pg_index i
+		join pg_class c on c.oid = i.indexrelid
+		where i.indrelid = 'agents'::regclass
+		and pg_get_indexdef(i.indexrelid) like '%USING btree (organization_id, agent_type_name)'
+	`).Scan(&names).Error
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"uix_agent_orgs"}, names)
+}
