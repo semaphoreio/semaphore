@@ -317,23 +317,68 @@ func Test__Disconnect(t *testing.T) {
 		require.Equal(t, agent.State, AgentStateDisconnected)
 	})
 
-	t.Run("clears the job of an agent that reported it as finished", func(t *testing.T) {
-		agent := disconnectAgentWithJob(t, orgID, &requesterID, "s1-test-3", AgentSyncStateFinishedJob)
+	t.Run("clears the job of an agent whose job was marked as finished", func(t *testing.T) {
+		agent := disconnectAgentWithJob(t, orgID, &requesterID, "s1-test-3", true)
 
 		require.Equal(t, AgentStateDisconnected, agent.State)
 		require.Nil(t, agent.AssignedJobID)
 		require.Nil(t, agent.JobAssignedAt)
+		require.Nil(t, agent.JobStopRequestedAt)
 	})
 
-	t.Run("keeps the job of an agent that did not report it as finished", func(t *testing.T) {
-		agent := disconnectAgentWithJob(t, orgID, &requesterID, "s1-test-4", "running-job")
+	t.Run("keeps the job of an agent that only reported it as finished", func(t *testing.T) {
+		agent := disconnectAgentWithJob(t, orgID, &requesterID, "s1-test-4", false)
 
 		require.Equal(t, AgentStateDisconnected, agent.State)
+		require.Equal(t, "finished-job", agent.LastSyncState)
 		require.NotNil(t, agent.AssignedJobID)
 	})
 }
 
-func disconnectAgentWithJob(t *testing.T, orgID uuid.UUID, requesterID *uuid.UUID, agentTypeName, syncState string) *Agent {
+func Test__MarkJobFinished(t *testing.T) {
+	database.TruncateTables()
+
+	orgID := database.UUID()
+	requesterID := database.UUID()
+
+	_, _, err := CreateAgentType(orgID, &requesterID, "s1-test-1")
+	require.NoError(t, err)
+
+	agent, _, err := RegisterAgent(orgID, "s1-test-1", "hello", AgentMetadata{})
+	require.NoError(t, err)
+
+	_, err = ForcefullyOccupyAgentWithJobID(agent)
+	require.NoError(t, err)
+	require.NoError(t, agent.MarkJobFinished(context.Background()))
+
+	t.Run("is recorded for the assigned job", func(t *testing.T) {
+		found, err := FindAgentByToken(orgID.String(), agent.TokenHash)
+		require.NoError(t, err)
+		require.NotNil(t, found.JobFinishedAt)
+	})
+
+	t.Run("is cleared when the agent is released", func(t *testing.T) {
+		released, err := ReleaseAgent(orgID, "s1-test-1", *agent.AssignedJobID)
+		require.NoError(t, err)
+		require.Nil(t, released.JobFinishedAt)
+	})
+
+	t.Run("is cleared when the agent is occupied again", func(t *testing.T) {
+		_, err := ForcefullyOccupyAgentWithJobID(agent)
+		require.NoError(t, err)
+		require.NoError(t, agent.MarkJobFinished(context.Background()))
+
+		require.NoError(t, CreateOccupationRequest(orgID, "s1-test-1", database.UUID()))
+		_, err = OccupyAgent(agent)
+		require.NoError(t, err)
+
+		found, err := FindAgentByToken(orgID.String(), agent.TokenHash)
+		require.NoError(t, err)
+		require.Nil(t, found.JobFinishedAt)
+	})
+}
+
+func disconnectAgentWithJob(t *testing.T, orgID uuid.UUID, requesterID *uuid.UUID, agentTypeName string, jobFinished bool) *Agent {
 	_, _, err := CreateAgentTypeWithSettings(
 		orgID, requesterID, agentTypeName, AgentNameSettings{ReleaseNameAfter: 60},
 	)
@@ -345,8 +390,13 @@ func disconnectAgentWithJob(t *testing.T, orgID uuid.UUID, requesterID *uuid.UUI
 	jobID, err := ForcefullyOccupyAgentWithJobID(agent)
 	require.NoError(t, err)
 
-	agent, err = SyncAgent(orgID.String(), agent.TokenHash, syncState, jobID.String(), 0)
+	agent, err = SyncAgent(orgID.String(), agent.TokenHash, "finished-job", jobID.String(), 0)
 	require.NoError(t, err)
+
+	if jobFinished {
+		require.NoError(t, agent.MarkJobFinished(context.Background()))
+	}
+
 	require.NoError(t, agent.Disconnect())
 
 	agent, err = FindAgentByToken(orgID.String(), agent.TokenHash)

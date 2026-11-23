@@ -89,7 +89,8 @@ CREATE TABLE public.agents (
     interrupted_at timestamp without time zone,
     interruption_grace_period integer DEFAULT 0,
     state text DEFAULT 'registered'::text,
-    disconnected_at timestamp without time zone
+    disconnected_at timestamp without time zone,
+    job_finished_at timestamp without time zone
 );
 
 
@@ -239,7 +240,7 @@ SET row_security = off;
 --
 
 COPY public.schema_migrations (version, dirty) FROM stdin;
-20261123120100	f
+20261123120200	f
 \.
 
 
