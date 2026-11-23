@@ -12,8 +12,8 @@ defmodule Guard.Store.McpOAuthRefreshToken do
   @revoked_retention_seconds 86_400
 
   @doc "Starts a family of refresh tokens and returns its first token."
-  @spec create(String.t(), String.t(), String.t()) :: String.t()
-  def create(client_id, user_id, scope) do
+  @spec create(String.t(), String.t(), String.t(), String.t() | nil) :: String.t()
+  def create(client_id, user_id, scope, resource \\ nil) do
     now = now()
 
     family =
@@ -21,6 +21,7 @@ defmodule Guard.Store.McpOAuthRefreshToken do
         client_id: client_id,
         user_id: user_id,
         scope: scope,
+        resource: resource,
         expires_at: DateTime.add(now, max_age_seconds())
       })
 
