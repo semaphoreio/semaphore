@@ -12,7 +12,7 @@ const job = (name: string, status: string) => ({ key: `p/After pipeline#${name}`
 
 describe(`the after pipeline band`, () => {
   let root: HTMLElement;
-  const after = { id: `p/After pipeline`, name: `After pipeline`, deps: [], jobs: [job(`Cleanup`, `passed`), job(`Notify`, `failed`)], after: true } as Block;
+  const after = { id: `p/After pipeline`, name: `After pipeline`, deps: [], jobs: [job(`Cleanup`, `passed`), job(`Notify`, `failed`)], after: true, pipeline: { id: `p` } } as Block;
   const lint = { id: `p/lint`, name: `lint`, deps: [], jobs: [] } as Block;
   const withAfter = { id: `p`, blocks: [lint, after] } as unknown as Pipeline;
   const without = { id: `q`, blocks: [lint] } as unknown as Pipeline;
@@ -35,7 +35,7 @@ describe(`the after pipeline band`, () => {
   });
 
   test(`is a collapsed block card by default and opens to its jobs on a click`, async () => {
-    await act(() => render(<AfterBand block={after}/>, root));
+    await act(() => render(<AfterBand block={after} at={{ x: 0, y: 0 }}/>, root));
     const card = root.querySelector(`.wf-map-after .wf-map-summary`);
     expect(card.getAttribute(`aria-expanded`)).to.equal(`false`);
     expect(card.textContent).to.contain(`After pipeline`);
@@ -60,7 +60,7 @@ describe(`the after pipeline band`, () => {
   });
 
   test(`has an info icon whose tooltip says it runs after the pipeline, collapsed and open`, async () => {
-    await act(() => render(<AfterBand block={after}/>, root));
+    await act(() => render(<AfterBand block={after} at={{ x: 0, y: 0 }}/>, root));
     const closed = root.querySelector<HTMLElement>(`.wf-map-after .wf-map-summary .wf-map-after-info`);
     expect(closed.dataset.tippyContent).to.equal(AFTER_INFO);
     expect(closed.getAttribute(`aria-label`)).to.equal(AFTER_INFO);
@@ -74,7 +74,7 @@ describe(`the after pipeline band`, () => {
   });
 
   test(`clicking the info icon leaves the card as it is`, async () => {
-    await act(() => render(<AfterBand block={after}/>, root));
+    await act(() => render(<AfterBand block={after} at={{ x: 0, y: 0 }}/>, root));
     await act(() => {
       root.querySelector(`.wf-map-after-info`).dispatchEvent(new MouseEvent(`click`, { bubbles: true, detail: 0 }));
     });

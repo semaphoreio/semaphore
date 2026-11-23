@@ -87,7 +87,7 @@ defmodule Secrethub.DeploymentTargets.Actions do
           Store.find_by_id(req_meta.org_id, :skip, request.id)
 
         not empty?(request.name) ->
-          Store.find_by_name(req_meta.org_id, request.name)
+          Store.find_by_name(req_meta.org_id, request.deployment_target_id, request.name)
 
         not empty?(request.deployment_target_id) ->
           Store.find_by_target(request.deployment_target_id)

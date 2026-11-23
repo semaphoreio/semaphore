@@ -368,7 +368,7 @@ defmodule RepositoryHub.BaseValidator do
       |> validate(all: [:is_string, :is_not_empty])
       |> unwrap(&RepositoryHub.Model.GitRepository.new/1)
       |> unwrap(fn git_repository ->
-        if git_repository.host == "bitbucket.org" do
+        if git_repository.host in ["bitbucket.org", "ssh.bitbucket.org"] do
           value
         else
           error("doesn't look like a bitbucket url")

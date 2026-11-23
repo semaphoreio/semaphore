@@ -30,7 +30,7 @@ defimpl RepositoryHub.Server.UpdateAction, for: RepositoryHub.BitbucketAdapter d
     end)
     |> Multi.run(:update_repository_url, fn _repo, context ->
       context.connector
-      |> BitbucketConnector.update_repository_url(request.url, context.organization.name)
+      |> BitbucketConnector.update_repository_url(request.url, context.organization.org_username)
     end)
     |> Multi.run(:updated_repository, fn _repo, context ->
       params = %{
