@@ -87,6 +87,52 @@ func Test__DeletingStuckAgents(t *testing.T) {
 
 		assertAgentDoesntExists(t, agent.ID.String())
 	})
+
+	t.Run("it doesn't delete disconnected agents that have no assigned job", func(t *testing.T) {
+		when := time.Now().Add(-20 * time.Minute)
+
+		agent := createAgent(t, at.Name)
+		agent.LastSyncAt = &when
+		agent.State = models.AgentStateDisconnected
+		updateAgent(t, agent)
+
+		Tick(publisher)
+
+		assertAgentExists(t, agent.ID.String())
+	})
+
+	t.Run("it deletes disconnected agents that still have an assigned job", func(t *testing.T) {
+		when := time.Now().Add(-20 * time.Minute)
+		job := database.UUID()
+
+		agent := createAgent(t, at.Name)
+		agent.LastSyncAt = &when
+		agent.AssignedJobID = &job
+		agent.State = models.AgentStateDisconnected
+		updateAgent(t, agent)
+
+		Tick(publisher)
+
+		assertAgentDoesntExists(t, agent.ID.String())
+	})
+
+	t.Run("it deletes more than one batch of agents in a single tick", func(t *testing.T) {
+		when := time.Now().Add(-5 * time.Minute)
+		agents := []*models.Agent{}
+
+		for i := 0; i < batchSize+1; i++ {
+			agent := createAgent(t, at.Name)
+			agent.LastSyncAt = &when
+			updateAgent(t, agent)
+			agents = append(agents, agent)
+		}
+
+		Tick(publisher)
+
+		for _, agent := range agents {
+			assertAgentDoesntExists(t, agent.ID.String())
+		}
+	})
 }
 
 func createAgentType(t *testing.T, name string) *models.AgentType {

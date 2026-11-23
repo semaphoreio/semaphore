@@ -19,6 +19,9 @@ import (
 var ErrAgentCantBeRegistered = errors.New("agent can't be registered")
 var AgentStateRegistered = "registered"
 var AgentStateDisconnected = "disconnected"
+
+const AgentSyncStateFinishedJob = "finished-job"
+
 var agentNameRegex = regexp.MustCompile("^[a-zA-Z0-9-_/+]+$")
 var agentNameMaxCharacters = 80
 
@@ -301,7 +304,7 @@ func CountAllAgentsInState() (*AgentsInState, error) {
 				COUNT(*) FILTER (WHERE assigned_job_id IS NULL) idle,
 				COUNT(*) FILTER (WHERE assigned_job_id IS NOT NULL) busy
 			FROM (
-				select assigned_job_id from agents
+				select assigned_job_id from agents where state = 'registered'
 			) as ids;
 		`).
 		Scan(&counts).
@@ -323,7 +326,7 @@ func CountAgentsInStateForType(ctx context.Context, orgID, agentTypeName string)
 				COUNT(*) FILTER (WHERE assigned_job_id IS NULL) idle,
 				COUNT(*) FILTER (WHERE assigned_job_id IS NOT NULL) busy
 			FROM (
-				select assigned_job_id from agents where organization_id = ? and agent_type_name = ?
+				select assigned_job_id from agents where organization_id = ? and agent_type_name = ? and state = 'registered'
 			) as ids;
 		`, orgID, agentTypeName).
 		Scan(&counts).
@@ -633,11 +636,18 @@ func (a *Agent) DisconnectWithContext(ctx context.Context) error {
 		return database.Conn().Delete(a).Error
 	}
 
-	now := time.Now()
-	return database.Conn().WithContext(ctx).
-		Model(&a).
-		Updates(map[string]interface{}{
-			"state":           AgentStateDisconnected,
-			"disconnected_at": now,
-		}).Error
+	updates := map[string]interface{}{
+		"state":           AgentStateDisconnected,
+		"disconnected_at": time.Now(),
+	}
+
+	// A job that was not reported as finished stays assigned,
+	// so the agent cleaner still finalizes it.
+	if a.LastSyncState == AgentSyncStateFinishedJob {
+		updates["assigned_job_id"] = nil
+		updates["job_assigned_at"] = nil
+		updates["job_stop_requested_at"] = nil
+	}
+
+	return database.Conn().WithContext(ctx).Model(&a).Updates(updates).Error
 }
