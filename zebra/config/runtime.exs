@@ -118,7 +118,12 @@ if config_env() == :prod do
 
   config :zebra, artifacthub_api_endpoint: System.fetch_env!("INTERNAL_API_URL_ARTIFACTHUB")
   config :zebra, cachehub_api_endpoint: System.fetch_env!("INTERNAL_API_URL_CACHEHUB")
+  # Public HTTPS URL of cachehub's job API, where jobs refresh their S3 cache and
+  # registry credentials. Unset, jobs get no refresh token or URL.
+  config :zebra, cachehub_job_api_url: System.get_env("CACHEHUB_JOB_API_URL")
   config :zebra, chmura_endpoint: System.fetch_env!("INTERNAL_API_URL_CHMURA")
+  # Optional second hosted agent provider; unset, every hosted job uses the one above.
+  config :zebra, chmura_secondary_endpoint: System.get_env("INTERNAL_API_URL_CHMURA_SECONDARY")
   config :zebra, dt_api_endpoint: System.fetch_env!("INTERNAL_API_URL_GOFER")
   config :zebra, feature_api_endpoint: System.fetch_env!("INTERNAL_API_URL_FEATURE")
   config :zebra, loghub2_api_endpoint: System.fetch_env!("INTERNAL_API_URL_LOGHUB2")

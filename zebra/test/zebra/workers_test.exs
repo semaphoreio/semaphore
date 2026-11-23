@@ -35,4 +35,50 @@ defmodule Zebra.Workers.Test do
              ]
     end
   end
+
+  describe "agent lost worker" do
+    setup do
+      on_exit(fn ->
+        System.delete_env("START_AGENT_LOST_WORKER")
+        System.delete_env("START_JOB_TEARDOWN_CALLBACK_WORKER")
+        Application.delete_env(:zebra, :chmura_secondary_endpoint)
+      end)
+    end
+
+    test "starts next to the teardown callback worker when the secondary provider is configured" do
+      System.put_env("START_JOB_TEARDOWN_CALLBACK_WORKER", "true")
+      Application.put_env(:zebra, :chmura_secondary_endpoint, "localhost:50051")
+
+      assert Zebra.Workers.AgentLostWorker in Zebra.Workers.active()
+      assert Zebra.Workers.JobTeardownCallbackWorker in Zebra.Workers.active()
+    end
+
+    test "does not start without a secondary provider" do
+      System.put_env("START_JOB_TEARDOWN_CALLBACK_WORKER", "true")
+
+      refute Zebra.Workers.AgentLostWorker in Zebra.Workers.active()
+
+      Application.put_env(:zebra, :chmura_secondary_endpoint, "")
+
+      refute Zebra.Workers.AgentLostWorker in Zebra.Workers.active()
+    end
+
+    test "does not start where the teardown callback worker does not run" do
+      Application.put_env(:zebra, :chmura_secondary_endpoint, "localhost:50051")
+
+      refute Zebra.Workers.AgentLostWorker in Zebra.Workers.active()
+    end
+
+    test "START_AGENT_LOST_WORKER overrides the default" do
+      System.put_env("START_AGENT_LOST_WORKER", "true")
+
+      assert Zebra.Workers.AgentLostWorker in Zebra.Workers.active()
+
+      System.put_env("START_AGENT_LOST_WORKER", "false")
+      System.put_env("START_JOB_TEARDOWN_CALLBACK_WORKER", "true")
+      Application.put_env(:zebra, :chmura_secondary_endpoint, "localhost:50051")
+
+      refute Zebra.Workers.AgentLostWorker in Zebra.Workers.active()
+    end
+  end
 end
