@@ -27,31 +27,43 @@ defmodule Secrethub.DeploymentTargets.StoreTest do
     end
   end
 
-  describe "list_by_names/2" do
+  describe "list_by_names/3" do
     setup [:repo_checkout, :prepare_secret]
 
     test "when names are empty list then return empty list", ctx do
-      assert [] = Store.list_by_names(ctx.org_id, [])
+      assert [] = Store.list_by_names(ctx.org_id, ctx.dt_id, [])
     end
 
     test "when name is missing then return empty list", ctx do
-      assert [] = Store.list_by_names(ctx.org_id, [Ecto.UUID.generate()])
+      assert [] = Store.list_by_names(ctx.org_id, ctx.dt_id, [Ecto.UUID.generate()])
     end
 
     test "when organization ID is nil then return empty list", ctx do
-      assert [] = Store.list_by_names(nil, [ctx.secret.name])
+      assert [] = Store.list_by_names(nil, ctx.dt_id, [ctx.secret.name])
     end
 
     test "when organization ID is empty string then return empty list", ctx do
-      assert [] = Store.list_by_names("", [ctx.secret.name])
+      assert [] = Store.list_by_names("", ctx.dt_id, [ctx.secret.name])
+    end
+
+    test "when deployment target ID is nil then return empty list", ctx do
+      assert [] = Store.list_by_names(ctx.org_id, nil, [ctx.secret.name])
+    end
+
+    test "when deployment target ID is empty string then return empty list", ctx do
+      assert [] = Store.list_by_names(ctx.org_id, "", [ctx.secret.name])
+    end
+
+    test "when deployment target ID belongs to another target then return empty list", ctx do
+      assert [] = Store.list_by_names(ctx.org_id, Ecto.UUID.generate(), [ctx.secret.name])
     end
 
     test "when secret is missing then return empty list", ctx do
-      assert [] = Store.list_by_names(ctx.org_id, ["randomname"])
+      assert [] = Store.list_by_names(ctx.org_id, ctx.dt_id, ["randomname"])
     end
 
     test "when secret exists then return it", ctx do
-      assert [secret] = Store.list_by_names(ctx.org_id, [ctx.secret.name])
+      assert [secret] = Store.list_by_names(ctx.org_id, ctx.dt_id, [ctx.secret.name])
       assert ^secret = ctx.secret
     end
   end
@@ -77,31 +89,45 @@ defmodule Secrethub.DeploymentTargets.StoreTest do
     end
   end
 
-  describe "find_by_name/2" do
+  describe "find_by_name/3" do
     setup [:repo_checkout, :prepare_secret]
 
     test "when name is nil then return error with :not_found", ctx do
-      assert {:error, :not_found} = Store.find_by_name(ctx.org_id, nil)
+      assert {:error, :not_found} = Store.find_by_name(ctx.org_id, ctx.dt_id, nil)
     end
 
     test "when name is empty string then return error with :not_found", ctx do
-      assert {:error, :not_found} = Store.find_by_name(ctx.org_id, "")
+      assert {:error, :not_found} = Store.find_by_name(ctx.org_id, ctx.dt_id, "")
     end
 
     test "when organization ID is nil then return error with :not_found", ctx do
-      assert {:error, :not_found} = Store.find_by_name(nil, ctx.secret.name)
+      assert {:error, :not_found} = Store.find_by_name(nil, ctx.dt_id, ctx.secret.name)
     end
 
     test "when organization ID is empty string then return error with :not_found", ctx do
-      assert {:error, :not_found} = Store.find_by_name("", ctx.secret.name)
+      assert {:error, :not_found} = Store.find_by_name("", ctx.dt_id, ctx.secret.name)
+    end
+
+    test "when deployment target ID is nil then return error with :not_found", ctx do
+      assert {:error, :not_found} = Store.find_by_name(ctx.org_id, nil, ctx.secret.name)
+    end
+
+    test "when deployment target ID is empty string then return error with :not_found", ctx do
+      assert {:error, :not_found} = Store.find_by_name(ctx.org_id, "", ctx.secret.name)
+    end
+
+    test "when deployment target ID belongs to another target then return error with :not_found",
+         ctx do
+      assert {:error, :not_found} =
+               Store.find_by_name(ctx.org_id, Ecto.UUID.generate(), ctx.secret.name)
     end
 
     test "when secret is missing then return error with :not_found", ctx do
-      assert {:error, :not_found} = Store.find_by_name(ctx.org_id, "random_name")
+      assert {:error, :not_found} = Store.find_by_name(ctx.org_id, ctx.dt_id, "random_name")
     end
 
     test "when secret exists then return it", ctx do
-      assert {:ok, secret} = Store.find_by_name(ctx.org_id, ctx.secret.name)
+      assert {:ok, secret} = Store.find_by_name(ctx.org_id, ctx.dt_id, ctx.secret.name)
       assert ^secret = ctx.secret
     end
   end
