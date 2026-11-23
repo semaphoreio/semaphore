@@ -156,13 +156,6 @@ CREATE INDEX index_agents_on_org_and_assigned_job_id ON public.agents USING btre
 
 
 --
--- Name: index_agents_on_org_and_state; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_agents_on_org_and_state ON public.agents USING btree (organization_id, state);
-
-
---
 -- Name: index_agents_on_organization_id_and_token_hash; Type: INDEX; Schema: public; Owner: -
 --
 
