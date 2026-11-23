@@ -33,7 +33,8 @@ defmodule Zebra.Apis.PublicJobApi.Debug do
       machine_os_image: job.machine_os_image,
       execution_time_limit: execution_time_limit,
       name: name,
-      spec: spec
+      spec: spec,
+      deployment_target_id: job.deployment_target_id
     ]
 
     {:ok, params}
