@@ -296,6 +296,13 @@ func finishAssignedJob(ctx context.Context, publisher *amqp.Publisher, agent *mo
 				return err
 			}
 		}
+
+		return nil
+	}
+
+	// Without the mark the job stays assigned after a disconnect, and the agent cleaner fails it again.
+	if err := agent.MarkJobFinished(ctx); err != nil {
+		logging.ForAgent(agent).Errorf("Error marking %s as finished: %v", jobID, err)
 	}
 
 	return nil
