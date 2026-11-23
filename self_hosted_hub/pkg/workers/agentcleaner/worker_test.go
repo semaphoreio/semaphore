@@ -11,6 +11,8 @@ import (
 	"github.com/semaphoreio/semaphore/self_hosted_hub/pkg/amqp"
 	database "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/database"
 	models "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/models"
+	"github.com/sirupsen/logrus"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 )
 
@@ -207,9 +209,13 @@ func Test__TickIsLimitedToAMaximumOfBatches(t *testing.T) {
 	at := createAgentType(t, "s1-backlog")
 	createStuckAgents(t, at.Name, batchSize*maxBatchesPerTick+1, nil)
 
+	hook := logrustest.NewGlobal()
+	defer logrus.StandardLogger().ReplaceHooks(make(logrus.LevelHooks))
+
 	Tick(&fakeFinisher{})
 
 	require.Equal(t, 1, countAgents(t))
+	require.Contains(t, hook.LastEntry().Message, "Reached the limit of 10 batches")
 }
 
 func createStuckAgents(t *testing.T, agentTypeName string, count int, job *uuid.UUID) {

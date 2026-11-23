@@ -46,6 +46,8 @@ func Tick(publisher jobFinisher) {
 			return
 		}
 	}
+
+	log.Warnf("[%s] Reached the limit of %d batches in a tick, remaining agents are left for the next one", CleanerName, maxBatchesPerTick)
 }
 
 func deleteStuckAgents(db *gorm.DB, publisher jobFinisher) (int, int, error) {
