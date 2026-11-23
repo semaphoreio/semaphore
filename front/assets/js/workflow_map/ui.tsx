@@ -3,6 +3,7 @@ import type {} from "../custom_types/time_ago";
 import { useState } from "preact/hooks";
 import { Block, Job, Pipeline, STATUSES, STATUS_LABEL, Status, blockStatus, blockSummary, countJobs, formatAgo, formatDuration, stopReason } from "./model";
 import { focus, hits, now, query } from "./store";
+import { JOB_ROW_H, jobRows } from "./lines";
 
 export const StatusIcon = ({ status, size = 16 }: { status: Status, size?: number, }) => {
   const fill = { style: { fill: `var(--wf-map-${status})` } };
@@ -114,7 +115,7 @@ export const Duration = ({ start, end, running }: { start: number | null, end: n
   return <span className="wf-map-time">{seconds === null ? `--:--` : formatDuration(seconds)}</span>;
 };
 
-export const JobRow = ({ job }: { job: Job, }) => {
+export const JobRow = ({ job, text = job.name, height }: { job: Job, text?: string, height?: number, }) => {
   const h = hits.value;
   const f = focus.value;
   const flash = f?.kind === `job` && f.id === job.key;
@@ -123,17 +124,17 @@ export const JobRow = ({ job }: { job: Job, }) => {
     <>
       <StatusIcon status={job.status} size={14}/>
       <Name className="wf-map-job-name">
-        <Highlight text={job.name}/>
+        <Highlight text={text}/>
       </Name>
       {job.reused ? <span className="wf-map-time">reused</span> : <Duration start={job.startedAt} end={job.finishedAt} running={job.status === `running`}/>}
     </>
   );
   return job.id ? (
-    <a className={cls} href={`/jobs/${job.id}`} draggable={false} key={flash ? `${job.key}:${f.seq}` : job.key} onClick={(e) => e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || (e.preventDefault(), plainClick(e, () => window.location.assign(`/jobs/${job.id}`)))}>
+    <a className={cls} style={{ height }} title={text === job.name ? undefined : job.name} href={`/jobs/${job.id}`} draggable={false} key={flash ? `${job.key}:${f.seq}` : job.key} onClick={(e) => e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || (e.preventDefault(), plainClick(e, () => window.location.assign(`/jobs/${job.id}`)))}>
       {body}
     </a>
   ) : (
-    <div className={cls} key={job.key}>
+    <div className={cls} style={{ height }} title={text === job.name ? undefined : job.name} key={job.key}>
       {body}
     </div>
   );
@@ -198,9 +199,15 @@ export const BlockCard = ({ block, onHeaderClick }: { block: Block, onHeaderClic
         </Name>
         {block.after && <AfterInfo/>}
       </button>
-      {block.jobs.map((j) => (
-        <JobRow key={j.key} job={j}/>
-      ))}
+      {jobRows(block).rows.map((r) =>
+        r.job ? (
+          <JobRow key={r.job.key} job={r.job} text={r.text} height={r.h > JOB_ROW_H ? r.h : undefined}/>
+        ) : (
+          <div key={`group:${r.text}`} className="wf-map-job-group" style={{ height: r.h }} title={r.text}>
+            {r.text}
+          </div>
+        )
+      )}
     </div>
   );
 };

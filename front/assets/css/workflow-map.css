@@ -982,8 +982,26 @@ a.wf-map-job:hover {
 }
 
 .wf-map-job-name {
+  display: -webkit-box;
   flex: 1;
   line-height: 16px;
+  white-space: normal;
+  overflow-wrap: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.wf-map-job-group {
+  overflow: hidden;
+  margin: 0 -6px;
+  padding: 3px 6px 0;
+  border-top: 1px solid #E5E8EA;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  color: #677278;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .wf-map-job .wf-map-time {

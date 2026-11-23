@@ -7,7 +7,7 @@ import { MapLayout, Point, layoutMap, promotionLabel } from "./layout";
 import { PromoteButton } from "./promote";
 import { Chips, Search, Stepper } from "./toolbar";
 import { BlockCard, BlockSummary, Chevron, Counts, Duration, Name, PipelineTitle, StatusBar, StatusIcon, StopDetails, StopReason, Triggered, plainClick } from "./ui";
-import { BLOCK_GAP, JOB_ROW_H, blockSize, jobTop } from "./lines";
+import { BLOCK_GAP, blockSize, jobRow } from "./lines";
 
 const CARD = { w: 300, h: 72 };
 
@@ -459,8 +459,9 @@ const WorkflowMap = () => {
     if (p && (P.has(p.id) ? p.blocks === null || (p.blocks.length && !laidOpen) : laidOpen)) return false;
     const b = boxOf(wf, L, t.id);
     const blk = t.job === undefined ? undefined : wf.blocks.get(t.id);
-    if (!b || (blk && (!blk.jobs[t.job] || b.h < jobTop(t.job)))) return false;
-    const box = blk ? { x: b.x, y: b.y + jobTop(t.job), w: b.w, h: JOB_ROW_H } : b;
+    const row = blk?.jobs[t.job] && jobRow(blk, t.job);
+    if (!b || (blk && (!row || b.h < row.top))) return false;
+    const box = row ? { x: b.x, y: b.y + row.top, w: b.w, h: row.h } : b;
     const v = rf.getViewport();
     if (t.how === `open`) void rf.setViewport(nextView(`keep`, box, 1, v, vw, vh, t.at));
     const next = nextView(t.how, box, p ? 1.12 : 1.6, v, vw, vh, t.at);
