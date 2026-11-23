@@ -18,7 +18,7 @@ defmodule HooksProcessor.Hooks.Processing.GitWorker do
 
   alias LogTee, as: LT
 
-  import HooksProcessor.Hooks.Processing.Utils, only: [whitelisted?: 3]
+  import HooksProcessor.Hooks.Processing.Utils, only: [whitelisted?: 3, update_to_deleting_branch: 2]
 
   def start_link(id) do
     name = {:via, Registry, {WorkersRegistry, "git_worker-#{id}"}}
@@ -91,7 +91,8 @@ defmodule HooksProcessor.Hooks.Processing.GitWorker do
   end
 
   defp process_webhook("branch", webhook, repository, requester_id) do
-    with parsed_data <- GitPayload.extract_data(webhook.request, "branch"),
+    with action_type <- GitPayload.ref_action(webhook.request),
+         parsed_data <- GitPayload.extract_data(webhook.request, "branch"),
          parsed_data <- Map.put(parsed_data, :requester_id, requester_id),
          parsed_data <- Map.put(parsed_data, :yml_file, repository.pipeline_file),
          parsed_data <- Map.put(parsed_data, :owner, repository.owner),
@@ -99,7 +100,7 @@ defmodule HooksProcessor.Hooks.Processing.GitWorker do
          parsed_data <- Map.put(parsed_data, :provider, "git"),
          {:skip_ci, false} <- GitPayload.skip_ci_flag?(parsed_data),
          {:build, true} <- should_build?(repository, parsed_data, :BRANCHES) do
-      perform_actions(webhook, parsed_data)
+      perform_actions(webhook, parsed_data, action_type)
     else
       {:skip_ci, true, parsed_data} ->
         HooksQueries.update_webhook(webhook, parsed_data, "skip_ci")
@@ -113,7 +114,8 @@ defmodule HooksProcessor.Hooks.Processing.GitWorker do
   end
 
   defp process_webhook("tag", webhook, repository, requester_id) do
-    with parsed_data <- GitPayload.extract_data(webhook.request, "tag"),
+    with action_type <- GitPayload.ref_action(webhook.request),
+         parsed_data <- GitPayload.extract_data(webhook.request, "tag"),
          parsed_data <- Map.put(parsed_data, :yml_file, repository.pipeline_file),
          parsed_data <- Map.put(parsed_data, :owner, repository.owner),
          parsed_data <- Map.put(parsed_data, :repo_name, repository.name),
@@ -121,7 +123,7 @@ defmodule HooksProcessor.Hooks.Processing.GitWorker do
          parsed_data <- Map.put(parsed_data, :provider, "git"),
          {:skip_ci, false} <- GitPayload.skip_ci_flag?(parsed_data),
          {:build, true} <- should_build?(repository, parsed_data, :TAGS) do
-      perform_actions(webhook, parsed_data)
+      perform_actions(webhook, parsed_data, action_type)
     else
       {:skip_ci, true, parsed_data} ->
         HooksQueries.update_webhook(webhook, parsed_data, "skip_ci")
@@ -143,7 +145,13 @@ defmodule HooksProcessor.Hooks.Processing.GitWorker do
     {:error, "Unsupported type of the hook: '#{hook_type}' for webhook: #{inspect(webhook)}"}
   end
 
-  defp perform_actions(webhook, parsed_data) do
+  # A deleted ref carries no commit to build: the branch is archived and its
+  # running pipelines stopped, as for the other providers.
+  defp perform_actions(webhook, parsed_data, "deleted") do
+    update_to_deleting_branch(webhook, parsed_data)
+  end
+
+  defp perform_actions(webhook, parsed_data, _action_type) do
     with {:ok, branch} <- BranchClient.find_or_create(webhook, parsed_data),
          parsed_data <- Map.put(parsed_data, :branch_id, branch.id),
          {:ok, workflow} <- WorkflowClient.schedule_workflow(webhook, parsed_data),

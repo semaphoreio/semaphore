@@ -6,13 +6,14 @@ defmodule HooksProcessor.Hooks.Processing.GitWorkerTest do
   alias InternalApi.PlumberWF.ScheduleResponse
   alias HooksProcessor.Hooks.Model.HooksQueries
   alias HooksProcessor.Hooks.Processing.WorkersSupervisor
-  alias InternalApi.Branch.FindOrCreateResponse
+  alias InternalApi.Branch.{FindOrCreateResponse, DescribeResponse, ArchiveResponse}
   alias InternalApi.Projecthub
+  alias InternalApi.Plumber.TerminateAllResponse
 
   @grpc_port 50_047
 
   setup_all do
-    mocks = [ProjectHubServiceMock, BranchServiceMock, WorkflowServiceMock]
+    mocks = [AdminServiceMock, ProjectHubServiceMock, BranchServiceMock, WorkflowServiceMock]
     GRPC.Server.start(mocks, @grpc_port)
 
     Application.put_env(:hooks_processor, :projecthub_grpc_url, "localhost:#{inspect(@grpc_port)}")
@@ -502,6 +503,87 @@ defmodule HooksProcessor.Hooks.Processing.GitWorkerTest do
     assert webhook.git_ref == "refs/tags/v1.0.1"
 
     GrpcMock.verify!(ProjectHubServiceMock)
+  end
+
+  test "valid branch-deleted hook => branch is archived and no workflow is scheduled" do
+    params = %{
+      received_at: DateTime.utc_now(),
+      webhook: GitHooks.deleted_branch(),
+      repository_id: UUID.uuid4(),
+      project_id: UUID.uuid4(),
+      organization_id: UUID.uuid4(),
+      provider: "git"
+    }
+
+    assert {:ok, webhook} = HooksQueries.insert(params)
+
+    # setup mocks
+
+    ProjectHubServiceMock
+    |> GrpcMock.expect(:describe, fn req, _ ->
+      assert req.id == webhook.project_id
+
+      %Projecthub.DescribeResponse{
+        project: %{
+          metadata: %{
+            id: req.id,
+            org_id: UUID.uuid4()
+          },
+          spec: %{
+            repository: %{
+              owner: "semaphore",
+              name: "elixir-project",
+              pipeline_file: ".semaphore/semaphore.yml",
+              run_on: [:BRANCHES, :TAGS],
+              whitelist: %{tags: ["/v1.*/", "/release-.*/"]}
+            }
+          }
+        },
+        metadata: %{status: %{code: :OK}}
+      }
+    end)
+
+    AdminServiceMock
+    |> GrpcMock.expect(:terminate_all, fn req, _ ->
+      assert req.project_id == webhook.project_id
+      assert req.branch_name == "master"
+      assert req.reason == :BRANCH_DELETION
+
+      %TerminateAllResponse{response_status: %{code: :OK}}
+    end)
+
+    BranchServiceMock
+    |> GrpcMock.expect(:describe, fn req, _ ->
+      assert req.project_id == webhook.project_id
+      assert req.branch_name == "master"
+
+      %DescribeResponse{branch: %{id: webhook.id, name: "master"}, status: %{code: :OK}}
+    end)
+    |> GrpcMock.expect(:archive, fn req, _ ->
+      assert req.branch_id == webhook.id
+
+      %ArchiveResponse{status: %{code: :OK, message: "Success"}}
+    end)
+
+    # wait for worker to finish and check results
+
+    assert {:ok, pid} = WorkersSupervisor.start_worker_for_webhook(webhook.id)
+
+    Test.Helpers.wait_for_worker_to_finish(pid, 15_000)
+
+    assert {:ok, webhook} = HooksQueries.get_by_id(webhook.id)
+    assert webhook.state == "deleting_branch"
+    assert webhook.result == "OK"
+    assert webhook.wf_id == nil
+    assert webhook.ppl_id == nil
+    assert webhook.branch_id == webhook.id
+    assert webhook.commit_sha == "0000000000000000000000000000000000000000"
+    assert webhook.git_ref == "refs/heads/master"
+
+    GrpcMock.verify!(ProjectHubServiceMock)
+    GrpcMock.verify!(AdminServiceMock)
+    GrpcMock.verify!(BranchServiceMock)
+    GrpcMock.verify!(WorkflowServiceMock)
   end
 
   test "unsupported hook type => hook is recorded as failed" do
