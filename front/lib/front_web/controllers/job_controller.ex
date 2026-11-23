@@ -507,9 +507,9 @@ defmodule FrontWeb.JobController do
   defp debug_or_attach("failed"), do: "debug"
   defp debug_or_attach("stopped"), do: "debug"
 
-  # Nothing invalidates these entries when project permissions change, so a denial expires
-  # quickly and a newly granted permission shows up on the next poll. Attach permission
-  # also depends on the user's deployment target access, so entries are per user.
+  # Nothing invalidates these entries when project permissions change, so a denial (or a
+  # failed check) expires quickly and a new grant shows up on the next poll or page load.
+  # Attach also depends on the user's deployment target access, so entries are per user.
   @debug_permission_ttl Application.compile_env(:front, :debug_permission_ttl,
                           allowed: :timer.minutes(5),
                           denied: :timer.seconds(10)
@@ -522,7 +522,12 @@ defmodule FrontWeb.JobController do
 
     case Cacheman.get(:front, key) do
       {:ok, nil} ->
-        {:ok, allowed, _} = check_debug_permission(action, job_id, user_id)
+        allowed =
+          case check_debug_permission(action, job_id, user_id) do
+            {:ok, allowed, _} -> allowed
+            {:error, _, _} -> false
+          end
+
         Cacheman.put(:front, key, encode(allowed), ttl: debug_permission_ttl(allowed))
 
         {:ok, allowed}
