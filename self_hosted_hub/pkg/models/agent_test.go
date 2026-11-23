@@ -11,6 +11,7 @@ import (
 	database "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/database"
 	securetoken "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/securetoken"
 	require "github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func Test__FindAgentByToken(t *testing.T) {
@@ -489,6 +490,33 @@ func Test__StopJob(t *testing.T) {
 		agent, err := FindAgentByToken(orgID.String(), securetoken.Hash(token))
 		require.NoError(t, err)
 		require.WithinDuration(t, now, *agent.JobStopRequestedAt, 100*time.Millisecond)
+	})
+
+	t.Run("keeps columns changed after the agent was read", func(t *testing.T) {
+		jobID, err := ForcefullyOccupyAgentWithJobID(agent)
+		require.NoError(t, err)
+
+		changed := false
+		callback := "test:change_agent_after_read"
+		err = database.Conn().Callback().Query().After("gorm:query").Register(callback, func(tx *gorm.DB) {
+			if changed || tx.Statement.Table != "agents" {
+				return
+			}
+
+			changed = true
+			tx.Session(&gorm.Session{NewDB: true}).
+				Exec("update agents set job_finished_at = now() where assigned_job_id = ?", jobID)
+		})
+		require.NoError(t, err)
+		defer func() { _ = database.Conn().Callback().Query().Remove(callback) }()
+
+		require.NoError(t, StopJob(orgID, jobID))
+		require.True(t, changed)
+
+		agent, err := FindAgentByToken(orgID.String(), securetoken.Hash(token))
+		require.NoError(t, err)
+		require.NotNil(t, agent.JobStopRequestedAt)
+		require.NotNil(t, agent.JobFinishedAt)
 	})
 }
 
