@@ -407,14 +407,7 @@ func resolveOperationID(headers http.Header, explicit string) string {
 }
 
 func detectRemoteAddress(headers http.Header) string {
-	if xff := strings.TrimSpace(headers.Get("X-Forwarded-For")); xff != "" {
-		parts := strings.Split(xff, ",")
-		if len(parts) > 0 {
-			return strings.TrimSpace(parts[0])
-		}
-	}
-
-	return strings.TrimSpace(headers.Get("X-Real-Ip"))
+	return logging.ClientIP(headers)
 }
 
 func setPublisher(publisher EventPublisher) {
