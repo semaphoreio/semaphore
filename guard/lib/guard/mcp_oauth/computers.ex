@@ -10,6 +10,10 @@ defmodule Guard.McpOAuth.Computers do
   - sub, semaphore_user_id: the user
   - scope: "computers"
 
+  MCP clients, registered like any other, get the same tokens when they ask
+  for one of semaphore.computer's MCP servers (RFC 8707 `resource`), with the
+  resource as aud. COMPUTERS_MCP_RESOURCES (comma-separated) lists them.
+
   Configured by COMPUTERS_OAUTH_CLIENT_ID, COMPUTERS_OAUTH_CLIENT_SECRET,
   COMPUTERS_OAUTH_REDIRECT_URIS (comma-separated), COMPUTERS_OAUTH_AUDIENCE and
   COMPUTERS_OAUTH_SIGNING_KEY (a PEM RSA private key; `\\n` stands for a
@@ -58,6 +62,14 @@ defmodule Guard.McpOAuth.Computers do
 
   def valid_secret?(_), do: false
 
+  @doc "Whether resource is one of semaphore.computer's MCP servers."
+  @spec mcp_resource?(String.t() | nil) :: boolean()
+  def mcp_resource?(resource) when is_binary(resource) do
+    config() != :error and resource in list_env("COMPUTERS_MCP_RESOURCES")
+  end
+
+  def mcp_resource?(_), do: false
+
   @spec ttl_seconds() :: pos_integer()
   def ttl_seconds do
     case Integer.parse(System.get_env("COMPUTERS_OAUTH_ACCESS_TOKEN_TTL_SECONDS") || "") do
@@ -66,16 +78,19 @@ defmodule Guard.McpOAuth.Computers do
     end
   end
 
-  @doc "An access token for semaphore.computer's API, issued to user_id."
-  @spec create_token(String.t()) :: {:ok, String.t()} | {:error, term()}
-  def create_token(user_id) do
+  @doc """
+  An access token for semaphore.computer's API, issued to user_id: for the
+  MCP server audience names, or else for the API.
+  """
+  @spec create_token(String.t(), String.t() | nil) :: {:ok, String.t()} | {:error, term()}
+  def create_token(user_id, audience \\ nil) do
     case config() do
       {:ok, config} ->
         now = DateTime.utc_now() |> DateTime.to_unix()
 
         claims = %{
           "iss" => JWT.issuer(),
-          "aud" => config.audience,
+          "aud" => audience || config.audience,
           "sub" => user_id,
           "semaphore_user_id" => user_id,
           "scope" => @scope,
@@ -118,11 +133,7 @@ defmodule Guard.McpOAuth.Computers do
     client_secret = env("COMPUTERS_OAUTH_CLIENT_SECRET")
     audience = env("COMPUTERS_OAUTH_AUDIENCE")
 
-    redirect_uris =
-      env("COMPUTERS_OAUTH_REDIRECT_URIS")
-      |> String.split(",")
-      |> Enum.map(&String.trim/1)
-      |> Enum.reject(&(&1 == ""))
+    redirect_uris = list_env("COMPUTERS_OAUTH_REDIRECT_URIS")
 
     with false <- Enum.any?([client_id, client_secret, audience], &(&1 == "")),
          false <- redirect_uris == [],
@@ -142,6 +153,14 @@ defmodule Guard.McpOAuth.Computers do
   end
 
   defp env(name), do: System.get_env(name) || ""
+
+  defp list_env(name) do
+    name
+    |> env()
+    |> String.split(",")
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+  end
 
   defp signing_key(""), do: :error
 
