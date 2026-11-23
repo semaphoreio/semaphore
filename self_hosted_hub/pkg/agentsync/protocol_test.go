@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test__FinishedJobOfSingleJobAgent(t *testing.T) {
+func Test__FinishedJobMark(t *testing.T) {
 	database.TruncateTables()
 
 	publisher, err := amqp.NewPublisher("amqp://guest:guest@rabbitmq:5672")
@@ -24,8 +24,8 @@ func Test__FinishedJobOfSingleJobAgent(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	finishJob := func(ctx context.Context, t *testing.T, name string) (*models.Agent, error) {
-		agent, _, err := models.RegisterAgent(orgID, "s1-test", name, models.AgentMetadata{SingleJob: true})
+	finishJob := func(ctx context.Context, t *testing.T, name string, singleJob bool) (*models.Agent, error) {
+		agent, _, err := models.RegisterAgent(orgID, "s1-test", name, models.AgentMetadata{SingleJob: singleJob})
 		require.NoError(t, err)
 
 		jobID, err := models.ForcefullyOccupyAgentWithJobID(agent)
@@ -44,7 +44,7 @@ func Test__FinishedJobOfSingleJobAgent(t *testing.T) {
 	}
 
 	t.Run("disconnect clears the job when the finished callback was published", func(t *testing.T) {
-		agent, err := finishJob(context.Background(), t, "published")
+		agent, err := finishJob(context.Background(), t, "published", true)
 
 		require.NoError(t, err)
 		require.Nil(t, agent.AssignedJobID)
@@ -54,10 +54,18 @@ func Test__FinishedJobOfSingleJobAgent(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 
-		agent, err := finishJob(ctx, t, "not-published")
+		agent, err := finishJob(ctx, t, "not-published", true)
 
 		require.Error(t, err)
 		require.NotNil(t, agent.AssignedJobID)
+		require.Nil(t, agent.JobFinishedAt)
+	})
+
+	t.Run("an agent that takes more jobs is released and not marked", func(t *testing.T) {
+		agent, err := finishJob(context.Background(), t, "multi-job", false)
+
+		require.NoError(t, err)
+		require.Nil(t, agent.AssignedJobID)
 		require.Nil(t, agent.JobFinishedAt)
 	})
 }
