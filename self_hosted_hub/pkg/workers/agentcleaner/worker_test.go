@@ -1,10 +1,13 @@
 package agentcleaner
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/self_hosted_hub/pkg/amqp"
 	database "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/database"
 	models "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/models"
@@ -133,6 +136,99 @@ func Test__DeletingStuckAgents(t *testing.T) {
 			assertAgentDoesntExists(t, agent.ID.String())
 		}
 	})
+}
+
+type fakeFinisher struct {
+	calls int
+	err   error
+}
+
+func (f *fakeFinisher) HandleJobFinished(_ context.Context, _ string, _ string) error {
+	f.calls++
+	return f.err
+}
+
+func Test__FinishedJobsAreNotFinalizedAgain(t *testing.T) {
+	database.TruncateTables()
+
+	at := createAgentType(t, "s1-finished")
+	when := time.Now().Add(-20 * time.Minute)
+	job := database.UUID()
+
+	agent := createAgent(t, at.Name)
+	agent.LastSyncAt = &when
+	agent.AssignedJobID = &job
+	agent.JobFinishedAt = &when
+	updateAgent(t, agent)
+
+	finisher := &fakeFinisher{}
+	Tick(finisher)
+
+	assertAgentDoesntExists(t, agent.ID.String())
+	require.Zero(t, finisher.calls)
+}
+
+func Test__OldestAgentsAreCleanedFirst(t *testing.T) {
+	database.TruncateTables()
+
+	at := createAgentType(t, "s1-oldest")
+	createStuckAgents(t, at.Name, batchSize, nil)
+
+	longAgo := time.Now().Add(-30 * time.Minute)
+	oldest := createAgent(t, at.Name)
+	oldest.LastSyncAt = &longAgo
+	updateAgent(t, oldest)
+
+	found, deleted, err := deleteStuckAgents(database.Conn(), &fakeFinisher{})
+
+	require.NoError(t, err)
+	require.Equal(t, batchSize, found)
+	require.Equal(t, batchSize, deleted)
+	assertAgentDoesntExists(t, oldest.ID.String())
+}
+
+func Test__TickStopsWhenNoAgentOfABatchIsDeleted(t *testing.T) {
+	database.TruncateTables()
+
+	at := createAgentType(t, "s1-failing")
+	job := database.UUID()
+	createStuckAgents(t, at.Name, batchSize, &job)
+
+	finisher := &fakeFinisher{err: errors.New("publishing failed")}
+	Tick(finisher)
+
+	require.Equal(t, batchSize, finisher.calls)
+	require.Equal(t, batchSize, countAgents(t))
+}
+
+func Test__TickIsLimitedToAMaximumOfBatches(t *testing.T) {
+	database.TruncateTables()
+
+	at := createAgentType(t, "s1-backlog")
+	createStuckAgents(t, at.Name, batchSize*maxBatchesPerTick+1, nil)
+
+	Tick(&fakeFinisher{})
+
+	require.Equal(t, 1, countAgents(t))
+}
+
+func createStuckAgents(t *testing.T, agentTypeName string, count int, job *uuid.UUID) {
+	for i := 0; i < count; i++ {
+		createAgent(t, agentTypeName)
+	}
+
+	when := time.Now().Add(-20 * time.Minute)
+	err := database.Conn().Model(&models.Agent{}).
+		Where("agent_type_name = ?", agentTypeName).
+		Updates(map[string]interface{}{"last_sync_at": when, "assigned_job_id": job}).Error
+	require.NoError(t, err)
+}
+
+func countAgents(t *testing.T) int {
+	var count int64
+	require.NoError(t, database.Conn().Model(&models.Agent{}).Count(&count).Error)
+
+	return int(count)
 }
 
 func createAgentType(t *testing.T, name string) *models.AgentType {

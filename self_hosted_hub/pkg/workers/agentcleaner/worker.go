@@ -7,7 +7,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/semaphoreio/semaphore/self_hosted_hub/pkg/amqp"
 	database "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/database"
 	models "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/models"
 	"gorm.io/gorm"
@@ -16,7 +15,14 @@ import (
 const CleanerName = "self-hosted-agents-cleaner"
 const batchSize = 100
 
-func Start(publisher *amqp.Publisher) {
+// Bounds the callbacks published in one tick when a backlog has built up.
+const maxBatchesPerTick = 10
+
+type jobFinisher interface {
+	HandleJobFinished(ctx context.Context, jobID string, result string) error
+}
+
+func Start(publisher jobFinisher) {
 	initialDelay()
 	for {
 		Tick(publisher)
@@ -24,8 +30,8 @@ func Start(publisher *amqp.Publisher) {
 	}
 }
 
-func Tick(publisher *amqp.Publisher) {
-	for {
+func Tick(publisher jobFinisher) {
+	for i := 0; i < maxBatchesPerTick; i++ {
 		found, deleted := 0, 0
 
 		// The advisory lock makes sure that only one cleaner is working at a time
@@ -42,20 +48,21 @@ func Tick(publisher *amqp.Publisher) {
 	}
 }
 
-func deleteStuckAgents(db *gorm.DB, publisher *amqp.Publisher) (int, int, error) {
+func deleteStuckAgents(db *gorm.DB, publisher jobFinisher) (int, int, error) {
 	oneMinAgo := time.Now().Add(-1 * time.Minute)
 	threeMinsAgo := time.Now().Add(-3 * time.Minute)
 	fifteenMinsAgo := time.Now().Add(-15 * time.Minute)
 
 	// Find all agents that should be cleaned up in a single query
 	type AgentInfo struct {
-		ID            string  `gorm:"column:id"`
-		AssignedJobID *string `gorm:"column:assigned_job_id"`
+		ID            string     `gorm:"column:id"`
+		AssignedJobID *string    `gorm:"column:assigned_job_id"`
+		JobFinishedAt *time.Time `gorm:"column:job_finished_at"`
 	}
 
 	var agents []AgentInfo
 	err := db.Model(&models.Agent{}).
-		Select("id, assigned_job_id::text as assigned_job_id").
+		Select("id, assigned_job_id::text as assigned_job_id, job_finished_at").
 		Where("state = ? OR assigned_job_id IS NOT NULL", models.AgentStateRegistered).
 		Where(
 			"(last_sync_at IS NULL AND created_at < ?) OR (last_sync_at < ? AND assigned_job_id IS NULL) OR (last_sync_at < ?)",
@@ -82,8 +89,9 @@ func deleteStuckAgents(db *gorm.DB, publisher *amqp.Publisher) (int, int, error)
 	ctx := context.Background()
 
 	for _, agent := range agents {
-		// For agents with assigned jobs, handle job finalization first
-		if agent.AssignedJobID != nil {
+		// For agents with assigned jobs, handle job finalization first,
+		// unless the finished callback of the job was already published.
+		if agent.AssignedJobID != nil && agent.JobFinishedAt == nil {
 			jobID := *agent.AssignedJobID
 			log.Printf("[%s] Agent %s with job %s is being cleaned, marking job as failed", CleanerName, agent.ID, jobID)
 
