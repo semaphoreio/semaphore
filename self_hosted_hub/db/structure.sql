@@ -89,7 +89,8 @@ CREATE TABLE public.agents (
     interrupted_at timestamp without time zone,
     interruption_grace_period integer DEFAULT 0,
     state text DEFAULT 'registered'::text,
-    disconnected_at timestamp without time zone
+    disconnected_at timestamp without time zone,
+    job_finished_at timestamp without time zone
 );
 
 
@@ -148,6 +149,34 @@ ALTER TABLE ONLY public.schema_migrations
 
 
 --
+-- Name: index_agents_on_org_and_assigned_job_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agents_on_org_and_assigned_job_id ON public.agents USING btree (organization_id, assigned_job_id) WHERE (assigned_job_id IS NOT NULL);
+
+
+--
+-- Name: index_agents_on_org_and_state; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agents_on_org_and_state ON public.agents USING btree (organization_id, state);
+
+
+--
+-- Name: index_agents_on_organization_id_and_token_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agents_on_organization_id_and_token_hash ON public.agents USING btree (organization_id, token_hash);
+
+
+--
+-- Name: ix_agents_registered_org_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_agents_registered_org_type ON public.agents USING btree (organization_id, agent_type_name) WHERE (state = 'registered'::text);
+
+
+--
 -- Name: uix_agent_name_in_orgs; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -166,13 +195,6 @@ CREATE INDEX uix_agent_orgs ON public.agents USING btree (organization_id, agent
 --
 
 CREATE INDEX uix_agent_types_orgs ON public.agent_types USING btree (organization_id);
-
-
---
--- Name: uix_occupation_req_org_type; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX uix_occupation_req_org_type ON public.agents USING btree (organization_id, agent_type_name);
 
 
 --
@@ -218,7 +240,7 @@ SET row_security = off;
 --
 
 COPY public.schema_migrations (version, dirty) FROM stdin;
-20230930195246	f
+20261123120400	f
 \.
 
 
