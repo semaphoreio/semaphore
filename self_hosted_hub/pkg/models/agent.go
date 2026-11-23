@@ -606,9 +606,9 @@ func StopJob(orgID uuid.UUID, jobID uuid.UUID) error {
 		}
 
 		now := time.Now()
-		agent.JobStopRequestedAt = &now
 
-		return db.Save(agent).Error
+		// Saving the whole row would overwrite columns changed since it was read.
+		return db.Model(&agent).Update("job_stop_requested_at", &now).Error
 	})
 
 	if err != nil {
