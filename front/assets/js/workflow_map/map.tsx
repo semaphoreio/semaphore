@@ -59,12 +59,13 @@ export function nextView(how: `fit` | `focus` | `keep` | `keepRight` | `open`, b
     return { x: kept.x + into(box.x * v.zoom + kept.x, box.w, vw), y: kept.y + into(box.y * v.zoom + kept.y, box.h, vh), zoom: v.zoom };
   }
   const fit = Math.max(0.1, Math.min(1, vw / (box.w * pad), vh / (box.h * pad)));
-  const zoom = how === `fit` ? fit : Math.max(v.zoom, Math.min(READABLE, fit));
+  const wide = Math.max(0.1, Math.min(1, vw / (box.w * pad)));
+  const zoom = how === `fit` ? Math.max(fit, Math.min(wide, READABLE)) : Math.max(v.zoom, Math.min(READABLE, fit));
   const left = box.x * v.zoom + v.x;
   const top = box.y * v.zoom + v.y;
   const shown = left >= EDGE && top >= EDGE && left + box.w * v.zoom <= vw - EDGE && top + box.h * v.zoom <= vh - EDGE;
   if (how === `focus` && zoom === v.zoom && shown) return null;
-  const place = (start: number, size: number, room: number) => (how === `focus` && size * zoom > room - 2 * EDGE ? EDGE - start * zoom : room / 2 - (start + size / 2) * zoom);
+  const place = (start: number, size: number, room: number) => (size * zoom > (how === `focus` ? room - 2 * EDGE : room) ? EDGE - start * zoom : room / 2 - (start + size / 2) * zoom);
   return { x: place(box.x, box.w, vw), y: place(box.y, box.h, vh), zoom };
 }
 
@@ -448,11 +449,19 @@ const WorkflowMap = () => {
     if (next) openBlocks.value = next;
   }, [wf, P]);
 
+  const fitAll = (L: MapLayout) => {
+    const boxes = [...L.pipelines.values()];
+    const x = Math.min(...boxes.map((b) => b.x));
+    const y = Math.min(...boxes.map((b) => b.y));
+    const box = { x, y, w: Math.max(...boxes.map((b) => b.x + b.w)) - x, h: Math.max(...boxes.map((b) => b.y + b.h)) - y };
+    void rf.setViewport(nextView(`fit`, box, 1.12, rf.getViewport(), vw, vh));
+  };
+
   const go = (L: MapLayout, t: Target) => {
     if (!vw || !vh) return false;
     const p = wf.pipelineById.get(t.id);
     if (t.how === `all` || (!p && !wf.blocks.has(t.id))) {
-      void rf.fitView({ padding: 0.06, maxZoom: 1 });
+      fitAll(L);
       return true;
     }
     const laidOpen = p && L.pipelines.get(p.id)?.open;
@@ -522,6 +531,7 @@ const WorkflowMap = () => {
       edgeTypes={edgeTypes}
       minZoom={0.05}
       maxZoom={2}
+      panOnScroll
       onlyRenderVisibleElements
       nodesConnectable={false}
       nodesDraggable={false}
@@ -549,7 +559,7 @@ const WorkflowMap = () => {
       />
       <Panel position="top-right">
         <div className="wf-map-tools">
-          <button className="btn btn-secondary btn-small" onClick={() => void rf.fitView({ padding: 0.06 })}>
+          <button className="btn btn-secondary btn-small" onClick={() => fitAll(layout)}>
             Fit workflow
           </button>
           <button className="btn btn-secondary btn-small" onClick={() => (aim({ id: ``, how: `all` }), (openPipelines.value = new Set(wf.pipelines.map((p) => p.id))))}>

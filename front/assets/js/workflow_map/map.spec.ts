@@ -121,6 +121,11 @@ describe(`nextView`, () => {
     expect(nextView(`fit`, block, 1.6, { x: 0, y: 0, zoom: 0.2 }, vw, vh).zoom).to.equal(1);
   });
 
+  test(`fits a box too tall for the screen by its width, at no less than 75%, from its top`, () => {
+    expect(nextView(`fit`, { x: 0, y: 0, w: 1000, h: 6000 }, 1, { x: 0, y: 0, zoom: 1 }, vw, vh)).to.deep.equal({ x: 125, y: 40, zoom: 0.75 });
+    expect(nextView(`fit`, { x: 0, y: 0, w: 4000, h: 6000 }, 1, { x: 0, y: 0, zoom: 1 }, vw, vh)).to.deep.equal({ x: 0, y: 40, zoom: 0.25 });
+  });
+
   test(`leaves the map alone when the focused box is on screen and readable`, () => {
     expect(nextView(`focus`, block, 1.6, { x: 0, y: 0, zoom: 1 }, vw, vh)).to.equal(null);
     expect(nextView(`focus`, block, 1.6, { x: 0, y: 0, zoom: 0.8 }, vw, vh)).to.equal(null);
