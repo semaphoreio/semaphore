@@ -46,7 +46,13 @@ defmodule Zebra.Apis.PublicJobApi do
       Logger.info("Getting debug SSH key #{org_id} #{user_id} #{req.job_id}")
 
       with {:ok, job} <- Getter.find_job_in_db(org_id, user_id, req.job_id),
-           {:ok, true} <- can_use_secrets?(org_id, Job.decode_spec(job.spec), operation(job)),
+           {:ok, true} <-
+             can_use_secrets?(
+               org_id,
+               Job.decode_spec(job.spec),
+               operation(job),
+               job.deployment_target_id
+             ),
            {:ok, true} <- can_get_job_ssh_key?(org_id, job) do
         Getter.get_job_debug_ssh_key(job)
       else
@@ -96,7 +102,7 @@ defmodule Zebra.Apis.PublicJobApi do
 
       with {:ok, true} <- can_start_pipeline?(org_id, user_id, project_id),
            {:ok, true} <- can_access_project?(org_id, user_id, project_id),
-           {:ok, true} <- can_use_secrets?(org_id, req.spec, :debug),
+           {:ok, true} <- can_use_secrets?(org_id, req.spec, :debug, nil),
            {:ok, job} <- Job.create(job_params) do
         Serializer.serialize(job)
       else
@@ -187,7 +193,13 @@ defmodule Zebra.Apis.PublicJobApi do
              {:ok, true} <- can_start_pipeline?(org_id, user_id, job.project_id),
              {:ok, true} <- can_create_debug_job?(org_id, job),
              {:ok, true} <- DeploymentTargets.can_run?(job, user_id),
-             {:ok, true} <- can_use_secrets?(org_id, Job.decode_spec(job.spec), :debug),
+             {:ok, true} <-
+               can_use_secrets?(
+                 org_id,
+                 Job.decode_spec(job.spec),
+                 :debug,
+                 job.deployment_target_id
+               ),
              {:ok, job_params} <- DebugParams.debug_job_params(job, req.duration),
              {:ok, debug_job} <- Job.create(job_params),
              {:ok, _debug} <-
@@ -246,10 +258,11 @@ defmodule Zebra.Apis.PublicJobApi do
     end
   end
 
-  defp can_use_secrets?(org_id, spec, :debug_empty), do: can_use_secrets?(org_id, spec, :debug)
+  defp can_use_secrets?(org_id, spec, :debug_empty, deployment_target_id),
+    do: can_use_secrets?(org_id, spec, :debug, deployment_target_id)
 
-  defp can_use_secrets?(org_id, spec, op) do
-    case Secrets.validate_job_secrets(org_id, spec, op) do
+  defp can_use_secrets?(org_id, spec, op, deployment_target_id) do
+    case Secrets.validate_job_secrets(org_id, spec, op, deployment_target_id) do
       {:ok, true} ->
         {:ok, true}
 

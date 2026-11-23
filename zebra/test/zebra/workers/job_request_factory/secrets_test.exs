@@ -14,6 +14,15 @@ defmodule Zebra.Workers.JobRequestFactory.SecretsTest do
                  allowed_secrets: []
                )
            )
+  @job_spec_with_secret Semaphore.Jobs.V1alpha.Job.Spec.new(
+                          project_id: @project_id,
+                          agent:
+                            Semaphore.Jobs.V1alpha.Job.Spec.Agent.new(
+                              containers: [],
+                              image_pull_secrets: []
+                            ),
+                          secrets: [Semaphore.Jobs.V1alpha.Job.Spec.Secret.new(name: "dt-secret")]
+                        )
   @hook InternalApi.RepoProxy.Hook.new(
           git_ref_type: InternalApi.RepoProxy.Hook.Type.value(:BRANCH),
           hook_id: Ecto.UUID.generate(),
@@ -987,6 +996,50 @@ defmodule Zebra.Workers.JobRequestFactory.SecretsTest do
     end
   end
 
+  describe "deployment target on secrethub requests" do
+    test ".load sends the job's deployment target" do
+      deployment_target_id = Ecto.UUID.generate()
+      stub_checkout_many_and_report_target()
+
+      Secrets.load(
+        @org_id,
+        @job_id,
+        @job_spec_with_secret,
+        @project,
+        @hook,
+        :pipeline_job,
+        deployment_target_id
+      )
+
+      assert_received {:deployment_target_id, ^deployment_target_id}
+    end
+
+    test ".load sends an empty deployment target when the job has none" do
+      stub_checkout_many_and_report_target()
+
+      Secrets.load(@org_id, @job_id, @job_spec_with_secret, @project, @hook)
+
+      assert_received {:deployment_target_id, ""}
+    end
+
+    test ".validate_job_secrets sends the job's deployment target" do
+      deployment_target_id = Ecto.UUID.generate()
+      stub_describe_many_and_report_target()
+
+      Secrets.validate_job_secrets(@org_id, @job_spec_with_secret, :debug, deployment_target_id)
+
+      assert_received {:deployment_target_id, ^deployment_target_id}
+    end
+
+    test ".validate_job_secrets sends an empty deployment target when the job has none" do
+      stub_describe_many_and_report_target()
+
+      Secrets.validate_job_secrets(@org_id, @job_spec_with_secret, :debug)
+
+      assert_received {:deployment_target_id, ""}
+    end
+  end
+
   describe ".can_use_secret?" do
     test "when there are no secrets used in job => returns true" do
       job_spec =
@@ -1127,6 +1180,24 @@ defmodule Zebra.Workers.JobRequestFactory.SecretsTest do
                true
              }
     end
+  end
+
+  defp stub_checkout_many_and_report_target do
+    test_pid = self()
+
+    GrpcMock.stub(Support.FakeServers.SecretsApi, :checkout_many, fn req, _ ->
+      send(test_pid, {:deployment_target_id, req.deployment_target_id})
+      InternalApi.Secrethub.CheckoutManyResponse.new(secrets: [])
+    end)
+  end
+
+  defp stub_describe_many_and_report_target do
+    test_pid = self()
+
+    GrpcMock.stub(Support.FakeServers.SecretsApi, :describe_many, fn req, _ ->
+      send(test_pid, {:deployment_target_id, req.deployment_target_id})
+      InternalApi.Secrethub.DescribeManyResponse.new(secrets: [])
+    end)
   end
 
   defp enable_feature(type), do: enable_features(List.wrap(type))

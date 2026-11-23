@@ -28,6 +28,7 @@ config :joken, current_time_adapter: Support.TimeMock
 
 config :front, guard_grpc_timeout: 1_000
 config :front, permission_patrol_timeout: 1_000
+config :front, :debug_permission_ttl, allowed: :timer.minutes(5), denied: 100
 
 config :junit_formatter,
   automatic_create_dir?: true,
