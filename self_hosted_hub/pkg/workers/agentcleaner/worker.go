@@ -70,7 +70,8 @@ func deleteStuckAgents(db *gorm.DB, publisher jobFinisher) (int, int, error) {
 			"(last_sync_at IS NULL AND created_at < ?) OR (last_sync_at < ? AND assigned_job_id IS NULL) OR (last_sync_at < ?)",
 			oneMinAgo, threeMinsAgo, fifteenMinsAgo,
 		).
-		Order("last_sync_at ASC NULLS FIRST").
+		// Agents that need no callback come first, so a failing publisher cannot hold them back.
+		Order("(assigned_job_id IS NOT NULL AND job_finished_at IS NULL), last_sync_at ASC NULLS FIRST").
 		Limit(batchSize).
 		Scan(&agents).Error
 

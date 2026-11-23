@@ -203,6 +203,32 @@ func Test__TickStopsWhenNoAgentOfABatchIsDeleted(t *testing.T) {
 	require.Equal(t, batchSize, countAgents(t))
 }
 
+func Test__FailingCallbacksDoNotHoldBackOtherAgents(t *testing.T) {
+	database.TruncateTables()
+
+	withJob := createAgentType(t, "s1-with-job")
+	job := database.UUID()
+	createStuckAgents(t, withJob.Name, batchSize, &job)
+
+	longAgo := time.Now().Add(-40 * time.Minute)
+	err := database.Conn().Model(&models.Agent{}).
+		Where("agent_type_name = ?", withJob.Name).
+		Update("last_sync_at", longAgo).Error
+	require.NoError(t, err)
+
+	idle := createAgentType(t, "s1-idle")
+	createStuckAgents(t, idle.Name, batchSize/2, nil)
+
+	Tick(&fakeFinisher{err: errors.New("publishing failed")})
+
+	require.Equal(t, batchSize, countAgents(t))
+
+	var idleLeft int64
+	err = database.Conn().Model(&models.Agent{}).Where("agent_type_name = ?", idle.Name).Count(&idleLeft).Error
+	require.NoError(t, err)
+	require.Zero(t, idleLeft)
+}
+
 func Test__TickIsLimitedToAMaximumOfBatches(t *testing.T) {
 	database.TruncateTables()
 
