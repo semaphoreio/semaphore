@@ -191,13 +191,6 @@ CREATE INDEX uix_agent_types_orgs ON public.agent_types USING btree (organizatio
 
 
 --
--- Name: uix_occupation_req_org_type; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX uix_occupation_req_org_type ON public.agents USING btree (organization_id, agent_type_name);
-
-
---
 -- Name: agents agents_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -240,7 +233,7 @@ SET row_security = off;
 --
 
 COPY public.schema_migrations (version, dirty) FROM stdin;
-20261123120300	f
+20261123120400	f
 \.
 
 
