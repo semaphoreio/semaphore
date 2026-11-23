@@ -446,6 +446,7 @@ func Test__AgentLookupIndexes(t *testing.T) {
 	indexes := map[string]string{
 		"index_agents_on_org_and_assigned_job_id": "(organization_id, assigned_job_id) WHERE (assigned_job_id IS NOT NULL)",
 		"index_agents_on_org_and_state":           "(organization_id, state)",
+		"ix_agents_registered_org_type":           "(organization_id, agent_type_name) WHERE (state = 'registered'::text)",
 	}
 
 	for name, definition := range indexes {
