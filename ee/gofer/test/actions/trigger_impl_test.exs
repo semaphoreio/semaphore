@@ -290,7 +290,7 @@ defmodule Gofer.Actions.TriggerImplTest do
 
     assert String.starts_with?(
              message,
-             "Triggering promotion with deployment target failed: deployment target not found"
+             "Triggering promotion with deployment target failed: deployment target 'non-existent' not found"
            )
   end
 
@@ -318,7 +318,7 @@ defmodule Gofer.Actions.TriggerImplTest do
 
     assert String.starts_with?(
              message,
-             "Triggering promotion with deployment target failed: deployment target is syncing"
+             "Triggering promotion with deployment target failed: deployment target 'production' is syncing"
            )
   end
 
@@ -347,7 +347,7 @@ defmodule Gofer.Actions.TriggerImplTest do
 
     assert String.starts_with?(
              message,
-             "Triggering promotion with deployment target failed: deployment target is corrupted"
+             "Triggering promotion with deployment target failed: deployment target 'production' is corrupted"
            )
   end
 
@@ -376,7 +376,7 @@ defmodule Gofer.Actions.TriggerImplTest do
 
     assert String.starts_with?(
              message,
-             "Triggering promotion with deployment target failed: deployment target is cordoned"
+             "Triggering promotion with deployment target failed: deployment target 'production' is cordoned"
            )
   end
 
@@ -407,7 +407,7 @@ defmodule Gofer.Actions.TriggerImplTest do
 
     assert String.starts_with?(
              message,
-             "Triggering promotion with deployment target failed: object not allowed"
+             "Triggering promotion with deployment target failed: object not allowed: deployment target 'production' does not accept tag 'v1'"
            )
   end
 
@@ -436,7 +436,7 @@ defmodule Gofer.Actions.TriggerImplTest do
 
     assert String.starts_with?(
              message,
-             "Triggering promotion with deployment target failed: subject not allowed"
+             "Triggering promotion with deployment target failed: subject not allowed: 'user2' is not allowed to trigger deployment target 'production'"
            )
   end
 
