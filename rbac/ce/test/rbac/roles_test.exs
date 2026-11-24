@@ -6,9 +6,9 @@ defmodule Rbac.RolesTest do
     test "Check if the grpc roles are well formed" do
       roles = Roles.build_grpc_roles()
 
-      assert length(roles) == 3
+      assert length(roles) == 4
 
-      [owner_role, admin_role, member_role] = roles
+      [owner_role, admin_role, member_role, agent_role] = roles
 
       assert owner_role.name == "Owner"
       assert owner_role.maps_to == nil
@@ -34,6 +34,11 @@ defmodule Rbac.RolesTest do
 
       assert member_role.description =~
                "Members can access the organization's homepage and the projects they are assigned to."
+
+      assert agent_role.name == "Computer Agent"
+      assert agent_role.maps_to == nil
+      assert agent_role.inherited_role == nil
+      assert agent_role.permissions == ["organization.computers.view"]
     end
   end
 end
