@@ -69,6 +69,13 @@ export function nextView(how: `fit` | `focus` | `keep` | `open`, box: Box, pad: 
   return { x: place(box.x, box.w, vw, EDGE, how === `focus` ? 2 * EDGE : 0), y: place(box.y, box.h, vh, TOOLS, 2 * TOOLS), zoom };
 }
 
+export function firstView(all: Box, root: Box, v: View, vw: number, vh: number): View {
+  const whole = nextView(`fit`, all, 1.12, v, vw, vh);
+  const zoom = Math.max(0.1, Math.min(READABLE, vw / (root.w * 1.12)));
+  if (whole.zoom >= zoom) return whole;
+  return { x: EDGE - root.x * zoom, y: TOOLS - root.y * zoom, zoom };
+}
+
 export const aim = (next: Target | null) => {
   target = next;
 };
@@ -445,12 +452,14 @@ const WorkflowMap = () => {
     if (next) openBlocks.value = next;
   }, [wf, P]);
 
-  const fitAll = (L: MapLayout) => {
+  const wholeBox = (L: MapLayout) => {
     const boxes = [...L.pipelines.values()];
     const x = Math.min(...boxes.map((b) => b.x));
     const y = Math.min(...boxes.map((b) => b.y));
-    const box = { x, y, w: Math.max(...boxes.map((b) => b.x + b.w)) - x, h: Math.max(...boxes.map((b) => b.y + b.h)) - y };
-    void rf.setViewport(nextView(`fit`, box, 1.12, rf.getViewport(), vw, vh));
+    return { x, y, w: Math.max(...boxes.map((b) => b.x + b.w)) - x, h: Math.max(...boxes.map((b) => b.y + b.h)) - y };
+  };
+  const fitAll = (L: MapLayout) => {
+    void rf.setViewport(nextView(`fit`, wholeBox(L), 1.12, rf.getViewport(), vw, vh));
   };
 
   const go = (L: MapLayout, t: Target) => {
@@ -462,8 +471,9 @@ const WorkflowMap = () => {
     }
     const laidOpen = p && L.pipelines.get(p.id)?.open;
     if (p && (P.has(p.id) ? p.blocks === null || (p.blocks.length && !laidOpen) : laidOpen)) return false;
-    if (t.how === `fit` && p === wf.root) {
-      fitAll(L);
+    const rootBox = t.how === `fit` && p === wf.root && L.pipelines.get(p.id);
+    if (rootBox) {
+      void rf.setViewport(firstView(wholeBox(L), rootBox, rf.getViewport(), vw, vh));
       return true;
     }
     const b = boxOf(wf, L, t.id);

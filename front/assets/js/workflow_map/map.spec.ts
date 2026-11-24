@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { describe, test } from "mocha";
 
 import { Block, Job, Pipeline, Workflow } from "./model";
-import { SMALL_PIPELINE_JOBS, nextView, seedBlocks, structureKey } from "./map";
+import { SMALL_PIPELINE_JOBS, firstView, nextView, seedBlocks, structureKey } from "./map";
 
 const job = (status: string) => ({ key: status, id: null, name: status, status, startedAt: null, finishedAt: null, reused: false }) as Job;
 
@@ -154,5 +154,24 @@ describe(`nextView`, () => {
   test(`puts the top of a focused box taller than the screen under the map's toolbar instead of centring it`, () => {
     const tall = { x: 400, y: 0, w: 300, h: 3000 };
     expect(nextView(`focus`, tall, 1.12, { x: 0, y: -5000, zoom: 0.75 }, vw, vh)).to.deep.equal({ x: 87.5, y: 64, zoom: 0.75 });
+  });
+});
+
+describe(`firstView`, () => {
+  const v = { x: 0, y: 0, zoom: 1 };
+
+  test(`shows the whole workflow when it is at least as readable as the initial pipeline`, () => {
+    const all = { x: 0, y: 0, w: 900, h: 500 };
+    const root = { x: 0, y: 100, w: 200, h: 100 };
+    expect(firstView(all, root, v, 1000, 600)).to.deep.equal(nextView(`fit`, all, 1.12, v, 1000, 600));
+  });
+
+  test(`starts at the initial pipeline's top-left corner at its readable zoom when the whole workflow is too small to read`, () => {
+    const all = { x: 0, y: 0, w: 6000, h: 9000 };
+    const root = { x: 0, y: 4000, w: 1000, h: 3000 };
+    const next = firstView(all, root, v, 1000, 600);
+    expect(next.zoom).to.equal(0.75);
+    expect(next.x).to.equal(40);
+    expect(next.y).to.equal(64 - 4000 * 0.75);
   });
 });
