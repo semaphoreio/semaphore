@@ -1,0 +1,21 @@
+version: "v1.0"
+name: Pipeline
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+blocks:
+  - name: Testing
+    skip:
+      when: "branch =~ '^dev'"
+    task:
+      jobs:
+        - commands:
+            - echo "testing"
+  - name: Testing 2
+    skip:
+      when: "branch =~ '.(*'"
+    task:
+      jobs:
+        - commands:
+            - echo "testing 2"
