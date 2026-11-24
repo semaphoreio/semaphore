@@ -462,6 +462,10 @@ const WorkflowMap = () => {
     }
     const laidOpen = p && L.pipelines.get(p.id)?.open;
     if (p && (P.has(p.id) ? p.blocks === null || (p.blocks.length && !laidOpen) : laidOpen)) return false;
+    if (t.how === `fit` && p === wf.root) {
+      fitAll(L);
+      return true;
+    }
     const b = boxOf(wf, L, t.id);
     const blk = t.job === undefined ? undefined : wf.blocks.get(t.id);
     const row = blk?.jobs[t.job] && jobRow(blk, t.job);
