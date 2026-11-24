@@ -104,10 +104,13 @@ export const Promotions = ({ p }: { p: Pipeline, }) => {
                   const params = extra(run);
                   return (
                     <li key={run.id}>
-                      <button
+                      <a
                         className="wf-map-run"
+                        href={`?pipeline_id=${run.id}`}
                         title={`Show ${run.name} on the map`}
-                        onClick={() => {
+                        onClick={(e) => {
+                          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                          e.preventDefault();
                           popover.value = null;
                           focusOn(`pipeline`, run.id);
                         }}
@@ -122,7 +125,7 @@ export const Promotions = ({ p }: { p: Pipeline, }) => {
                         </span>
                         <Duration start={run.runningAt} end={run.doneAt} running={run.status === `running`}/>
                         <span className="wf-map-run-ago">{run.createdAt && formatAgo(now.value - run.createdAt)}</span>
-                      </button>
+                      </a>
                     </li>
                   );
                 })}

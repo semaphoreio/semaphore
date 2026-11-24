@@ -1147,12 +1147,17 @@ a.wf-map-job:hover {
   line-height: 16px;
   color: #495358;
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
 }
 
 .wf-map-run:hover {
   background: #F5F8F9;
   color: #202B30;
+}
+
+.wf-map-run:hover .wf-map-run-name {
+  text-decoration: underline;
 }
 
 .wf-map-run-text {

@@ -327,10 +327,33 @@ describe(`promotions menu runs`, () => {
   test(`shows a run on the map and closes the menu when it is clicked`, async () => {
     popover.value = { kind: `promote`, id: `ci`, x: 0, y: 0 } as typeof popover.value;
     await show(promotion(`Staging`, [run(`s1`, `Staging`, 1700000000)]));
-    await act(() => root.querySelector<HTMLButtonElement>(`.wf-map-run`).click());
+    const click = new MouseEvent(`click`, { bubbles: true, cancelable: true });
+    await act(() => {
+      root.querySelector(`.wf-map-run`).dispatchEvent(click);
+    });
+    expect(click.defaultPrevented).to.equal(true);
     expect(popover.value).to.equal(null);
     expect(focus.value).to.include({ kind: `pipeline`, id: `s1` });
   });
+
+  test(`links every run to its pipeline on this workflow's page`, async () => {
+    await show(promotion(`Staging`, [run(`s1`, `Staging`, 1700000000), run(`s2`, `Staging`, 1700003600, { attempt: 2 })]));
+    expect([...root.querySelectorAll(`a.wf-map-run`)].map((a) => a.getAttribute(`href`))).to.deep.equal([`?pipeline_id=s2`, `?pipeline_id=s1`]);
+  });
+
+  for (const key of [`metaKey`, `ctrlKey`, `shiftKey`, `altKey`]) {
+    test(`leaves a ${key} click on a run to the browser and keeps the menu open`, async () => {
+      popover.value = { kind: `promote`, id: `ci`, x: 0, y: 0 } as typeof popover.value;
+      await show(promotion(`Staging`, [run(`s1`, `Staging`, 1700000000)]));
+      const click = new MouseEvent(`click`, { bubbles: true, cancelable: true, [key]: true });
+      await act(() => {
+        root.querySelector(`.wf-map-run`).dispatchEvent(click);
+      });
+      expect(click.defaultPrevented).to.equal(false);
+      expect(popover.value).to.not.equal(null);
+      expect(focus.value).to.equal(null);
+    });
+  }
 
   test(`finds a promotion by a parameter of one of its runs`, async () => {
     await show(
