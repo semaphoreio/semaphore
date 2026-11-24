@@ -533,6 +533,8 @@ Present only for builds where `SEMAPHORE_GIT_REF_TYPE=tag`.
 
 The following variables are available during [after pipeline jobs](../using-semaphore/pipelines#after-pipeline-job).
 
+An after pipeline job also runs when its pipeline was stopped or canceled before it started running, for example while it waited in a queue. The duration variables split the pipeline's lifetime into initialization, queueing and running: a stage the pipeline never reached has a duration of `0`, and the stage the pipeline ended in lasts until the pipeline finished.
+
 ### Pipeline created at {#pipeline-created-at}
 
 - **Environment variable**: `SEMAPHORE_PIPELINE_CREATED_AT`
@@ -559,7 +561,7 @@ Duration of the pipeline initialization stage expressed in seconds.
 - **Environment variable**: `SEMAPHORE_PIPELINE_QUEUEING_DURATION`
 - **Example**: `1`
 
-The time that the pipeline spent in the queue is expressed in seconds.
+The time that the pipeline spent in the queue, waiting for earlier pipelines in the same [queue](./pipeline-yaml#queue) to finish, expressed in seconds. It is `0` when the pipeline was stopped before it entered the queue.
 
 ### Pipeline result {#pipeline-result}
 
@@ -580,21 +582,21 @@ The reason for the pipeline result. Possible values are: `test`, `malformed`, `s
 - **Environment variable**: `SEMAPHORE_PIPELINE_RUNNING_DURATION`
 - **Example**: `12`
 
-The total pipeline execution time is expressed in seconds.
+The time from when the pipeline started running until it finished, expressed in seconds. It is `0` when the pipeline never started running.
 
 ### Pipeline started at {#pipeline-started-at}
 
 - **Environment variable**: `SEMAPHORE_PIPELINE_STARTED_AT`
 - **Example**: `1632943642`
 
-The UNIX epoch timestamp when the pipeline started running jobs.
+The UNIX epoch timestamp when the pipeline started running jobs. It is empty when the pipeline never started running, for example when it was stopped or canceled while waiting in the queue.
 
 ### Pipeline total duration {#pipeline-total-duration}
 
 - **Environment variable**: `SEMAPHORE_PIPELINE_TOTAL_DURATION`
 - **Example**: `10`
 
-The total duration of the pipeline including queuing time expressed in seconds.
+The total duration of the pipeline, from its creation until it finished, including initialization and queueing, expressed in seconds.
 
 ## Cache variables {#cache-variables}
 
