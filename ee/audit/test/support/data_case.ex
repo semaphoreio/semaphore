@@ -17,7 +17,7 @@ defmodule Support.DataCase do
         GrpcMock.stub(UserMock, :describe, response)
       end
 
-      def stub_feature do
+      def stub_feature(state \\ :ENABLED) do
         response =
           IA.Feature.ListOrganizationFeaturesResponse.new(
             organization_features: [
@@ -25,7 +25,7 @@ defmodule Support.DataCase do
                 feature: IA.Feature.Feature.new(type: "audit_logs"),
                 availability:
                   IA.Feature.Availability.new(
-                    state: IA.Feature.Availability.State.value(:ENABLED),
+                    state: IA.Feature.Availability.State.value(state),
                     quantity: 1
                   )
               )
