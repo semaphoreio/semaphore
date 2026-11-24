@@ -5,7 +5,7 @@ gem "bundler", ">= 1.8.4"
 
 gem "pg", "~> 1.1"
 gem "rails", ">= 8.0.4.1", "< 8.1"
-gem "rack", "~> 2.2.23"
+gem "rack", "~> 2.2.25"
 gem "sprockets-rails"
 
 gem "excon", "~> 1.5"
@@ -34,7 +34,7 @@ gem "sidekiq", "7.3.10"
 gem "connection_pool", "< 3" # Sidekiq 7 scheduler uses positional TimedStack#pop API
 gem "sidekiq-scheduler"
 gem "sidekiq-unique-jobs", "~> 8.0"
-gem "puma", "~> 7.2.1"
+gem "puma", "~> 7.2.2"
 gem "xmlrpc" # Prior to ruby 2.4 this was bundled with ruby. Required by active-support.
 gem "jwt"
 
