@@ -324,10 +324,10 @@ describe(`promotions menu runs`, () => {
     expect(root.querySelector(`.wf-map-promotion-note`)).to.equal(null);
   });
 
-  test(`shows a run's parameters in the order the promotion declares them, without the empty ones`, async () => {
+  test(`shows a run's parameters sorted by name, without the empty ones`, async () => {
     const parameters = [{ name: `EXTRA`, value: `1` }, { name: `NOTE`, value: `` }, { name: `REGION`, value: `eu` }, { name: `IMAGE`, value: `web:1.2` }];
     await show(promotion(`Production`, [run(`a`, `Production`, 1700000000, { parameters })], [`IMAGE`, `NOTE`, `REGION`]));
-    expect(runs()).to.deep.equal([[`Production`, [`IMAGE=web:1.2`, `REGION=eu`, `EXTRA=1`]]]);
+    expect(runs()).to.deep.equal([[`Production`, [`EXTRA=1`, `IMAGE=web:1.2`, `REGION=eu`]]]);
   });
 
   test(`gives a run without parameters no second line`, async () => {

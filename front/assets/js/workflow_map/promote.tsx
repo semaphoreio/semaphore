@@ -54,8 +54,6 @@ export const Promotions = ({ p }: { p: Pipeline, }) => {
       {shown.map((promotion) => {
         const latest = promotion.events.reduce((a, e) => (!a || e.triggered_at > a.triggered_at ? e : a), null);
         const runs = [...promotion.pipelines].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
-        const declared = promotion.parameters.map((d) => d.name);
-        const place = (name: string) => (declared.includes(name) ? declared.indexOf(name) : declared.length);
         const note = promotion.starting
           ? `Starting promotion…`
           : !latest
@@ -102,7 +100,7 @@ export const Promotions = ({ p }: { p: Pipeline, }) => {
             {runs.length > 0 && (
               <ul className="wf-map-runs" aria-label={`Runs of ${promotion.name}`}>
                 {runs.map((run) => {
-                  const params = run.parameters.filter((v) => v.value).sort((a, b) => place(a.name) - place(b.name));
+                  const params = run.parameters.filter((v) => v.value).sort((a, b) => (a.name < b.name ? -1 : 1));
                   return (
                     <li key={run.id}>
                       <a
