@@ -66,7 +66,7 @@ ENV APP_NAME=${APP_NAME}
 ENV MIX_ENV="prod"
 
 # install runtime dependencies
-RUN apk update && apk add --no-cache libstdc++ openssl ncurses-libs openssh-keygen
+RUN apk update && apk add --no-cache libstdc++ openssl ncurses-libs "openssh-keygen>=10.0_p1-r11"
 
 WORKDIR /app
 
