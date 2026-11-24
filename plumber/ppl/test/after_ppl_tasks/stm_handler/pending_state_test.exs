@@ -9,6 +9,7 @@ defmodule Ppl.AfterPplTasks.STMHandler.PendingStateTest do
   alias Ppl.AfterPplTasks.Model.AfterPplTasksQueries
   alias Ppl.AfterPplTasks.STMHandler.PendingState
   alias Ppl.Ppls.Model.PplsQueries
+  alias Ppl.PplTraces.Model.PplTracesQueries
 
   doctest Ppl.AfterPplTasks.STMHandler.PendingState
 
@@ -67,6 +68,39 @@ defmodule Ppl.AfterPplTasks.STMHandler.PendingStateTest do
             ] = Enum.map(task.jobs, & &1.name)
 
     assert ppl.after_task_id != nil
+
+    TestHelper.stop_all_loopers(loopers)
+  end
+
+  @tag :integration
+  test "a pipeline canceled while queued still gets its after_pipeline task" do
+    {:ok, %{ppl_id: ppl_id}} =
+      %{"repo_name" => "30_after_ppl_test"}
+      |> TestHelper.schedule_request_factory(:local)
+      |> Actions.schedule()
+
+    loopers =
+      TestHelper.start_ppl_loopers()
+      |> TestHelper.start_sub_init_loopers()
+      |> Enum.concat([Ppl.AfterPplTasks.STMHandler.WaitingState.start_link()])
+
+    {:ok, ppl} =
+      PplsQueries.get_by_id(ppl_id)
+      |> TestHelper.to_state("done", result: "canceled")
+
+    ~w(pending_at queuing_at done_at)a
+    |> Enum.each(&PplTracesQueries.set_timestamp(ppl_id, &1))
+
+    TestHelper.wait_for_ppl_state(ppl.ppl_id, "done", 5_000)
+    :timer.sleep(2_000)
+
+    assert {:ok, after_ppl} = AfterPplTasksQueries.get_by_id(ppl_id)
+    assert after_ppl.state == "pending"
+    assert {:ok, exit_func} = PendingState.scheduling_handler(after_ppl)
+    assert {:ok, %{state: "running", after_task_id: after_task_id}} = exit_func.(:repo, :changes)
+    assert {:ok, %{task: task}} = TaskClient.describe_details(after_task_id)
+    assert length(task.jobs) > 0
+    assert {:ok, %{after_task_id: ^after_task_id}} = PplsQueries.get_by_id(ppl_id)
 
     TestHelper.stop_all_loopers(loopers)
   end
