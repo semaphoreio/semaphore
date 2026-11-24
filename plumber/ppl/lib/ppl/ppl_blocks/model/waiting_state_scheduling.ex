@@ -2,9 +2,9 @@ defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
   @moduledoc """
   Find ready ppl_block - ppl_block ready for scheduling.
 
-  `get_ready_block/0` searches through all waiting ppl_blocks and its cost grows
-  with the number of waiting ppl_blocks which are not ready yet, so it is used
-  only as a periodic safety net.
+  `get_ready_block/0` searches through waiting ppl_blocks of all running
+  pipelines and through ppl_blocks with termination request, it is used only as
+  a periodic safety net.
   `get_ready_block/1` searches only through ppl_blocks of the given pipeline and
   is used for event-driven scheduling (see Ppl.PplBlocks.WaitingDrain).
   """
@@ -29,8 +29,14 @@ defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
   end
 
   def do_get_ready_block do
-    not_ready_ppl_blocks_query()
-    |> ready_ppl_block_query("")
+    case claim(terminate_requested_ppl_block_query()) do
+      {:ok, []} -> claim(running_ppls_ready_ppl_block_query())
+      resp -> resp
+    end
+  end
+
+  defp claim(select_query) do
+    select_query
     |> ready_ppl_block_update_query()
     |> Repo.query([NaiveDateTime.utc_now()])
     |> STM.load(PplBlocks)
@@ -67,6 +73,56 @@ defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
       OR
         pb.terminate_request IS NOT NULL
       )
+    ORDER BY pb.updated_at ASC
+    LIMIT 1
+    FOR UPDATE OF pb SKIP LOCKED
+  " end
+
+  # Uses the partial index pipeline_blocks_waiting_terminate_requested_index.
+  defp terminate_requested_ppl_block_query do "
+    SELECT pb.*
+    FROM pipeline_blocks AS pb
+    WHERE pb.in_scheduling = false AND
+      pb.state = 'waiting' AND
+      pb.terminate_request IS NOT NULL
+    ORDER BY pb.updated_at ASC
+    LIMIT 1
+    FOR UPDATE OF pb SKIP LOCKED
+  " end
+
+  # Both OFFSET 0 keep the planner from flattening the subqueries, so the search
+  # reads only ppl_blocks of running pipelines whatever the row estimates are.
+  defp running_ppls_ready_ppl_block_query do "
+    SELECT pb.*
+    FROM pipeline_blocks AS pb
+    WHERE pb.id = ANY(ARRAY(
+        SELECT ready.id
+        FROM (
+          SELECT ppl.ppl_id
+          FROM pipelines AS ppl
+          WHERE ppl.state = 'running'
+          OFFSET 0
+        ) AS running
+        CROSS JOIN LATERAL (
+          SELECT b.id, b.in_scheduling, b.state, b.terminate_request
+          FROM pipeline_blocks AS b
+          WHERE b.ppl_id = running.ppl_id
+          OFFSET 0
+        ) AS ready
+        WHERE ready.in_scheduling = false AND
+          ready.state = 'waiting' AND
+          ready.terminate_request IS NULL AND
+          NOT EXISTS (
+            SELECT 1
+            FROM pipeline_block_connections AS connections
+            JOIN pipeline_blocks AS dependencies
+              ON connections.dependency = dependencies.id
+            WHERE connections.target = ready.id AND
+              dependencies.state NOT IN ('done')
+          )
+      )) AND
+      pb.in_scheduling = false AND
+      pb.state = 'waiting'
     ORDER BY pb.updated_at ASC
     LIMIT 1
     FOR UPDATE OF pb SKIP LOCKED
