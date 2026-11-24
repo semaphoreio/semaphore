@@ -542,10 +542,6 @@
   color: #202B30;
 }
 
-.wf-map-init-tab + .wf-map-after {
-  margin-top: 31px;
-}
-
 .wf-map-card {
   display: flex;
   flex-direction: column;
@@ -566,6 +562,14 @@
 .wf-map-card:hover {
   background: #FAFBFB;
   box-shadow: 0 0 0 1.5px #B5BCC0, var(--wf-map-shadow);
+}
+
+.wf-map-card.failed,
+.wf-map-summary.failed,
+.wf-map-block.failed {
+  outline: 2px solid var(--wf-map-failed);
+  outline-offset: -1px;
+  background: #FFF4F3;
 }
 
 .wf-map-card.selected {
@@ -782,7 +786,7 @@ button.wf-map-reason .material-symbols-outlined {
 }
 
 .wf-map-after {
-  margin: 21px 0 0 27px;
+  position: absolute;
 }
 
 .wf-map-after .wf-map-block {
@@ -831,18 +835,14 @@ button.wf-map-reason .material-symbols-outlined {
   background: #EEF1F2;
 }
 
-.wf-map-blocks-toggle {
-  flex: none;
-  color: #677278;
-}
-
-.wf-map-blocks-toggle:disabled {
-  background: none;
-  cursor: default;
-  opacity: 0.4;
+.btn.wf-map-blocks-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .wf-map-blocks-toggle .material-symbols-outlined {
+  margin-left: -4px;
   font-size: 18px;
   line-height: 1;
 }
@@ -982,14 +982,37 @@ a.wf-map-job:hover {
 }
 
 .wf-map-job-name {
+  display: -webkit-box;
   flex: 1;
   line-height: 16px;
+  white-space: normal;
+  overflow-wrap: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.wf-map-job-group {
+  overflow: hidden;
+  margin: 0 -6px;
+  padding: 3px 6px 0;
+  border-top: 1px solid #E5E8EA;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  color: #677278;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .wf-map-job .wf-map-time {
   flex: none;
   min-width: 58px;
   text-align: right;
+}
+
+.wf-map-job.failed {
+  background: #FDE3E1;
+  color: #202B30;
 }
 
 .wf-map-job.hit {
@@ -1081,7 +1104,7 @@ a.wf-map-job:hover {
   padding: 8px 10px 8px 12px;
 }
 
-.wf-map-promotion + .wf-map-promotion {
+.wf-map-promotion-group + .wf-map-promotion-group {
   border-top: 1px solid #E5E8EA;
 }
 
@@ -1098,11 +1121,76 @@ a.wf-map-job:hover {
 }
 
 .wf-map-promotion-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
   font-weight: 500;
   color: #202B30;
+}
+
+.wf-map-runs {
+  margin: -4px 0 0;
+  padding: 0 10px 8px 38px;
+  list-style: none;
+}
+
+.wf-map-run {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: calc(100% + 12px);
+  margin: 0 -6px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  font-size: 12px;
+  line-height: 16px;
+  color: #495358;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.wf-map-run:hover {
+  background: #F5F8F9;
+  color: #202B30;
+}
+
+.wf-map-run:hover .wf-map-run-name {
+  text-decoration: underline;
+}
+
+.wf-map-run-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.wf-map-run-name,
+.wf-map-run-params {
+  overflow-wrap: anywhere;
+}
+
+.wf-map-run-params {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1ch;
+  font-family: "Jetbrains Mono", "SFMono-Regular", Consolas, Menlo, monospace;
+  font-size: 11px;
+  color: #677278;
+}
+
+.wf-map-run .wf-map-time,
+.wf-map-run-ago {
+  flex: none;
+  font-size: 11px;
+  color: #677278;
+}
+
+.wf-map-run-ago {
+  min-width: 44px;
+  text-align: right;
 }
 
 .wf-map-promotion-note {
@@ -1120,24 +1208,6 @@ a.wf-map-job:hover {
 
 .wf-map-promotion-note.failed {
   color: var(--wf-map-failed);
-}
-
-.wf-map-promotion-note.fresh {
-  color: #202B30;
-  font-weight: 500;
-}
-
-.wf-map-promote-count {
-  display: inline-block;
-  min-width: 16px;
-  margin-left: 4px;
-  padding: 0 4px;
-  border-radius: 8px;
-  background: #00359f;
-  color: #fff;
-  font-size: 11px;
-  line-height: 16px;
-  text-align: center;
 }
 
 .wf-map-edge-label {
@@ -1304,6 +1374,11 @@ a.wf-map-job:hover {
   stroke: var(--wf-map-queued);
 }
 
+.wf-map .react-flow .react-flow__edge .react-flow__edge-path.wf-map-edge-failed {
+  stroke: var(--wf-map-failed);
+  stroke-width: 2;
+}
+
 .wf-map-bar-running {
   background-image: linear-gradient(-45deg, rgba(255, 255, 255, .4) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, .4) 50%, rgba(255, 255, 255, .4) 75%, transparent 75%);
   background-size: 12px 12px;
@@ -1331,13 +1406,6 @@ a.wf-map-job:hover {
 
 .wf-map-card-title {
   min-width: 96px;
-}
-
-.wf-map-outline-blue {
-  --wf-map-outline: #00359f;
-  --wf-map-outline-text: #00359f;
-  --wf-map-outline-hover: #eef3ff;
-  --wf-map-outline-active: #dde7ff;
 }
 
 .wf-map-outline-red {

@@ -53,7 +53,7 @@ defmodule FrontWeb.WorkflowController do
   defp remember_new_workflow_ui(conn, _opts) do
     case conn.params["new_workflow_ui"] do
       "true" -> put_session(conn, :new_workflow_ui, true)
-      "false" -> delete_session(conn, :new_workflow_ui)
+      "false" -> put_session(conn, :new_workflow_ui, false)
       _ -> conn
     end
   end

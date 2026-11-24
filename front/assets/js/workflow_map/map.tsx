@@ -7,7 +7,7 @@ import { MapLayout, Point, layoutMap, promotionLabel } from "./layout";
 import { PromoteButton } from "./promote";
 import { Chips, Search, Stepper } from "./toolbar";
 import { BlockCard, BlockSummary, Chevron, Counts, Duration, Name, PipelineTitle, StatusBar, StatusIcon, StopDetails, StopReason, Triggered, plainClick } from "./ui";
-import { BLOCK_GAP, JOB_ROW_H, blockSize, jobTop } from "./lines";
+import { blockSize, jobRow } from "./lines";
 
 const CARD = { w: 300, h: 72 };
 
@@ -37,20 +37,20 @@ const lineage = computed(() => {
   return { chain, pipelineId: start.pipeline.id };
 });
 
-interface Target { id: string, how: `fit` | `focus` | `all` | `keep` | `keepRight` | `open`, job?: number, at?: Point, }
+export interface Target { id: string, how: `fit` | `focus` | `all` | `keep` | `open`, job?: number, at?: Point, }
 let target: Target | null = null;
 
 const READABLE = 0.75;
 const GLIDE_MS = 250;
 const EDGE = 40;
+const TOOLS = 64;
 
 interface Box { x: number, y: number, w: number, h: number, }
 export interface View { x: number, y: number, zoom: number, }
 
-export function nextView(how: `fit` | `focus` | `keep` | `keepRight` | `open`, box: Box, pad: number, v: View, vw: number, vh: number, at?: Point): View | null {
+export function nextView(how: `fit` | `focus` | `keep` | `open`, box: Box, pad: number, v: View, vw: number, vh: number, at?: Point): View | null {
   if (how !== `fit` && how !== `focus`) {
-    const x = how === `keepRight` ? box.x + box.w : box.x;
-    const kept = { x: v.x - (x - at.x) * v.zoom, y: v.y - (box.y - at.y) * v.zoom, zoom: v.zoom };
+    const kept = { x: v.x - (box.x - at.x) * v.zoom, y: v.y - (box.y - at.y) * v.zoom, zoom: v.zoom };
     if (how !== `open`) return kept;
     const into = (start: number, size: number, room: number) => {
       const end = start + size * v.zoom;
@@ -59,17 +59,30 @@ export function nextView(how: `fit` | `focus` | `keep` | `keepRight` | `open`, b
     return { x: kept.x + into(box.x * v.zoom + kept.x, box.w, vw), y: kept.y + into(box.y * v.zoom + kept.y, box.h, vh), zoom: v.zoom };
   }
   const fit = Math.max(0.1, Math.min(1, vw / (box.w * pad), vh / (box.h * pad)));
-  const zoom = how === `fit` ? fit : Math.max(v.zoom, Math.min(READABLE, fit));
+  const wide = Math.max(0.1, Math.min(1, vw / (box.w * pad)));
+  const zoom = how === `fit` ? Math.max(fit, Math.min(wide, READABLE)) : Math.max(v.zoom, Math.min(READABLE, fit));
   const left = box.x * v.zoom + v.x;
   const top = box.y * v.zoom + v.y;
   const shown = left >= EDGE && top >= EDGE && left + box.w * v.zoom <= vw - EDGE && top + box.h * v.zoom <= vh - EDGE;
   if (how === `focus` && zoom === v.zoom && shown) return null;
-  const place = (start: number, size: number, room: number) => (how === `focus` && size * zoom > room - 2 * EDGE ? EDGE - start * zoom : room / 2 - (start + size / 2) * zoom);
-  return { x: place(box.x, box.w, vw), y: place(box.y, box.h, vh), zoom };
+  const place = (start: number, size: number, room: number, edge: number, slack: number) => (size * zoom > room - slack ? edge - start * zoom : room / 2 - (start + size / 2) * zoom);
+  return { x: place(box.x, box.w, vw, EDGE, how === `focus` ? 2 * EDGE : 0), y: place(box.y, box.h, vh, TOOLS, 2 * TOOLS), zoom };
+}
+
+export function firstView(all: Box, root: Box, v: View, vw: number, vh: number): View {
+  const whole = nextView(`fit`, all, 1.12, v, vw, vh);
+  const zoom = Math.max(0.1, Math.min(READABLE, vw / (root.w * 1.12)));
+  if (whole.zoom >= zoom) return whole;
+  return { x: EDGE - root.x * zoom, y: TOOLS - root.y * zoom, zoom };
 }
 
 export const aim = (next: Target | null) => {
   target = next;
+};
+
+export const closeAllPipelines = () => {
+  aim({ id: ``, how: `all` });
+  openPipelines.value = new Set();
 };
 
 const toggle = (s: typeof openPipelines, id: string, on?: boolean) => {
@@ -136,7 +149,7 @@ const CardNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node
       tabIndex={0}
       data-popover-trigger={p.errorHtml ? `` : undefined}
       aria-expanded={p.errorHtml ? undefined : false}
-      className={`wf-map-card ${selected.value === p.id ? `selected` : ``} ${h.active && !n ? `dim` : ``}`}
+      className={`wf-map-card ${p.status === `failed` ? `failed` : ``} ${selected.value === p.id ? `selected` : ``} ${h.active && !n ? `dim` : ``}`}
       onClick={(e) => plainClick(e, open)}
       onKeyDown={(e) => (e.key === `Enter` || e.key === ` `) && (e.preventDefault(), open(e.currentTarget))}
     >
@@ -181,12 +194,7 @@ const CardNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node
   );
 };
 
-export const afterBand = (p: Pipeline, open: Set<string>) => {
-  const a = p.blocks?.find((b) => b.after);
-  return a ? blockSize(a, open.has(a.id)).h + BLOCK_GAP : 0;
-};
-
-export const AfterBand = ({ block, at }: { block: Block, at: Point, }) => {
+export const AfterBand = ({ block, box, at }: { block: Block, box: Point, at: Point, }) => {
   const open = openBlocks.value.has(block.id);
   const h = hits.value;
   const flip = () => {
@@ -195,31 +203,29 @@ export const AfterBand = ({ block, at }: { block: Block, at: Point, }) => {
   };
   const { w, h: height } = blockSize(block, open);
   return (
-    <div className={`wf-map-after ${h.active && !h.blocks.has(block) ? `dim` : ``}`} style={{ width: w, height }}>
+    <div className={`wf-map-after ${h.active && !h.blocks.has(block) ? `dim` : ``}`} style={{ left: box.x, top: box.y, width: w, height }}>
       {open ? <BlockCard block={block} onHeaderClick={flip}/> : <BlockSummary block={block} onClick={flip}/>}
     </div>
   );
 };
 
-export const BlocksToggle = ({ p, at }: { p: Pipeline, at: Point, }) => {
-  const blocks = p.blocks ?? [];
+export const BlocksToggle = ({ pipelines, anchor }: { pipelines: Pipeline[], anchor: Target | null, }) => {
+  const blocks = pipelines.flatMap((p) => p.blocks ?? []);
   const open = blocks.length > 0 && blocks.every((b) => openBlocks.value.has(b.id));
-  const label = `${open ? `Collapse` : `Expand`} all blocks`;
   return (
     <button
-      className="wf-map-collapse wf-map-blocks-toggle"
-      aria-label={`${label} of ${p.name}`}
-      data-tippy-content={label}
+      className="btn btn-secondary btn-small wf-map-blocks-toggle"
+      data-tippy-content={`${open ? `Collapses` : `Expands`} the blocks of every open pipeline`}
       disabled={blocks.length === 0}
-      onClick={(e) => {
-        e.stopPropagation();
-        aim({ id: p.id, how: `keepRight`, at });
+      onClick={() => {
+        aim(anchor);
         const next = new Set(openBlocks.value);
         blocks.forEach((b) => (open ? next.delete(b.id) : next.add(b.id)));
         openBlocks.value = next;
       }}
     >
       <span className="material-symbols-outlined" aria-hidden="true">{open ? `unfold_less` : `unfold_more`}</span>
+      {open ? `Collapse all blocks` : `Expand all blocks`}
     </button>
   );
 };
@@ -232,7 +238,7 @@ export const InitTab = ({ job }: { job: InitJob, }) => (
   </a>
 );
 
-const PipelineNode = ({ data, width, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node<{ id: string, }>>) => {
+const PipelineNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node<{ id: string, after?: Point, }>>) => {
   const p = workflow.value?.pipelineById.get(data.id);
   const h = hits.value;
   if (!p) return null;
@@ -263,7 +269,6 @@ const PipelineNode = ({ data, width, positionAbsoluteX, positionAbsoluteY }: Nod
           <Duration start={p.runningAt} end={p.doneAt} running={p.status === `running`}/>
           {p.triggerer && <span className="wf-map-sep" aria-hidden="true"/>}
           <Triggered p={p}/>
-          <BlocksToggle p={p} at={{ x: at.x + width, y: at.y }}/>
         </div>
         <div className="wf-map-pipeline-row wf-map-pipeline-sub">
           <Name className="wf-map-pipeline-meta">{p.yamlFile}</Name>
@@ -280,7 +285,7 @@ const PipelineNode = ({ data, width, positionAbsoluteX, positionAbsoluteY }: Nod
       </div>
       {detailsBand(p, openDetails.value) > 0 && <StopDetails p={p}/>}
       {p.initJob && <InitTab job={p.initJob}/>}
-      {after && <AfterBand block={after} at={at}/>}
+      {after && data.after && <AfterBand block={after} box={data.after} at={at}/>}
       <Handle type="source" id="out" position={Position.Right} isConnectable={false} style={{ top: 34 }}/>
     </div>
   );
@@ -335,7 +340,7 @@ const flowing = (target: string) => {
   const wf = workflow.value;
   const b = wf?.blocks.get(target);
   const st = b ? blockStatus(b) : wf?.pipelineById.get(target)?.status;
-  return st === `running` || st === `queued` ? `wf-map-edge-${st}` : ``;
+  return st === `running` || st === `queued` || st === `failed` ? `wf-map-edge-${st}` : ``;
 };
 
 const RouteEdge = ({ id, data, source, target }: EdgeProps<Edge<{ points: Point[], label?: string, labelAt?: Point, }>>) => {
@@ -364,7 +369,8 @@ function build(wf: Workflow, L: MapLayout) {
   for (const p of wf.pipelines) {
     const box = L.pipelines.get(p.id);
     if (!box) continue;
-    nodes.push({ id: p.id, type: box.open ? `pipeline` : `card`, position: { x: box.x, y: box.y }, width: box.w, height: box.h, style: CLICKABLE, data: { id: p.id }, draggable: false, selectable: false });
+    const after = p.blocks?.find((b) => b.after);
+    nodes.push({ id: p.id, type: box.open ? `pipeline` : `card`, position: { x: box.x, y: box.y }, width: box.w, height: box.h, style: CLICKABLE, data: { id: p.id, after: after && L.blocks.get(after.id) }, draggable: false, selectable: false });
     if (box.open) {
       for (const b of p.blocks ?? []) {
         const bb = L.blocks.get(b.id);
@@ -401,7 +407,7 @@ export function seedBlocks(pipelines: Pipeline[], open: Set<string>, seeded: Set
     if (!open.has(p.id) || !p.blocks?.length || seeded.has(p.id)) continue;
     seeded.add(p.id);
     for (const b of p.blocks) {
-      if ((!p.done || blockStatus(b) === `failed`) && !blocks.has(b.id)) (next ??= new Set(blocks)).add(b.id);
+      if (!blocks.has(b.id)) (next ??= new Set(blocks)).add(b.id);
     }
   }
   return next;
@@ -448,19 +454,35 @@ const WorkflowMap = () => {
     if (next) openBlocks.value = next;
   }, [wf, P]);
 
+  const wholeBox = (L: MapLayout) => {
+    const boxes = [...L.pipelines.values()];
+    const x = Math.min(...boxes.map((b) => b.x));
+    const y = Math.min(...boxes.map((b) => b.y));
+    return { x, y, w: Math.max(...boxes.map((b) => b.x + b.w)) - x, h: Math.max(...boxes.map((b) => b.y + b.h)) - y };
+  };
+  const fitAll = (L: MapLayout) => {
+    void rf.setViewport(nextView(`fit`, wholeBox(L), 1.12, rf.getViewport(), vw, vh));
+  };
+
   const go = (L: MapLayout, t: Target) => {
     if (!vw || !vh) return false;
     const p = wf.pipelineById.get(t.id);
     if (t.how === `all` || (!p && !wf.blocks.has(t.id))) {
-      void rf.fitView({ padding: 0.06, maxZoom: 1 });
+      fitAll(L);
       return true;
     }
     const laidOpen = p && L.pipelines.get(p.id)?.open;
     if (p && (P.has(p.id) ? p.blocks === null || (p.blocks.length && !laidOpen) : laidOpen)) return false;
+    const rootBox = t.how === `fit` && p === wf.root && L.pipelines.get(p.id);
+    if (rootBox) {
+      void rf.setViewport(firstView(wholeBox(L), rootBox, rf.getViewport(), vw, vh));
+      return true;
+    }
     const b = boxOf(wf, L, t.id);
     const blk = t.job === undefined ? undefined : wf.blocks.get(t.id);
-    if (!b || (blk && (!blk.jobs[t.job] || b.h < jobTop(t.job)))) return false;
-    const box = blk ? { x: b.x, y: b.y + jobTop(t.job), w: b.w, h: JOB_ROW_H } : b;
+    const row = blk?.jobs[t.job] && jobRow(blk, t.job);
+    if (!b || (blk && (!row || b.h < row.top))) return false;
+    const box = row ? { x: b.x, y: b.y + row.top, w: b.w, h: row.h } : b;
     const v = rf.getViewport();
     if (t.how === `open`) void rf.setViewport(nextView(`keep`, box, 1, v, vw, vh, t.at));
     const next = nextView(t.how, box, p ? 1.12 : 1.6, v, vw, vh, t.at);
@@ -477,7 +499,7 @@ const WorkflowMap = () => {
     if (!wf) return;
     let alive = true;
     document.fonts.ready
-      .then(() => layoutMap(wf, (p) => P.has(p.id), (b) => blockSize(b, B.has(b.id)), CARD, (p) => afterBand(p, B), (p) => detailsBand(p, D)))
+      .then(() => layoutMap(wf, (p) => P.has(p.id), (b) => blockSize(b, B.has(b.id)), CARD, (p) => detailsBand(p, D)))
       .then((L) => alive && setLayout(L))
       .catch(() => {
         if (alive) layoutError.value = `Couldn't lay out this workflow. Reload the page to try again.`;
@@ -513,6 +535,7 @@ const WorkflowMap = () => {
   };
 
   if (!graph) return <div className="wf-map-loading">Loading the workflow…</div>;
+  const lead = layout.pipelines.get(selected.value);
   return (
     <ReactFlow
       nodes={graph.nodes}
@@ -521,6 +544,7 @@ const WorkflowMap = () => {
       edgeTypes={edgeTypes}
       minZoom={0.05}
       maxZoom={2}
+      panOnScroll
       onlyRenderVisibleElements
       nodesConnectable={false}
       nodesDraggable={false}
@@ -548,15 +572,16 @@ const WorkflowMap = () => {
       />
       <Panel position="top-right">
         <div className="wf-map-tools">
-          <button className="btn btn-secondary btn-small" onClick={() => void rf.fitView({ padding: 0.06 })}>
+          <button className="btn btn-secondary btn-small" onClick={() => fitAll(layout)}>
             Fit workflow
           </button>
           <button className="btn btn-secondary btn-small" onClick={() => (aim({ id: ``, how: `all` }), (openPipelines.value = new Set(wf.pipelines.map((p) => p.id))))}>
-            Open all
+            Open all pipelines
           </button>
-          <button className="btn btn-secondary btn-small" onClick={() => (aim({ id: ``, how: `all` }), (openPipelines.value = new Set()), (openBlocks.value = new Set()))}>
-            Close all
+          <button className="btn btn-secondary btn-small" onClick={closeAllPipelines}>
+            Close all pipelines
           </button>
+          <BlocksToggle pipelines={wf.pipelines.filter((p) => P.has(p.id))} anchor={lead ? { id: selected.value, how: `keep`, at: lead } : null}/>
           <span className="wf-map-zoom">{Math.round(zoom * 100)}%</span>
         </div>
       </Panel>

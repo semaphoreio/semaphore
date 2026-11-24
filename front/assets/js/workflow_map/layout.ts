@@ -114,6 +114,13 @@ async function inner(p: Pipeline, size: (b: Block) => { w: number, h: number, },
     rowH = Math.max(rowH, g.height);
   });
   out.height = y + rowH + PIPE_PAD.bottom;
+  const after = p.blocks.find((b) => b.after);
+  if (after) {
+    const { w, h } = size(after);
+    out.blocks.set(after.id, { x: out.width - PIPE_PAD.side + LAYER_GAP, y: top, w, h });
+    out.width += LAYER_GAP + w;
+    out.height = Math.max(out.height, top + h + PIPE_PAD.bottom);
+  }
   return out;
 }
 
@@ -122,11 +129,11 @@ export async function layoutMap(
   isOpen: (p: Pipeline) => boolean,
   blockSize: (b: Block) => { w: number, h: number, },
   closed: { w: number, h: number, },
-  band: (p: Pipeline) => number,
   head: (p: Pipeline) => number = () => 0
 ): Promise<MapLayout> {
-  const top = (p: Pipeline) => PIPE_PAD.top + head(p) + (p.initJob ? INIT_TAB : 0);
-  const inners = await Promise.all(wf.pipelines.map((p) => (isOpen(p) && p.blocks?.some((b) => !b.after) ? inner(p, blockSize, top(p) + band(p)) : null)));
+  const inners = await Promise.all(
+    wf.pipelines.map((p) => (isOpen(p) && p.blocks?.some((b) => !b.after) ? inner(p, blockSize, PIPE_PAD.top + head(p) + (p.initJob ? INIT_TAB : 0)) : null))
+  );
   const outer = await elk.layout({
     id: `workflow`,
     layoutOptions: {
@@ -169,8 +176,6 @@ export async function layoutMap(
     const p = wf.pipelines[i];
     const box = layout.pipelines.get(p.id);
     box.open = true;
-    const after = p.blocks.find((b) => b.after);
-    if (after) layout.blocks.set(after.id, { x: PIPE_PAD.side, y: top(p), ...blockSize(after) });
     g.blocks.forEach((b, id) => layout.blocks.set(id, b));
     g.routes.forEach((pts, id) => layout.routes.set(id, pts.map((pt) => ({ x: pt.x + box.x, y: pt.y + box.y }))));
   });

@@ -28,6 +28,7 @@ export interface ApiPipeline {
   state: string;
   result: string;
   result_reason: string | null;
+  parameters?: { name: string, value: string, }[];
   parent_id: string | null;
   trigger: string;
   triggerer: ApiTriggerer;
@@ -135,6 +136,7 @@ export interface Pipeline {
   yamlFile: string;
   status: Status;
   resultReason: string | null;
+  parameters: { name: string, value: string, }[];
   done: boolean;
   trigger: string;
   triggerer: ApiTriggerer;
@@ -228,6 +230,7 @@ export function buildWorkflow(tree: ApiWorkflow, details: Record<string, ApiPipe
       yamlFile: a.yaml_file,
       status: pipelineStatus(a.state, a.result),
       resultReason: a.result_reason,
+      parameters: a.parameters ?? [],
       done: a.state === `DONE`,
       trigger: a.trigger,
       triggerer: a.triggerer,

@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { describe, test } from "mocha";
 
 import { Block, Job, Pipeline, Workflow } from "./model";
-import { nextView, seedBlocks, structureKey } from "./map";
+import { closeAllPipelines, firstView, nextView, openBlocks, openPipelines, seedBlocks, structureKey } from "./map";
 
 const job = (status: string) => ({ key: status, id: null, name: status, status, startedAt: null, finishedAt: null, reused: false }) as Job;
 
@@ -57,6 +57,7 @@ describe(`seedBlocks`, () => {
   const pipe = (id: string, done: boolean, blocks: Block[] | null) => ({ id, done, blocks }) as unknown as Pipeline;
   const blocksOf = (p: string) => [blk(p, `lint`, [`passed`]), blk(p, `unit`, [`failed`, `passed`]), blk(p, `e2e`, [`running`, `queued`]), blk(p, `docs`, [`queued`])];
   const ids = (s: Set<string> | null) => [...(s ?? [])].sort();
+  const big = (p: string) => blk(p, `matrix`, Array<string>(200).fill(`passed`));
 
   test(`opens every block of a pipeline that has not finished`, () => {
     const seeded = new Set<string>();
@@ -64,9 +65,9 @@ describe(`seedBlocks`, () => {
     expect([...seeded]).to.deep.equal([`p`]);
   });
 
-  test(`opens only the failed blocks of a finished pipeline`, () => {
-    const done = pipe(`p`, true, [blk(`p`, `lint`, [`passed`]), blk(`p`, `unit`, [`failed`, `passed`]), blk(`p`, `docs`, [`stopped`])]);
-    expect(ids(seedBlocks([done], new Set([`p`]), new Set(), new Set()))).to.deep.equal([`p/unit`]);
+  test(`opens every block of a finished pipeline, however many jobs it has`, () => {
+    const done = pipe(`p`, true, [blk(`p`, `lint`, [`passed`]), blk(`p`, `unit`, [`failed`, `passed`]), blk(`p`, `docs`, [`stopped`]), big(`p`)]);
+    expect(ids(seedBlocks([done], new Set([`p`]), new Set(), new Set()))).to.deep.equal([`p/docs`, `p/lint`, `p/matrix`, `p/unit`]);
   });
 
   test(`seeds a pipeline once, so a block the user closed stays closed, also after the pipeline finishes`, () => {
@@ -77,14 +78,23 @@ describe(`seedBlocks`, () => {
     expect(seedBlocks([pipe(`p`, true, blocksOf(`p`))], new Set([`p`]), seeded, closed)).to.equal(null);
   });
 
+  test(`Close all pipelines keeps the blocks' state, so a pipeline opened again shows its blocks as they were`, () => {
+    const seeded = new Set<string>();
+    openPipelines.value = new Set([`p`]);
+    openBlocks.value = seedBlocks([pipe(`p`, true, blocksOf(`p`))], openPipelines.value, seeded, new Set()) ?? new Set();
+    closeAllPipelines();
+    expect([...openPipelines.value]).to.deep.equal([]);
+    openPipelines.value = new Set([`p`]);
+    expect(seedBlocks([pipe(`p`, true, blocksOf(`p`))], openPipelines.value, seeded, openBlocks.value)).to.equal(null);
+    expect(ids(openBlocks.value)).to.deep.equal([`p/docs`, `p/e2e`, `p/lint`, `p/unit`]);
+    openPipelines.value = new Set();
+    openBlocks.value = new Set();
+  });
+
   test(`waits for a pipeline to be open and its blocks loaded`, () => {
     const seeded = new Set<string>();
     expect(seedBlocks([pipe(`p`, false, blocksOf(`p`)), pipe(`q`, false, null), pipe(`r`, false, [])], new Set([`q`, `r`]), seeded, new Set())).to.equal(null);
     expect(seeded.size).to.equal(0);
-  });
-
-  test(`changes nothing for a finished pipeline with no failed block`, () => {
-    expect(seedBlocks([pipe(`r`, true, [blk(`r`, `lint`, [`passed`])])], new Set([`r`]), new Set(), new Set())).to.equal(null);
   });
 });
 
@@ -96,11 +106,6 @@ describe(`nextView`, () => {
   test(`keeps the zoom and moves the map by how far the anchored box moved`, () => {
     const v = { x: 10, y: 20, zoom: 0.5 };
     expect(nextView(`keep`, block, 1.6, v, vw, vh, { x: 380, y: 260 })).to.deep.equal({ x: 0, y: 50, zoom: 0.5 });
-  });
-
-  test(`keeping the right edge, moves the map by how far the box's top-right corner moved`, () => {
-    const v = { x: 10, y: 20, zoom: 0.5 };
-    expect(nextView(`keepRight`, block, 1.6, v, vw, vh, { x: 640, y: 200 })).to.deep.equal({ x: -20, y: 20, zoom: 0.5 });
   });
 
   test(`after anchoring an opened box, moves the map only as far as it takes to show the box`, () => {
@@ -117,8 +122,17 @@ describe(`nextView`, () => {
   });
 
   test(`fits the box on the screen, never past 100%`, () => {
-    expect(nextView(`fit`, { x: 0, y: 0, w: 2000, h: 1000 }, 1, { x: 0, y: 0, zoom: 1 }, vw, vh)).to.deep.equal({ x: 0, y: 50, zoom: 0.5 });
+    expect(nextView(`fit`, { x: 0, y: 0, w: 2000, h: 800 }, 1, { x: 0, y: 0, zoom: 1 }, vw, vh)).to.deep.equal({ x: 0, y: 100, zoom: 0.5 });
     expect(nextView(`fit`, block, 1.6, { x: 0, y: 0, zoom: 0.2 }, vw, vh).zoom).to.equal(1);
+  });
+
+  test(`fits a box too tall for the screen by its width, at no less than 75%, from its top`, () => {
+    expect(nextView(`fit`, { x: 0, y: 0, w: 1000, h: 6000 }, 1, { x: 0, y: 0, zoom: 1 }, vw, vh)).to.deep.equal({ x: 125, y: 64, zoom: 0.75 });
+    expect(nextView(`fit`, { x: 0, y: 0, w: 4000, h: 6000 }, 1, { x: 0, y: 0, zoom: 1 }, vw, vh)).to.deep.equal({ x: 0, y: 64, zoom: 0.25 });
+  });
+
+  test(`starts a box that would reach under the map's toolbar below it, 64 px from the top`, () => {
+    expect(nextView(`fit`, { x: 0, y: 0, w: 2000, h: 1000 }, 1, { x: 0, y: 0, zoom: 1 }, vw, vh)).to.deep.equal({ x: 0, y: 64, zoom: 0.5 });
   });
 
   test(`leaves the map alone when the focused box is on screen and readable`, () => {
@@ -140,8 +154,27 @@ describe(`nextView`, () => {
     expect(nextView(`focus`, { x: 0, y: 0, w: 4000, h: 3000 }, 1.6, { x: 0, y: 0, zoom: 0.5 }, vw, vh).zoom).to.equal(0.5);
   });
 
-  test(`puts the top of a focused box taller than the screen near the top edge instead of centring it`, () => {
+  test(`puts the top of a focused box taller than the screen under the map's toolbar instead of centring it`, () => {
     const tall = { x: 400, y: 0, w: 300, h: 3000 };
-    expect(nextView(`focus`, tall, 1.12, { x: 0, y: -5000, zoom: 0.75 }, vw, vh)).to.deep.equal({ x: 87.5, y: 40, zoom: 0.75 });
+    expect(nextView(`focus`, tall, 1.12, { x: 0, y: -5000, zoom: 0.75 }, vw, vh)).to.deep.equal({ x: 87.5, y: 64, zoom: 0.75 });
+  });
+});
+
+describe(`firstView`, () => {
+  const v = { x: 0, y: 0, zoom: 1 };
+
+  test(`shows the whole workflow when it is at least as readable as the initial pipeline`, () => {
+    const all = { x: 0, y: 0, w: 900, h: 500 };
+    const root = { x: 0, y: 100, w: 200, h: 100 };
+    expect(firstView(all, root, v, 1000, 600)).to.deep.equal(nextView(`fit`, all, 1.12, v, 1000, 600));
+  });
+
+  test(`starts at the initial pipeline's top-left corner at its readable zoom when the whole workflow is too small to read`, () => {
+    const all = { x: 0, y: 0, w: 6000, h: 9000 };
+    const root = { x: 0, y: 4000, w: 1000, h: 3000 };
+    const next = firstView(all, root, v, 1000, 600);
+    expect(next.zoom).to.equal(0.75);
+    expect(next.x).to.equal(40);
+    expect(next.y).to.equal(64 - 4000 * 0.75);
   });
 });
