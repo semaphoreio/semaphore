@@ -12,6 +12,7 @@ defmodule Guard.Repo.McpOAuthRefreshTokenFamily do
   schema "mcp_oauth_refresh_token_families" do
     field(:client_id, :string)
     field(:scope, :string)
+    field(:resource, :string)
     field(:expires_at, :utc_datetime)
     field(:revoked_at, :utc_datetime)
 
