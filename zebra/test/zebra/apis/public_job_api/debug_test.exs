@@ -8,10 +8,13 @@ defmodule Zebra.Apis.PublicJobApi.DebugTest do
 
   describe ".debug_job_params" do
     test "copy everything from job, except commands" do
+      deployment_target_id = Ecto.UUID.generate()
+
       {:ok, job} =
         Support.Factories.Job.create(:pending, %{
           project_id: @project_id,
-          organization_id: @org_id
+          organization_id: @org_id,
+          deployment_target_id: deployment_target_id
         })
 
       {:ok, debug_job_params} = Debug.debug_job_params(job)
@@ -51,7 +54,8 @@ defmodule Zebra.Apis.PublicJobApi.DebugTest do
                        value: "true"
                      )
                    ]
-                 )
+                 ),
+               deployment_target_id: deployment_target_id
              ]
     end
   end

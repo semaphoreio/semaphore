@@ -47,7 +47,7 @@ defmodule Projecthub.RepoUrl do
       String.downcase(url_parts.host) == "github.com" ->
         {:ok, url_parts}
 
-      String.downcase(url_parts.host) == "bitbucket.org" ->
+      String.downcase(url_parts.host) in ["bitbucket.org", "ssh.bitbucket.org"] ->
         {:ok, url_parts}
 
       true ->
