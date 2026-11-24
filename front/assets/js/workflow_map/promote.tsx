@@ -11,7 +11,7 @@ export const PromoteButton = ({ p, compact }: { p: Pipeline, compact?: boolean, 
   const n = p.promotions.length;
   return (
     <button
-      className="btn btn-secondary btn-tiny wf-map-outline wf-map-outline-blue wf-map-promote"
+      className="btn btn-primary btn-tiny wf-map-promote"
       data-popover-trigger=""
       aria-haspopup="menu"
       aria-expanded={popover.value?.kind === `promote` && popover.value.id === p.id}
@@ -20,7 +20,6 @@ export const PromoteButton = ({ p, compact }: { p: Pipeline, compact?: boolean, 
       onClick={(e) => togglePopover(`promote`, p.id, e.currentTarget)}
     >
       {compact ? <span className="material-symbols-outlined" aria-hidden="true">rocket_launch</span> : `Promote ▾`}
-      <span className="wf-map-promote-count">{n}</span>
     </button>
   );
 };

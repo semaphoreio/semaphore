@@ -1201,19 +1201,6 @@ a.wf-map-job:hover {
   color: var(--wf-map-failed);
 }
 
-.wf-map-promote-count {
-  display: inline-block;
-  min-width: 16px;
-  margin-left: 4px;
-  padding: 0 4px;
-  border-radius: 8px;
-  background: #00359f;
-  color: #fff;
-  font-size: 11px;
-  line-height: 16px;
-  text-align: center;
-}
-
 .wf-map-edge-label {
   position: absolute;
   padding: 1px 8px;
@@ -1410,13 +1397,6 @@ a.wf-map-job:hover {
 
 .wf-map-card-title {
   min-width: 96px;
-}
-
-.wf-map-outline-blue {
-  --wf-map-outline: #00359f;
-  --wf-map-outline-text: #00359f;
-  --wf-map-outline-hover: #eef3ff;
-  --wf-map-outline-active: #dde7ff;
 }
 
 .wf-map-outline-red {

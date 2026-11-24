@@ -86,15 +86,17 @@ describe(`promote button`, () => {
 
   const promotion = (name: string, runs: number) => ({ name, events: Array.from({ length: runs }, () => ({})) }) as unknown as Promotion;
 
-  test(`counts the promotions the pipeline defines, whether they ran or not`, async () => {
-    for (const [promotions, count, tip] of [
-      [[promotion(`Staging`, 2), promotion(`Production`, 0), promotion(`Canary`, 0)], `3`, `Promote: 3 promotions`],
-      [[promotion(`Staging`, 1), promotion(`Production`, 1)], `2`, `Promote: 2 promotions`],
-      [[promotion(`Production`, 0)], `1`, `Promote: 1 promotion`],
+  test(`is a primary button that says how many promotions the pipeline defines, whether they ran or not, in its tooltip`, async () => {
+    for (const [promotions, tip] of [
+      [[promotion(`Staging`, 2), promotion(`Production`, 0), promotion(`Canary`, 0)], `Promote: 3 promotions`],
+      [[promotion(`Staging`, 1), promotion(`Production`, 1)], `Promote: 2 promotions`],
+      [[promotion(`Production`, 0)], `Promote: 1 promotion`],
     ] as const) {
       await act(() => render(<PromoteButton p={{ id: `ci`, name: `Build`, promotions } as unknown as Pipeline}/>, root));
-      expect(root.querySelector(`.wf-map-promote-count`).textContent).to.equal(count);
-      expect(root.querySelector<HTMLElement>(`.wf-map-promote`).dataset.tippyContent).to.equal(tip);
+      const button = root.querySelector<HTMLElement>(`.wf-map-promote`);
+      expect(button.classList.contains(`btn-primary`)).to.equal(true);
+      expect(button.textContent).to.equal(`Promote ▾`);
+      expect(button.dataset.tippyContent).to.equal(tip);
     }
   });
 
