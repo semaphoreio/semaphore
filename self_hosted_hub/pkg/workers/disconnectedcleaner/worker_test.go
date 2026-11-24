@@ -55,6 +55,27 @@ func Test__DeletingDisconnectedAgents(t *testing.T) {
 	})
 }
 
+func Test__DisconnectedAgentsHoldingAJobAreKept(t *testing.T) {
+	database.TruncateTables()
+
+	at, _, err := models.CreateAgentTypeWithSettings(
+		orgID, &requesterID, "s1-with-job", models.AgentNameSettings{ReleaseNameAfter: 60},
+	)
+	require.NoError(t, err)
+
+	agent := createAgent(t, at.Name)
+	_, err = models.ForcefullyOccupyAgentWithJobID(agent)
+	require.NoError(t, err)
+	require.NoError(t, agent.Disconnect())
+
+	twoMinsAgo := time.Now().Add(-2 * time.Minute)
+	require.NoError(t, database.Conn().Model(&agent).Update("disconnected_at", &twoMinsAgo).Error)
+
+	Tick()
+
+	assertAgentExists(t, agent.ID.String())
+}
+
 func Test__DeletingManyDisconnectedAgents(t *testing.T) {
 	agentType := "s1-many"
 

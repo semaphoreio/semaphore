@@ -44,12 +44,14 @@ func Tick() {
 func deleteDisconnectedAgents(db *gorm.DB) (int, error) {
 	var ids []string
 
+	// An agent that still holds a job is left to the agent cleaner, which fails the job before deleting it.
 	err := db.Raw(`
 		SELECT id FROM agents AS a
 			LEFT JOIN agent_types AS at
 				ON at.organization_id = a.organization_id
 				AND at.name = a.agent_type_name
 			WHERE state = ?
+			AND a.assigned_job_id IS NULL
 			AND EXTRACT(EPOCH FROM NOW()) > EXTRACT(EPOCH FROM a.disconnected_at) + at.release_name_after
 			ORDER BY a.disconnected_at ASC
 			LIMIT ?
