@@ -81,9 +81,95 @@ defmodule Ppl.TaskClient.AfterPipelineTest do
     end
   end
 
+  describe "start/4 pipeline metrics env vars" do
+    test "a pipeline that ran reports each phase from its own timestamps" do
+      trace =
+        trace_at(created_at: 0, pending_at: 10, queuing_at: 11, running_at: 44, done_at: 100)
+
+      assert metrics(trace) == %{
+               "SEMAPHORE_PIPELINE_CREATED_AT" => unix(0),
+               "SEMAPHORE_PIPELINE_STARTED_AT" => unix(44),
+               "SEMAPHORE_PIPELINE_DONE_AT" => unix(100),
+               "SEMAPHORE_PIPELINE_INIT_DURATION" => "10",
+               "SEMAPHORE_PIPELINE_QUEUEING_DURATION" => "33",
+               "SEMAPHORE_PIPELINE_RUNNING_DURATION" => "56",
+               "SEMAPHORE_PIPELINE_TOTAL_DURATION" => "100"
+             }
+    end
+
+    test "a pipeline stopped while queued is scheduled and reports its time in the queue" do
+      trace = trace_at(created_at: 0, pending_at: 10, queuing_at: 11, done_at: 50)
+
+      assert metrics(trace) == %{
+               "SEMAPHORE_PIPELINE_CREATED_AT" => unix(0),
+               "SEMAPHORE_PIPELINE_STARTED_AT" => "",
+               "SEMAPHORE_PIPELINE_DONE_AT" => unix(50),
+               "SEMAPHORE_PIPELINE_INIT_DURATION" => "10",
+               "SEMAPHORE_PIPELINE_QUEUEING_DURATION" => "39",
+               "SEMAPHORE_PIPELINE_RUNNING_DURATION" => "0",
+               "SEMAPHORE_PIPELINE_TOTAL_DURATION" => "50"
+             }
+    end
+
+    test "a pipeline stopped before it was queued reports no queue time" do
+      trace = trace_at(created_at: 0, pending_at: 10, done_at: 12)
+
+      assert %{
+               "SEMAPHORE_PIPELINE_STARTED_AT" => "",
+               "SEMAPHORE_PIPELINE_INIT_DURATION" => "10",
+               "SEMAPHORE_PIPELINE_QUEUEING_DURATION" => "0",
+               "SEMAPHORE_PIPELINE_RUNNING_DURATION" => "0",
+               "SEMAPHORE_PIPELINE_TOTAL_DURATION" => "12"
+             } = metrics(trace)
+    end
+
+    test "a pipeline that ended before it was pending reports all of its time as init" do
+      trace = trace_at(created_at: 0, done_at: 7)
+
+      assert %{
+               "SEMAPHORE_PIPELINE_STARTED_AT" => "",
+               "SEMAPHORE_PIPELINE_INIT_DURATION" => "7",
+               "SEMAPHORE_PIPELINE_QUEUEING_DURATION" => "0",
+               "SEMAPHORE_PIPELINE_RUNNING_DURATION" => "0",
+               "SEMAPHORE_PIPELINE_TOTAL_DURATION" => "7"
+             } = metrics(trace)
+    end
+  end
+
+  @metric_env_vars ~w(
+    SEMAPHORE_PIPELINE_CREATED_AT
+    SEMAPHORE_PIPELINE_STARTED_AT
+    SEMAPHORE_PIPELINE_DONE_AT
+    SEMAPHORE_PIPELINE_INIT_DURATION
+    SEMAPHORE_PIPELINE_QUEUEING_DURATION
+    SEMAPHORE_PIPELINE_RUNNING_DURATION
+    SEMAPHORE_PIPELINE_TOTAL_DURATION
+  )
+
+  @trace_origin ~U[2026-01-01 12:00:00.250000Z]
+
+  defp trace_at(offsets) do
+    timestamps = Map.new(offsets, fn {name, sec} -> {name, DateTime.add(@trace_origin, sec)} end)
+
+    Map.merge(
+      %{created_at: nil, pending_at: nil, queuing_at: nil, running_at: nil, done_at: nil},
+      timestamps
+    )
+  end
+
+  defp unix(offset), do: "#{@trace_origin |> DateTime.add(offset) |> DateTime.to_unix()}"
+
+  defp metrics(trace) do
+    [job] = scheduled_request_jobs(%{"jobs" => [job_def("Report")]}, trace)
+
+    job.env_vars
+    |> Enum.filter(&(&1.name in @metric_env_vars))
+    |> Map.new(&{&1.name, &1.value})
+  end
+
   defp claim_env_vars(value), do: Enum.map(@claim_env_vars, &%{"name" => &1, "value" => value})
 
-  defp scheduled_request_jobs(build) do
+  defp scheduled_request_jobs(build, trace \\ ppl_trace()) do
     test_pid = self()
 
     ppl_req = %{
@@ -103,7 +189,7 @@ defmodule Ppl.TaskClient.AfterPipelineTest do
         send(test_pid, {:scheduled_request, request})
         {:ok, %{id: UUID.uuid4()}}
       end do
-      assert {:ok, _task_id} = AfterPipeline.start(ppl_req, after_ppl, ppl_trace(), ppl)
+      assert {:ok, _task_id} = AfterPipeline.start(ppl_req, after_ppl, trace, ppl)
     end
 
     assert_received {:scheduled_request, {:ok, request}}
