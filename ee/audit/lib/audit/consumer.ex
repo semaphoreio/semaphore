@@ -5,12 +5,18 @@ defmodule Audit.Consumer do
     exchange: "audit",
     routing_key: "log"
 
+  require Logger
+
   def handle_message(message) do
     Watchman.benchmark("consumer.process.duration", fn ->
       event = InternalApi.Audit.Event.decode(message)
 
       if FeatureProvider.feature_enabled?(:audit_logs, param: event.org_id) do
         {:ok, _event} = process(event)
+      else
+        Logger.info(
+          "Skipping #{event.resource}.#{event.operation} event for org #{event.org_id}: audit_logs is not enabled"
+        )
       end
     end)
   end

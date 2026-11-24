@@ -20,7 +20,6 @@ defmodule Audit.Application do
 
     children = [
       {{Audit.Repo, []}, true},
-      {{Cachex, [name: Audit.Cache]}, true},
       {Supervisor.child_spec({Cachex, :feature_provider_cache}, id: :feature_provider_cache),
        true},
       {provider, System.get_env("FEATURE_YAML_PATH") != nil},
