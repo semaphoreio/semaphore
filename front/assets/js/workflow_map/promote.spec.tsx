@@ -292,10 +292,10 @@ describe(`promotions menu runs`, () => {
   let root: HTMLElement;
   const run = (id: string, name: string, createdAt: number, over: Partial<Pipeline> = {}) =>
     ({ id, name, createdAt, runningAt: createdAt, doneAt: createdAt + 90, status: `passed`, attempt: 1, parameters: [], ...over }) as Pipeline;
-  const promotion = (name: string, pipelines: Pipeline[]) =>
-    ({ name, events: pipelines.map((r) => ({ pipeline_id: r.id, processed: true, result: `PASSED`, auto: false, triggered_at: r.createdAt, author: `Ana Kowalska` })), can_promote: true, deployment: null, parameters: [], pipelines, starting: false }) as unknown as Promotion;
+  const promotion = (name: string, pipelines: Pipeline[], declared: string[] = []) =>
+    ({ name, events: pipelines.map((r) => ({ pipeline_id: r.id, processed: true, result: `PASSED`, auto: false, triggered_at: r.createdAt, author: `Ana Kowalska` })), can_promote: true, deployment: null, parameters: declared.map((d) => ({ name: d })), pipelines, starting: false }) as unknown as Promotion;
   const show = (...promotions: Promotion[]) => act(() => render(<Promotions p={{ id: `ci`, name: `Build`, promotions } as unknown as Pipeline}/>, root));
-  const runs = () => [...root.querySelectorAll(`.wf-map-run`)].map((r) => [r.querySelector(`.wf-map-run-name`).textContent, r.querySelector(`.wf-map-run-params`)?.textContent ?? null]);
+  const runs = () => [...root.querySelectorAll(`.wf-map-run`)].map((r) => [r.querySelector(`.wf-map-run-name`).textContent, r.querySelector(`.wf-map-run-params`) && [...r.querySelectorAll(`.wf-map-run-params span`)].map((v) => v.textContent)]);
 
   beforeEach(() => {
     root = document.createElement(`div`);
@@ -308,7 +308,7 @@ describe(`promotions menu runs`, () => {
     root.remove();
   });
 
-  test(`lists every run under its promotion, newest first, with the parameters its name does not already say`, async () => {
+  test(`lists every run under its promotion, newest first, with its parameters under the name`, async () => {
     await show(
       promotion(`05 - Delete image`, [
         run(`a`, `Delete image`, 1700000000, { parameters: [{ name: `IMAGE_DATE`, value: `2026-11-01` }] }),
@@ -317,11 +317,27 @@ describe(`promotions menu runs`, () => {
       promotion(`PHP Noble`, [run(`c`, `PHP 8.5.11`, 1700000000, { parameters: [{ name: `PHP_VERSION_noble`, value: `8.5.11` }] })])
     );
     expect(runs()).to.deep.equal([
-      [`Delete image#2`, `IMAGE_DATE=2026-11-08`],
-      [`Delete image`, `IMAGE_DATE=2026-11-01`],
-      [`PHP 8.5.11`, null],
+      [`Delete image#2`, [`IMAGE_DATE=2026-11-08`]],
+      [`Delete image`, [`IMAGE_DATE=2026-11-01`]],
+      [`PHP 8.5.11`, [`PHP_VERSION_noble=8.5.11`]],
     ]);
     expect(root.querySelector(`.wf-map-promotion-note`)).to.equal(null);
+  });
+
+  test(`shows a run's parameters in the order the promotion declares them, without the empty ones`, async () => {
+    const parameters = [{ name: `EXTRA`, value: `1` }, { name: `NOTE`, value: `` }, { name: `REGION`, value: `eu` }, { name: `IMAGE`, value: `web:1.2` }];
+    await show(promotion(`Production`, [run(`a`, `Production`, 1700000000, { parameters })], [`IMAGE`, `NOTE`, `REGION`]));
+    expect(runs()).to.deep.equal([[`Production`, [`IMAGE=web:1.2`, `REGION=eu`, `EXTRA=1`]]]);
+  });
+
+  test(`gives a run without parameters no second line`, async () => {
+    await show(promotion(`Staging`, [run(`s1`, `Staging`, 1700000000), run(`s0`, `Staging`, 1600000000, { parameters: [{ name: `NOTE`, value: `` }] })], [`NOTE`]));
+    expect(runs()).to.deep.equal([[`Staging`, null], [`Staging`, null]]);
+  });
+
+  test(`keeps the parameters inside the run's link`, async () => {
+    await show(promotion(`Production`, [run(`a`, `Production`, 1700000000, { parameters: [{ name: `REGION`, value: `eu` }] })]));
+    expect(root.querySelector(`a.wf-map-run[href="?pipeline_id=a"] .wf-map-run-params`).textContent).to.equal(`REGION=eu`);
   });
 
   test(`shows a run on the map and closes the menu when it is clicked`, async () => {

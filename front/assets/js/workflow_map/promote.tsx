@@ -29,8 +29,7 @@ export const Promotions = ({ p }: { p: Pipeline, }) => {
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => input.current?.focus(), []);
   const q = filter.trim().toLowerCase();
-  const extra = (run: Pipeline) => run.parameters.filter((v) => v.value && !run.name.toLowerCase().includes(v.value.toLowerCase()));
-  const runText = (run: Pipeline) => [run.name, ...extra(run).map((v) => `${v.name}=${v.value}`)].join(` `).toLowerCase();
+  const runText = (run: Pipeline) => [run.name, ...run.parameters.map((v) => `${v.name}=${v.value}`)].join(` `).toLowerCase();
   const shown = p.promotions?.filter((promotion) => promotion.name.toLowerCase().includes(q) || promotion.pipelines.some((run) => runText(run).includes(q))) ?? [];
   return (
     <div role="menu" aria-label={`Promotions of ${p.name}`}>
@@ -55,6 +54,8 @@ export const Promotions = ({ p }: { p: Pipeline, }) => {
       {shown.map((promotion) => {
         const latest = promotion.events.reduce((a, e) => (!a || e.triggered_at > a.triggered_at ? e : a), null);
         const runs = [...promotion.pipelines].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+        const declared = promotion.parameters.map((d) => d.name);
+        const place = (name: string) => (declared.includes(name) ? declared.indexOf(name) : declared.length);
         const note = promotion.starting
           ? `Starting promotion…`
           : !latest
@@ -101,7 +102,7 @@ export const Promotions = ({ p }: { p: Pipeline, }) => {
             {runs.length > 0 && (
               <ul className="wf-map-runs" aria-label={`Runs of ${promotion.name}`}>
                 {runs.map((run) => {
-                  const params = extra(run);
+                  const params = run.parameters.filter((v) => v.value).sort((a, b) => place(a.name) - place(b.name));
                   return (
                     <li key={run.id}>
                       <a
@@ -121,7 +122,11 @@ export const Promotions = ({ p }: { p: Pipeline, }) => {
                             {run.name}
                             {run.attempt > 1 && <span className="wf-map-attempt">#{run.attempt}</span>}
                           </span>
-                          {params.length > 0 && <span className="wf-map-run-params">{params.map((v) => `${v.name}=${v.value}`).join(` · `)}</span>}
+                          {params.length > 0 && (
+                            <span className="wf-map-run-params">
+                              {params.map((v) => <span key={v.name}>{v.name}={v.value}</span>)}
+                            </span>
+                          )}
                         </span>
                         <Duration start={run.runningAt} end={run.doneAt} running={run.status === `running`}/>
                         <span className="wf-map-run-ago">{run.createdAt && formatAgo(now.value - run.createdAt)}</span>

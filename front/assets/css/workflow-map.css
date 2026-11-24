@@ -1135,7 +1135,7 @@ a.wf-map-job:hover {
 
 .wf-map-run {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   width: calc(100% + 12px);
   margin: 0 -6px;
@@ -1173,6 +1173,10 @@ a.wf-map-job:hover {
 }
 
 .wf-map-run-params {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1ch;
+  font-family: "Jetbrains Mono", "SFMono-Regular", Consolas, Menlo, monospace;
   font-size: 11px;
   color: #677278;
 }
