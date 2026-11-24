@@ -1,1 +1,1 @@
-DROP INDEX CONCURRENTLY IF EXISTS index_agents_on_organization_id_and_token_hash;
+DROP INDEX IF EXISTS index_agents_on_organization_id_and_token_hash;
