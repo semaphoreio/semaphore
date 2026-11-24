@@ -309,6 +309,33 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
       assert req.refresh_validity_seconds == 9_000
     end
 
+    test "every request names the job's organization, with or without a refresh grant" do
+      test_pid = self()
+
+      GrpcMock.stub(Support.FakeServers.CacheApi, :get_s3_credentials, fn req, _ ->
+        send(test_pid, {:get_s3_credentials, req})
+        s3_credentials()
+      end)
+
+      for org_id <- [Ecto.UUID.generate(), Ecto.UUID.generate()],
+          job_type <- [:pipeline_job, :debug_job],
+          refresh <- [0, 9_000] do
+        {:ok, job} = Support.Factories.Job.create(:pending, %{organization_id: org_id})
+
+        assert {:ok, _} = Cache.find_s3(job, project(), nil, job_type, 7_200, refresh)
+
+        assert_received {:get_s3_credentials, req}
+        assert req.organization_id == org_id
+      end
+    end
+
+    test "the organization id is field 4 of the request" do
+      request = InternalApi.Cache.GetS3CredentialsRequest.new(organization_id: "org")
+
+      # Tag 4 << 3 | 2 (length-delimited), then the length and the bytes.
+      assert InternalApi.Cache.GetS3CredentialsRequest.encode(request) == <<0x22, 3, "org">>
+    end
+
     test "skips a project without a cache_id without asking cachehub", %{job: job} do
       stub_s3_credentials_not_called()
 
@@ -448,6 +475,47 @@ defmodule Zebra.Workers.JobRequestFactory.CacheTest do
                Cache.env_vars(job, s3_credentials(), @org_id, ["A", "SEMAPHORE_CACHE_S3_BUCKET"])
 
       assert {:ok, []} = Cache.env_vars(job, s3_credentials(), @org_id, ["semaphore_cache_url"])
+    end
+
+    test "sets none for each name that selects a backend, a location or credentials", %{
+      job: job
+    } do
+      for name <- [
+            "SEMAPHORE_CACHE_BACKEND",
+            "SEMAPHORE_CACHE_S3_BUCKET",
+            "SEMAPHORE_CACHE_S3_REGION",
+            "SEMAPHORE_CACHE_S3_URL",
+            "SEMAPHORE_CACHE_S3_KEY",
+            "SEMAPHORE_CACHE_S3_SECRET",
+            "SEMAPHORE_CACHE_S3_SESSION_TOKEN",
+            "SEMAPHORE_CACHE_S3_EXPIRES_AT",
+            "SEMAPHORE_CACHE_S3_REFRESH_TOKEN",
+            "SEMAPHORE_CACHE_S3_REFRESH_URL",
+            "SEMAPHORE_CACHE_AWS_PROFILE",
+            "SEMAPHORE_CACHE_USE_EC2_INSTANCE_PROFILE",
+            "SEMAPHORE_CACHE_URL",
+            "SEMAPHORE_CACHE_USERNAME",
+            "SEMAPHORE_CACHE_PRIVATE_KEY_PATH",
+            "SEMAPHORE_CACHE_CDN_URL",
+            "SEMAPHORE_CACHE_CDN_KEY",
+            "SEMAPHORE_CACHE_CDN_SECRET",
+            "SEMAPHORE_CACHE_GCS_BUCKET",
+            "SEMAPHORE_CACHE_SETTING_NOT_KNOWN_YET"
+          ] do
+        assert {:ok, []} =
+                 Cache.env_vars(job, s3_credentials(), @org_id, [
+                   "SEMAPHORE_CACHE_ARCHIVE_METHOD",
+                   name
+                 ]),
+               "#{name} should keep the job on its own cache settings"
+      end
+    end
+
+    test "keeps the credentials when the job sets only the archive method", %{job: job} do
+      for name <- ["SEMAPHORE_CACHE_ARCHIVE_METHOD", "semaphore_cache_archive_method"] do
+        assert {:ok, envs} = Cache.env_vars(job, s3_credentials(), @org_id, ["A", name])
+        assert envs == expected_s3_envs()
+      end
     end
 
     test "variables of other groups do not count", %{job: job} do

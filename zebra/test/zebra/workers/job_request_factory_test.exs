@@ -1885,6 +1885,7 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
 
       assert_received {:get_s3_credentials, s3_request}
       assert s3_request.project_id == job.project_id
+      assert s3_request.organization_id == job.organization_id
       assert s3_request.min_validity_seconds == 2 * 60 * 60
 
       assert_received {:get_registry_credentials, registry_request}
@@ -1965,6 +1966,33 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
                [%{"name" => "SEMAPHORE_CACHE_S3_BUCKET", "value" => Base.encode64("own-bucket")}]
 
       assert env_value(job, "SEMAPHORE_REGISTRY_PASSWORD") == @registry_password
+    end
+
+    test "a job whose YAML sets only the archive method keeps the S3 credentials" do
+      enable_secondary_provider()
+
+      spec =
+        Map.update!(
+          @job_spec,
+          "env_vars",
+          &(&1 ++ [%{"name" => "SEMAPHORE_CACHE_ARCHIVE_METHOD", "value" => "native"}])
+        )
+
+      job = create_pending_job(%{spec: spec})
+
+      {:ok, job} = Worker.process(job)
+      assert job.aasm_state == "enqueued"
+
+      assert env_value(job, "SEMAPHORE_CACHE_BACKEND") == "s3"
+      assert env_value(job, "SEMAPHORE_CACHE_S3_SESSION_TOKEN") == @s3_session_token
+
+      # The job's own setting comes after the platform's, so it is the one used.
+      assert job.request["env_vars"]
+             |> Enum.filter(&(&1["name"] == "SEMAPHORE_CACHE_ARCHIVE_METHOD"))
+             |> List.last() == %{
+               "name" => "SEMAPHORE_CACHE_ARCHIVE_METHOD",
+               "value" => Base.encode64("native")
+             }
     end
 
     test "a job whose YAML sets a SEMAPHORE_REGISTRY_* variable gets none of the registry ones" do

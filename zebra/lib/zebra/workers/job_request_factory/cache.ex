@@ -207,15 +207,17 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
   end
 
   @doc """
-  With S3 credentials, a job that sets any SEMAPHORE_CACHE_* variable itself
+  With S3 credentials, a job that sets a SEMAPHORE_CACHE_* variable itself
   gets none of these, so its own cache settings are never mixed with them.
+  Settings that neither point cache-cli elsewhere nor carry credentials, such
+  as SEMAPHORE_CACHE_ARCHIVE_METHOD, are exempt.
   """
   def env_vars(job, cache, organization_id, job_env_var_names \\ [])
 
   def env_vars(_, nil, _, _), do: {:ok, []}
 
   def env_vars(_job, credentials = %GetS3CredentialsResponse{}, organization_id, names) do
-    if Enum.any?(names, &cache_env_var?/1) do
+    if Enum.any?(names, &keeps_own_cache_settings?/1) do
       {:ok, []}
     else
       vars = [
@@ -258,10 +260,18 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
     end
   end
 
-  defp cache_env_var?(name) when is_binary(name),
-    do: String.starts_with?(String.upcase(name), "SEMAPHORE_CACHE_")
+  # The only names a job may set and still get the S3 credentials. Any other
+  # SEMAPHORE_CACHE_* name, known or not, may select a backend, a location or
+  # credentials, so the job keeps its own cache settings.
+  @exempt_cache_settings ["SEMAPHORE_CACHE_ARCHIVE_METHOD"]
 
-  defp cache_env_var?(_name), do: false
+  defp keeps_own_cache_settings?(name) when is_binary(name) do
+    name = String.upcase(name)
+
+    String.starts_with?(name, "SEMAPHORE_CACHE_") and name not in @exempt_cache_settings
+  end
+
+  defp keeps_own_cache_settings?(_name), do: false
 
   def forked_pr?(repo, org_id \\ nil, project \\ nil)
   def forked_pr?(_repo = %{pr_slug: ""}, _org_id, _project), do: false
