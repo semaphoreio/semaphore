@@ -58,18 +58,18 @@ Please note that `sem-service` is not available on R1 images.
 
 Following version control tools are pre-installed:
 
-- Git: 2.55.0
-- Git LFS (Git Large File Storage): 3.8.0
-- GitHub CLI: 2.101.0
+- Git: 2.56.1
+- Git LFS (Git Large File Storage): 3.8.1
+- GitHub CLI: 2.105.0
 - Mercurial: 6.7.2
 - Svn: 1.14.3
 
 ### Browsers and Headless Browser Testing
 
-- Firefox: 140.16.0esr
+- Firefox: 140.17.0esr
 - Geckodriver: 0.37.1
-- Chromium: 153.0.8010.52
-- Chromium Driver: 153.0.8010.52
+- Chromium: 156.0.8078.73
+- Chromium Driver: 156.0.8078.73
 - Xvfb (X Virtual Framebuffer)
 
 Chrome and Firefox both support headless mode. You shouldn't need to do more
@@ -80,28 +80,28 @@ Refer to the documentation of associated libraries when configuring your project
 
 Docker toolset is installed and the following versions are available:
 
-- Docker: 29.8.1
-- Docker-compose: 5.5.1 (used as `docker compose version`)
-- Docker-buildx: 0.37.1
+- Docker: 29.10.0
+- Docker-compose: 5.8.0 (used as `docker compose version`)
+- Docker-buildx: 0.39.1
 - Docker-machine: 0.16.2
-- Dockerize: 0.15.1
+- Dockerize: 0.16.0
 - Buildah: 1.33.7
 - Podman: 4.9.3
 - Skopeo: 1.13.3
 
 ### Cloud CLIs
 
-- Aws-cli v2 (used as `aws`): 2.36.49
-- Azure-cli: 2.90.0
+- Aws-cli v2 (used as `aws`): 2.41.1
+- Azure-cli: 2.93.0
 - Eb-cli: 3.25
 - Ecs-cli: 1.21.0
-- Doctl: 1.169.0
-- Gcloud: 585.0.0
-- Gke-gcloud-auth-plugin: 585.0.0
+- Doctl: 2.6.0
+- Gcloud: 594.0.0
+- Gke-gcloud-auth-plugin: 594.0.0
 - Kubectl: 1.29.1
-- Terraform: 1.16.3
-- Helm: 4.3.0
-- Helmfile: 1.8.0
+- Terraform: 1.17.2
+- Helm: 4.3.2
+- Helmfile: 1.8.4
 
 ### Network utilities
 
@@ -140,19 +140,19 @@ Versions:
 - 1.25.x
 - 1.26.x
 
-The default installed Go version is 1.27.1.
+The default installed Go version is 1.27.4.
 
 ### Java and JVM languages
 
-- Java: 11.0.32.1, 17.0.20.1 (default), 21.0.12.1, 25.0.4.1
+- Java: 11.0.33.1, 17.0.21.1 (default), 21.0.13.1, 25.0.5.1
 - Scala: 3.2.2
 - Leiningen: 2.12.0 (Clojure)
-- Sbt: 2.0.9
+- Sbt: 2.1.0
 
 ### Additional Java build tools
 
-- Maven: 3.9.16
-- Gradle: 9.7.1
+- Maven: 3.10.1
+- Gradle: 9.9.1
 
 ### JavaScript via Node.js
 
@@ -160,11 +160,11 @@ Node.js versions are managed by [nvm](https://github.com/nvm-sh/nvm).
 You can install any version you need with `nvm install [version]`.
 Installed version:
 
-- 24.21.0 (set as default, with alias 24.21), includes npm 11.19.0
+- 26.13.1 (set as default, with alias 26.13), includes npm 11.20.0
 
 ### Additional JS tools
 
-- Bun: 1.4.2
+- Bun: 1.4.5
 - Yarn: 1.22.22
 
 ### PHP
@@ -178,26 +178,26 @@ Available versions:
 - 8.4.x
 - 8.5.x
 
-The default installed PHP version is 8.1.34.
+The default installed PHP version is 8.3.36.
 
 ### Additional PHP libraries
 
-PHPUnit: 9.5.27
+PHPUnit: 9.5.28
 
 ### Python
 
 Python versions are installed and managed by
 [virtualenv](https://virtualenv.pypa.io/en/stable/). Installed versions:
 
-- 3.10.20
-- 3.11.15
+- 3.10.22
+- 3.11.18
 - 3.12.9 (default)
 
 Supporting libraries:
 
-- pypy3: 7.3.21
-- pip: 26.2.1
-- virtualenv: 21.9.0
+- pypy3: 8.0.1
+- pip: 26.3
+- virtualenv: 21.15.9
 
 ### Ruby
 
@@ -208,15 +208,15 @@ Available versions:
 - 3.4.x
 - 4.0.x
 
-The default installed Ruby version is 3.4.9.
+The default installed Ruby version is 3.4.12.
 
 ### Rust
 
-- 1.98.1
+- 1.100.0
 
 ### Swiftly
 
-- 1.1.4
+- 1.2.0
 
 ## See also
 
