@@ -839,18 +839,14 @@ button.wf-map-reason .material-symbols-outlined {
   background: #EEF1F2;
 }
 
-.wf-map-blocks-toggle {
-  flex: none;
-  color: #677278;
-}
-
-.wf-map-blocks-toggle:disabled {
-  background: none;
-  cursor: default;
-  opacity: 0.4;
+.btn.wf-map-blocks-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .wf-map-blocks-toggle .material-symbols-outlined {
+  margin-left: -4px;
   font-size: 18px;
   line-height: 1;
 }

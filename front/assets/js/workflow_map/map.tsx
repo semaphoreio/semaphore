@@ -37,7 +37,7 @@ const lineage = computed(() => {
   return { chain, pipelineId: start.pipeline.id };
 });
 
-interface Target { id: string, how: `fit` | `focus` | `all` | `keep` | `keepRight` | `open`, job?: number, at?: Point, }
+export interface Target { id: string, how: `fit` | `focus` | `all` | `keep` | `open`, job?: number, at?: Point, }
 let target: Target | null = null;
 
 const READABLE = 0.75;
@@ -47,10 +47,9 @@ const EDGE = 40;
 interface Box { x: number, y: number, w: number, h: number, }
 export interface View { x: number, y: number, zoom: number, }
 
-export function nextView(how: `fit` | `focus` | `keep` | `keepRight` | `open`, box: Box, pad: number, v: View, vw: number, vh: number, at?: Point): View | null {
+export function nextView(how: `fit` | `focus` | `keep` | `open`, box: Box, pad: number, v: View, vw: number, vh: number, at?: Point): View | null {
   if (how !== `fit` && how !== `focus`) {
-    const x = how === `keepRight` ? box.x + box.w : box.x;
-    const kept = { x: v.x - (x - at.x) * v.zoom, y: v.y - (box.y - at.y) * v.zoom, zoom: v.zoom };
+    const kept = { x: v.x - (box.x - at.x) * v.zoom, y: v.y - (box.y - at.y) * v.zoom, zoom: v.zoom };
     if (how !== `open`) return kept;
     const into = (start: number, size: number, room: number) => {
       const end = start + size * v.zoom;
@@ -202,25 +201,23 @@ export const AfterBand = ({ block, at }: { block: Block, at: Point, }) => {
   );
 };
 
-export const BlocksToggle = ({ p, at }: { p: Pipeline, at: Point, }) => {
-  const blocks = p.blocks ?? [];
+export const BlocksToggle = ({ pipelines, anchor }: { pipelines: Pipeline[], anchor: Target | null, }) => {
+  const blocks = pipelines.flatMap((p) => p.blocks ?? []);
   const open = blocks.length > 0 && blocks.every((b) => openBlocks.value.has(b.id));
-  const label = `${open ? `Collapse` : `Expand`} all blocks`;
   return (
     <button
-      className="wf-map-collapse wf-map-blocks-toggle"
-      aria-label={`${label} of ${p.name}`}
-      data-tippy-content={label}
+      className="btn btn-secondary btn-small wf-map-blocks-toggle"
+      data-tippy-content={`${open ? `Collapses` : `Expands`} the blocks of every open pipeline`}
       disabled={blocks.length === 0}
-      onClick={(e) => {
-        e.stopPropagation();
-        aim({ id: p.id, how: `keepRight`, at });
+      onClick={() => {
+        aim(anchor);
         const next = new Set(openBlocks.value);
         blocks.forEach((b) => (open ? next.delete(b.id) : next.add(b.id)));
         openBlocks.value = next;
       }}
     >
       <span className="material-symbols-outlined" aria-hidden="true">{open ? `unfold_less` : `unfold_more`}</span>
+      {open ? `Collapse all blocks` : `Expand all blocks`}
     </button>
   );
 };
@@ -233,7 +230,7 @@ export const InitTab = ({ job }: { job: InitJob, }) => (
   </a>
 );
 
-const PipelineNode = ({ data, width, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node<{ id: string, }>>) => {
+const PipelineNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node<{ id: string, }>>) => {
   const p = workflow.value?.pipelineById.get(data.id);
   const h = hits.value;
   if (!p) return null;
@@ -264,7 +261,6 @@ const PipelineNode = ({ data, width, positionAbsoluteX, positionAbsoluteY }: Nod
           <Duration start={p.runningAt} end={p.doneAt} running={p.status === `running`}/>
           {p.triggerer && <span className="wf-map-sep" aria-hidden="true"/>}
           <Triggered p={p}/>
-          <BlocksToggle p={p} at={{ x: at.x + width, y: at.y }}/>
         </div>
         <div className="wf-map-pipeline-row wf-map-pipeline-sub">
           <Name className="wf-map-pipeline-meta">{p.yamlFile}</Name>
@@ -526,6 +522,7 @@ const WorkflowMap = () => {
   };
 
   if (!graph) return <div className="wf-map-loading">Loading the workflow…</div>;
+  const lead = layout.pipelines.get(selected.value);
   return (
     <ReactFlow
       nodes={graph.nodes}
@@ -571,6 +568,7 @@ const WorkflowMap = () => {
           <button className="btn btn-secondary btn-small" onClick={() => (aim({ id: ``, how: `all` }), (openPipelines.value = new Set()), (openBlocks.value = new Set()))}>
             Close all
           </button>
+          <BlocksToggle pipelines={wf.pipelines.filter((p) => P.has(p.id))} anchor={lead ? { id: selected.value, how: `keep`, at: lead } : null}/>
           <span className="wf-map-zoom">{Math.round(zoom * 100)}%</span>
         </div>
       </Panel>
