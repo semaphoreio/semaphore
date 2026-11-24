@@ -45,18 +45,18 @@ The image comes with the following [toolbox utilities](../toolbox) preinstalled:
 
 Following version control tools are pre-installed:
 
-- Git 2.51.0
-- Git LFS (Git Large File Storage) 3.7.0
-- GitHub CLI 2.80.0
+- Git 2.56.1
+- Git LFS (Git Large File Storage) 3.8.1
+- GitHub CLI 2.105.0
 - Mercurial 6.1.1
 - Svn 1.14.1
 
 ### Browsers and Headless Browser Testing
 
 - Firefox 102.11.0 (`102`, `default`, `esr`)
-- Geckodriver 0.36.0
-- Google Chrome 140.0.7339.207
-- ChromeDriver 140.0.7339.207
+- Geckodriver 0.37.1
+- Google Chrome 158.0.8127.36
+- ChromeDriver 158.0.8127.36
 - Xvfb (X Virtual Framebuffer)
 - Phantomjs 2.1.1
 
@@ -68,30 +68,30 @@ Refer to the documentation of associated libraries when configuring your project
 
  Docker toolset is installed and the following versions are available:
 
-- Docker 28.4.0
+- Docker 29.10.0
 - Docker-compose 1.29.2 (used as `docker-compose --version`)
-- Docker-compose 2.39.4 (used as `docker compose version`)
-- Docker-buildx 0.28.0
+- Docker-compose 5.8.0 (used as `docker compose version`)
+- Docker-buildx 0.39.0
 - Docker-machine 0.16.2
-- Dockerize 0.9.6
+- Dockerize 0.16.0
 - Buildah 1.23.1
 - Podman 3.4.4
 - Skopeo 1.4.1
 
 ### Cloud CLIs
 
-- Aws-cli v2 (used as `aws`) 2.31.1
-- Azure-cli 2.77.0
+- Aws-cli v2 (used as `aws`) 2.41.1
+- Azure-cli 2.93.0
 - Eb-cli 3.25
 - Ecs-cli 1.21.0
-- Doctl 1.142.0
-- Gcloud 540.0.0
-- Gke-gcloud-auth-plugin 540.0.0
+- Doctl 2.6.0
+- Gcloud 594.0.0
+- Gke-gcloud-auth-plugin 594.0.0
 - Kubectl 1.29.1
-- Heroku 10.13.2
-- Terraform 1.13.3
-- Helm 3.19.0
-- Helmfile 1.1.7
+- Heroku 11.14.0
+- Terraform 1.17.2
+- Helm 4.3.2
+- Helmfile 1.8.4
 
 ### Network utilities
 
@@ -138,20 +138,20 @@ Versions:
 - 1.25.x
 - 1.26.x
 
-The default installed Go version is 1.25.1.
+The default installed Go version is 1.27.4.
 
 ### Java and JVM languages
 
-- Java: 11.0.28, 17.0.16 (default)
+- Java: 11.0.33.1, 17.0.21.1 (default)
 - Scala: 3.2.2
 - Leiningen: 2.12.0 (Clojure)
-- Sbt 1.11.6
+- Sbt 2.1.0
 
 ### Additional Java build tools
 
-- Maven: 3.9.11
-- Gradle: 9.1
-- Bazel: 8.4.1
+- Maven: 3.10.1
+- Gradle: 9.9.1
+- Bazel: 9.3.2
 
 ### JavaScript via Node.js
 
@@ -159,7 +159,7 @@ Node.js versions are managed by [nvm](https://github.com/nvm-sh/nvm).
 You can install any version you need with `nvm install [version]`.
 Installed version:
 
-- 22.19.0 (set as default, with alias 22.19), includes npm 10.9.3
+- 26.13.1 (set as default, with alias 26.13), includes npm 11.20.0
 
 ### Additional JS tools
 
@@ -174,7 +174,7 @@ Available versions:
 - 8.2.x
 - 8.3.x
 
-The default installed PHP version is 8.1.32.
+The default installed PHP version is 8.3.36.
 
 ### Additional PHP libraries
 
@@ -186,15 +186,15 @@ Python versions are installed and managed by
 [virtualenv](https://virtualenv.pypa.io/en/stable/). Installed versions:
 
 - 3.10.16 (default)
-- 3.11.13
-- 3.12.11
+- 3.11.18
+- 3.12.16
 
 Supporting libraries:
 
 - pypy: 7.3.9
-- pypy3: 7.3.17
-- pip: 25.2
-- virtualenv: 20.34.0
+- pypy3: 8.0.1
+- pip: 26.3
+- virtualenv: 21.15.9
 
 ### Ruby
 
@@ -207,15 +207,15 @@ Available versions:
 - 3.4.x
 - jruby-9.4.1.0
 
-The default installed Ruby version is 3.4.5.
+The default installed Ruby version is 3.4.13.
 
 ### Rust
 
-- 1.90.0
+- 1.100.0
 
 ### Swiftly
 
-- 1.0.1
+- 1.2.0
 
 ## See also
 
