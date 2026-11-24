@@ -112,6 +112,46 @@ describe("time-ago", () => {
         }
     })
 
+    describe("always-relative", () => {
+        const renderAlwaysRelative = (secondsAgo) => {
+            const at = new Date(Date.now() - secondsAgo * 1000)
+            document.body.innerHTML = `<time-ago always-relative datetime="${at.toISOString()}"></time-ago>`
+
+            return document.body.firstElementChild
+        }
+        const day = 86400
+
+        it("stays relative past the hour where the plain element switches to a date", () => {
+            expect(renderAlwaysRelative(31 * 60).textContent).to.equal("31 minutes ago")
+            expect(renderAlwaysRelative(3 * 3600 + 60).textContent).to.equal("3 hours ago")
+            expect(renderAlwaysRelative(4 * day + 60).textContent).to.equal("4 days ago")
+            expect(renderAlwaysRelative(1 * day + 60).textContent).to.equal("yesterday")
+            expect(renderAlwaysRelative(65 * day).textContent).to.equal("2 months ago")
+            expect(renderAlwaysRelative(800 * day).textContent).to.equal("2 years ago")
+        })
+
+        it("keeps the exact timestamp as a tooltip", () => {
+            const el = renderAlwaysRelative(4 * day)
+
+            expect(el.title).to.equal(exact(new Date(el.datetime), undefined))
+        })
+
+        it("is read when the element is attached, so it works when the attribute is set after creation", () => {
+            const el = document.createElement("time-ago")
+            el.datetime = new Date(Date.now() - 4 * day * 1000).toISOString()
+            el.setAttribute("always-relative", "")
+            document.body.appendChild(el)
+
+            expect(el.textContent).to.equal("4 days ago")
+        })
+
+        it("leaves the plain element as it was", () => {
+            document.body.innerHTML = `<time-ago datetime="${new Date(Date.now() - 4 * day * 1000).toISOString()}"></time-ago>`
+
+            expect(document.body.firstElementChild.textContent).to.not.contain("ago")
+        })
+    })
+
     it("renders nothing without a datetime", () => {
         const el = render(undefined)
 

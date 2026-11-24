@@ -1,16 +1,25 @@
-export type Status = `failed` | `running` | `queued` | `stopped` | `pending` | `skipped` | `passed`;
+export type Status = `failed` | `running` | `queued` | `stopped` | `canceled` | `pending` | `skipped` | `passed`;
 
-export const STATUSES: Status[] = [`failed`, `running`, `queued`, `stopped`, `pending`, `skipped`, `passed`];
+export const STATUSES: Status[] = [`failed`, `running`, `queued`, `stopped`, `canceled`, `pending`, `skipped`, `passed`];
 
 export const STATUS_LABEL: Record<Status, string> = {
   failed: `Failed`,
   running: `Running`,
   queued: `Queued`,
   stopped: `Stopped`,
+  canceled: `Cancelled`,
   pending: `Not started`,
   skipped: `Skipped`,
   passed: `Passed`,
 };
+
+export interface ApiTriggerer {
+  text: string;
+  link: { label: string, url: string, } | null;
+  owner: string | null;
+  stopped: boolean;
+  stopped_by: string | null;
+}
 
 export interface ApiPipeline {
   id: string;
@@ -18,8 +27,10 @@ export interface ApiPipeline {
   yaml_file: string;
   state: string;
   result: string;
+  result_reason: string | null;
   parent_id: string | null;
   trigger: string;
+  triggerer: ApiTriggerer;
   switch_id: string | null;
   created_at: number | null;
   running_at: number | null;
@@ -77,6 +88,8 @@ export interface ApiPromotion {
 export interface InitJob {
   url: string;
   status: Status;
+  started_at: number | null;
+  finished_at: number | null;
 }
 
 export interface ApiPipelineDetail {
@@ -121,8 +134,10 @@ export interface Pipeline {
   name: string;
   yamlFile: string;
   status: Status;
+  resultReason: string | null;
   done: boolean;
   trigger: string;
+  triggerer: ApiTriggerer;
   switchId: string | null;
   stopUrl: string | null;
   rebuildUrl: string | null;
@@ -152,7 +167,7 @@ export const AFTER_PIPELINE = `After pipeline`;
 
 const pipelineStatus = (state: string, result: string): Status => {
   if (state === `DONE`) {
-    return result === `PASSED` ? `passed` : result === `FAILED` ? `failed` : `stopped`;
+    return result === `PASSED` ? `passed` : result === `FAILED` ? `failed` : result === `CANCELED` ? `canceled` : `stopped`;
   }
   return state === `RUNNING` || state === `STOPPING` ? `running` : `queued`;
 };
@@ -212,8 +227,10 @@ export function buildWorkflow(tree: ApiWorkflow, details: Record<string, ApiPipe
       name: a.name,
       yamlFile: a.yaml_file,
       status: pipelineStatus(a.state, a.result),
+      resultReason: a.result_reason,
       done: a.state === `DONE`,
       trigger: a.trigger,
+      triggerer: a.triggerer,
       switchId: a.switch_id,
       stopUrl: a.stop_url,
       rebuildUrl: a.rebuild_url,
@@ -273,13 +290,13 @@ export function buildWorkflow(tree: ApiWorkflow, details: Record<string, ApiPipe
   return wf;
 }
 
-const PRECEDENCE: Status[] = [`running`, `queued`, `failed`, `stopped`, `pending`, `passed`, `skipped`];
+const PRECEDENCE: Status[] = [`running`, `queued`, `failed`, `stopped`, `canceled`, `pending`, `passed`, `skipped`];
 
 export function rollup(statuses: Status[]): Status {
   if (statuses.length === 0) return `pending`;
   const set = new Set(statuses);
   if (set.size === 1) return statuses[0];
-  if (set.has(`pending`) && set.has(`passed`) && !set.has(`failed`) && !set.has(`stopped`) && !set.has(`running`) && !set.has(`queued`)) {
+  if (set.has(`pending`) && set.has(`passed`) && !set.has(`failed`) && !set.has(`stopped`) && !set.has(`canceled`) && !set.has(`running`) && !set.has(`queued`)) {
     return `running`;
   }
   return PRECEDENCE.find((s) => set.has(s));
@@ -307,10 +324,46 @@ export function formatDuration(total: number): string {
   return `${two(minutes)}:${two(rest)}`;
 }
 
+export function formatAgo(total: number): string {
+  const seconds = Math.max(0, Math.floor(total));
+  if (seconds < 60) return `now`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  if (seconds < 30 * 86400) return `${Math.floor(seconds / 86400)}d ago`;
+  if (seconds < 365 * 86400) return `${Math.floor(seconds / (30 * 86400))}mo ago`;
+  return `${Math.floor(seconds / (365 * 86400))}y ago`;
+}
+
+export function shortName(name: string): string {
+  const words = name.trim().split(/\s+/);
+  const first = words[0];
+  const last = Array.from(words[words.length - 1].normalize());
+  if (words.length < 2 || !/^\p{Lu}/u.test(first) || !/^\p{Lu}/u.test(last[0])) return name;
+  return `${first} ${last[0]}.`;
+}
+
+export const plural = (n: number, word: string) => `${n} ${n === 1 ? word : `${word}s`}`;
+
 export const blockSummary = (b: Block) => {
   const c = countJobs(b.jobs);
   return [
-    `${b.jobs.length} ${b.jobs.length === 1 ? `job` : `jobs`}`,
-    ...([`failed`, `running`, `queued`, `stopped`] as Status[]).filter((s) => c[s]).map((s) => `${c[s]} ${STATUS_LABEL[s].toLowerCase()}`),
+    plural(b.jobs.length, `job`),
+    ...([`failed`, `running`, `queued`, `stopped`, `canceled`] as Status[]).filter((s) => c[s]).map((s) => `${c[s]} ${STATUS_LABEL[s].toLowerCase()}`),
   ].join(` · `);
 };
+
+const STOP_REASON: Record<string, { label: string, detail: string, }> = {
+  USER: { label: `Stopped by user`, detail: `Stopped by a user.` },
+  STRATEGY: { label: `Auto-cancelled`, detail: `A newer pipeline started in the same queue (auto_cancel).` },
+  TIMEOUT: { label: `Timed out`, detail: `The pipeline hit its execution time limit.` },
+  STUCK: { label: `Stopped by Semaphore`, detail: `Semaphore stopped it: it made no progress.` },
+  INTERNAL: { label: `Stopped by Semaphore`, detail: `Semaphore stopped it.` },
+};
+
+export function stopReason(p: Pipeline): { label: string, detail: string, } | null {
+  if (p.status !== `stopped` && p.status !== `canceled`) return null;
+  const reason = STOP_REASON[p.resultReason];
+  if (!reason) return null;
+  const by = p.triggerer?.stopped_by;
+  return by ? { ...reason, detail: `Stopped by ${by}.` } : reason;
+}
