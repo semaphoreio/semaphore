@@ -43,7 +43,7 @@ defmodule Zebra.Models.Job do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   @required_fields ~w(name organization_id project_id aasm_state created_at updated_at machine_type spec)a
-  @optional_fields ~w(build_id priority execution_time_limit deployment_target_id repository_id enqueued_at scheduled_at started_at finished_at request index port name machine_os_image failure_reason result agent_id agent_name agent_ip_address agent_ctrl_port agent_auth_token agent_provider agent_region agent_zone private_ssh_key expires_at original_job_id)a
+  @optional_fields ~w(build_id priority execution_time_limit deployment_target_id repository_id enqueued_at scheduled_at started_at finished_at request index port name machine_os_image failure_reason result agent_id agent_name agent_ip_address agent_ctrl_port agent_auth_token agent_provider agent_region agent_zone request_provider private_ssh_key expires_at original_job_id)a
 
   schema "jobs" do
     belongs_to(:task, Zebra.Models.Task, foreign_key: :build_id)
@@ -74,6 +74,9 @@ defmodule Zebra.Models.Job do
     # Where the hosted agent runs, as its provider reports it; nil when it does not.
     field(:agent_region, :string)
     field(:agent_zone, :string)
+    # The hosted agent provider the request was built for, "default" or a provider's
+    # name; dispatch goes there. nil for self-hosted jobs and jobs built before it.
+    field(:request_provider, :string)
     field(:private_ssh_key, :string)
     field(:execution_time_limit, :integer, default: 24 * 60 * 60)
     field(:priority, :integer)
@@ -147,6 +150,7 @@ defmodule Zebra.Models.Job do
       agent_provider: nil,
       agent_region: nil,
       agent_zone: nil,
+      request_provider: original.request_provider,
       private_ssh_key: nil,
       failure_reason: nil,
       execution_time_limit: nil
@@ -304,7 +308,7 @@ defmodule Zebra.Models.Job do
     end
   end
 
-  def enqueue(job, request, rsa) do
+  def enqueue(job, request, rsa, request_provider \\ nil) do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 
     if valid_transition?(job.aasm_state, state_enqueued()) do
@@ -313,7 +317,8 @@ defmodule Zebra.Models.Job do
           aasm_state: state_enqueued(),
           enqueued_at: now,
           private_ssh_key: if(rsa != nil, do: rsa.private_key, else: nil),
-          request: request
+          request: request,
+          request_provider: request_provider
         })
 
       Zebra.Workers.Scheduler.lock_and_process_async(job.organization_id)

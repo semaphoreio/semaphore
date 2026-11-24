@@ -65,7 +65,8 @@ defmodule Zebra.Workers.JobRequestFactory do
     org_id = job.organization_id
     spec = Job.decode_spec(job.spec)
     job_type = Job.detect_type(job)
-    secondary? = secondary_provider?(job)
+    request_provider = request_provider(job)
+    secondary? = request_provider == HostedAgent.secondary_provider()
 
     find_project = Task.async(fn -> Project.find(job.project_id) end)
     find_org = Task.async(fn -> Organization.find(org_id) end)
@@ -168,7 +169,7 @@ defmodule Zebra.Workers.JobRequestFactory do
 
       Logger.info("Request constructured for #{job.id}, saving into DB")
 
-      case Zebra.Models.Job.enqueue(job, request, rsa) do
+      case Zebra.Models.Job.enqueue(job, request, rsa, request_provider) do
         {:ok, job} ->
           submit_metrics(job)
 
@@ -262,10 +263,10 @@ defmodule Zebra.Workers.JobRequestFactory do
     end
   end
 
-  # Decided once, so the cache and the registry agree on where the job's agent runs.
-  defp secondary_provider?(job) do
-    Job.hosted?(job.machine_type) and
-      HostedAgent.provider_for(job) == HostedAgent.secondary_provider()
+  # Decided once and stored with the request, so the cache, the registry and the
+  # dispatcher agree on the provider even if the feature changes before dispatch.
+  defp request_provider(job) do
+    if Job.hosted?(job.machine_type), do: HostedAgent.request_provider(job), else: nil
   end
 
   defp find_cache(job, project, repo_proxy, job_type, secondary?) do

@@ -62,6 +62,27 @@ defmodule Zebra.Workers.Agent.HostedAgentProviderTest do
       assert_received {:occupy, @default_endpoint}
     end
 
+    test "occupies from the provider the request was built for" do
+      Application.put_env(:zebra, :chmura_secondary_endpoint, @secondary_endpoint)
+
+      {:ok, built_for_secondary} =
+        Support.Factories.Job.create(:scheduled, %{request_provider: "secondary"})
+
+      {:ok, built_for_default} =
+        Support.Factories.Job.create(:scheduled, %{
+          organization_id: org_with_feature(),
+          request_provider: "default"
+        })
+
+      with_mocks(endpoint_mocks(self(), {:ok, occupy_response()})) do
+        assert {:ok, %{provider: "secondary"}} = HostedAgent.occupy(built_for_secondary)
+        assert_received {:occupy, @secondary_endpoint}
+
+        assert {:ok, %{provider: nil}} = HostedAgent.occupy(built_for_default)
+        assert_received {:occupy, @default_endpoint}
+      end
+    end
+
     test "tags the secondary provider's errors" do
       Application.put_env(:zebra, :chmura_secondary_endpoint, @secondary_endpoint)
       {:ok, job} = create_job(:scheduled, org_with_feature())
@@ -179,6 +200,62 @@ defmodule Zebra.Workers.Agent.HostedAgentProviderTest do
 
       assert HostedAgent.provider_for(job) == nil
     end
+
+    test "keeps a job on the provider its request was built for, whatever the feature says now" do
+      Application.put_env(:zebra, :chmura_secondary_endpoint, @secondary_endpoint)
+
+      {:ok, built_for_secondary} =
+        Support.Factories.Job.create(:scheduled, %{request_provider: "secondary"})
+
+      {:ok, built_for_default} =
+        Support.Factories.Job.create(:scheduled, %{
+          organization_id: org_with_feature(),
+          request_provider: "default"
+        })
+
+      assert HostedAgent.provider_for(built_for_secondary) == HostedAgent.secondary_provider()
+      assert HostedAgent.provider_for(built_for_default) == nil
+    end
+
+    test "jobs built before the provider was stored, or with an unknown one, follow the feature" do
+      Application.put_env(:zebra, :chmura_secondary_endpoint, @secondary_endpoint)
+
+      for stored <- [nil, "unknown"] do
+        {:ok, job} =
+          Support.Factories.Job.create(:scheduled, %{
+            organization_id: org_with_feature(),
+            request_provider: stored
+          })
+
+        {:ok, other_job} = Support.Factories.Job.create(:scheduled, %{request_provider: stored})
+
+        assert HostedAgent.provider_for(job) == HostedAgent.secondary_provider()
+        assert HostedAgent.provider_for(other_job) == nil
+      end
+    end
+
+    test "without a secondary endpoint, every job goes to the default provider" do
+      {:ok, job} = Support.Factories.Job.create(:scheduled, %{request_provider: "secondary"})
+
+      assert HostedAgent.provider_for(job) == nil
+    end
+  end
+
+  describe ".request_provider" do
+    test "is the secondary provider for organizations with the feature, the default otherwise" do
+      Application.put_env(:zebra, :chmura_secondary_endpoint, @secondary_endpoint)
+      {:ok, job} = create_job(:pending, org_with_feature())
+      {:ok, other_job} = Support.Factories.Job.create(:pending)
+
+      assert HostedAgent.request_provider(job) == HostedAgent.secondary_provider()
+      assert HostedAgent.request_provider(other_job) == "default"
+    end
+
+    test "is the default provider when no secondary endpoint is configured" do
+      {:ok, job} = create_job(:pending, org_with_feature())
+
+      assert HostedAgent.request_provider(job) == "default"
+    end
   end
 
   describe ".waiting_by_provider" do
@@ -203,6 +280,26 @@ defmodule Zebra.Workers.Agent.HostedAgentProviderTest do
       assert HostedAgent.waiting_by_provider([s1, d1, s2, d2, s3]) == %{
                HostedAgent.secondary_provider() => %{s1 => 3, s2 => 2, s3 => 1},
                nil => %{d1 => 2, d2 => 1}
+             }
+    end
+
+    test "groups jobs by the provider their request was built for" do
+      Application.put_env(:zebra, :chmura_secondary_endpoint, @secondary_endpoint)
+
+      {:ok, %{id: built_default}} =
+        Support.Factories.Job.create(:scheduled, %{
+          organization_id: org_with_feature(),
+          request_provider: "default"
+        })
+
+      {:ok, %{id: built_secondary}} =
+        Support.Factories.Job.create(:scheduled, %{request_provider: "secondary"})
+
+      {:ok, %{id: legacy}} = create_job(:scheduled, org_with_feature())
+
+      assert HostedAgent.waiting_by_provider([built_default, built_secondary, legacy]) == %{
+               HostedAgent.secondary_provider() => %{built_secondary => 2, legacy => 1},
+               nil => %{built_default => 1}
              }
     end
 
@@ -290,20 +387,10 @@ defmodule Zebra.Workers.Agent.HostedAgentProviderTest do
 
     test "keeps the job home when the organization's features cannot be read" do
       Application.put_env(:zebra, :chmura_secondary_endpoint, @secondary_endpoint)
-      {:ok, job} = create_job(:scheduled, Ecto.UUID.generate())
-      {:ok, reads} = Agent.start_link(fn -> 0 end)
+      {:ok, job} = Support.Factories.Job.create(:scheduled, %{request_provider: "secondary"})
 
-      # The first read picks the provider; every later one fails.
-      Mox.stub(Support.MockedProvider, :provide_features, fn org_id, opts ->
-        if Agent.get_and_update(reads, &{&1, &1 + 1}) == 0 do
-          {:ok, features} = Support.StubbedProvider.provide_features(org_id, opts)
-
-          {:ok,
-           features ++
-             [Support.StubbedProvider.feature("secondary_hosted_agent_provider", [:enabled])]}
-        else
-          {:error, :unavailable}
-        end
+      Mox.stub(Support.MockedProvider, :provide_features, fn _org_id, _opts ->
+        {:error, :unavailable}
       end)
 
       with_mocks(request_mocks(self())) do

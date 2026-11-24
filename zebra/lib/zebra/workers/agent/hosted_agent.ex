@@ -24,6 +24,10 @@ defmodule Zebra.Workers.Agent.HostedAgent do
   @secondary_provider "secondary"
   @secondary_provider_feature "secondary_hosted_agent_provider"
 
+  # How jobs.request_provider names the default provider. A job without one was
+  # built before it was stored, and follows the feature at dispatch.
+  @default_provider "default"
+
   # Organizations whose jobs the secondary provider must keep in its home region,
   # the :chmura_secondary_home_region setting.
   @home_region_only_feature "secondary_hosted_agent_home_region_only"
@@ -97,9 +101,9 @@ defmodule Zebra.Workers.Agent.HostedAgent do
       providers =
         Zebra.Models.Job
         |> where([j], j.id in ^job_ids)
-        |> select([j], {j.id, j.organization_id})
+        |> select([j], {j.id, j.request_provider, j.organization_id})
         |> Zebra.LegacyRepo.all()
-        |> Map.new(fn {id, org_id} -> {id, provider_for_org(org_id)} end)
+        |> Map.new(fn {id, stored, org_id} -> {id, dispatch_provider(stored, org_id)} end)
 
       job_ids
       |> Enum.filter(&Map.has_key?(providers, &1))
@@ -232,8 +236,28 @@ defmodule Zebra.Workers.Agent.HostedAgent do
     end
   end
 
-  @doc "The provider that serves the job's hosted agent: the secondary one, or nil for the default."
-  def provider_for(job), do: provider_for_org(job.organization_id)
+  @doc """
+  The provider for a job whose request is being built, as jobs.request_provider
+  stores it: the secondary one's name if its organization has the feature and an
+  endpoint is configured, "default" otherwise.
+  """
+  def request_provider(job), do: provider_for_org(job.organization_id) || @default_provider
+
+  @doc """
+  The provider that serves the job's hosted agent, the secondary one or nil for
+  the default: the one its request was built for, so a feature change never sends
+  a built job elsewhere. Without a secondary endpoint every job uses the default.
+  """
+  def provider_for(job), do: dispatch_provider(job.request_provider, job.organization_id)
+
+  defp dispatch_provider(stored, org_id) do
+    cond do
+      is_nil(secondary_endpoint()) -> nil
+      stored == @default_provider -> nil
+      stored == @secondary_provider -> @secondary_provider
+      true -> provider_for_org(org_id)
+    end
+  end
 
   defp provider_for_org(org_id) do
     if secondary_endpoint() && secondary_provider_enabled?(org_id) do

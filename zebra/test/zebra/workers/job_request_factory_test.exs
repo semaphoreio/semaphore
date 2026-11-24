@@ -1843,6 +1843,7 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
 
       {:ok, job} = Worker.process(job)
       assert job.aasm_state == "enqueued"
+      assert job.request_provider == "secondary"
 
       names = Enum.map(job.request["env_vars"], & &1["name"])
 
@@ -1908,6 +1909,7 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
 
       {:ok, job} = Worker.process(job)
       assert job.aasm_state == "enqueued"
+      assert job.request_provider == "default"
 
       names = Enum.map(job.request["env_vars"], & &1["name"])
 
@@ -1932,6 +1934,7 @@ defmodule Zebra.Workers.JobRequestFactoryTest do
 
       {:ok, job} = Worker.process(job)
       assert job.aasm_state == "enqueued"
+      assert job.request_provider == nil
 
       refute Enum.any?(job.request["env_vars"], &platform_cache_or_registry_var?/1)
       refute_received {:get_s3_credentials, _}
