@@ -1,4 +1,4 @@
-<% workflow_map? = FeatureProvider.feature_enabled?(:ui_workflow_map, param: @conn.assigns[:organization_id]) %>
+<% workflow_map? = workflow_map?(@conn) %>
 <div class="relative">
   <%= unless workflow_map? do %>
   <div class="absolute flex top-0 right-0 nt3 z-2">

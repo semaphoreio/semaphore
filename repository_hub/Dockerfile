@@ -31,6 +31,7 @@ COPY repository_hub/mix.* ./
 COPY repository_hub/config config
 COPY repository_hub/lib lib
 COPY repository_hub/priv priv
+COPY feature_provider ../feature_provider
 RUN mix do deps.get, deps.compile
 
 # Dev stage
@@ -65,7 +66,7 @@ ENV APP_NAME=${APP_NAME}
 ENV MIX_ENV="prod"
 
 # install runtime dependencies
-RUN apk update && apk add --no-cache libstdc++ openssl ncurses-libs openssh-keygen
+RUN apk update && apk add --no-cache libstdc++ openssl ncurses-libs "openssh-keygen>=10.0_p1-r11"
 
 WORKDIR /app
 

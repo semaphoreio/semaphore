@@ -19,13 +19,13 @@ defmodule Guard.McpOAuth.Metadata do
       "registration_endpoint" => "#{issuer}/register",
       "response_types_supported" => ["code"],
       "response_modes_supported" => ["query"],
-      "grant_types_supported" => ["authorization_code"],
+      "grant_types_supported" => ["authorization_code", "refresh_token"],
       "code_challenge_methods_supported" => ["S256"],
-      "token_endpoint_auth_methods_supported" => ["none"],
+      "token_endpoint_auth_methods_supported" => ["none", "client_secret_post"],
       "scopes_supported" => ["mcp"],
       "service_documentation" => "https://docs.semaphoreci.com/mcp",
       # OpenID Connect Discovery 1.0 required fields for OIDC-compliant clients
-      # Note: We use HS256 (symmetric) for token signing, so JWKS returns empty keys.
+      # Note: MCP tokens are HS256 (symmetric), so JWKS has only semaphore.computer's RS256 key.
       # Token validation is done server-side by the MCP resource server.
       "jwks_uri" => "#{issuer}/jwks",
       "subject_types_supported" => ["public"],
