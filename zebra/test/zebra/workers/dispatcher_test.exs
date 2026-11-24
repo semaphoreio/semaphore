@@ -28,13 +28,14 @@ defmodule Zebra.Workers.DispatcherTest do
         end)
 
       response = %InternalApi.Chmura.OccupyAgentResponse{
-        agent: %InternalApi.Chmura.Agent{
-          id: @agent_id,
-          ip_address: "1.2.3.4",
-          ssh_port: 80,
-          ctrl_port: 80,
-          auth_token: "asdas"
-        }
+        agent:
+          InternalApi.Chmura.Agent.new(
+            id: @agent_id,
+            ip_address: "1.2.3.4",
+            ssh_port: 80,
+            ctrl_port: 80,
+            auth_token: "asdas"
+          )
       }
 
       GrpcMock.stub(Support.FakeServers.ChmuraApi, :occupy_agent, fn _, _ -> response end)
@@ -124,13 +125,14 @@ defmodule Zebra.Workers.DispatcherTest do
 
       GrpcMock.stub(Support.FakeServers.ChmuraApi, :occupy_agent, fn _, _ ->
         %InternalApi.Chmura.OccupyAgentResponse{
-          agent: %InternalApi.Chmura.Agent{
-            id: @agent_id,
-            ip_address: "1.2.3.4",
-            ssh_port: 80,
-            ctrl_port: 80,
-            auth_token: "asdas"
-          }
+          agent:
+            InternalApi.Chmura.Agent.new(
+              id: @agent_id,
+              ip_address: "1.2.3.4",
+              ssh_port: 80,
+              ctrl_port: 80,
+              auth_token: "asdas"
+            )
         }
       end)
 
@@ -195,13 +197,14 @@ defmodule Zebra.Workers.DispatcherTest do
       GrpcMock.stub(Support.FakeServers.ChmuraApi, :occupy_agent, fn req, _ ->
         if req.machine.type == "e2-standard-2" do
           %InternalApi.Chmura.OccupyAgentResponse{
-            agent: %InternalApi.Chmura.Agent{
-              id: @agent_id,
-              ip_address: "1.2.3.4",
-              ssh_port: 80,
-              ctrl_port: 80,
-              auth_token: "asdas"
-            }
+            agent:
+              InternalApi.Chmura.Agent.new(
+                id: @agent_id,
+                ip_address: "1.2.3.4",
+                ssh_port: 80,
+                ctrl_port: 80,
+                auth_token: "asdas"
+              )
           }
         else
           Zebra.Workers.DispatcherTest.Counter.increment()
@@ -286,13 +289,14 @@ defmodule Zebra.Workers.DispatcherTest do
           raise GRPC.RPCError, status: GRPC.Status.not_found(), message: "No suitable agent found"
         else
           %InternalApi.Chmura.OccupyAgentResponse{
-            agent: %InternalApi.Chmura.Agent{
-              id: Ecto.UUID.generate(),
-              ip_address: "1.2.3.4",
-              ssh_port: 80,
-              ctrl_port: 80,
-              auth_token: "asdas"
-            }
+            agent:
+              InternalApi.Chmura.Agent.new(
+                id: Ecto.UUID.generate(),
+                ip_address: "1.2.3.4",
+                ssh_port: 80,
+                ctrl_port: 80,
+                auth_token: "asdas"
+              )
           }
         end
       end)
@@ -486,13 +490,14 @@ defmodule Zebra.Workers.DispatcherTest do
 
       GrpcMock.stub(Support.FakeServers.ChmuraApi, :occupy_agent, fn _, _ ->
         %InternalApi.Chmura.OccupyAgentResponse{
-          agent: %InternalApi.Chmura.Agent{
-            id: @agent_id,
-            ip_address: "1.2.3.4",
-            ssh_port: 80,
-            ctrl_port: 80,
-            auth_token: "asdas"
-          }
+          agent:
+            InternalApi.Chmura.Agent.new(
+              id: @agent_id,
+              ip_address: "1.2.3.4",
+              ssh_port: 80,
+              ctrl_port: 80,
+              auth_token: "asdas"
+            )
         }
       end)
 
@@ -549,74 +554,81 @@ defmodule Zebra.Workers.DispatcherTest do
       assert nil_image_job.machine_os_image in [nil, ""]
     end
 
-    test "a NOT_FOUND from the secondary provider does not hold back other organizations' jobs" do
-      System.put_env("DISPATCH_SELF_HOSTED_ONLY", "false")
-      System.put_env("DISPATCH_CLOUD_ONLY", "false")
+    # FAILED_PRECONDITION: no agent of the machine type in the regions the job may use.
+    for {answer, status} <- [{"NOT_FOUND", 5}, {"FAILED_PRECONDITION", 9}] do
+      @occupy_status status
 
-      # In tests both providers are the fake server; its answer is chosen per job.
-      Application.put_env(:zebra, :chmura_secondary_endpoint, "localhost:50051")
-      on_exit(fn -> Application.delete_env(:zebra, :chmura_secondary_endpoint) end)
-      Cachex.clear(:feature_provider_cache)
+      test "a #{answer} from the secondary provider does not hold back other organizations' jobs" do
+        System.put_env("DISPATCH_SELF_HOSTED_ONLY", "false")
+        System.put_env("DISPATCH_CLOUD_ONLY", "false")
 
-      org_with_feature = Ecto.UUID.generate()
+        # In tests both providers are the fake server; its answer is chosen per job.
+        Application.put_env(:zebra, :chmura_secondary_endpoint, "localhost:50051")
+        on_exit(fn -> Application.delete_env(:zebra, :chmura_secondary_endpoint) end)
+        Cachex.clear(:feature_provider_cache)
 
-      Mox.stub(Support.MockedProvider, :provide_features, fn org_id, opts ->
-        {:ok, features} = Support.StubbedProvider.provide_features(org_id, opts)
-        state = if org_id == org_with_feature, do: :enabled, else: :hidden
+        org_with_feature = Ecto.UUID.generate()
 
-        {:ok,
-         features ++ [Support.StubbedProvider.feature("secondary_hosted_agent_provider", [state])]}
-      end)
+        Mox.stub(Support.MockedProvider, :provide_features, fn org_id, opts ->
+          {:ok, features} = Support.StubbedProvider.provide_features(org_id, opts)
+          state = if org_id == org_with_feature, do: :enabled, else: :hidden
 
-      earlier = DateTime.add(DateTime.utc_now(), -600, :second) |> DateTime.truncate(:second)
-
-      # Scheduled first, so they open the machine type's batch.
-      secondary_jobs =
-        Enum.map(1..20, fn _ ->
-          {:ok, job} =
-            Support.Factories.Job.create(:scheduled, %{
-              organization_id: org_with_feature,
-              scheduled_at: earlier
-            })
-
-          job
+          {:ok,
+           features ++
+             [Support.StubbedProvider.feature("secondary_hosted_agent_provider", [state])]}
         end)
 
-      other_jobs =
-        Enum.map(1..20, fn _ ->
-          {:ok, job} = Support.Factories.Job.create(:scheduled)
-          job
-        end)
+        earlier = DateTime.add(DateTime.utc_now(), -600, :second) |> DateTime.truncate(:second)
 
-      secondary_ids = MapSet.new(secondary_jobs, & &1.id)
+        # Scheduled first, so they open the machine type's batch.
+        secondary_jobs =
+          Enum.map(1..20, fn _ ->
+            {:ok, job} =
+              Support.Factories.Job.create(:scheduled, %{
+                organization_id: org_with_feature,
+                scheduled_at: earlier
+              })
 
-      GrpcMock.stub(Support.FakeServers.ChmuraApi, :occupy_agent, fn req, _ ->
-        if MapSet.member?(secondary_ids, req.request_id) do
-          raise GRPC.RPCError, status: GRPC.Status.not_found(), message: "No suitable agent found"
-        else
-          %InternalApi.Chmura.OccupyAgentResponse{
-            agent: %InternalApi.Chmura.Agent{
-              id: Ecto.UUID.generate(),
-              ip_address: "1.2.3.4",
-              ssh_port: 80,
-              ctrl_port: 80,
-              auth_token: "asdas"
+            job
+          end)
+
+        other_jobs =
+          Enum.map(1..20, fn _ ->
+            {:ok, job} = Support.Factories.Job.create(:scheduled)
+            job
+          end)
+
+        secondary_ids = MapSet.new(secondary_jobs, & &1.id)
+
+        GrpcMock.stub(Support.FakeServers.ChmuraApi, :occupy_agent, fn req, _ ->
+          if MapSet.member?(secondary_ids, req.request_id) do
+            raise GRPC.RPCError, status: @occupy_status, message: "No suitable agent found"
+          else
+            %InternalApi.Chmura.OccupyAgentResponse{
+              agent:
+                InternalApi.Chmura.Agent.new(
+                  id: Ecto.UUID.generate(),
+                  ip_address: "1.2.3.4",
+                  ssh_port: 80,
+                  ctrl_port: 80,
+                  auth_token: "asdas"
+                )
             }
-          }
-        end
-      end)
+          end
+        end)
 
-      with_stubbed_http_calls(fn ->
-        Worker.init() |> Zebra.Workers.DbWorker.tick()
-      end)
+        with_stubbed_http_calls(fn ->
+          Worker.init() |> Zebra.Workers.DbWorker.tick()
+        end)
 
-      Enum.each(other_jobs, fn job ->
-        job = Job.reload(job)
-        assert Job.started?(job)
-        assert job.agent_provider == nil
-      end)
+        Enum.each(other_jobs, fn job ->
+          job = Job.reload(job)
+          assert Job.started?(job)
+          assert job.agent_provider == nil
+        end)
 
-      Enum.each(secondary_jobs, fn job -> assert Job.scheduled?(Job.reload(job)) end)
+        Enum.each(secondary_jobs, fn job -> assert Job.scheduled?(Job.reload(job)) end)
+      end
     end
   end
 
@@ -739,13 +751,14 @@ defmodule Zebra.Workers.DispatcherTest do
 
         if MapSet.member?(served, req.request_id) do
           %InternalApi.Chmura.OccupyAgentResponse{
-            agent: %InternalApi.Chmura.Agent{
-              id: Ecto.UUID.generate(),
-              ip_address: "1.2.3.4",
-              ssh_port: 80,
-              ctrl_port: 80,
-              auth_token: "asdas"
-            }
+            agent:
+              InternalApi.Chmura.Agent.new(
+                id: Ecto.UUID.generate(),
+                ip_address: "1.2.3.4",
+                ssh_port: 80,
+                ctrl_port: 80,
+                auth_token: "asdas"
+              )
           }
         else
           raise GRPC.RPCError, status: GRPC.Status.not_found(), message: "No suitable agent found"
@@ -803,13 +816,14 @@ defmodule Zebra.Workers.DispatcherTest do
       {:ok, job} = Support.Factories.Job.create(:scheduled)
 
       response = %InternalApi.Chmura.OccupyAgentResponse{
-        agent: %InternalApi.Chmura.Agent{
-          id: @agent_id,
-          ip_address: "1.2.3.4",
-          ctrl_port: 80,
-          auth_token: "asdas",
-          ssh_port: 12_345
-        }
+        agent:
+          InternalApi.Chmura.Agent.new(
+            id: @agent_id,
+            ip_address: "1.2.3.4",
+            ctrl_port: 80,
+            auth_token: "asdas",
+            ssh_port: 12_345
+          )
       }
 
       GrpcMock.stub(Support.FakeServers.ChmuraApi, :occupy_agent, fn _, _ -> response end)
@@ -825,19 +839,51 @@ defmodule Zebra.Workers.DispatcherTest do
       assert job.agent_ctrl_port == response.agent.ctrl_port
       assert job.agent_auth_token == response.agent.auth_token
       assert job.agent_id == response.agent.id
+      assert job.agent_region == nil
+      assert job.agent_zone == nil
+    end
+
+    test "stores where the agent runs when its provider says" do
+      {:ok, job} = Support.Factories.Job.create(:scheduled)
+
+      response = %InternalApi.Chmura.OccupyAgentResponse{
+        agent:
+          InternalApi.Chmura.Agent.new(
+            id: @agent_id,
+            ip_address: "1.2.3.4",
+            ctrl_port: 80,
+            auth_token: "asdas",
+            ssh_port: 12_345,
+            region: "region-1",
+            zone: "region-1b"
+          )
+      }
+
+      GrpcMock.stub(Support.FakeServers.ChmuraApi, :occupy_agent, fn _, _ -> response end)
+
+      with_stubbed_http_calls(fn ->
+        Worker.process(job)
+      end)
+
+      job = Job.reload(job)
+
+      assert Job.started?(job)
+      assert job.agent_region == "region-1"
+      assert job.agent_zone == "region-1b"
     end
 
     test "skips the processing => when the job is not scheduled" do
       {:ok, job} = Support.Factories.Job.create(:started)
 
       response = %InternalApi.Chmura.OccupyAgentResponse{
-        agent: %InternalApi.Chmura.Agent{
-          id: @agent_id,
-          ip_address: "1.2.3.4",
-          ctrl_port: 80,
-          auth_token: "asdas",
-          ssh_port: 12_345
-        }
+        agent:
+          InternalApi.Chmura.Agent.new(
+            id: @agent_id,
+            ip_address: "1.2.3.4",
+            ctrl_port: 80,
+            auth_token: "asdas",
+            ssh_port: 12_345
+          )
       }
 
       GrpcMock.stub(Support.FakeServers.ChmuraApi, :occupy_agent, fn _, _ -> response end)
@@ -857,13 +903,14 @@ defmodule Zebra.Workers.DispatcherTest do
       {:ok, job} = Support.Factories.Job.create(:scheduled)
 
       response = %InternalApi.Chmura.OccupyAgentResponse{
-        agent: %InternalApi.Chmura.Agent{
-          id: @agent_id,
-          ip_address: "1.2.3.4",
-          ctrl_port: 80,
-          auth_token: "asdas",
-          ssh_port: 12_345
-        }
+        agent:
+          InternalApi.Chmura.Agent.new(
+            id: @agent_id,
+            ip_address: "1.2.3.4",
+            ctrl_port: 80,
+            auth_token: "asdas",
+            ssh_port: 12_345
+          )
       }
 
       GrpcMock.stub(Support.FakeServers.ChmuraApi, :occupy_agent, fn _, _ -> response end)
@@ -933,13 +980,14 @@ defmodule Zebra.Workers.DispatcherTest do
             })
 
           response = %InternalApi.Chmura.OccupyAgentResponse{
-            agent: %InternalApi.Chmura.Agent{
-              id: Ecto.UUID.generate(),
-              ip_address: "1.2.3.4",
-              ctrl_port: 80,
-              auth_token: "asdas",
-              ssh_port: 12_345
-            }
+            agent:
+              InternalApi.Chmura.Agent.new(
+                id: Ecto.UUID.generate(),
+                ip_address: "1.2.3.4",
+                ctrl_port: 80,
+                auth_token: "asdas",
+                ssh_port: 12_345
+              )
           }
 
           GrpcMock.stub(Support.FakeServers.ChmuraApi, :occupy_agent, fn _, _ -> response end)

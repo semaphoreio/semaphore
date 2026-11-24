@@ -141,6 +141,27 @@ defmodule Zebra.Workers.Agent.HostedAgentProviderTest do
       assert {:ok, _} = Job.start(job, agent)
       assert Job.reload(job).agent_provider == HostedAgent.secondary_provider()
     end
+
+    test "stores where the agent runs" do
+      {:ok, job} = Support.Factories.Job.create(:scheduled)
+
+      agent = %HostedAgent{
+        id: Ecto.UUID.generate(),
+        name: "",
+        ip_address: "1.2.3.4",
+        ctrl_port: 80,
+        ssh_port: 80,
+        auth_token: "token",
+        region: "r1",
+        zone: "r1-b"
+      }
+
+      assert {:ok, _} = Job.start(job, agent, sanitize_request: true)
+
+      job = Job.reload(job)
+      assert job.agent_region == "r1"
+      assert job.agent_zone == "r1-b"
+    end
   end
 
   describe ".provider_for" do
@@ -220,6 +241,121 @@ defmodule Zebra.Workers.Agent.HostedAgentProviderTest do
     end
   end
 
+  describe ".occupy home region" do
+    setup do
+      Application.put_env(:zebra, :chmura_secondary_home_region, "home-1")
+      on_exit(fn -> Application.delete_env(:zebra, :chmura_secondary_home_region) end)
+
+      Mox.stub(Support.MockedProvider, :provide_features, fn org_id, opts ->
+        {:ok, features} = Support.StubbedProvider.provide_features(org_id, opts)
+
+        {:ok,
+         features ++
+           [
+             Support.StubbedProvider.feature("secondary_hosted_agent_provider", [:enabled]),
+             Support.StubbedProvider.feature(
+               "secondary_hosted_agent_home_region_only",
+               [if(org_id == @org_with_feature, do: :enabled, else: :hidden)]
+             )
+           ]}
+      end)
+
+      :ok
+    end
+
+    test "allows only the home region for flagged organizations on the secondary provider" do
+      Application.put_env(:zebra, :chmura_secondary_endpoint, @secondary_endpoint)
+      {:ok, job} = create_job(:scheduled, org_with_feature())
+      {:ok, other_job} = Support.Factories.Job.create(:scheduled)
+
+      with_mocks(request_mocks(self())) do
+        assert {:ok, %{provider: "secondary"}} = HostedAgent.occupy(job)
+        assert {:ok, %{provider: "secondary"}} = HostedAgent.occupy(other_job)
+      end
+
+      assert_received {:preferred_regions, @org_with_feature, ["home-1"]}
+      other_org = other_job.organization_id
+      assert_received {:preferred_regions, ^other_org, []}
+    end
+
+    test "never restricts the default provider" do
+      {:ok, job} = create_job(:scheduled, org_with_feature())
+
+      with_mocks(request_mocks(self())) do
+        assert {:ok, %{provider: nil}} = HostedAgent.occupy(job)
+      end
+
+      assert_received {:preferred_regions, @org_with_feature, []}
+    end
+
+    test "keeps the job home when the organization's features cannot be read" do
+      Application.put_env(:zebra, :chmura_secondary_endpoint, @secondary_endpoint)
+      {:ok, job} = create_job(:scheduled, Ecto.UUID.generate())
+      {:ok, reads} = Agent.start_link(fn -> 0 end)
+
+      # The first read picks the provider; every later one fails.
+      Mox.stub(Support.MockedProvider, :provide_features, fn org_id, opts ->
+        if Agent.get_and_update(reads, &{&1, &1 + 1}) == 0 do
+          {:ok, features} = Support.StubbedProvider.provide_features(org_id, opts)
+
+          {:ok,
+           features ++
+             [Support.StubbedProvider.feature("secondary_hosted_agent_provider", [:enabled])]}
+        else
+          {:error, :unavailable}
+        end
+      end)
+
+      with_mocks(request_mocks(self())) do
+        assert {:ok, %{provider: "secondary"}} = HostedAgent.occupy(job)
+      end
+
+      org_id = job.organization_id
+      assert_received {:preferred_regions, ^org_id, ["home-1"]}
+    end
+
+    test "does not offer a job that must stay home while the home region is not set" do
+      Application.put_env(:zebra, :chmura_secondary_endpoint, @secondary_endpoint)
+      {:ok, job} = create_job(:scheduled, org_with_feature())
+      {:ok, other_job} = Support.Factories.Job.create(:scheduled)
+
+      for home_region <- [nil, " "] do
+        Application.put_env(:zebra, :chmura_secondary_home_region, home_region)
+
+        with_mocks(request_mocks(self())) do
+          assert HostedAgent.occupy(job) ==
+                   {:error, {:secondary_provider, :home_region_not_configured}}
+
+          assert {:ok, %{provider: "secondary"}} = HostedAgent.occupy(other_job)
+        end
+
+        refute_received {:preferred_regions, @org_with_feature, _}
+        other_org = other_job.organization_id
+        assert_received {:preferred_regions, ^other_org, []}
+      end
+    end
+  end
+
+  describe ".occupy placement" do
+    test "the agent carries the region and zone its provider reports" do
+      {:ok, job} = Support.Factories.Job.create(:scheduled)
+      response = occupy_response()
+      response = %{response | agent: %{response.agent | region: "r1", zone: "r1-b"}}
+
+      with_mocks(endpoint_mocks(self(), {:ok, response})) do
+        assert {:ok, %{region: "r1", zone: "r1-b"}} = HostedAgent.occupy(job)
+      end
+    end
+
+    test "the agent has no region or zone when its provider reports none" do
+      {:ok, job} = Support.Factories.Job.create(:scheduled)
+
+      with_mocks(endpoint_mocks(self(), {:ok, occupy_response()})) do
+        assert {:ok, %{region: nil, zone: nil}} = HostedAgent.occupy(job)
+      end
+    end
+  end
+
   describe ".occupy cost tags" do
     test "sends the job's organization and project" do
       {:ok, job} = Support.Factories.Job.create(:scheduled)
@@ -254,6 +390,12 @@ defmodule Zebra.Workers.Agent.HostedAgentProviderTest do
          occupy_agent: fn _endpoint, request, _opts ->
            send(test_pid, {:waiting, request.waiting})
            send(test_pid, {:tags, request.organization_id, request.project_id})
+
+           send(
+             test_pid,
+             {:preferred_regions, request.organization_id, request.preferred_regions}
+           )
+
            {:ok, occupy_response()}
          end
        ]}

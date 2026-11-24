@@ -95,6 +95,13 @@ defmodule Zebra.Workers.Dispatcher do
           "[#{job.id}] - no agent available from the secondary provider for #{job.machine_type} - waiting until next tick"
         )
 
+      # FAILED_PRECONDITION: the provider serves the machine type in none of the
+      # regions the job may run in. Like a NOT_FOUND, only this job waits.
+      {:error, {:secondary_provider, %GRPC.RPCError{status: 9}}} ->
+        Logger.info(
+          "[#{job.id}] - no agent from the secondary provider in the job's regions for #{job.machine_type} - waiting until next tick"
+        )
+
       {:error, {:secondary_provider, e}} ->
         Logger.error("[#{job.id}] secondary provider: #{inspect(e)}")
 

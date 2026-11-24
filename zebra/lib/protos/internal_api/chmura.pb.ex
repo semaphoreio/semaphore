@@ -7,15 +7,30 @@ defmodule InternalApi.Chmura.OccupyAgentRequest do
           machine: InternalApi.Chmura.Agent.Machine.t(),
           organization_id: String.t(),
           waiting: non_neg_integer,
-          project_id: String.t()
+          project_id: String.t(),
+          preferred_regions: [String.t()],
+          instance_type: String.t(),
+          preferred_countries: [String.t()]
         }
-  defstruct [:request_id, :machine, :organization_id, :waiting, :project_id]
+  defstruct [
+    :request_id,
+    :machine,
+    :organization_id,
+    :waiting,
+    :project_id,
+    :preferred_regions,
+    :instance_type,
+    :preferred_countries
+  ]
 
   field(:request_id, 1, type: :string)
   field(:machine, 2, type: InternalApi.Chmura.Agent.Machine)
   field(:organization_id, 3, type: :string)
   field(:waiting, 4, type: :uint32)
   field(:project_id, 5, type: :string)
+  field(:preferred_regions, 6, repeated: true, type: :string)
+  field(:instance_type, 7, type: :string)
+  field(:preferred_countries, 8, repeated: true, type: :string)
 end
 
 defmodule InternalApi.Chmura.OccupyAgentResponse do
@@ -40,9 +55,11 @@ defmodule InternalApi.Chmura.Agent do
           ip_address: String.t(),
           ctrl_port: integer,
           ssh_port: integer,
-          auth_token: String.t()
+          auth_token: String.t(),
+          region: String.t(),
+          zone: String.t()
         }
-  defstruct [:id, :machine, :ip_address, :ctrl_port, :ssh_port, :auth_token]
+  defstruct [:id, :machine, :ip_address, :ctrl_port, :ssh_port, :auth_token, :region, :zone]
 
   field(:id, 1, type: :string)
   field(:machine, 2, type: InternalApi.Chmura.Agent.Machine)
@@ -50,6 +67,8 @@ defmodule InternalApi.Chmura.Agent do
   field(:ctrl_port, 4, type: :int32)
   field(:ssh_port, 5, type: :int32)
   field(:auth_token, 6, type: :string)
+  field(:region, 7, type: :string)
+  field(:zone, 8, type: :string)
 end
 
 defmodule InternalApi.Chmura.Agent.Machine do

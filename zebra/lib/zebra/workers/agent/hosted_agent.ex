@@ -1,8 +1,20 @@
 defmodule Zebra.Workers.Agent.HostedAgent do
   require Logger
   import Ecto.Query
-  defstruct [:id, :name, :ip_address, :ctrl_port, :auth_token, :ssh_port, :provider]
 
+  defstruct [
+    :id,
+    :name,
+    :ip_address,
+    :ctrl_port,
+    :auth_token,
+    :ssh_port,
+    :provider,
+    :region,
+    :zone
+  ]
+
+  alias FeatureProvider.Feature
   alias InternalApi.Chmura.Chmura.Stub
   alias InternalApi.Chmura.{OccupyAgentRequest, ReleaseAgentRequest}
 
@@ -11,6 +23,10 @@ defmodule Zebra.Workers.Agent.HostedAgent do
   # release goes back to the same one even if the feature changes meanwhile.
   @secondary_provider "secondary"
   @secondary_provider_feature "secondary_hosted_agent_provider"
+
+  # Organizations whose jobs the secondary provider must keep in its home region,
+  # the :chmura_secondary_home_region setting.
+  @home_region_only_feature "secondary_hosted_agent_home_region_only"
 
   def secondary_provider, do: @secondary_provider
 
@@ -114,22 +130,23 @@ defmodule Zebra.Workers.Agent.HostedAgent do
       Watchman.benchmark("zebra.external.chmura.occupy", fn ->
         {machine_type, machine_os_image} = translate_machine(job)
 
-        request =
-          OccupyAgentRequest.new(
-            request_id: job.id,
-            organization_id: job.organization_id || "",
-            project_id: job.project_id || "",
-            waiting: waiting,
-            machine:
-              InternalApi.Chmura.Agent.Machine.new(
-                type: machine_type,
-                os_image: machine_os_image
-              )
-          )
-
         Logger.info("Occupying agent for job: #{job.id} ...")
 
-        with {:ok, channel} <- connect(provider),
+        with {:ok, regions} <- preferred_regions(provider, job.organization_id),
+             request =
+               OccupyAgentRequest.new(
+                 request_id: job.id,
+                 organization_id: job.organization_id || "",
+                 project_id: job.project_id || "",
+                 waiting: waiting,
+                 preferred_regions: regions,
+                 machine:
+                   InternalApi.Chmura.Agent.Machine.new(
+                     type: machine_type,
+                     os_image: machine_os_image
+                   )
+               ),
+             {:ok, channel} <- connect(provider),
              {:ok, response} <- Stub.occupy_agent(channel, request, timeout: 30_000) do
           {:ok, construct_agent(response, provider)}
         else
@@ -168,8 +185,51 @@ defmodule Zebra.Workers.Agent.HostedAgent do
       ctrl_port: response.agent.ctrl_port,
       auth_token: response.agent.auth_token || "",
       ssh_port: response.agent.ssh_port,
-      provider: provider
+      provider: provider,
+      region: present(response.agent.region),
+      zone: present(response.agent.zone)
     }
+  end
+
+  # Providers that do not report where the agent runs leave these empty.
+  defp present(value) when is_binary(value) and value != "", do: value
+  defp present(_value), do: nil
+
+  # The regions the job may run in; empty allows any. Only the secondary provider
+  # is restricted. A job that must stay home is not offered at all while the home
+  # region is unknown, since the provider would then pick any region.
+  defp preferred_regions(@secondary_provider, org_id) when is_binary(org_id) do
+    case {home_region_only?(org_id), home_region()} do
+      {false, _region} -> {:ok, []}
+      {true, nil} -> {:error, :home_region_not_configured}
+      {true, region} -> {:ok, [region]}
+    end
+  end
+
+  defp preferred_regions(_provider, _org_id), do: {:ok, []}
+
+  # If the organization's features cannot be read, the job stays home: waiting
+  # for an agent there is safer than running it in a region it may not use.
+  defp home_region_only?(org_id) do
+    case FeatureProvider.list_features(param: org_id) do
+      {:ok, features} ->
+        Enum.any?(features, &(&1.type == @home_region_only_feature and Feature.enabled?(&1)))
+
+      {:error, error} ->
+        Logger.warning("No features for #{org_id}, home region only: #{inspect(error)}")
+        Watchman.increment("zebra.occupy.home_region_only.unknown")
+        true
+    end
+  end
+
+  defp home_region do
+    with region when is_binary(region) <-
+           Application.get_env(:zebra, :chmura_secondary_home_region),
+         region when region != "" <- String.trim(region) do
+      region
+    else
+      _ -> nil
+    end
   end
 
   @doc "The provider that serves the job's hosted agent: the secondary one, or nil for the default."

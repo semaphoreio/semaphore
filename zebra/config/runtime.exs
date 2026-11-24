@@ -124,6 +124,9 @@ if config_env() == :prod do
   config :zebra, chmura_endpoint: System.fetch_env!("INTERNAL_API_URL_CHMURA")
   # Optional second hosted agent provider; unset, every hosted job uses the one above.
   config :zebra, chmura_secondary_endpoint: System.get_env("INTERNAL_API_URL_CHMURA_SECONDARY")
+  # The second provider's home region: the only region allowed for organizations with the
+  # secondary_hosted_agent_home_region_only feature. Unset, their jobs are not dispatched.
+  config :zebra, chmura_secondary_home_region: System.get_env("CHMURA_SECONDARY_HOME_REGION")
   config :zebra, dt_api_endpoint: System.fetch_env!("INTERNAL_API_URL_GOFER")
   config :zebra, feature_api_endpoint: System.fetch_env!("INTERNAL_API_URL_FEATURE")
   config :zebra, loghub2_api_endpoint: System.fetch_env!("INTERNAL_API_URL_LOGHUB2")
