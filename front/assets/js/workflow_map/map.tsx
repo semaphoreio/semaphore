@@ -564,10 +564,10 @@ const WorkflowMap = () => {
             Fit workflow
           </button>
           <button className="btn btn-secondary btn-small" onClick={() => (aim({ id: ``, how: `all` }), (openPipelines.value = new Set(wf.pipelines.map((p) => p.id))))}>
-            Open all
+            Open all pipelines
           </button>
           <button className="btn btn-secondary btn-small" onClick={() => (aim({ id: ``, how: `all` }), (openPipelines.value = new Set()), (openBlocks.value = new Set()))}>
-            Close all
+            Close all pipelines
           </button>
           <BlocksToggle pipelines={wf.pipelines.filter((p) => P.has(p.id))} anchor={lead ? { id: selected.value, how: `keep`, at: lead } : null}/>
           <span className="wf-map-zoom">{Math.round(zoom * 100)}%</span>
