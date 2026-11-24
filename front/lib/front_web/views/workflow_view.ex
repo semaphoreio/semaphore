@@ -2,8 +2,13 @@ defmodule FrontWeb.WorkflowView do
   use FrontWeb, :view
 
   def workflow_map?(conn) do
-    Plug.Conn.get_session(conn, :new_workflow_ui) == true or
-      FeatureProvider.feature_enabled?(:ui_workflow_map, param: conn.assigns[:organization_id])
+    case Plug.Conn.get_session(conn, :new_workflow_ui) do
+      nil ->
+        FeatureProvider.feature_enabled?(:ui_workflow_map, param: conn.assigns[:organization_id])
+
+      choice ->
+        choice
+    end
   end
 
   def page_title(_conn, assigns) do
