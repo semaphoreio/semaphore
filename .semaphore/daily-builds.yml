@@ -2521,6 +2521,8 @@ blocks:
   # Bootstrapper
   - name: "Bootstrapper: Provision Prod Image"
     dependencies: []
+    skip:
+      when: "branch =~ '^onprem/'"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2538,6 +2540,8 @@ blocks:
             - make push
   - name: "Bootstrapper: Deployment Preconditions"
     dependencies: ["Bootstrapper: Provision Prod Image"]
+    skip:
+      when: "branch =~ '^onprem/'"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2563,6 +2567,8 @@ blocks:
             - make check.docker
   - name: "Bootstrapper: QA"
     dependencies: ["Bootstrapper: Provision Prod Image"]
+    skip:
+      when: "branch =~ '^onprem/'"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
