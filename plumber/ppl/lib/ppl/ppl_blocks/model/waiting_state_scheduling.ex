@@ -43,7 +43,7 @@ defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
   end
 
   def do_get_ready_block(ppl_id) do
-    not_ready_ppl_blocks_query("pb")
+    not_ready_ppl_blocks_query()
     |> ready_ppl_block_query("pb.ppl_id = $2 AND")
     |> ready_ppl_block_update_query()
     |> Repo.query([NaiveDateTime.utc_now(), Ecto.UUID.dump!(ppl_id)])
@@ -91,7 +91,7 @@ defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
   " end
 
   # Both OFFSET 0 keep the planner from flattening the subqueries, so the search
-  # always starts from running pipelines instead of from all waiting ppl_blocks.
+  # reads only ppl_blocks of running pipelines whatever the row estimates are.
   defp running_ppls_ready_ppl_block_query do "
     SELECT pb.*
     FROM pipeline_blocks AS pb
@@ -104,15 +104,22 @@ defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
           OFFSET 0
         ) AS running
         CROSS JOIN LATERAL (
-          SELECT b.id
+          SELECT b.id, b.in_scheduling, b.state, b.terminate_request
           FROM pipeline_blocks AS b
-          WHERE b.ppl_id = running.ppl_id AND
-            b.in_scheduling = false AND
-            b.state = 'waiting' AND
-            b.terminate_request IS NULL AND
-            NOT EXISTS (#{not_ready_ppl_blocks_query("b")})
+          WHERE b.ppl_id = running.ppl_id
           OFFSET 0
         ) AS ready
+        WHERE ready.in_scheduling = false AND
+          ready.state = 'waiting' AND
+          ready.terminate_request IS NULL AND
+          NOT EXISTS (
+            SELECT 1
+            FROM pipeline_block_connections AS connections
+            JOIN pipeline_blocks AS dependencies
+              ON connections.dependency = dependencies.id
+            WHERE connections.target = ready.id AND
+              dependencies.state NOT IN ('done')
+          )
       )) AND
       pb.in_scheduling = false AND
       pb.state = 'waiting'
@@ -123,7 +130,7 @@ defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
 
   # Get ppl_blocks that are in WAITING state but not ready to run.
   # Not ready to run == at least one of its dependencies is not in DONE state
-  defp not_ready_ppl_blocks_query(ppl_block_alias) do "
+  defp not_ready_ppl_blocks_query do "
     SELECT targets.id
     FROM pipeline_blocks AS targets
     JOIN pipeline_block_connections AS connections
@@ -131,6 +138,6 @@ defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
     JOIN pipeline_blocks AS dependencies
       ON connections.dependency = dependencies.id
     WHERE targets.state = 'waiting' AND
-      dependencies.state NOT IN ('done') and targets.id = #{ppl_block_alias}.id
+      dependencies.state NOT IN ('done') and targets.id = pb.id
   " end
 end
