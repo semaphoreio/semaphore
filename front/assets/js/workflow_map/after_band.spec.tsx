@@ -3,19 +3,17 @@ import { afterEach, beforeEach, describe, test } from "mocha";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 
-import { AfterBand, afterBand, openBlocks } from "./map";
-import { BLOCK, BLOCK_GAP, blockSize } from "./lines";
-import { Block, Job, Pipeline } from "./model";
+import { AfterBand, openBlocks } from "./map";
+import { blockSize } from "./lines";
+import { Block, Job } from "./model";
 import { AFTER_INFO, BlockSummary } from "./ui";
 
 const job = (name: string, status: string) => ({ key: `p/After pipeline#${name}`, id: null, name, status, startedAt: null, finishedAt: null, reused: false }) as Job;
 
 describe(`the after pipeline band`, () => {
   let root: HTMLElement;
-  const after = { id: `p/After pipeline`, name: `After pipeline`, deps: [], jobs: [job(`Cleanup`, `passed`), job(`Notify`, `failed`)], after: true, pipeline: { id: `p` } } as Block;
   const lint = { id: `p/lint`, name: `lint`, deps: [], jobs: [] } as Block;
-  const withAfter = { id: `p`, blocks: [lint, after] } as unknown as Pipeline;
-  const without = { id: `q`, blocks: [lint] } as unknown as Pipeline;
+  const after = { id: `p/After pipeline`, name: `After pipeline`, deps: [], jobs: [job(`Cleanup`, `passed`), job(`Notify`, `failed`)], after: true, pipeline: { id: `p` } } as Block;
 
   beforeEach(() => {
     root = document.createElement(`div`);
@@ -28,14 +26,8 @@ describe(`the after pipeline band`, () => {
     openBlocks.value = new Set();
   });
 
-  test(`takes a block card's height plus the gap between blocks, and nothing without an after pipeline`, () => {
-    expect(afterBand(without, new Set())).to.equal(0);
-    expect(afterBand(withAfter, new Set())).to.equal(BLOCK.h + BLOCK_GAP);
-    expect(afterBand(withAfter, new Set([after.id]))).to.equal(blockSize(after, true).h + BLOCK_GAP);
-  });
-
   test(`is a collapsed block card by default and opens to its jobs on a click`, async () => {
-    await act(() => render(<AfterBand block={after} at={{ x: 0, y: 0 }}/>, root));
+    await act(() => render(<AfterBand block={after} box={{ x: 352, y: 88 }} at={{ x: 0, y: 0 }}/>, root));
     const card = root.querySelector(`.wf-map-after .wf-map-summary`);
     expect(card.getAttribute(`aria-expanded`)).to.equal(`false`);
     expect(card.textContent).to.contain(`After pipeline`);
@@ -50,7 +42,7 @@ describe(`the after pipeline band`, () => {
     expect(head.getAttribute(`aria-expanded`)).to.equal(`true`);
     expect([...root.querySelectorAll(`.wf-map-job-name`)].map((n) => n.textContent)).to.deep.equal([`Cleanup`, `Notify`]);
     const size = root.querySelector<HTMLElement>(`.wf-map-after`).style;
-    expect([size.width, size.height]).to.deep.equal([`${blockSize(after, true).w}px`, `${blockSize(after, true).h}px`]);
+    expect([size.left, size.top, size.width, size.height]).to.deep.equal([`352px`, `88px`, `${blockSize(after, true).w}px`, `${blockSize(after, true).h}px`]);
 
     await act(() => {
       head.dispatchEvent(new MouseEvent(`click`, { bubbles: true, detail: 0 }));
@@ -60,7 +52,7 @@ describe(`the after pipeline band`, () => {
   });
 
   test(`has an info icon whose tooltip says it runs after the pipeline, collapsed and open`, async () => {
-    await act(() => render(<AfterBand block={after} at={{ x: 0, y: 0 }}/>, root));
+    await act(() => render(<AfterBand block={after} box={{ x: 352, y: 88 }} at={{ x: 0, y: 0 }}/>, root));
     const closed = root.querySelector<HTMLElement>(`.wf-map-after .wf-map-summary .wf-map-after-info`);
     expect(closed.dataset.tippyContent).to.equal(AFTER_INFO);
     expect(closed.getAttribute(`aria-label`)).to.equal(AFTER_INFO);
@@ -74,7 +66,7 @@ describe(`the after pipeline band`, () => {
   });
 
   test(`clicking the info icon leaves the card as it is`, async () => {
-    await act(() => render(<AfterBand block={after} at={{ x: 0, y: 0 }}/>, root));
+    await act(() => render(<AfterBand block={after} box={{ x: 352, y: 88 }} at={{ x: 0, y: 0 }}/>, root));
     await act(() => {
       root.querySelector(`.wf-map-after-info`).dispatchEvent(new MouseEvent(`click`, { bubbles: true, detail: 0 }));
     });

@@ -542,10 +542,6 @@
   color: #202B30;
 }
 
-.wf-map-init-tab + .wf-map-after {
-  margin-top: 31px;
-}
-
 .wf-map-card {
   display: flex;
   flex-direction: column;
@@ -790,7 +786,7 @@ button.wf-map-reason .material-symbols-outlined {
 }
 
 .wf-map-after {
-  margin: 21px 0 0 27px;
+  position: absolute;
 }
 
 .wf-map-after .wf-map-block {

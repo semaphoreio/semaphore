@@ -7,7 +7,7 @@ import { MapLayout, Point, layoutMap, promotionLabel } from "./layout";
 import { PromoteButton } from "./promote";
 import { Chips, Search, Stepper } from "./toolbar";
 import { BlockCard, BlockSummary, Chevron, Counts, Duration, Name, PipelineTitle, StatusBar, StatusIcon, StopDetails, StopReason, Triggered, plainClick } from "./ui";
-import { BLOCK_GAP, blockSize, jobRow } from "./lines";
+import { blockSize, jobRow } from "./lines";
 
 const CARD = { w: 300, h: 72 };
 
@@ -181,12 +181,7 @@ const CardNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node
   );
 };
 
-export const afterBand = (p: Pipeline, open: Set<string>) => {
-  const a = p.blocks?.find((b) => b.after);
-  return a ? blockSize(a, open.has(a.id)).h + BLOCK_GAP : 0;
-};
-
-export const AfterBand = ({ block, at }: { block: Block, at: Point, }) => {
+export const AfterBand = ({ block, box, at }: { block: Block, box: Point, at: Point, }) => {
   const open = openBlocks.value.has(block.id);
   const h = hits.value;
   const flip = () => {
@@ -195,7 +190,7 @@ export const AfterBand = ({ block, at }: { block: Block, at: Point, }) => {
   };
   const { w, h: height } = blockSize(block, open);
   return (
-    <div className={`wf-map-after ${h.active && !h.blocks.has(block) ? `dim` : ``}`} style={{ width: w, height }}>
+    <div className={`wf-map-after ${h.active && !h.blocks.has(block) ? `dim` : ``}`} style={{ left: box.x, top: box.y, width: w, height }}>
       {open ? <BlockCard block={block} onHeaderClick={flip}/> : <BlockSummary block={block} onClick={flip}/>}
     </div>
   );
@@ -230,7 +225,7 @@ export const InitTab = ({ job }: { job: InitJob, }) => (
   </a>
 );
 
-const PipelineNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node<{ id: string, }>>) => {
+const PipelineNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<Node<{ id: string, after?: Point, }>>) => {
   const p = workflow.value?.pipelineById.get(data.id);
   const h = hits.value;
   if (!p) return null;
@@ -277,7 +272,7 @@ const PipelineNode = ({ data, positionAbsoluteX, positionAbsoluteY }: NodeProps<
       </div>
       {detailsBand(p, openDetails.value) > 0 && <StopDetails p={p}/>}
       {p.initJob && <InitTab job={p.initJob}/>}
-      {after && <AfterBand block={after} at={at}/>}
+      {after && data.after && <AfterBand block={after} box={data.after} at={at}/>}
       <Handle type="source" id="out" position={Position.Right} isConnectable={false} style={{ top: 34 }}/>
     </div>
   );
@@ -361,7 +356,8 @@ function build(wf: Workflow, L: MapLayout) {
   for (const p of wf.pipelines) {
     const box = L.pipelines.get(p.id);
     if (!box) continue;
-    nodes.push({ id: p.id, type: box.open ? `pipeline` : `card`, position: { x: box.x, y: box.y }, width: box.w, height: box.h, style: CLICKABLE, data: { id: p.id }, draggable: false, selectable: false });
+    const after = p.blocks?.find((b) => b.after);
+    nodes.push({ id: p.id, type: box.open ? `pipeline` : `card`, position: { x: box.x, y: box.y }, width: box.w, height: box.h, style: CLICKABLE, data: { id: p.id, after: after && L.blocks.get(after.id) }, draggable: false, selectable: false });
     if (box.open) {
       for (const b of p.blocks ?? []) {
         const bb = L.blocks.get(b.id);
@@ -486,7 +482,7 @@ const WorkflowMap = () => {
     if (!wf) return;
     let alive = true;
     document.fonts.ready
-      .then(() => layoutMap(wf, (p) => P.has(p.id), (b) => blockSize(b, B.has(b.id)), CARD, (p) => afterBand(p, B), (p) => detailsBand(p, D)))
+      .then(() => layoutMap(wf, (p) => P.has(p.id), (b) => blockSize(b, B.has(b.id)), CARD, (p) => detailsBand(p, D)))
       .then((L) => alive && setLayout(L))
       .catch(() => {
         if (alive) layoutError.value = `Couldn't lay out this workflow. Reload the page to try again.`;

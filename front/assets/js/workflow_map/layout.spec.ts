@@ -26,10 +26,10 @@ const workflowOf = (blocks: [string, string[]][]) => {
   return { pipelines: [pipeline] } as unknown as Workflow;
 };
 
-const layout = (wf: Workflow, open: boolean, band = 0) => layoutMap(wf, () => open, () => SIZE, CLOSED, () => band);
+const layout = (wf: Workflow, open: boolean) => layoutMap(wf, () => open, () => SIZE, CLOSED);
 
 const grown = (wf: Workflow, name: string | null, dw: number, dh: number) =>
-  layoutMap(wf, () => true, (b) => (b.name === name ? { w: SIZE.w + dw, h: SIZE.h + dh } : SIZE), CLOSED, () => 0);
+  layoutMap(wf, () => true, (b) => (b.name === name ? { w: SIZE.w + dw, h: SIZE.h + dh } : SIZE), CLOSED);
 
 const moves = (before: MapLayout, after: MapLayout) =>
   Object.fromEntries([...before.blocks].map(([id, b]) => [id, [after.blocks.get(id).x - b.x, after.blocks.get(id).y - b.y]]));
@@ -69,19 +69,26 @@ describe(`layoutMap`, () => {
     expect(L.pipelines.get(`p`)).to.include({ w: CLOSED.w, h: CLOSED.h, open: false });
   });
 
-  test(`moves the blocks down by the after band and grows the pipeline by it`, async () => {
-    const wf = workflowWith([`build`], false);
-    const plain = await layout(wf, true);
-    const banded = await layout(wf, true, 50);
-    expect(banded.blocks.get(`build`).y - plain.blocks.get(`build`).y).to.equal(50);
-    expect(banded.pipelines.get(`p`).h - plain.pipelines.get(`p`).h).to.equal(50);
+  test(`widens the pipeline by the after block and leaves the other blocks where they are`, async () => {
+    const plain = await layout(workflowWith([`build`, `test`], true), true);
+    const withAfter = await layout(workflowWith([`build`, `test`], true, true), true);
+    expect(withAfter.blocks.get(`build`)).to.deep.equal(plain.blocks.get(`build`));
+    expect(withAfter.blocks.get(`test`)).to.deep.equal(plain.blocks.get(`test`));
+    expect(withAfter.pipelines.get(`p`).w - plain.pipelines.get(`p`).w).to.equal(64 + SIZE.w);
+    expect(withAfter.pipelines.get(`p`).h).to.equal(plain.pipelines.get(`p`).h);
+  });
+
+  test(`grows the pipeline to hold an after block taller than the other blocks`, async () => {
+    const wf = workflowWith([`build`], false, true);
+    const tall = await layoutMap(wf, () => true, (b) => (b.after ? { w: SIZE.w, h: SIZE.h + 300 } : SIZE), CLOSED);
+    expect(tall.pipelines.get(`p`).h - (await layout(wf, true)).pipelines.get(`p`).h).to.equal(300);
   });
 
   test(`moves the blocks and the after block down to leave room for the init tab, and grows the pipeline by it`, async () => {
-    const plain = await layout(workflowWith([`build`], false, true), true, SIZE.h + 20);
+    const plain = await layout(workflowWith([`build`], false, true), true);
     const wf = workflowWith([`build`], false, true);
     wf.pipelines[0].initJob = { url: `/jobs/init`, status: `passed`, started_at: 1, finished_at: 8 };
-    const tabbed = await layout(wf, true, SIZE.h + 20);
+    const tabbed = await layout(wf, true);
     expect(tabbed.blocks.get(`after`).y - plain.blocks.get(`after`).y).to.equal(10);
     expect(tabbed.blocks.get(`build`).y - plain.blocks.get(`build`).y).to.equal(10);
     expect(tabbed.pipelines.get(`p`).h - plain.pipelines.get(`p`).h).to.equal(10);
@@ -89,18 +96,18 @@ describe(`layoutMap`, () => {
 
   test(`moves the blocks and the after block down by the details band under the header`, async () => {
     const wf = workflowWith([`build`], false, true);
-    const plain = await layout(wf, true, SIZE.h + 20);
-    const detailed = await layoutMap(wf, () => true, () => SIZE, CLOSED, () => SIZE.h + 20, () => 44);
+    const plain = await layout(wf, true);
+    const detailed = await layoutMap(wf, () => true, () => SIZE, CLOSED, () => 44);
     expect(detailed.blocks.get(`after`).y - plain.blocks.get(`after`).y).to.equal(44);
     expect(detailed.blocks.get(`build`).y - plain.blocks.get(`build`).y).to.equal(44);
     expect(detailed.pipelines.get(`p`).h - plain.pipelines.get(`p`).h).to.equal(44);
   });
 
   test(`keeps the init tab's room under an open details band, so the tab hangs from the band`, async () => {
-    const plain = await layout(workflowWith([`build`], false, true), true, SIZE.h + 20);
+    const plain = await layout(workflowWith([`build`], false, true), true);
     const wf = workflowWith([`build`], false, true);
     wf.pipelines[0].initJob = { url: `/jobs/init`, status: `passed`, started_at: 1, finished_at: 8 };
-    const detailed = await layoutMap(wf, () => true, () => SIZE, CLOSED, () => SIZE.h + 20, () => 48);
+    const detailed = await layoutMap(wf, () => true, () => SIZE, CLOSED, () => 48);
     expect(detailed.blocks.get(`after`).y - plain.blocks.get(`after`).y).to.equal(48 + 10);
     expect(detailed.blocks.get(`build`).y - plain.blocks.get(`build`).y).to.equal(48 + 10);
   });
@@ -134,9 +141,10 @@ describe(`layoutMap`, () => {
     expect(L.blocks.get(`c`).y).to.be.greaterThan(L.blocks.get(`f3`).y);
   });
 
-  test(`places the after block in its band, above the other blocks`, async () => {
-    const L = await layout(workflowWith([`build`], false, true), true, SIZE.h + 20);
-    expect(L.blocks.get(`after`)).to.deep.equal({ x: 28, y: 88, ...SIZE });
-    expect(L.blocks.get(`build`).y).to.equal(88 + SIZE.h + 20);
+  test(`places the after block last: right of the last block, level with the first row`, async () => {
+    const L = await layout(workflowWith([`build`, `test`], true, true), true);
+    const last = L.blocks.get(`test`);
+    expect(L.blocks.get(`after`)).to.deep.equal({ x: last.x + last.w + 64, y: 88, ...SIZE });
+    expect(L.pipelines.get(`p`).w).to.equal(L.blocks.get(`after`).x + SIZE.w + 28);
   });
 });
