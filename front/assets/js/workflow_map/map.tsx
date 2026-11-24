@@ -43,6 +43,7 @@ let target: Target | null = null;
 const READABLE = 0.75;
 const GLIDE_MS = 250;
 const EDGE = 40;
+const TOOLS = 64;
 
 interface Box { x: number, y: number, w: number, h: number, }
 export interface View { x: number, y: number, zoom: number, }
@@ -64,8 +65,8 @@ export function nextView(how: `fit` | `focus` | `keep` | `open`, box: Box, pad: 
   const top = box.y * v.zoom + v.y;
   const shown = left >= EDGE && top >= EDGE && left + box.w * v.zoom <= vw - EDGE && top + box.h * v.zoom <= vh - EDGE;
   if (how === `focus` && zoom === v.zoom && shown) return null;
-  const place = (start: number, size: number, room: number) => (size * zoom > (how === `focus` ? room - 2 * EDGE : room) ? EDGE - start * zoom : room / 2 - (start + size / 2) * zoom);
-  return { x: place(box.x, box.w, vw), y: place(box.y, box.h, vh), zoom };
+  const place = (start: number, size: number, room: number, edge: number, slack: number) => (size * zoom > room - slack ? edge - start * zoom : room / 2 - (start + size / 2) * zoom);
+  return { x: place(box.x, box.w, vw, EDGE, how === `focus` ? 2 * EDGE : 0), y: place(box.y, box.h, vh, TOOLS, 2 * TOOLS), zoom };
 }
 
 export const aim = (next: Target | null) => {

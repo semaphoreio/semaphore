@@ -119,13 +119,17 @@ describe(`nextView`, () => {
   });
 
   test(`fits the box on the screen, never past 100%`, () => {
-    expect(nextView(`fit`, { x: 0, y: 0, w: 2000, h: 1000 }, 1, { x: 0, y: 0, zoom: 1 }, vw, vh)).to.deep.equal({ x: 0, y: 50, zoom: 0.5 });
+    expect(nextView(`fit`, { x: 0, y: 0, w: 2000, h: 800 }, 1, { x: 0, y: 0, zoom: 1 }, vw, vh)).to.deep.equal({ x: 0, y: 100, zoom: 0.5 });
     expect(nextView(`fit`, block, 1.6, { x: 0, y: 0, zoom: 0.2 }, vw, vh).zoom).to.equal(1);
   });
 
   test(`fits a box too tall for the screen by its width, at no less than 75%, from its top`, () => {
-    expect(nextView(`fit`, { x: 0, y: 0, w: 1000, h: 6000 }, 1, { x: 0, y: 0, zoom: 1 }, vw, vh)).to.deep.equal({ x: 125, y: 40, zoom: 0.75 });
-    expect(nextView(`fit`, { x: 0, y: 0, w: 4000, h: 6000 }, 1, { x: 0, y: 0, zoom: 1 }, vw, vh)).to.deep.equal({ x: 0, y: 40, zoom: 0.25 });
+    expect(nextView(`fit`, { x: 0, y: 0, w: 1000, h: 6000 }, 1, { x: 0, y: 0, zoom: 1 }, vw, vh)).to.deep.equal({ x: 125, y: 64, zoom: 0.75 });
+    expect(nextView(`fit`, { x: 0, y: 0, w: 4000, h: 6000 }, 1, { x: 0, y: 0, zoom: 1 }, vw, vh)).to.deep.equal({ x: 0, y: 64, zoom: 0.25 });
+  });
+
+  test(`starts a box that would reach under the map's toolbar below it, 64 px from the top`, () => {
+    expect(nextView(`fit`, { x: 0, y: 0, w: 2000, h: 1000 }, 1, { x: 0, y: 0, zoom: 1 }, vw, vh)).to.deep.equal({ x: 0, y: 64, zoom: 0.5 });
   });
 
   test(`leaves the map alone when the focused box is on screen and readable`, () => {
@@ -147,8 +151,8 @@ describe(`nextView`, () => {
     expect(nextView(`focus`, { x: 0, y: 0, w: 4000, h: 3000 }, 1.6, { x: 0, y: 0, zoom: 0.5 }, vw, vh).zoom).to.equal(0.5);
   });
 
-  test(`puts the top of a focused box taller than the screen near the top edge instead of centring it`, () => {
+  test(`puts the top of a focused box taller than the screen under the map's toolbar instead of centring it`, () => {
     const tall = { x: 400, y: 0, w: 300, h: 3000 };
-    expect(nextView(`focus`, tall, 1.12, { x: 0, y: -5000, zoom: 0.75 }, vw, vh)).to.deep.equal({ x: 87.5, y: 40, zoom: 0.75 });
+    expect(nextView(`focus`, tall, 1.12, { x: 0, y: -5000, zoom: 0.75 }, vw, vh)).to.deep.equal({ x: 87.5, y: 64, zoom: 0.75 });
   });
 });
