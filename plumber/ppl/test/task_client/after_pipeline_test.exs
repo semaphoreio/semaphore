@@ -123,7 +123,7 @@ defmodule Ppl.TaskClient.AfterPipelineTest do
              } = metrics(trace)
     end
 
-    test "a pipeline stopped during initialization reports all of its time as init" do
+    test "a pipeline that ended before it was pending reports all of its time as init" do
       trace = trace_at(created_at: 0, done_at: 7)
 
       assert %{

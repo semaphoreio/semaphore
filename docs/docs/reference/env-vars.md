@@ -533,7 +533,7 @@ Present only for builds where `SEMAPHORE_GIT_REF_TYPE=tag`.
 
 The following variables are available during [after pipeline jobs](../using-semaphore/pipelines#after-pipeline-job).
 
-An after pipeline job also runs when its pipeline was stopped or canceled before it started running, for example while it waited in a queue. The duration variables split the pipeline's lifetime into initialization, queueing and running: a stage the pipeline never reached has a duration of `0`, and the stage the pipeline ended in lasts until the pipeline finished.
+An after pipeline job also runs when its pipeline was stopped or canceled before it started running, for example while it waited in a queue. It runs only for pipelines that complete initialization: a pipeline that fails during initialization has no after pipeline job, and one stopped or canceled during initialization may have none either. The duration variables split the pipeline's lifetime into initialization, queueing and running: a stage the pipeline never reached has a duration of `0`, and the stage the pipeline ended in lasts until the pipeline finished.
 
 ### Pipeline created at {#pipeline-created-at}
 
