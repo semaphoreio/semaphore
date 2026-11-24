@@ -25,7 +25,6 @@ defmodule Projecthub.Application do
     children =
       [
         {Projecthub.Repo, []},
-        {Projecthub.Workers.AgentStore, [name: :feature_store]},
         {Task.Supervisor, [name: Projecthub.TaskSupervisor]},
         {Projecthub.FeatureProviderInvalidatorWorker, []},
         %{

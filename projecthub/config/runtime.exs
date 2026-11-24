@@ -45,7 +45,9 @@ feature_provider =
     nil ->
       {Projecthub.FeatureHubProvider,
        [
-         cache: {FeatureProvider.CachexCache, name: :feature_provider_cache, ttl_ms: :timer.minutes(10)}
+         cache:
+           {FeatureProvider.CachexCache,
+            name: :feature_provider_cache, ttl_ms: :timer.minutes(10), stale_ttl_ms: :timer.hours(4)}
        ]}
 
     path ->
