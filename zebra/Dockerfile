@@ -30,6 +30,7 @@ COPY zebra/mix.exs .
 COPY zebra/mix.lock .
 COPY zebra/config config
 COPY feature_provider ../feature_provider
+COPY env_var_policy ../env_var_policy
 RUN mix do deps.get, deps.compile
 
 WORKDIR /app
