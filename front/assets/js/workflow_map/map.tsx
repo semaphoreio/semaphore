@@ -396,16 +396,13 @@ function build(wf: Workflow, L: MapLayout) {
   return { nodes, edges };
 }
 
-export const SMALL_PIPELINE_JOBS = 20;
-
 export function seedBlocks(pipelines: Pipeline[], open: Set<string>, seeded: Set<string>, blocks: Set<string>): Set<string> | null {
   let next: Set<string> | null = null;
   for (const p of pipelines) {
     if (!open.has(p.id) || !p.blocks?.length || seeded.has(p.id)) continue;
     seeded.add(p.id);
-    const all = !p.done || pipelineJobs(p).length <= SMALL_PIPELINE_JOBS;
     for (const b of p.blocks) {
-      if ((all || blockStatus(b) === `failed`) && !blocks.has(b.id)) (next ??= new Set(blocks)).add(b.id);
+      if (!blocks.has(b.id)) (next ??= new Set(blocks)).add(b.id);
     }
   }
   return next;

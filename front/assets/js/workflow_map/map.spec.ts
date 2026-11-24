@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { describe, test } from "mocha";
 
 import { Block, Job, Pipeline, Workflow } from "./model";
-import { SMALL_PIPELINE_JOBS, firstView, nextView, seedBlocks, structureKey } from "./map";
+import { firstView, nextView, seedBlocks, structureKey } from "./map";
 
 const job = (status: string) => ({ key: status, id: null, name: status, status, startedAt: null, finishedAt: null, reused: false }) as Job;
 
@@ -57,7 +57,7 @@ describe(`seedBlocks`, () => {
   const pipe = (id: string, done: boolean, blocks: Block[] | null) => ({ id, done, blocks }) as unknown as Pipeline;
   const blocksOf = (p: string) => [blk(p, `lint`, [`passed`]), blk(p, `unit`, [`failed`, `passed`]), blk(p, `e2e`, [`running`, `queued`]), blk(p, `docs`, [`queued`])];
   const ids = (s: Set<string> | null) => [...(s ?? [])].sort();
-  const big = (p: string) => blk(p, `matrix`, Array<string>(SMALL_PIPELINE_JOBS).fill(`passed`));
+  const big = (p: string) => blk(p, `matrix`, Array<string>(200).fill(`passed`));
 
   test(`opens every block of a pipeline that has not finished`, () => {
     const seeded = new Set<string>();
@@ -65,15 +65,9 @@ describe(`seedBlocks`, () => {
     expect([...seeded]).to.deep.equal([`p`]);
   });
 
-  test(`opens only the failed blocks of a finished pipeline with more than ${SMALL_PIPELINE_JOBS} jobs`, () => {
+  test(`opens every block of a finished pipeline, however many jobs it has`, () => {
     const done = pipe(`p`, true, [blk(`p`, `lint`, [`passed`]), blk(`p`, `unit`, [`failed`, `passed`]), blk(`p`, `docs`, [`stopped`]), big(`p`)]);
-    expect(ids(seedBlocks([done], new Set([`p`]), new Set(), new Set()))).to.deep.equal([`p/unit`]);
-  });
-
-  test(`opens every block of a finished pipeline with up to ${SMALL_PIPELINE_JOBS} jobs`, () => {
-    const done = pipe(`p`, true, [blk(`p`, `lint`, [`passed`]), blk(`p`, `unit`, [`failed`, `passed`]), blk(`p`, `docs`, [`stopped`])]);
-    expect(ids(seedBlocks([done], new Set([`p`]), new Set(), new Set()))).to.deep.equal([`p/docs`, `p/lint`, `p/unit`]);
-    expect(ids(seedBlocks([pipe(`q`, true, [big(`q`)])], new Set([`q`]), new Set(), new Set()))).to.deep.equal([`q/matrix`]);
+    expect(ids(seedBlocks([done], new Set([`p`]), new Set(), new Set()))).to.deep.equal([`p/docs`, `p/lint`, `p/matrix`, `p/unit`]);
   });
 
   test(`seeds a pipeline once, so a block the user closed stays closed, also after the pipeline finishes`, () => {
@@ -88,10 +82,6 @@ describe(`seedBlocks`, () => {
     const seeded = new Set<string>();
     expect(seedBlocks([pipe(`p`, false, blocksOf(`p`)), pipe(`q`, false, null), pipe(`r`, false, [])], new Set([`q`, `r`]), seeded, new Set())).to.equal(null);
     expect(seeded.size).to.equal(0);
-  });
-
-  test(`changes nothing for a big finished pipeline with no failed block`, () => {
-    expect(seedBlocks([pipe(`r`, true, [blk(`r`, `lint`, [`passed`]), big(`r`)])], new Set([`r`]), new Set(), new Set())).to.equal(null);
   });
 });
 
