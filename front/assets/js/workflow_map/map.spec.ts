@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { describe, test } from "mocha";
 
 import { Block, Job, Pipeline, Workflow } from "./model";
-import { firstView, nextView, seedBlocks, structureKey } from "./map";
+import { closeAllPipelines, firstView, nextView, openBlocks, openPipelines, seedBlocks, structureKey } from "./map";
 
 const job = (status: string) => ({ key: status, id: null, name: status, status, startedAt: null, finishedAt: null, reused: false }) as Job;
 
@@ -76,6 +76,19 @@ describe(`seedBlocks`, () => {
     const closed = new Set([`p/lint`, `p/e2e`, `p/docs`]);
     expect(seedBlocks([pipe(`p`, false, blocksOf(`p`))], new Set([`p`]), seeded, closed)).to.equal(null);
     expect(seedBlocks([pipe(`p`, true, blocksOf(`p`))], new Set([`p`]), seeded, closed)).to.equal(null);
+  });
+
+  test(`Close all pipelines keeps the blocks' state, so a pipeline opened again shows its blocks as they were`, () => {
+    const seeded = new Set<string>();
+    openPipelines.value = new Set([`p`]);
+    openBlocks.value = seedBlocks([pipe(`p`, true, blocksOf(`p`))], openPipelines.value, seeded, new Set()) ?? new Set();
+    closeAllPipelines();
+    expect([...openPipelines.value]).to.deep.equal([]);
+    openPipelines.value = new Set([`p`]);
+    expect(seedBlocks([pipe(`p`, true, blocksOf(`p`))], openPipelines.value, seeded, openBlocks.value)).to.equal(null);
+    expect(ids(openBlocks.value)).to.deep.equal([`p/docs`, `p/e2e`, `p/lint`, `p/unit`]);
+    openPipelines.value = new Set();
+    openBlocks.value = new Set();
   });
 
   test(`waits for a pipeline to be open and its blocks loaded`, () => {

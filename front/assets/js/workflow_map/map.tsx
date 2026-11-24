@@ -80,6 +80,11 @@ export const aim = (next: Target | null) => {
   target = next;
 };
 
+export const closeAllPipelines = () => {
+  aim({ id: ``, how: `all` });
+  openPipelines.value = new Set();
+};
+
 const toggle = (s: typeof openPipelines, id: string, on?: boolean) => {
   const next = new Set(s.value);
   (on ?? !next.has(id)) ? next.add(id) : next.delete(id);
@@ -573,7 +578,7 @@ const WorkflowMap = () => {
           <button className="btn btn-secondary btn-small" onClick={() => (aim({ id: ``, how: `all` }), (openPipelines.value = new Set(wf.pipelines.map((p) => p.id))))}>
             Open all pipelines
           </button>
-          <button className="btn btn-secondary btn-small" onClick={() => (aim({ id: ``, how: `all` }), (openPipelines.value = new Set()), (openBlocks.value = new Set()))}>
+          <button className="btn btn-secondary btn-small" onClick={closeAllPipelines}>
             Close all pipelines
           </button>
           <BlocksToggle pipelines={wf.pipelines.filter((p) => P.has(p.id))} anchor={lead ? { id: selected.value, how: `keep`, at: lead } : null}/>
