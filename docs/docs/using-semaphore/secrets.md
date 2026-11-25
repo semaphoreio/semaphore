@@ -142,6 +142,12 @@ To create secrets with the Semaphore API, see the [API reference](../reference/a
 
 ### Access policy {#secret-access-policy}
 
+:::info
+
+If access-policy settings are not visible when editing an organization secret, contact support@semaphore.io to check whether the feature is enabled for your organization.
+
+:::
+
 <VideoTutorial title="How to configure secret access policy" src="https://www.youtube.com/embed/gB1Oat4HwTo?si=_dvCKllE0bPgtDFe" />
 
 <Available plans={['The Plan']}/>
@@ -160,6 +166,22 @@ You can apply a policy at three levels:
 ![Managing access policies for secrets](./img/secrets-access-policy.jpg)
 </div>
 </details>
+
+**Do policy changes apply to jobs that are already queued?**
+
+Yes. Access-policy changes apply to jobs that are already queued and to jobs created after the change. For example, removing a project from a secret's allowed projects can cause a queued job that references that secret to fail.
+
+**What happens if a job references a secret that its project is not allowed to use?**
+
+The job fails with the following message: `Secret <secret name> not found`.
+
+This message can indicate an access-policy restriction even when the secret exists. When troubleshooting, check that the secret's access policy allows the job's project to use it.
+
+**Can Admins or Owners bypass debug and attach restrictions?**
+
+No. A secret's debug and attach restrictions apply to everyone, including organization Admins and Owners. If the policy disables debug sessions or attaching to running jobs, that restriction applies to users with these roles for jobs that use the secret.
+
+Secret access policies are separate from [project debug and attach permissions](https://docs.semaphore.io/using-semaphore/jobs#restrict-ssh-access), which can also restrict these operations.
 
 ## How to create project secrets {#create-project-secrets}
 
