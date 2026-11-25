@@ -31,8 +31,23 @@ defmodule Front.ServiceAccount do
     @callback delete(service_account_id :: String.t(), org_id :: String.t()) ::
                 :ok | {:error, any}
 
-    @callback regenerate_token(service_account_id :: String.t(), org_id :: String.t()) ::
-                {:ok, String.t()} | {:error, any}
+    @callback regenerate_token(
+                service_account_id :: String.t(),
+                org_id :: String.t(),
+                requester_id :: String.t()
+              ) :: {:ok, String.t()} | {:error, any}
+
+    @callback set_owner(
+                service_account_id :: String.t(),
+                org_id :: String.t(),
+                owner_id :: String.t()
+              ) :: {:ok, ServiceAccount.t()} | {:error, any}
+
+    @callback release_owner(
+                service_account_id :: String.t(),
+                org_id :: String.t(),
+                requester_id :: String.t()
+              ) :: {:ok, ServiceAccount.t()} | {:error, any}
   end
 
   def create(org_id, name, description, creator_id),
@@ -53,8 +68,14 @@ defmodule Front.ServiceAccount do
   def delete(service_account_id, org_id),
     do: service_account_impl().delete(service_account_id, org_id)
 
-  def regenerate_token(service_account_id, org_id),
-    do: service_account_impl().regenerate_token(service_account_id, org_id)
+  def regenerate_token(service_account_id, org_id, requester_id),
+    do: service_account_impl().regenerate_token(service_account_id, org_id, requester_id)
+
+  def set_owner(service_account_id, org_id, owner_id),
+    do: service_account_impl().set_owner(service_account_id, org_id, owner_id)
+
+  def release_owner(service_account_id, org_id, requester_id),
+    do: service_account_impl().release_owner(service_account_id, org_id, requester_id)
 
   defp service_account_impl do
     {client, _client_opts} = Application.fetch_env!(:front, :service_account_client)

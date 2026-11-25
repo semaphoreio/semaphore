@@ -5,7 +5,7 @@ defmodule Zebra.Workers.JobRequestFactory.Secrets do
   alias InternalApi.Secrethub.RequestMeta, as: Meta
   alias InternalApi.Secrethub.CheckoutMetadata
   alias InternalApi.Secrethub.SecretService.Stub
-  alias Zebra.Workers.JobRequestFactory.JobRequest
+  alias Zebra.Workers.JobRequestFactory.{FailureReason, JobRequest}
 
   defstruct [
     :job_secrets,
@@ -37,7 +37,15 @@ defmodule Zebra.Workers.JobRequestFactory.Secrets do
     end
   end
 
-  def load(org_id, job_id, spec, project, repo_proxy, job_type \\ :pipeline_job) do
+  def load(
+        org_id,
+        job_id,
+        spec,
+        project,
+        repo_proxy,
+        job_type \\ :pipeline_job,
+        deployment_target_id \\ nil
+      ) do
     Watchman.benchmark("zebra.external.secrethub.checkout_many", fn ->
       # We want to fetch all necessary secrets from Secrethub in
       # one big checkout_many request to increase network efficiency.
@@ -60,23 +68,23 @@ defmodule Zebra.Workers.JobRequestFactory.Secrets do
 
       checkout_metadata = prepare_checkout_metadata(job_id, spec, repo_proxy)
 
-      load_based_on_names(org_id, names, spec, checkout_metadata)
+      load_based_on_names(org_id, names, spec, checkout_metadata, deployment_target_id)
     end)
   end
 
-  def validate_job_secrets(org_id, spec, operation) do
+  def validate_job_secrets(org_id, spec, operation, deployment_target_id \\ nil) do
     # regular job secrets
     job_secret_names = Enum.map(spec.secrets, & &1.name)
 
-    load_secrets(org_id, spec.project_id, job_secret_names)
+    load_secrets(org_id, spec.project_id, job_secret_names, deployment_target_id)
     |> validate_secrets(job_secret_names, operation)
   end
 
-  defp load_based_on_names(_, [], spec, _checkout_meta_params) do
+  defp load_based_on_names(_, [], spec, _checkout_meta_params, _deployment_target_id) do
     new([], spec)
   end
 
-  defp load_based_on_names(org_id, names, spec, checkout_meta_params) do
+  defp load_based_on_names(org_id, names, spec, checkout_meta_params, deployment_target_id) do
     meta = Meta.new(api_version: "v1beta", req_id: UUID.uuid4(), org_id: org_id)
 
     checkout_meta = CheckoutMetadata.new(checkout_meta_params)
@@ -86,7 +94,8 @@ defmodule Zebra.Workers.JobRequestFactory.Secrets do
         metadata: meta,
         names: names,
         checkout_metadata: checkout_meta,
-        project_id: spec.project_id
+        project_id: spec.project_id,
+        deployment_target_id: deployment_target_id || ""
       )
 
     with {:ok, endpoint} <- Application.fetch_env(:zebra, :secrethub_api_endpoint),
@@ -108,7 +117,8 @@ defmodule Zebra.Workers.JobRequestFactory.Secrets do
       else
         msg =
           missing_secret_names
-          |> Enum.map_join(", ", fn name -> "Secret #{name} not found" end)
+          |> Enum.map(fn name -> "Secret #{FailureReason.clip(name)} not found" end)
+          |> FailureReason.join()
 
         {:stop_job_processing, msg}
       end
@@ -120,16 +130,17 @@ defmodule Zebra.Workers.JobRequestFactory.Secrets do
     end
   end
 
-  defp load_secrets(_, _, []), do: {:ok, []}
+  defp load_secrets(_, _, [], _), do: {:ok, []}
 
-  defp load_secrets(org_id, project_id, names) do
+  defp load_secrets(org_id, project_id, names, deployment_target_id) do
     meta = Meta.new(api_version: "v1beta", req_id: UUID.uuid4(), org_id: org_id)
 
     req =
       DescribeRequest.new(
         metadata: meta,
         names: names,
-        project_id: project_id
+        project_id: project_id,
+        deployment_target_id: deployment_target_id || ""
       )
 
     with {:ok, endpoint} <- Application.fetch_env(:zebra, :secrethub_api_endpoint),
@@ -293,17 +304,15 @@ defmodule Zebra.Workers.JobRequestFactory.Secrets do
     from_env ++ from_repo ++ [job_id: job_id]
   end
 
-  # extracts pipeline_id and workflow_id from job spec env_vars
+  # Plumber's copy comes first in the spec; a later repeat must not replace it.
   defp get_checkout_meta_from_env(vars) do
-    vars
-    |> Enum.filter(fn v ->
-      Enum.member?(["SEMAPHORE_PIPELINE_ID", "SEMAPHORE_WORKFLOW_ID"], v.name)
+    [pipeline_id: "SEMAPHORE_PIPELINE_ID", workflow_id: "SEMAPHORE_WORKFLOW_ID"]
+    |> Enum.flat_map(fn {key, name} ->
+      case Enum.find(vars, &(&1.name == name)) do
+        nil -> []
+        var -> [{key, var.value}]
+      end
     end)
-    |> Enum.map(
-      &if &1.name == "SEMAPHORE_PIPELINE_ID",
-        do: {:pipeline_id, &1.value},
-        else: {:workflow_id, &1.value}
-    )
   end
 
   defp get_checkout_meta_from_repo(nil), do: []

@@ -90,7 +90,13 @@ config :guard, session_key: System.get_env("SESSION_COOKIE_NAME")
 
 config :guard,
   mcp_oauth_access_token_ttl_seconds:
-    String.to_integer(System.get_env("MCP_OAUTH_ACCESS_TOKEN_TTL_SECONDS") || "86400")
+    String.to_integer(System.get_env("MCP_OAUTH_ACCESS_TOKEN_TTL_SECONDS") || "3600"),
+  mcp_oauth_refresh_token_ttl_seconds:
+    String.to_integer(System.get_env("MCP_OAUTH_REFRESH_TOKEN_TTL_SECONDS") || "2592000"),
+  mcp_oauth_refresh_token_max_age_seconds:
+    String.to_integer(System.get_env("MCP_OAUTH_REFRESH_TOKEN_MAX_AGE_SECONDS") || "7776000"),
+  mcp_oauth_refresh_token_reuse_grace_seconds:
+    String.to_integer(System.get_env("MCP_OAUTH_REFRESH_TOKEN_REUSE_GRACE_SECONDS") || "30")
 
 config :guard,
   oidc: [
@@ -145,6 +151,24 @@ config :guard, Guard.CLIAuth.AuthCodeCleaner,
   jobs: [
     # Every 30 minutes
     {"*/30 * * * *", {Guard.CLIAuth.AuthCodeCleaner, :process, []}}
+  ]
+
+config :guard, Guard.FederatedIdentitySyncDrainer,
+  # A batch leases its rows for a fixed window but processes them serially, so
+  # a slow Keycloak lets the leases expire while the batch is still running.
+  # Overlapping runs would then re-lease those rows and pile concurrent passes
+  # onto the already-failing dependency. Quantum tracks this per node, so each
+  # pod still drains, one run at a time.
+  overlap: false,
+  jobs: [
+    # Every minute
+    {"* * * * *", {Guard.FederatedIdentitySyncDrainer, :process, []}}
+  ]
+
+config :guard, Guard.ServiceAccount.OwnerBackfill,
+  jobs: [
+    # Every 15 minutes
+    {"*/15 * * * *", {Guard.ServiceAccount.OwnerBackfill, :process, []}}
   ]
 
 config :guard, :hard_destroy_grace_period_days, 30

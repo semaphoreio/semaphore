@@ -14,7 +14,9 @@ defimpl RepositoryHub.Server.RegenerateDeployKeyAction, for: RepositoryHub.Githu
 
     with {:ok, adapter_context} <- GithubAdapter.context(adapter, request.repository_id) do
       Multi.new()
-      |> Multi.put(:repository, adapter_context.repository)
+      |> Multi.run(:repository, fn _repo, _results ->
+        Model.RepositoryQuery.lock_for_update(request.repository_id)
+      end)
       |> Multi.put(:github_token, adapter_context.github_token)
       |> Multi.run(:deploy_key, fn _repo, _results ->
         Model.DeployKeyQuery.get_by_repository_id(request.repository_id)

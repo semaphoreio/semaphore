@@ -174,5 +174,36 @@ defmodule RepositoryHub.Model.GitRepositoryTest do
 
       assert {:ok, false} == GitRepository.equal?(git_repository, new_url)
     end
+
+    test "when a github url differs only in letter case => return truthy tuple" do
+      {:ok, git_repository} = GitRepository.new("git@github.com:marvinwills/base-app.git")
+
+      assert {:ok, true} == GitRepository.equal?(git_repository, "https://github.com/MarvinWills/Base-App")
+    end
+
+    test "when a gitlab or bitbucket url differs only in letter case => returns falsey tuple" do
+      {:ok, gitlab_repository} = GitRepository.new("git@gitlab.com:marvinwills/base-app.git")
+      {:ok, bitbucket_repository} = GitRepository.new("git@bitbucket.org:marvinwills/base-app.git")
+
+      assert {:ok, false} == GitRepository.equal?(gitlab_repository, "git@gitlab.com:MarvinWills/Base-App.git")
+      assert {:ok, false} == GitRepository.equal?(bitbucket_repository, "git@bitbucket.org:MarvinWills/Base-App.git")
+    end
+  end
+
+  describe ".did_host_change?" do
+    test "bitbucket.org and ssh.bitbucket.org are the same host" do
+      {:ok, old_host} = GitRepository.new("git@bitbucket.org:marvinwills/base-app.git")
+      {:ok, new_host} = GitRepository.new("git@ssh.bitbucket.org:marvinwills/base-app.git")
+
+      assert {:ok, false} == GitRepository.did_host_change?(old_host, "git@ssh.bitbucket.org:marvinwills/base-app.git")
+      assert {:ok, false} == GitRepository.did_host_change?(new_host, "git@bitbucket.org:marvinwills/base-app.git")
+    end
+
+    test "moving between providers is a host change" do
+      {:ok, bitbucket_repository} = GitRepository.new("git@ssh.bitbucket.org:marvinwills/base-app.git")
+
+      assert {:ok, true} ==
+               GitRepository.did_host_change?(bitbucket_repository, "git@github.com:marvinwills/base-app.git")
+    end
   end
 end

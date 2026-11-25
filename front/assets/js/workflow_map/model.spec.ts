@@ -1,0 +1,253 @@
+import { expect } from "chai";
+import { describe, test } from "mocha";
+
+import { AFTER_PIPELINE, ApiPipeline, ApiPipelineDetail, Block, Job, blockSummary, buildWorkflow, formatAgo, formatDuration, plural, rollup, shortName, stopReason } from "./model";
+
+const apiPipeline = (id: string, overrides: Partial<ApiPipeline> = {}): ApiPipeline => ({
+  id,
+  name: id,
+  yaml_file: `.semaphore/semaphore.yml`,
+  state: `DONE`,
+  result: `PASSED`,
+  result_reason: null,
+  parent_id: null,
+  trigger: `INITIAL_WORKFLOW`,
+  triggerer: { text: `Triggered by push`, link: null, owner: `Ana`, stopped: false, stopped_by: null },
+  switch_id: null,
+  created_at: 1,
+  running_at: 10,
+  done_at: 20,
+  stop_url: null,
+  rebuild_url: null,
+  ...overrides,
+});
+
+const job = (name: string, status: ApiPipelineDetail[`blocks`][number][`jobs`][number][`status`] = `passed`) => ({
+  id: `${name}-id`,
+  name,
+  status,
+  started_at: 10,
+  finished_at: 20,
+  reused: false,
+});
+
+describe(`buildWorkflow`, () => {
+  test(`links promotions and partial reruns under their parent and numbers repeated promotions`, () => {
+    const wf = buildWorkflow(
+      {
+        root_pipeline_id: `ci`,
+        pipelines: [
+          apiPipeline(`deploy-2`, { name: `Deploy`, parent_id: `ci`, created_at: 3 }),
+          apiPipeline(`ci`),
+          apiPipeline(`deploy-1`, { name: `Deploy`, parent_id: `ci`, created_at: 2 }),
+          apiPipeline(`rerun`, { name: `ci`, parent_id: `deploy-1`, trigger: `PIPELINE_PARTIAL_RERUN` }),
+        ],
+      },
+      {}
+    );
+
+    expect(wf.root.id).to.eq(`ci`);
+    expect(wf.pipelines.map((p) => p.id)).to.deep.eq([`ci`, `deploy-1`, `rerun`, `deploy-2`]);
+    expect(wf.pipelineById.get(`deploy-1`).attempt).to.eq(1);
+    expect(wf.pipelineById.get(`deploy-2`).attempt).to.eq(2);
+    expect(wf.pipelineById.get(`rerun`).depth).to.eq(2);
+    expect(wf.root.blocks).to.eq(null);
+  });
+
+  test(`maps pipeline states to statuses`, () => {
+    const wf = buildWorkflow(
+      {
+        root_pipeline_id: `a`,
+        pipelines: [
+          apiPipeline(`a`),
+          apiPipeline(`b`, { parent_id: `a`, result: `FAILED` }),
+          apiPipeline(`c`, { parent_id: `a`, result: `CANCELED` }),
+          apiPipeline(`d`, { parent_id: `a`, state: `RUNNING` }),
+          apiPipeline(`e`, { parent_id: `a`, state: `QUEUING` }),
+        ],
+      },
+      {}
+    );
+
+    expect(wf.pipelines.map((p) => p.status)).to.deep.eq([`passed`, `failed`, `canceled`, `running`, `queued`]);
+  });
+
+  test(`builds blocks with dependencies and an after pipeline block that follows the last blocks`, () => {
+    const detail: ApiPipelineDetail = {
+      id: `ci`,
+      state: `DONE`,
+      result: `PASSED`,
+      error_html: null,
+      init_job: null,
+      done: true,
+      promotions: [],
+      blocks: [
+        { name: `Build`, dependencies: [], jobs: [job(`compile`)] },
+        { name: `Unit`, dependencies: [`Build`], jobs: [job(`unit 1`), job(`unit 2`, `failed`)] },
+        { name: `Lint`, dependencies: [`Build`], jobs: [job(`lint`)] },
+      ],
+      after_jobs: [job(`cleanup`)],
+    };
+
+    const wf = buildWorkflow({ root_pipeline_id: `ci`, pipelines: [apiPipeline(`ci`)] }, { ci: detail });
+    const blocks = wf.root.blocks;
+
+    expect(blocks.map((b) => b.name)).to.deep.eq([`Build`, `Unit`, `Lint`, AFTER_PIPELINE]);
+    expect(blocks[1].deps.map((b) => b.name)).to.deep.eq([`Build`]);
+    expect(blocks[3].deps.map((b) => b.name)).to.deep.eq([`Unit`, `Lint`]);
+    expect(blocks.map((b) => Boolean(b.after))).to.deep.eq([false, false, false, true]);
+    expect(wf.jobs.get(`ci/Unit#1`).status).to.eq(`failed`);
+    expect(wf.blocks.get(`ci/Lint`).pipeline).to.eq(wf.root);
+  });
+});
+
+describe(`buildWorkflow promotions`, () => {
+  test(`links each promotion to the pipelines it triggered and flags unprocessed ones`, () => {
+    const promotion = (name: string, events: ApiPipelineDetail[`promotions`][number][`events`]) => ({
+      name,
+      trigger_url: `/promote/${name}`,
+      can_promote: true,
+      deployment: null,
+      parameters: [],
+      events,
+    });
+    const detail: ApiPipelineDetail = {
+      id: `ci`,
+      state: `DONE`,
+      result: `PASSED`,
+      error_html: null,
+      init_job: null,
+      done: true,
+      blocks: [],
+      after_jobs: [],
+      promotions: [
+        promotion(`Staging`, [{ pipeline_id: `staging-1`, processed: true, result: `PASSED`, auto: true, triggered_at: 1, author: null }]),
+        promotion(`Production`, [{ pipeline_id: null, processed: false, result: ``, auto: false, triggered_at: 2, author: `Ana` }]),
+      ],
+    };
+
+    const wf = buildWorkflow(
+      { root_pipeline_id: `ci`, pipelines: [apiPipeline(`ci`), apiPipeline(`staging-1`, { parent_id: `ci`, trigger: `AUTO_PROMOTION` })] },
+      { ci: detail }
+    );
+    const [staging, production] = wf.root.promotions;
+
+    expect(staging.pipelines.map((p) => p.id)).to.deep.eq([`staging-1`]);
+    expect(staging.starting).to.eq(false);
+    expect(production.pipelines).to.deep.eq([]);
+    expect(production.starting).to.eq(true);
+  });
+});
+
+describe(`rollup`, () => {
+  test(`picks the status that needs attention`, () => {
+    expect(rollup([])).to.eq(`pending`);
+    expect(rollup([`passed`, `passed`])).to.eq(`passed`);
+    expect(rollup([`passed`, `failed`])).to.eq(`failed`);
+    expect(rollup([`failed`, `running`])).to.eq(`running`);
+    expect(rollup([`passed`, `skipped`])).to.eq(`passed`);
+    expect(rollup([`passed`, `pending`])).to.eq(`running`);
+    expect(rollup([`failed`, `stopped`])).to.eq(`failed`);
+    expect(rollup([`passed`, `canceled`])).to.eq(`canceled`);
+    expect(rollup([`stopped`, `canceled`])).to.eq(`stopped`);
+  });
+});
+
+describe(`blockSummary`, () => {
+  test(`counts the jobs that need a look, cancelled ones included`, () => {
+    const block = (statuses: string[]) => ({ jobs: statuses.map((status) => ({ status }) as Job) }) as Block;
+    expect(blockSummary(block([`canceled`]))).to.eq(`1 job · 1 cancelled`);
+    expect(blockSummary(block([`passed`, `failed`, `canceled`]))).to.eq(`3 jobs · 1 failed · 1 cancelled`);
+    expect(blockSummary(block([`passed`, `skipped`]))).to.eq(`2 jobs`);
+  });
+});
+
+describe(`stopReason`, () => {
+  const reason = (overrides: Partial<ApiPipeline>) => {
+    const wf = buildWorkflow({ root_pipeline_id: `ci`, pipelines: [apiPipeline(`ci`, overrides)] }, {});
+    return { status: wf.root.status, reason: stopReason(wf.root) };
+  };
+
+  test(`names why a stopped or cancelled pipeline ended`, () => {
+    expect(reason({ result: `STOPPED`, result_reason: `STRATEGY` })).to.deep.equal({
+      status: `stopped`,
+      reason: { label: `Auto-cancelled`, detail: `A newer pipeline started in the same queue (auto_cancel).` },
+    });
+    expect(reason({ result: `CANCELED`, result_reason: `STRATEGY` }).status).to.eq(`canceled`);
+    expect(reason({ result: `STOPPED`, result_reason: `TIMEOUT` }).reason.label).to.eq(`Timed out`);
+  });
+
+  test(`says who stopped it by hand`, () => {
+    const stopped = { text: `Triggered by push`, link: null, owner: `Ana`, stopped: true, stopped_by: `Bo` };
+    expect(reason({ result: `STOPPED`, result_reason: `USER`, triggerer: stopped }).reason).to.deep.equal({ label: `Stopped by user`, detail: `Stopped by Bo.` });
+  });
+
+  test(`says Semaphore stopped it, and what stopped it when that is known`, () => {
+    expect(reason({ result: `STOPPED`, result_reason: `INTERNAL` }).reason).to.deep.equal({ label: `Stopped by Semaphore`, detail: `Semaphore stopped it.` });
+    const deleted = { text: `Triggered by push`, link: null, owner: `Ana`, stopped: true, stopped_by: `branch deletion` };
+    expect(reason({ result: `STOPPED`, result_reason: `INTERNAL`, triggerer: deleted }).reason).to.deep.equal({
+      label: `Stopped by Semaphore`,
+      detail: `Stopped by branch deletion.`,
+    });
+  });
+
+  test(`has nothing to say about a pipeline that was not stopped, or with no known reason`, () => {
+    expect(reason({ result: `FAILED`, result_reason: `TEST` }).reason).to.eq(null);
+    expect(reason({ result: `PASSED` }).reason).to.eq(null);
+    expect(reason({ result: `STOPPED`, result_reason: null }).reason).to.eq(null);
+    expect(reason({ result: `STOPPED`, result_reason: `FAST_FAILING` }).reason).to.eq(null);
+    expect(reason({ result: `STOPPED`, result_reason: `DELETED` }).reason).to.eq(null);
+  });
+});
+
+describe(`plural`, () => {
+  test(`says one of something in the singular and any other count in the plural`, () => {
+    expect([plural(0, `job`), plural(1, `job`), plural(1, `block`), plural(2, `block`)]).to.deep.equal([`0 jobs`, `1 job`, `1 block`, `2 blocks`]);
+  });
+});
+
+describe(`shortName`, () => {
+  test(`keeps the first name and the last name's initial`, () => {
+    expect(shortName(`Michał Kowalski`)).to.eq(`Michał K.`);
+    expect(shortName(`Ludwig van Beethoven`)).to.eq(`Ludwig B.`);
+    expect(shortName(`Jean-Luc Picard`)).to.eq(`Jean-Luc P.`);
+    expect(shortName(`  Ana   Łukasiewicz `)).to.eq(`Ana Ł.`);
+    expect(shortName(`Ana \u0141ukasiewicz`)).to.eq(`Ana Ł.`);
+    expect(shortName(`Ana L\u0301opez`)).to.eq(`Ana Ĺ.`);
+  });
+
+  test(`leaves alone what is not a capitalised first and last name`, () => {
+    for (const name of [`octocat`, `dependabot[bot]`, `[Deleted User]`, `branch deletion`, `admin`, `John Doe (Acme)`, `john doe`, `山田 太郎`]) {
+      expect(shortName(name)).to.eq(name);
+    }
+  });
+});
+
+describe(`formatAgo`, () => {
+  test(`says how long ago in the largest whole unit`, () => {
+    const day = 86400;
+    const shown = [0, 59, 60, 3599, 3600, day - 1, day, 30 * day - 1, 30 * day, 365 * day - 1, 365 * day, 800 * day].map(formatAgo);
+    expect(shown).to.deep.equal([`now`, `now`, `1m ago`, `59m ago`, `1h ago`, `23h ago`, `1d ago`, `29d ago`, `1mo ago`, `12mo ago`, `1y ago`, `2y ago`]);
+  });
+
+  test(`treats a time ahead of the reader's clock as now`, () => {
+    expect(formatAgo(-30)).to.eq(`now`);
+  });
+});
+
+describe(`formatDuration`, () => {
+  test(`matches the server side duration format`, () => {
+    expect(formatDuration(0)).to.eq(`00:00`);
+    expect(formatDuration(65)).to.eq(`01:05`);
+    expect(formatDuration(3600 + 61)).to.eq(`01:01:01`);
+    expect(formatDuration(86400 * 2 + 5)).to.eq(`2d 00:00:05`);
+  });
+
+  test(`carries how and by whom each pipeline was triggered`, () => {
+    const stopped = { text: `Manual promotion`, link: null, owner: `Bo`, stopped: true, stopped_by: `Cy` };
+    const wf = buildWorkflow({ root_pipeline_id: `ci`, pipelines: [apiPipeline(`ci`), apiPipeline(`deploy`, { parent_id: `ci`, triggerer: stopped })] }, {});
+
+    expect(wf.root.triggerer.owner).to.eq(`Ana`);
+    expect(wf.pipelineById.get(`deploy`).triggerer).to.deep.eq(stopped);
+  });
+});

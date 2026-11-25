@@ -186,6 +186,8 @@ defmodule FrontWeb.Router do
       put("/:id", ServiceAccountController, :update)
       delete("/:id", ServiceAccountController, :delete)
       post("/:id/regenerate_token", ServiceAccountController, :regenerate_token)
+      post("/:id/take_ownership", ServiceAccountController, :take_ownership)
+      post("/:id/release_ownership", ServiceAccountController, :release_ownership)
     end
 
     post("/project/:name_or_id/offboarding", OffboardingController, :transfer)
@@ -643,6 +645,8 @@ defmodule FrontWeb.Router do
     get("/workflows/:workflow_id", WorkflowController, :show)
 
     get("/workflows/:workflow_id/status", WorkflowController, :status)
+    get("/workflows/:workflow_id/map", WorkflowController, :map)
+    get("/workflows/:workflow_id/map/pipelines", WorkflowController, :map_pipelines)
     get("/workflows/:workflow_id/summary", TestResultsController, :pipeline_summary)
     get("/workflows/:workflow_id/report", ReportController, :workflow)
     get("/workflows/:workflow_id/summary/:pipeline_id", TestResultsController, :details)

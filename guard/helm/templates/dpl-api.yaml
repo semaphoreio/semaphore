@@ -96,6 +96,10 @@ spec:
               value: "true"
             - name: START_MCP_AUTH_CODE_CLEANER
               value: "true"
+            - name: START_FEDERATED_IDENTITY_SYNC_DRAINER
+              value: "true"
+            - name: START_SERVICE_ACCOUNT_OWNER_BACKFILL
+              value: "false"
             - name: OIDC_DISCOVERY_URL
               value: "$(KC_ROOT_URL)/realms/$(KC_REALM)/.well-known/openid-configuration"
             - name: OIDC_MANAGE_URL

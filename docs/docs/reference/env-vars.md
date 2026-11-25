@@ -4,6 +4,32 @@ description: Environment variables defined by Semaphore
 
 # Environment variables
 
+## Reserved variables {#reserved-variables}
+
+The `SEMAPHORE_` prefix is reserved for Semaphore. Don't define your own variables with it, except for these settings, which configure the [cache](../using-semaphore/cache), the [checkout](../using-semaphore/jobs), the toolbox, and Semaphore's CLI tools:
+
+- `SEMAPHORE_CACHE_ARCHIVE_METHOD`, `SEMAPHORE_CACHE_BACKEND`, `SEMAPHORE_CACHE_GCS_BUCKET`, `SEMAPHORE_CACHE_PRIVATE_KEY_PATH`, `SEMAPHORE_CACHE_S3_BUCKET`, `SEMAPHORE_CACHE_URL`, `SEMAPHORE_CACHE_USERNAME`
+- `SEMAPHORE_GIT_CACHE_AGE`, `SEMAPHORE_GIT_CACHE_KEEP`, `SEMAPHORE_GIT_CLONE_SLOW_RETRY`, `SEMAPHORE_GIT_DEPTH`, `SEMAPHORE_GIT_DIR`
+- `SEMAPHORE_TEST_RESULTS_NO_TRIM`, `SEMAPHORE_TOOLBOX_METRICS_ENABLED`
+- `SEMAPHORE_AGENT_UPLOAD_JOB_LOGS`
+- `SEMAPHORE_API_TOKEN`, `SEMAPHORE_HOST`, used by the [sem-ai CLI](./sem-ai-cli) and the [MCP server](../using-semaphore/ai/mcp-server)
+
+To change another variable that Semaphore provides, such as `SEMAPHORE_GIT_URL` or `SEMAPHORE_GIT_SHA` before running `checkout`, `export` it in the job commands.
+
+`BASH_ENV`, `BASHOPTS`, `PS4` and `SHELLOPTS` can't be set either, because bash reads them when it starts and they can run code before or during the job's setup, including a pre-job hook.
+
+A pipeline fails to start if its YAML or its promotion or task parameters set a variable that Semaphore provides, and a job created through the API fails before it starts if it sets one. The pipeline or job page shows which variable caused the failure.
+
+[Secrets](../using-semaphore/secrets) can't be saved with these names. A secret saved earlier that sets one makes every job that uses it fail before it starts, until you edit the secret and rename or remove the variable.
+
+## Variable names {#variable-names}
+
+Variable names must be valid shell identifiers: letters, digits, and underscores, not starting with a digit. A pipeline whose YAML or parameters use any other name fails to start, a job created through the API with one fails before it starts, and secrets can't be saved with one. The page shows the name under `Invalid environment variable names`.
+
+Environment variables of [service containers](../using-semaphore/containers) can also contain dots and dashes after the first character, such as `discovery.type` or `node-version`.
+
+Secrets saved before this rule was enforced can hold names that no longer pass, such as a name with a trailing newline. Every job that uses such a secret fails until you edit the secret and save the variable again with a valid name.
+
 ## Semaphore variables {#semaphore-variables}
 
 These variables describe various aspects of Semaphore workings.
@@ -507,6 +533,8 @@ Present only for builds where `SEMAPHORE_GIT_REF_TYPE=tag`.
 
 The following variables are available during [after pipeline jobs](../using-semaphore/pipelines#after-pipeline-job).
 
+An after pipeline job also runs when its pipeline was stopped or canceled before it started running, for example while it waited in a queue. It runs only for pipelines that complete initialization: a pipeline that fails during initialization has no after pipeline job, and one stopped or canceled during initialization may have none either. The duration variables split the pipeline's lifetime into initialization, queueing and running: a stage the pipeline never reached has a duration of `0`, and the stage the pipeline ended in lasts until the pipeline finished.
+
 ### Pipeline created at {#pipeline-created-at}
 
 - **Environment variable**: `SEMAPHORE_PIPELINE_CREATED_AT`
@@ -533,7 +561,7 @@ Duration of the pipeline initialization stage expressed in seconds.
 - **Environment variable**: `SEMAPHORE_PIPELINE_QUEUEING_DURATION`
 - **Example**: `1`
 
-The time that the pipeline spent in the queue is expressed in seconds.
+The time that the pipeline spent in the queue, waiting for earlier pipelines in the same [queue](./pipeline-yaml#queue) to finish, expressed in seconds. It is `0` when the pipeline was stopped before it entered the queue.
 
 ### Pipeline result {#pipeline-result}
 
@@ -554,21 +582,21 @@ The reason for the pipeline result. Possible values are: `test`, `malformed`, `s
 - **Environment variable**: `SEMAPHORE_PIPELINE_RUNNING_DURATION`
 - **Example**: `12`
 
-The total pipeline execution time is expressed in seconds.
+The time from when the pipeline started running until it finished, expressed in seconds. It is `0` when the pipeline never started running.
 
 ### Pipeline started at {#pipeline-started-at}
 
 - **Environment variable**: `SEMAPHORE_PIPELINE_STARTED_AT`
 - **Example**: `1632943642`
 
-The UNIX epoch timestamp when the pipeline started running jobs.
+The UNIX epoch timestamp when the pipeline started running jobs. It is empty when the pipeline never started running, for example when it was stopped or canceled while waiting in the queue.
 
 ### Pipeline total duration {#pipeline-total-duration}
 
 - **Environment variable**: `SEMAPHORE_PIPELINE_TOTAL_DURATION`
 - **Example**: `10`
 
-The total duration of the pipeline including queuing time expressed in seconds.
+The total duration of the pipeline, from its creation until it finished, including initialization and queueing, expressed in seconds.
 
 ## Cache variables {#cache-variables}
 

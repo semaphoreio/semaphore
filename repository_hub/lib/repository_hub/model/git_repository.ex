@@ -79,20 +79,26 @@ defmodule RepositoryHub.Model.GitRepository do
     new_url
     |> new()
     |> unwrap(fn new_git_repository ->
-      (git_repository.ssh_git_url == new_git_repository.ssh_git_url)
+      (comparable_url(git_repository) == comparable_url(new_git_repository))
       |> wrap()
     end)
   end
+
+  defp comparable_url(%{host: "github.com", ssh_git_url: url}), do: String.downcase(url)
+  defp comparable_url(%{ssh_git_url: url}), do: url
 
   @spec did_host_change?(any, binary) :: Toolkit.tupled_result(boolean())
   def did_host_change?(git_repository, new_url) do
     new_url
     |> new()
     |> unwrap(fn new_git_repository ->
-      (git_repository.host != new_git_repository.host)
+      (comparable_host(git_repository.host) != comparable_host(new_git_repository.host))
       |> wrap()
     end)
   end
+
+  defp comparable_host("ssh.bitbucket.org"), do: "bitbucket.org"
+  defp comparable_host(host), do: host
 
   defp dissect(url) do
     url_with_no_trailing_git = clean_url(url)

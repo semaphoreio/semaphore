@@ -329,26 +329,28 @@ defmodule FrontWeb.PipelineView do
   end
 
   defp format_triggered_by(conn, triggerer, workflow) do
-    triggerer.triggered_by
-    |> case do
+    case triggered_by_link(conn, triggerer, workflow) do
+      %{label: label, url: url} -> link(label, to: url) |> raw_safe_string()
+      nil -> ""
+    end
+  end
+
+  def triggered_by_link(conn, triggerer, workflow) do
+    case triggerer.triggered_by do
       {:workflow, workflow_id} ->
-        link("Workflow", to: workflow_path(conn, :show, workflow_id))
-        |> raw_safe_string()
+        %{label: "Workflow", url: workflow_path(conn, :show, workflow_id)}
 
       {:pipeline, pipeline_id} ->
-        link("Pipeline",
-          to: workflow_path(conn, :show, workflow.id, pipeline_id: pipeline_id)
-        )
-        |> raw_safe_string()
+        %{
+          label: "Pipeline",
+          url: workflow_path(conn, :show, workflow.id, pipeline_id: pipeline_id)
+        }
 
       {:task, {task_id, _}} ->
-        link("Task",
-          to: schedulers_path(conn, :show, workflow.project_name, task_id)
-        )
-        |> raw_safe_string()
+        %{label: "Task", url: schedulers_path(conn, :show, workflow.project_name, task_id)}
 
       _ ->
-        ""
+        nil
     end
   end
 
@@ -383,25 +385,15 @@ defmodule FrontWeb.PipelineView do
     end
   end
 
-  defp format_user(user) do
-    user
-    |> case do
-      {:user, {_user_id, ""}} ->
-        "[Deleted User]"
+  defp format_user(user), do: escape_unsafe_string(trigger_user_name(user) || "N/A")
 
-      {:user, {_user_id, user_name}} ->
-        escape_unsafe_string(user_name)
-
-      {:name, name} ->
-        escape_unsafe_string(name)
-
-      _ ->
-        "N/A"
-    end
-  end
+  def trigger_user_name({:user, {_user_id, ""}}), do: "[Deleted User]"
+  def trigger_user_name({:user, {_user_id, user_name}}), do: user_name
+  def trigger_user_name({:name, name}), do: name
+  def trigger_user_name(_), do: nil
 
   @spec format_trigger_type(any(), Front.Models.Pipeline.Triggerer.t()) :: String.t()
-  defp format_trigger_type(_conn, triggerer) do
+  def format_trigger_type(_conn, triggerer) do
     case triggerer.trigger_type do
       :INITIAL_WORKFLOW ->
         "Triggered by push"
@@ -575,6 +567,159 @@ defmodule FrontWeb.PipelineView do
   def pipeline_status_icon_name(:DONE, :FAILED), do: "icn-failed"
   def pipeline_status_icon_name(:DONE, :STOPPED), do: "icn-stopped"
   def pipeline_status_icon_name(:DONE, :CANCELED), do: "icn-skipped"
+
+  def render("map.json", assigns = %{pipeline: pipeline}) do
+    %{
+      id: pipeline.id,
+      state: pipeline.state,
+      result: pipeline.result,
+      error_html:
+        if(Front.WorkflowPage.Errors.has_errors?(pipeline),
+          do:
+            Phoenix.View.render_to_string(__MODULE__, "pipeline/_error.html", pipeline: pipeline)
+        ),
+      init_job: map_init_job(pipeline.compile_task),
+      done: pipeline_poll_state(pipeline) == "done",
+      blocks: Enum.map(pipeline.blocks, &map_block/1),
+      after_jobs: Enum.map(pipeline.after_task.jobs, &map_after_job/1),
+      promotions: map_promotions(assigns)
+    }
+  end
+
+  defp map_init_job(%{present?: true, job_log_path: url} = task) when is_binary(url),
+    do: %{
+      url: url,
+      status: map_init_job_status(task),
+      started_at: Map.get(task, :started_at),
+      finished_at: Map.get(task, :done_at)
+    }
+
+  defp map_init_job(_), do: nil
+
+  defp map_init_job_status(%{running?: true}), do: :running
+  defp map_init_job_status(%{failed?: true}), do: :failed
+  defp map_init_job_status(%{done?: true}), do: :passed
+  defp map_init_job_status(_), do: :pending
+
+  defp map_promotions(%{switch: :unchanged}), do: nil
+
+  defp map_promotions(%{
+         switch: switch,
+         conn: conn,
+         pipeline: pipeline,
+         can_promote?: can_promote?
+       })
+       when not is_nil(switch) do
+    Enum.map(switch.targets, fn target ->
+      %{
+        name: target.name,
+        trigger_url:
+          target_path(conn, :trigger, pipeline.workflow_id, pipeline.id, switch.id, target.name),
+        can_promote: can_promote? and (is_nil(target.deployment) or target.deployment.allowed?),
+        deployment: map_deployment(target.deployment),
+        parameters:
+          Enum.map(target.parameters, fn param ->
+            %{
+              name: param.name,
+              description: param.description,
+              required: param.required,
+              options: param.options,
+              default_value: param.default_value
+            }
+          end),
+        events:
+          Enum.map(target.events, fn event ->
+            %{
+              pipeline_id: if(event.pipeline_id in [nil, ""], do: nil, else: event.pipeline_id),
+              processed: event.processed,
+              result: event.result,
+              auto: event.auto_triggered,
+              triggered_at: event.triggered_at,
+              author: event.author && event.author.name
+            }
+          end)
+      }
+    end)
+  end
+
+  defp map_promotions(_), do: []
+
+  defp map_deployment(nil), do: nil
+
+  defp map_deployment(deployment) do
+    %{
+      name: deployment.name,
+      allowed: deployment.allowed?,
+      message:
+        deployment.message &&
+          String.replace(
+            deployment.message,
+            "%{deployment_target}",
+            "#{deployment.name} Deployment Target"
+          )
+    }
+  end
+
+  defp map_block(block) do
+    %{
+      name: block.name,
+      dependencies: block.dependencies,
+      jobs: Enum.map(block.jobs, &map_job(&1, block))
+    }
+  end
+
+  defp map_job(job = %{state: state}, block) do
+    %{
+      id: job_link_id(job),
+      name: job.name,
+      status: map_job_status(state, job.result),
+      started_at: timestamp_seconds(job.started_at),
+      finished_at: timestamp_seconds(job.finished_at),
+      reused: reused_job?(job) or reused_block?(block)
+    }
+  end
+
+  defp map_job(job, block) do
+    %{
+      id: nil,
+      name: job.name,
+      status: never_run_job_status(block),
+      started_at: nil,
+      finished_at: nil,
+      reused: false
+    }
+  end
+
+  defp never_run_job_status(%{skipped?: true}), do: :skipped
+  defp never_run_job_status(%{result: result}) when result in [:CANCELED, :STOPPED], do: :canceled
+  defp never_run_job_status(_), do: :pending
+
+  defp map_job_status(:ENQUEUED, _), do: :queued
+  defp map_job_status(:RUNNING, _), do: :running
+  defp map_job_status(:FINISHED, :PASSED), do: :passed
+  defp map_job_status(:FINISHED, :FAILED), do: :failed
+  defp map_job_status(:FINISHED, :STOPPED), do: :stopped
+  defp map_job_status(_, _), do: :pending
+
+  defp map_after_job(job) do
+    %{
+      id: job.id,
+      name: job.name,
+      status: map_after_job_status(job),
+      started_at: job.started_at,
+      finished_at: job.done_at,
+      reused: false
+    }
+  end
+
+  defp map_after_job_status(%{running?: true}), do: :running
+  defp map_after_job_status(%{failed?: true}), do: :failed
+  defp map_after_job_status(%{stopped?: true}), do: :stopped
+  defp map_after_job_status(%{passed?: true}), do: :passed
+  defp map_after_job_status(_), do: :pending
+
+  defp timestamp_seconds(%{seconds: seconds}), do: seconds
+  defp timestamp_seconds(_), do: nil
 
   def reused_job?(job), do: Map.get(job, :original_job_id, "") not in [nil, ""]
 

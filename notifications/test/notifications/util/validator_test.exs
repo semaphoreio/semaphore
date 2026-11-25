@@ -412,4 +412,86 @@ defmodule Notifications.Util.ValidatorTest do
                {:error, :invalid_argument, "A notification rule must have a notify field."}
     end
   end
+
+  describe ".validate endpoints" do
+    test "accepts http and https endpoints and the allowed webhook actions" do
+      for action <- ["", "POST", "put", "PATCH"] do
+        n =
+          notification(
+            slack: Rule.Notify.Slack.new(endpoint: "https://hooks.slack.com/services/A"),
+            webhook: Rule.Notify.Webhook.new(endpoint: "https://example.com/hook", action: action)
+          )
+
+        assert Validator.validate(n, @user_id) == {:ok, :valid}
+      end
+    end
+
+    test "rejects a webhook endpoint with control characters" do
+      n =
+        notification(
+          webhook:
+            Rule.Notify.Webhook.new(endpoint: "https://example.com/hook?a=1\r\nX-Header: value")
+        )
+
+      assert {:error, :invalid_argument, message} = Validator.validate(n, @user_id)
+      assert message =~ "characters that are not allowed"
+    end
+
+    test "rejects a Slack endpoint that is not http or https" do
+      n =
+        notification(
+          slack: Rule.Notify.Slack.new(endpoint: "http+unix://%2Fvar%2Frun%2Fdocker.sock/info")
+        )
+
+      assert {:error, :invalid_argument, message} = Validator.validate(n, @user_id)
+      assert message =~ "must start with http:// or https://"
+    end
+
+    test "rejects an unsupported webhook action" do
+      n =
+        notification(
+          webhook: Rule.Notify.Webhook.new(endpoint: "https://example.com/hook", action: "GET")
+        )
+
+      assert {:error, :invalid_argument, message} = Validator.validate(n, @user_id)
+      assert message =~ "is not supported"
+    end
+
+    test "checks internal API notifications too" do
+      alias InternalApi.Notifications.Notification, as: Internal
+
+      n =
+        Internal.new(
+          name: "A",
+          rules: [
+            Internal.Rule.new(
+              name: "Example Rule",
+              filter: Internal.Rule.Filter.new(projects: ["/.*/"]),
+              notify:
+                Internal.Rule.Notify.new(
+                  webhook: Internal.Rule.Notify.Webhook.new(endpoint: "https://example.com/a b")
+                )
+            )
+          ]
+        )
+
+      assert {:error, :invalid_argument, _} = Validator.validate(n, @user_id)
+    end
+  end
+
+  defp notification(notify) do
+    Notification.new(
+      metadata: Metadata.new(name: "A"),
+      spec:
+        Spec.new(
+          rules: [
+            Rule.new(
+              name: "Example Rule",
+              filter: Rule.Filter.new(projects: ["/.*/"]),
+              notify: Rule.Notify.new(notify)
+            )
+          ]
+        )
+    )
+  end
 end

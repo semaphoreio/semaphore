@@ -8,6 +8,7 @@ defmodule Rbac.Roles.Member do
       permissions: [
         "organization.view",
         "organization.activity_monitor.view",
+        "organization.computers.view",
         "organization.self_hosted_agents.view",
         "organization.self_hosted_agents.manage",
         "organization.secrets.view",
