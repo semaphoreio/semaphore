@@ -1,13 +1,17 @@
 package models
 
 import (
+	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
+	uuid "github.com/google/uuid"
 	database "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/database"
 	securetoken "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/securetoken"
 	require "github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func Test__FindAgentByToken(t *testing.T) {
@@ -313,6 +317,135 @@ func Test__Disconnect(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, agent.State, AgentStateDisconnected)
 	})
+
+	t.Run("clears the job of an agent whose job was marked as finished", func(t *testing.T) {
+		agent := disconnectAgentWithJob(t, orgID, &requesterID, "s1-test-3", true)
+
+		require.Equal(t, AgentStateDisconnected, agent.State)
+		require.Nil(t, agent.AssignedJobID)
+		require.Nil(t, agent.JobAssignedAt)
+		require.Nil(t, agent.JobStopRequestedAt)
+	})
+
+	t.Run("keeps the job of an agent that only reported it as finished", func(t *testing.T) {
+		agent := disconnectAgentWithJob(t, orgID, &requesterID, "s1-test-4", false)
+
+		require.Equal(t, AgentStateDisconnected, agent.State)
+		require.Equal(t, "finished-job", agent.LastSyncState)
+		require.NotNil(t, agent.AssignedJobID)
+	})
+}
+
+func Test__MarkJobFinished(t *testing.T) {
+	database.TruncateTables()
+
+	orgID := database.UUID()
+	requesterID := database.UUID()
+
+	_, _, err := CreateAgentType(orgID, &requesterID, "s1-test-1")
+	require.NoError(t, err)
+
+	agent, _, err := RegisterAgent(orgID, "s1-test-1", "hello", AgentMetadata{})
+	require.NoError(t, err)
+
+	_, err = ForcefullyOccupyAgentWithJobID(agent)
+	require.NoError(t, err)
+	require.NoError(t, agent.MarkJobFinished(context.Background()))
+
+	t.Run("is recorded for the assigned job", func(t *testing.T) {
+		found, err := FindAgentByToken(orgID.String(), agent.TokenHash)
+		require.NoError(t, err)
+		require.NotNil(t, found.JobFinishedAt)
+	})
+
+	t.Run("is cleared when the agent is released", func(t *testing.T) {
+		released, err := ReleaseAgent(orgID, "s1-test-1", *agent.AssignedJobID)
+		require.NoError(t, err)
+		require.Nil(t, released.JobFinishedAt)
+	})
+
+	t.Run("is cleared when the agent is occupied again", func(t *testing.T) {
+		_, err := ForcefullyOccupyAgentWithJobID(agent)
+		require.NoError(t, err)
+		require.NoError(t, agent.MarkJobFinished(context.Background()))
+
+		require.NoError(t, CreateOccupationRequest(orgID, "s1-test-1", database.UUID()))
+		_, err = OccupyAgent(agent)
+		require.NoError(t, err)
+
+		found, err := FindAgentByToken(orgID.String(), agent.TokenHash)
+		require.NoError(t, err)
+		require.Nil(t, found.JobFinishedAt)
+	})
+}
+
+func disconnectAgentWithJob(t *testing.T, orgID uuid.UUID, requesterID *uuid.UUID, agentTypeName string, jobFinished bool) *Agent {
+	_, _, err := CreateAgentTypeWithSettings(
+		orgID, requesterID, agentTypeName, AgentNameSettings{ReleaseNameAfter: 60},
+	)
+	require.NoError(t, err)
+
+	agent, _, err := RegisterAgent(orgID, agentTypeName, "with-job-"+agentTypeName, AgentMetadata{})
+	require.NoError(t, err)
+
+	jobID, err := ForcefullyOccupyAgentWithJobID(agent)
+	require.NoError(t, err)
+
+	agent, err = SyncAgent(orgID.String(), agent.TokenHash, "finished-job", jobID.String(), 0)
+	require.NoError(t, err)
+
+	if jobFinished {
+		require.NoError(t, agent.MarkJobFinished(context.Background()))
+	}
+
+	require.NoError(t, agent.Disconnect())
+
+	agent, err = FindAgentByToken(orgID.String(), agent.TokenHash)
+	require.NoError(t, err)
+
+	return agent
+}
+
+func Test__CountAgentsInState(t *testing.T) {
+	database.TruncateTables()
+
+	orgID := database.UUID()
+	requesterID := database.UUID()
+
+	_, _, err := CreateAgentTypeWithSettings(
+		orgID, &requesterID, "s1-count", AgentNameSettings{ReleaseNameAfter: 60},
+	)
+	require.NoError(t, err)
+
+	_, _, err = RegisterAgent(orgID, "s1-count", "idle", AgentMetadata{})
+	require.NoError(t, err)
+
+	busy, _, err := RegisterAgent(orgID, "s1-count", "busy", AgentMetadata{})
+	require.NoError(t, err)
+	_, err = ForcefullyOccupyAgentWithJobID(busy)
+	require.NoError(t, err)
+
+	disconnectedIdle, _, err := RegisterAgent(orgID, "s1-count", "disconnected-idle", AgentMetadata{})
+	require.NoError(t, err)
+	require.NoError(t, disconnectedIdle.Disconnect())
+
+	disconnectedBusy, _, err := RegisterAgent(orgID, "s1-count", "disconnected-busy", AgentMetadata{})
+	require.NoError(t, err)
+	_, err = ForcefullyOccupyAgentWithJobID(disconnectedBusy)
+	require.NoError(t, err)
+	require.NoError(t, disconnectedBusy.Disconnect())
+
+	t.Run("counts only registered agents of the agent type", func(t *testing.T) {
+		counts, err := CountAgentsInStateForType(context.Background(), orgID.String(), "s1-count")
+		require.NoError(t, err)
+		require.Equal(t, AgentsInState{Idle: 1, Busy: 1}, *counts)
+	})
+
+	t.Run("counts only registered agents overall", func(t *testing.T) {
+		counts, err := CountAllAgentsInState()
+		require.NoError(t, err)
+		require.Equal(t, AgentsInState{Idle: 1, Busy: 1}, *counts)
+	})
 }
 
 func Test__StopJob(t *testing.T) {
@@ -358,4 +491,72 @@ func Test__StopJob(t *testing.T) {
 		require.NoError(t, err)
 		require.WithinDuration(t, now, *agent.JobStopRequestedAt, 100*time.Millisecond)
 	})
+
+	t.Run("keeps columns changed after the agent was read", func(t *testing.T) {
+		jobID, err := ForcefullyOccupyAgentWithJobID(agent)
+		require.NoError(t, err)
+
+		changed := false
+		callback := "test:change_agent_after_read"
+		err = database.Conn().Callback().Query().After("gorm:query").Register(callback, func(tx *gorm.DB) {
+			if changed || tx.Statement.Table != "agents" {
+				return
+			}
+
+			changed = true
+			tx.Session(&gorm.Session{NewDB: true}).
+				Exec("update agents set job_finished_at = now() where assigned_job_id = ?", jobID)
+		})
+		require.NoError(t, err)
+		defer func() { _ = database.Conn().Callback().Query().Remove(callback) }()
+
+		require.NoError(t, StopJob(orgID, jobID))
+		require.True(t, changed)
+
+		agent, err := FindAgentByToken(orgID.String(), securetoken.Hash(token))
+		require.NoError(t, err)
+		require.NotNil(t, agent.JobStopRequestedAt)
+		require.NotNil(t, agent.JobFinishedAt)
+	})
+}
+
+func Test__AgentLookupIndexes(t *testing.T) {
+	indexes := map[string]string{
+		"index_agents_on_org_and_assigned_job_id":        "(organization_id, assigned_job_id) WHERE (assigned_job_id IS NOT NULL)",
+		"index_agents_on_organization_id_and_token_hash": "(organization_id, token_hash)",
+		"ix_agents_registered_org_type":                  "(organization_id, agent_type_name) WHERE (state = 'registered'::text)",
+	}
+
+	for name, definition := range indexes {
+		var found struct {
+			Indexdef   string
+			Indisvalid bool
+		}
+
+		err := database.Conn().Raw(`
+			select pg_get_indexdef(i.indexrelid) as indexdef, i.indisvalid
+			from pg_index i
+			join pg_class c on c.oid = i.indexrelid
+			where i.indrelid = 'agents'::regclass and c.relname = ?
+		`, name).Scan(&found).Error
+
+		require.NoError(t, err)
+		require.True(t, strings.HasSuffix(found.Indexdef, "USING btree "+definition), "%s: %q", name, found.Indexdef)
+		require.True(t, found.Indisvalid, name)
+	}
+}
+
+func Test__DuplicateAgentTypeIndexIsDropped(t *testing.T) {
+	var names []string
+
+	err := database.Conn().Raw(`
+		select c.relname
+		from pg_index i
+		join pg_class c on c.oid = i.indexrelid
+		where i.indrelid = 'agents'::regclass
+		and pg_get_indexdef(i.indexrelid) like '%USING btree (organization_id, agent_type_name)'
+	`).Scan(&names).Error
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"uix_agent_orgs"}, names)
 }
