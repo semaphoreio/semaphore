@@ -72,6 +72,148 @@ defmodule Ppl.PplBlocks.Model.WaitingStateSchedulingTest do
     assert List.last(picked) == {:ok, []}
   end
 
+  test "get_ready_block/0 does not return ready blocks of pipelines that are not running" do
+    generate_blocks_from_multiple_pipelines(2)
+
+    "delete from pipeline_block_connections" |> Repo.query()
+    "update pipelines set state = 'queuing'" |> Repo.query()
+
+    assert {:ok, []} = WaitingStateScheduling.get_ready_block()
+  end
+
+  test "get_ready_block/0 returns blocks with termination request when pipeline is not running" do
+    generate_blocks_from_multiple_pipelines(2)
+
+    [ppl_id, _other_ppl_id] = pipeline_ids()
+    count = waiting_count(ppl_id)
+
+    "update pipelines set state = 'stopping'" |> Repo.query()
+    assert {:ok, []} = WaitingStateScheduling.get_ready_block()
+
+    "update pipeline_blocks set terminate_request = 'cancel' where ppl_id = '#{ppl_id}'"
+    |> Repo.query()
+
+    picked = for _ <- 1..count, do: WaitingStateScheduling.get_ready_block()
+
+    claimed =
+      for {:ok, [{_, %{ppl_id: ^ppl_id, in_scheduling: true}}]} <- picked,
+          do: :ok
+
+    assert length(claimed) == count
+    assert {:ok, []} = WaitingStateScheduling.get_ready_block()
+  end
+
+  test "get_ready_block/0 returns blocks with termination request before ready blocks" do
+    generate_blocks_from_multiple_pipelines(2)
+
+    [ppl_id, other_ppl_id] = pipeline_ids()
+
+    "delete from pipeline_block_connections" |> Repo.query()
+
+    "update pipeline_blocks set updated_at = now() - interval '1 hour' where ppl_id = '#{other_ppl_id}'"
+    |> Repo.query()
+
+    "update pipeline_blocks set terminate_request = 'stop' where ppl_id = '#{ppl_id}'"
+    |> Repo.query()
+
+    assert {:ok, [{_, ppl_block}]} = WaitingStateScheduling.get_ready_block()
+    assert ppl_block.ppl_id == ppl_id
+  end
+
+  test "get_ready_block/0 returns the least recently updated block first" do
+    generate_blocks_from_multiple_pipelines(3)
+
+    "delete from pipeline_block_connections" |> Repo.query()
+
+    oldest = Repo.one(from(b in PplBlocks, order_by: [desc: b.id], limit: 1))
+
+    "update pipeline_blocks set updated_at = now() - interval '1 day' where id = #{oldest.id}"
+    |> Repo.query()
+
+    assert {:ok, [{old, ppl_block}]} = WaitingStateScheduling.get_ready_block()
+    assert ppl_block.id == oldest.id
+    assert NaiveDateTime.compare(old.updated_at, ppl_block.updated_at) == :lt
+  end
+
+  test "get_ready_block/0 reads only blocks of running pipelines" do
+    generate_block_from_single_pipeline(3)
+    [running_ppl_id] = pipeline_ids()
+    for _ <- 1..3, do: generate_block_from_single_pipeline(6)
+
+    "delete from pipeline_block_connections" |> Repo.query()
+
+    "update pipelines set state = 'queuing' where ppl_id != '#{running_ppl_id}'"
+    |> Repo.query()
+
+    "update pipeline_blocks set state = 'running' where ppl_id = '#{running_ppl_id}'"
+    |> Repo.query()
+
+    {result, statements} =
+      capture_claim_statements(&WaitingStateScheduling.get_ready_block/0)
+
+    assert {:ok, []} = result
+    assert statements != []
+
+    for {sql, params} <- statements do
+      assert ppl_block_rows_scanned(sql, params) <= 3
+    end
+  end
+
+  defp capture_claim_statements(fun) do
+    test_pid = self()
+    handler_id = {__MODULE__, make_ref()}
+
+    :telemetry.attach(
+      handler_id,
+      [:ppl, :ecto_repo, :query],
+      fn _event, _measurements, metadata, _config ->
+        if self() == test_pid,
+          do: send(test_pid, {:statement, metadata.query, metadata.params})
+      end,
+      nil
+    )
+
+    result = fun.()
+    :telemetry.detach(handler_id)
+
+    {result, collect_claim_statements([])}
+  end
+
+  defp collect_claim_statements(acc) do
+    receive do
+      {:statement, sql, params} ->
+        if sql =~ "UPDATE pipeline_blocks",
+          do: collect_claim_statements([{sql, params} | acc]),
+          else: collect_claim_statements(acc)
+    after
+      0 -> Enum.reverse(acc)
+    end
+  end
+
+  # Rows that scans of pipeline_blocks pass on to the rest of the plan. Rows
+  # that a scan filters out are not counted, a plan on a table this small reads
+  # all of it whichever query runs.
+  defp ppl_block_rows_scanned(sql, params) do
+    {:error, [[[%{"Plan" => plan}]]]} =
+      Repo.transaction(fn ->
+        {:ok, %{rows: rows}} =
+          Repo.query("EXPLAIN (ANALYZE, FORMAT JSON) " <> sql, params)
+
+        Repo.rollback(rows)
+      end)
+
+    plan |> plan_nodes() |> Enum.map(&ppl_block_rows/1) |> Enum.sum()
+  end
+
+  defp plan_nodes(node) do
+    [node | node |> Map.get("Plans", []) |> Enum.flat_map(&plan_nodes/1)]
+  end
+
+  defp ppl_block_rows(%{"Node Type" => "ModifyTable"}), do: 0
+  defp ppl_block_rows(node = %{"Relation Name" => "pipeline_blocks"}),
+    do: node["Actual Rows"] * node["Actual Loops"]
+  defp ppl_block_rows(_node), do: 0
+
   defp do_test_for_pipeline(_ppl_id, _in_progress = false), do: :end
   defp do_test_for_pipeline(ppl_id, _in_progress = true) do
     case WaitingStateScheduling.get_ready_block(ppl_id) do
@@ -121,13 +263,12 @@ defmodule Ppl.PplBlocks.Model.WaitingStateSchedulingTest do
     for _i <- 1..ppl_count, do: generate_block_from_single_pipeline()
   end
 
-  defp generate_block_from_single_pipeline() do
+  defp generate_block_from_single_pipeline(block_count \\ Enum.random(5..30)) do
     schedule_request =
       Test.Helpers.schedule_request_factory(:local)
       |> Map.put("repo_name", "2_basic")
     {:ok, %{ppl_id: ppl_id}} = Ppl.Actions.schedule(schedule_request)
 
-    block_count = Enum.random(5..30)     # Number of blocks in pipeline
     0..(block_count-1)
     |> Enum.map(&insert_ppl_blk(ppl_id, &1))
     |> Enum.map(&insert_block_dependencies(&1))
