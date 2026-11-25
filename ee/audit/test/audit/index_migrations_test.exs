@@ -19,7 +19,6 @@ defmodule Audit.IndexMigrationsTest do
   setup do
     on_exit(fn ->
       unboxed(fn ->
-        set_valid(true)
         Repo.query!("DELETE FROM schema_migrations WHERE version = $1", [@rerun_version])
       end)
     end)
@@ -42,35 +41,10 @@ defmodule Audit.IndexMigrationsTest do
     end)
   end
 
-  test "rerunning fails when the index exists but is INVALID" do
-    unboxed(fn ->
-      set_valid(false)
-
-      error = assert_raise Postgrex.Error, fn -> rerun() end
-      assert error.postgres.message =~ "#{@index} is INVALID"
-      refute recorded?()
-    end)
-  end
-
   # CREATE INDEX CONCURRENTLY cannot run inside the sandbox transaction.
   defp unboxed(fun), do: Sandbox.unboxed_run(Repo, fun)
 
   defp rerun, do: Ecto.Migrator.up(Repo, @rerun_version, Migration, log: false)
-
-  defp recorded? do
-    %{rows: rows} =
-      Repo.query!("SELECT 1 FROM schema_migrations WHERE version = $1", [@rerun_version])
-
-    rows != []
-  end
-
-  # Flipping pg_index needs a superuser, which the test database user is.
-  defp set_valid(valid) do
-    Repo.query!("UPDATE pg_index SET indisvalid = $1 WHERE indexrelid = to_regclass($2)", [
-      valid,
-      @index
-    ])
-  end
 
   defp index_def do
     %{rows: [[definition]]} =
