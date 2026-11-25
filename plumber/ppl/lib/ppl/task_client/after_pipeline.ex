@@ -57,17 +57,15 @@ defmodule Ppl.TaskClient.AfterPipeline do
       |> Map.get("ppl_env_variables", [])
 
     env_to_inject = %{
-      "SEMAPHORE_PIPELINE_TOTAL_DURATION" =>
-        "#{DateTime.to_unix(ppl_trace.done_at) - DateTime.to_unix(ppl_trace.created_at)}",
+      "SEMAPHORE_PIPELINE_TOTAL_DURATION" => duration(ppl_trace.created_at, ppl_trace.done_at),
       "SEMAPHORE_PIPELINE_INIT_DURATION" =>
-        "#{DateTime.to_unix(ppl_trace.pending_at) - DateTime.to_unix(ppl_trace.created_at)}",
+        duration(ppl_trace.created_at, ppl_trace.pending_at || ppl_trace.done_at),
       "SEMAPHORE_PIPELINE_QUEUEING_DURATION" =>
-        "#{DateTime.to_unix(ppl_trace.queuing_at) - DateTime.to_unix(ppl_trace.created_at)}",
-      "SEMAPHORE_PIPELINE_RUNNING_DURATION" =>
-        "#{DateTime.to_unix(ppl_trace.done_at) - DateTime.to_unix(ppl_trace.running_at)}",
-      "SEMAPHORE_PIPELINE_CREATED_AT" => "#{DateTime.to_unix(ppl_trace.created_at)}",
-      "SEMAPHORE_PIPELINE_STARTED_AT" => "#{DateTime.to_unix(ppl_trace.running_at)}",
-      "SEMAPHORE_PIPELINE_DONE_AT" => "#{DateTime.to_unix(ppl_trace.done_at)}"
+        duration(ppl_trace.queuing_at, ppl_trace.running_at || ppl_trace.done_at),
+      "SEMAPHORE_PIPELINE_RUNNING_DURATION" => duration(ppl_trace.running_at, ppl_trace.done_at),
+      "SEMAPHORE_PIPELINE_CREATED_AT" => unix_timestamp(ppl_trace.created_at),
+      "SEMAPHORE_PIPELINE_STARTED_AT" => unix_timestamp(ppl_trace.running_at),
+      "SEMAPHORE_PIPELINE_DONE_AT" => unix_timestamp(ppl_trace.done_at)
     }
 
     result =
@@ -98,6 +96,12 @@ defmodule Ppl.TaskClient.AfterPipeline do
     |> Map.put("ppl_env_variables", current_env_variables ++ injected_env_variables)
     |> ToTuple.ok()
   end
+
+  defp duration(nil, _until), do: "0"
+  defp duration(since, until), do: "#{DateTime.to_unix(until) - DateTime.to_unix(since)}"
+
+  defp unix_timestamp(nil), do: ""
+  defp unix_timestamp(timestamp), do: "#{DateTime.to_unix(timestamp)}"
 
   ###########
   defp prologue_epilogue_transformation(definition) do

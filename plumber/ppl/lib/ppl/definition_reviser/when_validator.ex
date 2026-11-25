@@ -74,10 +74,20 @@ defmodule Ppl.DefinitionReviser.WhenValidator do
   defp evaluate(elem, path, when_expr, is_promotion) do
     params = if is_promotion, do: @default_params_for_promotions, else: @default_params
 
-    case When.evaluate(when_expr, params, dry_run: true) do
+    case dry_run(when_expr, params) do
       {:ok, result} when is_boolean(result) -> {:ok, elem}
       {:error, msg} -> "Invalid 'when' condition on path '#{path <> "/when"}': #{msg}"
                        |> ToTuple.error(:malformed)
     end
+  end
+
+  # When.evaluate/3 raises, instead of returning an error, on some invalid expressions
+  # (a regex that does not compile, a non-boolean operand of 'and'). A dry run calls no
+  # functions, so any raise here means the expression itself is invalid.
+  defp dry_run(when_expr, params) do
+    When.evaluate(when_expr, params, dry_run: true)
+  rescue
+    e in Regex.CompileError -> {:error, "Invalid regular expression: #{Exception.message(e)}."}
+    e -> {:error, "Invalid expression: #{Exception.message(e)}."}
   end
 end

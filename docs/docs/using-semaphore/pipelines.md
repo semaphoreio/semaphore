@@ -552,7 +552,9 @@ blocks:
 
 ### After pipeline jobs {#after-pipeline-job}
 
-You can configure jobs to run once a pipeline stops. After pipeline jobs always run, even when jobs are canceled or have failed.
+You can configure jobs to run once a pipeline stops. After pipeline jobs run whatever the pipeline's result, even when its jobs failed or the pipeline was stopped or canceled, including while it waited in a [queue](#pipeline-queues).
+
+After pipeline jobs run only for pipelines that complete [initialization](#init). A pipeline that fails during initialization, for example because its YAML is invalid, does not run them, and a pipeline that is stopped or canceled during initialization may not run them either.
 
 After-pipeline jobs are executed in parallel. Typical use cases for after-pipeline jobs are sending notifications, collecting [test reports](./tests/test-reports), or submitting metrics to an external server.
 
