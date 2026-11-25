@@ -76,6 +76,7 @@ func (c *Collector) CountAgentsInVersion() ([]AgentsInVersion, error) {
 
 	query := database.Conn()
 	query = query.Model(&models.Agent{})
+	query = query.Where("state = ?", models.AgentStateRegistered)
 	query = query.Group("version")
 	query = query.Order("Count DESC")
 	query = query.Select("version, COUNT(*) as Count")
