@@ -53,7 +53,7 @@ LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
 
 RUN apk update && \
     apk add --no-cache \
-    git "openssh-keygen>=10.0_p1-r11" openssl ncurses-libs libstdc++
+    git openssh-keygen openssl ncurses-libs libstdc++
 
 # Create a non root user
 RUN adduser -D default -h /app
