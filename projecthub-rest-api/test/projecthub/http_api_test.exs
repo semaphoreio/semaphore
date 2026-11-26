@@ -2,6 +2,7 @@
 defmodule Projecthub.HttpApi.Test do
   use ExUnit.Case
 
+  alias InternalApi.Projecthub.Project.Spec.Repository.PullRequestCommit
   alias Support.FakeServices
 
   @port Application.compile_env!(:projecthub, :http_port)
@@ -102,7 +103,8 @@ defmodule Projecthub.HttpApi.Test do
                        "branches" => ["master", "/features-.*/"],
                        "tags" => []
                      },
-                     "integration_type" => "github_token"
+                     "integration_type" => "github_token",
+                     "pull_request_commit" => "merge_commit"
                    },
                    "schedulers" => [],
                    "tasks" => [],
@@ -142,7 +144,8 @@ defmodule Projecthub.HttpApi.Test do
                        "branches" => ["master", "/features-.*/"],
                        "tags" => []
                      },
-                     "integration_type" => "github_token"
+                     "integration_type" => "github_token",
+                     "pull_request_commit" => "merge_commit"
                    },
                    "schedulers" => [],
                    "tasks" => [],
@@ -194,7 +197,8 @@ defmodule Projecthub.HttpApi.Test do
                        "branches" => ["master", "/features-.*/"],
                        "tags" => []
                      },
-                     "integration_type" => "github_token"
+                     "integration_type" => "github_token",
+                     "pull_request_commit" => "merge_commit"
                    },
                    "schedulers" => [],
                    "tasks" => [],
@@ -234,7 +238,8 @@ defmodule Projecthub.HttpApi.Test do
                        "branches" => ["master", "/features-.*/"],
                        "tags" => []
                      },
-                     "integration_type" => "github_token"
+                     "integration_type" => "github_token",
+                     "pull_request_commit" => "merge_commit"
                    },
                    "schedulers" => [],
                    "tasks" => [],
@@ -542,7 +547,8 @@ defmodule Projecthub.HttpApi.Test do
                      "branches" => ["master", "/features-.*/"],
                      "tags" => []
                    },
-                   "integration_type" => "github_token"
+                   "integration_type" => "github_token",
+                   "pull_request_commit" => "merge_commit"
                  },
                  "schedulers" => [],
                  "tasks" => [],
@@ -612,7 +618,8 @@ defmodule Projecthub.HttpApi.Test do
                      "branches" => ["master", "/features-.*/"],
                      "tags" => []
                    },
-                   "integration_type" => "github_token"
+                   "integration_type" => "github_token",
+                   "pull_request_commit" => "merge_commit"
                  },
                  "schedulers" => [],
                  "tasks" => [
@@ -685,7 +692,8 @@ defmodule Projecthub.HttpApi.Test do
                      "branches" => ["master", "/features-.*/"],
                      "tags" => []
                    },
-                   "integration_type" => "github_token"
+                   "integration_type" => "github_token",
+                   "pull_request_commit" => "merge_commit"
                  },
                  "schedulers" => [],
                  "tasks" => [],
@@ -695,6 +703,37 @@ defmodule Projecthub.HttpApi.Test do
                  "attach_permissions" => []
                }
              }
+    end
+
+    test "pull_request_commit is encoded for every value projecthub can return" do
+      for {stored, expected} <- [
+            {:PULL_REQUEST_COMMIT_UNSPECIFIED, "merge_commit"},
+            {:MERGE_COMMIT, "merge_commit"},
+            {:HEAD_COMMIT, "head_commit"}
+          ] do
+        prj = create("trello", @project_id)
+        prj = put_in(prj.spec.repository.pull_request_commit, PullRequestCommit.value(stored))
+
+        FunRegistry.set!(FakeServices.ProjectService, :describe, fn _, _ ->
+          alias InternalApi.Projecthub, as: PH
+
+          PH.DescribeResponse.new(
+            metadata:
+              PH.ResponseMeta.new(
+                status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
+              ),
+            project: prj
+          )
+        end)
+
+        {:ok, response} =
+          HTTPoison.get("http://localhost:#{@port}/api/#{@version}/projects/trello", @headers)
+
+        assert response.status_code == 200
+
+        assert Poison.decode!(response.body)["spec"]["repository"]["pull_request_commit"] ==
+                 expected
+      end
     end
   end
 
@@ -807,6 +846,102 @@ defmodule Projecthub.HttpApi.Test do
       assert Poison.decode!(response.body)["message"] =~ "skip_manual_run_notifications"
     end
 
+    test "pull_request_commit is sent to projecthub and returned" do
+      capture_created_repository!()
+
+      for {value, expected} <- [{"head_commit", :HEAD_COMMIT}, {"merge_commit", :MERGE_COMMIT}] do
+        {:ok, response} =
+          HTTPoison.post(
+            "http://localhost:#{@port}/api/#{@version}/projects",
+            project_resource(%{"pull_request_commit" => value}),
+            @headers
+          )
+
+        assert response.status_code == 200
+        assert_received {:created_repository, repository}
+        assert repository.pull_request_commit == PullRequestCommit.value(expected)
+
+        assert Poison.decode!(response.body)["spec"]["repository"]["pull_request_commit"] ==
+                 value
+      end
+    end
+
+    test "a create without pull_request_commit leaves the default to projecthub" do
+      capture_created_repository!()
+
+      for repository <- [%{}, %{"pull_request_commit" => nil}] do
+        {:ok, response} =
+          HTTPoison.post(
+            "http://localhost:#{@port}/api/#{@version}/projects",
+            project_resource(repository),
+            @headers
+          )
+
+        assert response.status_code == 200
+        assert_received {:created_repository, sent}
+
+        assert sent.pull_request_commit ==
+                 PullRequestCommit.value(:PULL_REQUEST_COMMIT_UNSPECIFIED)
+
+        assert Poison.decode!(response.body)["spec"]["repository"]["pull_request_commit"] ==
+                 "merge_commit"
+      end
+    end
+
+    test "project creation is rejected when pull_request_commit is not a known value" do
+      capture_created_repository!()
+
+      for value <- ["HEAD_COMMIT", "head", "", true, 2] do
+        {:ok, response} =
+          HTTPoison.post(
+            "http://localhost:#{@port}/api/#{@version}/projects",
+            project_resource(%{"pull_request_commit" => value}),
+            @headers
+          )
+
+        assert response.status_code == 422
+
+        assert Poison.decode!(response.body) == %{
+                 "message" => ~s(pull_request_commit must be "merge_commit" or "head_commit")
+               }
+      end
+
+      refute_received {:created_repository, _}
+    end
+
+    test "a FAILED_PRECONDITION answer to a create is a 422 with its message" do
+      FunRegistry.set!(FakeServices.ProjectService, :create, fn _, _ ->
+        alias InternalApi.Projecthub, as: PH
+
+        PH.CreateResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status:
+                PH.ResponseMeta.Status.new(
+                  code: PH.ResponseMeta.Code.value(:FAILED_PRECONDITION),
+                  message: "head_commit is available only for GitHub projects"
+                )
+            )
+        )
+      end)
+
+      {:ok, response} =
+        HTTPoison.post(
+          "http://localhost:#{@port}/api/#{@version}/projects",
+          project_resource(%{
+            "integration_type" => "bitbucket",
+            "pull_request_commit" => "head_commit"
+          }),
+          @headers
+        )
+
+      assert response.status_code == 422
+
+      assert Poison.decode!(response.body) == %{
+               "message" => "head_commit is available only for GitHub projects"
+             }
+    end
+
     test "when project creation succeds, without public flag => returns 200" do
       resource =
         Poison.encode!(%{
@@ -854,7 +989,8 @@ defmodule Projecthub.HttpApi.Test do
                      "branches" => [],
                      "tags" => []
                    },
-                   "integration_type" => "github_token"
+                   "integration_type" => "github_token",
+                   "pull_request_commit" => "merge_commit"
                  },
                  "schedulers" => [],
                  "tasks" => [],
@@ -919,7 +1055,8 @@ defmodule Projecthub.HttpApi.Test do
                      "branches" => [],
                      "tags" => []
                    },
-                   "integration_type" => "github_token"
+                   "integration_type" => "github_token",
+                   "pull_request_commit" => "merge_commit"
                  },
                  "schedulers" => [],
                  "tasks" => [],
@@ -1008,7 +1145,8 @@ defmodule Projecthub.HttpApi.Test do
                      "branches" => [],
                      "tags" => []
                    },
-                   "integration_type" => "github_token"
+                   "integration_type" => "github_token",
+                   "pull_request_commit" => "merge_commit"
                  },
                  "schedulers" => [],
                  "tasks" => [
@@ -1106,7 +1244,8 @@ defmodule Projecthub.HttpApi.Test do
                      "branches" => [],
                      "tags" => []
                    },
-                   "integration_type" => "github_token"
+                   "integration_type" => "github_token",
+                   "pull_request_commit" => "merge_commit"
                  },
                  "schedulers" => [],
                  "tasks" => [],
@@ -1539,6 +1678,131 @@ defmodule Projecthub.HttpApi.Test do
       assert Poison.decode!(response.body)["message"] =~ "skip_scheduled_run_notifications"
     end
 
+    test "an update without pull_request_commit sends UNSPECIFIED, which keeps the stored value" do
+      capture_updated_repository!()
+
+      # the shape sent by clients that predate the setting
+      for repository <- [%{}, %{"pull_request_commit" => nil}] do
+        {:ok, response} =
+          HTTPoison.patch(
+            "http://localhost:#{@port}/api/#{@version}/projects/#{@project_id}",
+            project_resource(repository),
+            @headers
+          )
+
+        assert response.status_code == 200
+        assert_received {:updated_repository, sent}
+
+        assert sent.pull_request_commit ==
+                 PullRequestCommit.value(:PULL_REQUEST_COMMIT_UNSPECIFIED)
+      end
+    end
+
+    test "an update sends pull_request_commit to projecthub" do
+      capture_updated_repository!()
+
+      for {value, expected} <- [{"head_commit", :HEAD_COMMIT}, {"merge_commit", :MERGE_COMMIT}] do
+        {:ok, response} =
+          HTTPoison.patch(
+            "http://localhost:#{@port}/api/#{@version}/projects/#{@project_id}",
+            project_resource(%{"pull_request_commit" => value}),
+            @headers
+          )
+
+        assert response.status_code == 200
+        assert_received {:updated_repository, repository}
+        assert repository.pull_request_commit == PullRequestCommit.value(expected)
+
+        assert Poison.decode!(response.body)["spec"]["repository"]["pull_request_commit"] ==
+                 value
+      end
+    end
+
+    test "an update with an unknown pull_request_commit is rejected before anything is read" do
+      test_pid = self()
+      capture_updated_repository!()
+
+      FunRegistry.set!(FakeServices.ProjectService, :describe, fn _req, _ ->
+        alias InternalApi.Projecthub, as: PH
+
+        send(test_pid, :described)
+
+        PH.DescribeResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
+            ),
+          project: create("trello", @project_id)
+        )
+      end)
+
+      resource =
+        Poison.encode!(%{
+          "metadata" => %{"name" => "trello", "id" => @project_id},
+          "spec" => %{
+            "repository" => %{
+              "url" => "git@github.com/shiroyasha/test.git",
+              "pull_request_commit" => "HEAD_COMMIT"
+            },
+            "tasks" => [
+              %{
+                "name" => "scheduler1",
+                "id" => @task_id,
+                "branch" => "master",
+                "at" => "0 * * * *",
+                "pipeline_file" => ".semaphore/cron1.yml"
+              }
+            ]
+          }
+        })
+
+      {:ok, response} =
+        HTTPoison.patch(
+          "http://localhost:#{@port}/api/#{@version}/projects/#{@project_id}",
+          resource,
+          @headers
+        )
+
+      assert response.status_code == 422
+
+      assert Poison.decode!(response.body) == %{
+               "message" => ~s(pull_request_commit must be "merge_commit" or "head_commit")
+             }
+
+      refute_received :described
+      refute_received {:updated_repository, _}
+    end
+
+    test "a FAILED_PRECONDITION answer to an update is a 422 with its message" do
+      FunRegistry.set!(FakeServices.ProjectService, :update, fn _, _ ->
+        alias InternalApi.Projecthub, as: PH
+
+        PH.UpdateResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status:
+                PH.ResponseMeta.Status.new(
+                  code: PH.ResponseMeta.Code.value(:FAILED_PRECONDITION),
+                  message: "head_commit is available only for GitHub projects"
+                )
+            )
+        )
+      end)
+
+      {:ok, response} =
+        HTTPoison.patch(
+          "http://localhost:#{@port}/api/#{@version}/projects/#{@project_id}",
+          project_resource(%{"pull_request_commit" => "head_commit"}),
+          @headers
+        )
+
+      assert response.status_code == 422
+
+      assert Poison.decode!(response.body) == %{
+               "message" => "head_commit is available only for GitHub projects"
+             }
+    end
+
     test "an update without tasks is unaffected by a failing stored flag lookup" do
       test_pid = self()
 
@@ -1721,7 +1985,8 @@ defmodule Projecthub.HttpApi.Test do
                      "branches" => [],
                      "tags" => []
                    },
-                   "integration_type" => "github_token"
+                   "integration_type" => "github_token",
+                   "pull_request_commit" => "merge_commit"
                  },
                  "schedulers" => [],
                  "tasks" => [
@@ -1978,7 +2243,8 @@ defmodule Projecthub.HttpApi.Test do
                      "branches" => [],
                      "tags" => []
                    },
-                   "integration_type" => "github_token"
+                   "integration_type" => "github_token",
+                   "pull_request_commit" => "merge_commit"
                  },
                  "schedulers" => [
                    %{
@@ -2174,7 +2440,8 @@ defmodule Projecthub.HttpApi.Test do
                      "branches" => [],
                      "tags" => []
                    },
-                   "integration_type" => "github_token"
+                   "integration_type" => "github_token",
+                   "pull_request_commit" => "merge_commit"
                  },
                  "schedulers" => [],
                  "tasks" => [],
@@ -2266,7 +2533,8 @@ defmodule Projecthub.HttpApi.Test do
                      "branches" => [],
                      "tags" => []
                    },
-                   "integration_type" => "github_token"
+                   "integration_type" => "github_token",
+                   "pull_request_commit" => "merge_commit"
                  },
                  "schedulers" => [],
                  "tasks" => [],
@@ -2540,6 +2808,55 @@ defmodule Projecthub.HttpApi.Test do
         organization: InternalApi.Organization.Organization.new(restricted: true)
       )
     end)
+  end
+
+  defp capture_created_repository! do
+    test_pid = self()
+
+    FunRegistry.set!(FakeServices.ProjectService, :create, fn req, _ ->
+      send(test_pid, {:created_repository, req.project.spec.repository})
+
+      Support.Factories.project_create_response(@project_id, req.project)
+    end)
+  end
+
+  defp capture_updated_repository! do
+    test_pid = self()
+
+    FunRegistry.set!(FakeServices.ProjectService, :update, fn req, _ ->
+      alias InternalApi.Projecthub, as: PH
+
+      send(test_pid, {:updated_repository, req.project.spec.repository})
+
+      PH.UpdateResponse.new(
+        metadata:
+          PH.ResponseMeta.new(
+            status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
+          ),
+        project:
+          PH.Project.new(
+            metadata: PH.Project.Metadata.new(id: @project_id, name: "trello"),
+            spec: req.project.spec
+          )
+      )
+    end)
+  end
+
+  defp project_resource(repository) do
+    Poison.encode!(%{
+      "metadata" => %{"name" => "trello", "id" => @project_id},
+      "spec" => %{
+        "repository" =>
+          Map.merge(
+            %{
+              "url" => "git@github.com/shiroyasha/test.git",
+              "run_on" => ["branches", "pull_requests"],
+              "pipeline_file" => ".semaphore/semaphore.yml"
+            },
+            repository
+          )
+      }
+    })
   end
 
   defp uuid, do: :uuid.get_v4() |> :uuid.uuid_to_string() |> List.to_string()

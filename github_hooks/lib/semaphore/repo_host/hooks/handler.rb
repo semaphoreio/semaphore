@@ -487,7 +487,9 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
           end
 
           logger.info("without-reference")
-          workflow.update(:commit_author => meta[:commit_author])
+          attributes = { :commit_author => meta[:commit_author] }
+          attributes[:git_ref] = meta[:ref] if meta[:ref]
+          workflow.update(attributes)
         else
           # For /sem-approve launches, the merge commit is derived from the
           # *live* PR head. Refuse to run (and to hand over any granted
@@ -503,7 +505,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
             return
           end
 
-          workflow.update(:commit_author => meta[:commit_author], :commit_sha => meta[:merge_commit_sha], :git_ref => meta[:ref])
+          workflow.update(:commit_author => meta[:commit_author], :commit_sha => meta[:commit_sha], :git_ref => meta[:ref])
         end
       rescue RepoHost::RemoteException::Unknown => e
         logger.error("Unknown error", error: e.message)
@@ -522,7 +524,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
     begin
       branch = find_or_create_branch(workflow, logger)
-      if workflow.payload.pull_request?
+      if workflow.payload.pull_request? && !workflow.project.pull_request_head_commit?
         update_pull_request_mergeable(workflow, meta[:mergeable])
       end
     rescue StandardError
@@ -570,6 +572,8 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   def self.update_pr_data(project, number, commit_sha = nil, allow_skip = true, poll: true, webhook_head_sha: nil, webhook_base_sha: nil)
     repo_host = ::RepoHost::Factory.create_from_project(project, :request_timeout => GITHUB_REQUEST_TIMEOUT)
     repo_host.validate_token_presence!
+
+    return update_pr_head_data(repo_host, project, number, commit_sha, allow_skip) if project.pull_request_head_commit?
 
     merge_key = shared_merge_key(project, number, webhook_head_sha, webhook_base_sha)
     return resolve_pr_data(repo_host, project, number, commit_sha, allow_skip, poll, webhook_head_sha) unless merge_key
@@ -635,7 +639,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       value = { "state" => "mergeable_unknown", "rate_limit_remaining" => meta[:rate_limit_remaining] }
       GithubCache.write("#{merge_key}:unknown", value, :ttl => SHARED_MERGE_LOCK_TTL)
     elsif state == :ok && (commit_sha.nil? || commit_sha == webhook_head_sha)
-      value = { "merge_commit_sha" => meta[:merge_commit_sha], "commit_author" => meta[:commit_author], "head_sha" => meta[:head_sha] }
+      value = { "merge_commit_sha" => meta[:commit_sha], "commit_author" => meta[:commit_author], "head_sha" => meta[:head_sha] }
       Watchman.increment("hook.processing.pr_merge_shared", :tags => ["stored"]) if GithubCache.write(merge_key, value, :ttl => SHARED_RESULT_TTL, :only_new => true)
     end
   end
@@ -655,7 +659,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     merge_commit_sha = shared["merge_commit_sha"]
     meta = {
       :ref => "refs/semaphoreci/#{merge_commit_sha}",
-      :merge_commit_sha => merge_commit_sha,
+      :commit_sha => merge_commit_sha,
       :mergeable => true,
       :commit_author => shared["commit_author"],
       :head_sha => shared["head_sha"]
@@ -711,9 +715,50 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       ref = "refs/semaphoreci/#{merge_commit_sha}"
       ensure_ref(repo_host, project.repo_owner_and_name, ref, merge_commit_sha)
 
-      [:ok, { :pr => pr, :ref => ref, :merge_commit_sha => merge_commit_sha, :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, msg]
+      [:ok, { :pr => pr, :ref => ref, :commit_sha => merge_commit_sha, :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, msg]
     rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
       [:without_reference, { :mergeable => mergeable, :commit_author => commit_author, :head_sha => head_sha }, ""]
+    end
+  end
+
+  # Head builds don't use GitHub's test merge, so they never read, wait for or
+  # record mergeability, and PRs with conflicts build too.
+  def self.update_pr_head_data(repo_host, project, number, head_sha, allow_skip)
+    pr = nil
+
+    if head_sha.nil?
+      begin
+        pr = repo_host.pull_request(project.repo_owner_and_name, number)
+      rescue RepoHost::RemoteException::NotFound => e
+        return [:not_found, {}, e]
+      end
+
+      head_sha = pr[:head][:sha]
+    end
+
+    commit = repo_host.commit(project.repo_owner_and_name, head_sha)
+    commit_author = commit.try(:author).try(:login)
+    commit_message = commit.try(:commit).try(:message).to_s
+
+    if allow_skip && ::Semaphore::SkipCi.new.call(commit_message)
+      return [:skip_ci, { :pr => pr }, ""]
+    end
+
+    begin
+      ref = "refs/semaphoreci/#{head_sha}"
+      ensure_ref(repo_host, project.repo_owner_and_name, ref, head_sha)
+
+      [:ok, { :pr => pr, :ref => ref, :commit_sha => head_sha, :commit_author => commit_author, :head_sha => head_sha }, ""]
+    rescue RepoHost::RemoteException::Unauthorized, RepoHost::RemoteException::NotFound
+      # The recorded ref is the PR head ref, which moves with the fork, so the
+      # live head is what the approval check has to compare against.
+      begin
+        pr ||= repo_host.pull_request(project.repo_owner_and_name, number)
+      rescue RepoHost::RemoteException::NotFound => e
+        return [:not_found, {}, e]
+      end
+
+      [:without_reference, { :pr => pr, :ref => "refs/pull/#{number}/head", :commit_sha => head_sha, :commit_author => commit_author, :head_sha => pr[:head][:sha] }, ""]
     end
   end
 

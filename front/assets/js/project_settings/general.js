@@ -14,6 +14,7 @@ export var GeneralSettings = {
     this.registerTagWhitelistSwitchHandler();
     this.registerForkedPRSwitchHandler();
     this.registerDraftPRSwitchHandler();
+    this.registerPullRequestCommitSwitchHandler();
     this.registerSecretsSwitchHandler();
     this.registerContributorsSwitchHandler();
     this.registerVisibilitySwitchHandler();
@@ -157,6 +158,24 @@ export var GeneralSettings = {
         $("#draft-pull-request-options").hide();
       }
     })
+  },
+
+  registerPullRequestCommitSwitchHandler() {
+    const togglePullRequestCommitOptions = () => {
+      const buildsPullRequests =
+        $('input[type=checkbox][name="project[build_prs]"]').is(":checked") ||
+        $('input[type=checkbox][name="project[build_forked_prs]"]').is(":checked");
+
+      if(buildsPullRequests) {
+        $("#pull-request-commit-options").show();
+      } else {
+        $("#pull-request-commit-options").hide();
+      }
+    }
+
+    togglePullRequestCommitOptions();
+
+    this.settings.on("click", "[data-action=draftPRSwitch], [data-action=forkedPRSwitch]", togglePullRequestCommitOptions)
   },
 
   registerSecretsSwitchHandler() {
