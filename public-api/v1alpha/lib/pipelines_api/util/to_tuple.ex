@@ -23,6 +23,10 @@ defmodule PipelinesAPI.Util.ToTuple do
   @spec forbidden_error(any()) :: forbidden_error_t
   def forbidden_error(item), do: {:forbidden, item} |> error()
 
+  @type unavailable_error_t :: {:error, {:unavailable, any()}}
+  @spec unavailable_error(any()) :: unavailable_error_t
+  def unavailable_error(item), do: {:unavailable, item} |> error()
+
   @type internal_error_t :: {:error, {:internal, any()}}
   @spec internal_error(any()) :: internal_error_t
   def internal_error(item), do: {:internal, item} |> error()
