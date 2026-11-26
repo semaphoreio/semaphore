@@ -210,4 +210,55 @@ defmodule Zebra.Workers.DbWorkerTest do
       refute_received {:processed, _}
     end
   end
+
+  describe "tick_context" do
+    test "is built once per tick from the ids read and handed to every row" do
+      jobs = create_pending_jobs(3)
+      test_pid = self()
+
+      tick_context = fn ids, machine_type_tuple ->
+        send(test_pid, {:context_built, ids, machine_type_tuple})
+        length(ids)
+      end
+
+      processor = fn job, context ->
+        send(test_pid, {:processed, job.id, context})
+        {:ok, job}
+      end
+
+      for mode <- [:batches, :continuous] do
+        DbWorker.tick(worker(processor, tick_context: tick_context, concurrency_mode: mode))
+
+        assert_received {:context_built, ids, nil}
+        assert ids == Enum.map(jobs, & &1.id)
+        refute_received {:context_built, _, _}
+
+        Enum.each(jobs, fn job -> assert_received {:processed, id, 3} when id == job.id end)
+      end
+    end
+
+    test "is passed the machine type of an isolated tick" do
+      [job] = create_pending_jobs(1)
+      test_pid = self()
+
+      tick_context = fn _ids, machine_type_tuple ->
+        send(test_pid, {:context_built, machine_type_tuple})
+        :ctx
+      end
+
+      processor = fn job, :ctx -> {:ok, job} end
+
+      DbWorker.tick(
+        worker(processor,
+          tick_context: tick_context,
+          isolate_machine_types: true,
+          machine_type_field: :machine_type,
+          machine_os_image_field: :machine_os_image
+        )
+      )
+
+      assert_received {:context_built, {type, image}}
+      assert {type, image} == {job.machine_type, job.machine_os_image}
+    end
+  end
 end

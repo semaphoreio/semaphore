@@ -22,7 +22,8 @@ defmodule Zebra.Workers.Dispatcher do
       naptime: 1000,
       records_per_tick: 100,
       isolate_machine_types: isolate_machine_types(),
-      processor: &process/1
+      tick_context: &waiting_by_provider/2,
+      processor: &process/2
     }
   end
 
@@ -45,16 +46,38 @@ defmodule Zebra.Workers.Dispatcher do
     init() |> Zebra.Workers.DbWorker.start_link()
   end
 
-  def process(job) do
+  # On a NOT_FOUND the primary provider is asked for no more jobs of the
+  # machine type in this tick, so it sees only part of the queue. Each occupy
+  # carries how many of the tick's jobs wait for its provider from it onward,
+  # so a provider that sizes a pool from demand sees the whole queue. Only
+  # cloud machine types of an isolated tick get a count; a tick across machine
+  # types would mix them. The count is advisory: if it cannot be had, the jobs
+  # are dispatched without it.
+  def waiting_by_provider(job_ids, {machine_type, _os_image}) do
+    if Zebra.Models.Job.self_hosted?(machine_type) do
+      %{}
+    else
+      HostedAgent.waiting_by_provider(job_ids)
+    end
+  rescue
+    e ->
+      Logger.warning("Dispatcher: no waiting count for #{machine_type}: #{Exception.message(e)}")
+      Watchman.increment({"dispatcher.waiting_count.error", [machine_type]})
+      %{}
+  end
+
+  def waiting_by_provider(_job_ids, _machine_type_tuple), do: %{}
+
+  def process(job, waiting_by_provider \\ %{}) do
     if Zebra.Models.Job.self_hosted?(job.machine_type) do
       dispatch_self_hosted_job(job)
     else
-      dispatch_cloud_job(job)
+      dispatch_cloud_job(job, waiting_by_provider)
     end
   end
 
-  def dispatch_cloud_job(job) do
-    with {:ok, agent} <- HostedAgent.occupy(job),
+  def dispatch_cloud_job(job, waiting_by_provider \\ %{}) do
+    with {:ok, agent} <- HostedAgent.occupy(job, waiting_by_provider),
          host <- agent.ip_address,
          port <- agent.ctrl_port,
          token <- agent.auth_token,
@@ -65,6 +88,16 @@ defmodule Zebra.Workers.Dispatcher do
 
       :ok
     else
+      # The secondary provider serves only some organizations, so its NOT_FOUND
+      # says nothing about the other jobs of this machine type: only this job waits.
+      {:error, {:secondary_provider, %GRPC.RPCError{status: 5}}} ->
+        Logger.info(
+          "[#{job.id}] - no agent available from the secondary provider for #{job.machine_type} - waiting until next tick"
+        )
+
+      {:error, {:secondary_provider, e}} ->
+        Logger.error("[#{job.id}] secondary provider: #{inspect(e)}")
+
       # If chmura returns a NOT_FOUND response,
       # complaining about not having available agents for a machine type,
       # we stop sending occupy requests for this machine type until the next worker tick,

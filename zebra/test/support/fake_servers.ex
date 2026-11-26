@@ -15,6 +15,11 @@ GrpcMock.defmock(Support.FakeServers.ArtifactApi,
 )
 
 GrpcMock.defmock(Support.FakeServers.CacheApi, for: InternalApi.Cache.CacheService.Service)
+
+GrpcMock.defmock(Support.FakeServers.RegistryApi,
+  for: InternalApi.Registry.RegistryService.Service
+)
+
 GrpcMock.defmock(Support.FakeServers.ChmuraApi, for: InternalApi.Chmura.Chmura.Service)
 
 GrpcMock.defmock(Support.FakeServers.RepoProxyApi,

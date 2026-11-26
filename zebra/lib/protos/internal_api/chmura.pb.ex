@@ -4,12 +4,18 @@ defmodule InternalApi.Chmura.OccupyAgentRequest do
 
   @type t :: %__MODULE__{
           request_id: String.t(),
-          machine: InternalApi.Chmura.Agent.Machine.t()
+          machine: InternalApi.Chmura.Agent.Machine.t(),
+          organization_id: String.t(),
+          waiting: non_neg_integer,
+          project_id: String.t()
         }
-  defstruct [:request_id, :machine]
+  defstruct [:request_id, :machine, :organization_id, :waiting, :project_id]
 
   field(:request_id, 1, type: :string)
   field(:machine, 2, type: InternalApi.Chmura.Agent.Machine)
+  field(:organization_id, 3, type: :string)
+  field(:waiting, 4, type: :uint32)
+  field(:project_id, 5, type: :string)
 end
 
 defmodule InternalApi.Chmura.OccupyAgentResponse do
