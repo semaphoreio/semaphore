@@ -37,5 +37,34 @@ defmodule Notifications.Workers.Slack.MessageTest do
 
       assert Message.construct(channel, data) == expected_message
     end
+
+    test "constructs a message from the pipeline when the hook is missing" do
+      project = Support.Factories.Project.build()
+      workflow = Support.Factories.Workflow.build(project)
+
+      pipeline = %{
+        Support.Factories.Pipeline.build(project, workflow)
+        | commit_message: "Nightly build"
+      }
+
+      data = %{
+        project: project,
+        pipeline: pipeline,
+        blocks: [Support.Factories.Block.build()],
+        hook: nil,
+        organization: Support.Factories.Organization.build(),
+        workflow: workflow
+      }
+
+      workflow_link =
+        "<https://ribizzla.testing.com/workflows/?pipeline_id=#{pipeline.ppl_id}|Build & Test>"
+
+      assert %{"attachments" => [attachment], "channel" => "#dev-null"} =
+               Message.construct("#dev-null", data)
+
+      assert attachment["author_name"] == "test-repo"
+      assert attachment["fallback"] == "#{workflow_link} failed — Nightly build"
+      assert attachment["text"] == "#{workflow_link} failed — 273b85fbe Nightly build on master"
+    end
   end
 end

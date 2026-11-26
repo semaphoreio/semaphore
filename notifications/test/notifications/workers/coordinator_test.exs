@@ -11,6 +11,8 @@ defmodule Notifications.Workers.CoordinatorTest do
   @project_id Ecto.UUID.generate()
   @org_id Ecto.UUID.generate()
   @creator_id Ecto.UUID.generate()
+  @slack_endpoint "https://hooks.slack.com/services/TEST"
+  @webhook_endpoint "https://example.com/semaphore-webhook"
 
   setup do
     mock_grpc_services()
@@ -111,11 +113,184 @@ defmodule Notifications.Workers.CoordinatorTest do
         assert_called(Slack.publish(:_, :_, :_, :_))
       end
     end
+
+    test "when hook is a pull request event - matches the pull request branch" do
+      add_notification_with_branch_and_tag_patterns()
+      authorize_everything()
+      mock_pipeline(branch_name: "pull-request-12")
+      mock_pr_hook("master")
+
+      with_mock Slack, publish: fn _, _, _, _ -> :ok end do
+        assert PipelineFinished.handle_message(pipeline_finished_message())
+        assert_called(Slack.publish(:_, :_, :_, :_))
+      end
+    end
+
+    test "when the project is not found - acknowledges the event without notifying" do
+      add_notification_with_rule_and_patterns()
+      authorize_everything()
+      mock_project_not_found()
+
+      with_mock Slack, publish: fn _, _, _, _ -> :ok end do
+        assert PipelineFinished.handle_message(pipeline_finished_message())
+        assert_not_called(Slack.publish(:_, :_, :_, :_))
+      end
+    end
+
+    test "when the hook is not found - builds Slack and webhook messages from the pipeline" do
+      add_notification_with_slack_and_webhook()
+      authorize_everything()
+      allow_any_endpoint()
+      mock_hook_not_found()
+
+      mock_pipeline(
+        branch_name: "nightly",
+        commit_sha: "273b85fbebf7a9493af8c4102d40eb059c9fc6e7",
+        commit_message: "Nightly build"
+      )
+
+      test_pid = self()
+
+      with_mock HTTPoison,
+        request: fn _method, url, body, _headers, _opts ->
+          send(test_pid, {:sent, url, Poison.decode!(body)})
+          {:ok, %HTTPoison.Response{status_code: 200}}
+        end do
+        assert PipelineFinished.handle_message(pipeline_finished_message())
+      end
+
+      assert_received {:sent, @slack_endpoint, slack}
+      assert [%{"text" => text}] = slack["attachments"]
+      assert text =~ ~r/^<\S+\|> passed — 273b85fbe Nightly build on nightly$/
+
+      assert_received {:sent, @webhook_endpoint, webhook}
+
+      assert webhook["revision"]["commit_sha"] == "273b85fbebf7a9493af8c4102d40eb059c9fc6e7"
+      assert webhook["revision"]["commit_message"] == "Nightly build"
+      assert webhook["revision"]["reference"] == "refs/heads/nightly"
+      assert webhook["revision"]["branch"] == %{"name" => "nightly", "commit_range" => ""}
+    end
   end
 
   ###
   ### Helper funcs
   ###
+
+  defp pipeline_finished_message do
+    InternalApi.Plumber.PipelineEvent.new(pipeline_id: @pipeline_id)
+    |> InternalApi.Plumber.PipelineEvent.encode()
+  end
+
+  # Endpoints are checked by URL syntax only, so the test needs no DNS.
+  defp allow_any_endpoint do
+    previous = Application.get_env(:notifications, :block_internal_endpoints)
+    Application.put_env(:notifications, :block_internal_endpoints, false)
+
+    on_exit(fn ->
+      if is_nil(previous),
+        do: Application.delete_env(:notifications, :block_internal_endpoints),
+        else: Application.put_env(:notifications, :block_internal_endpoints, previous)
+    end)
+  end
+
+  defp mock_pipeline(fields) do
+    alias InternalApi.Plumber
+
+    pipeline =
+      Plumber.Pipeline.new(
+        Keyword.merge(
+          [
+            project_id: @project_id,
+            branch_name: "master",
+            yaml_file_name: "semaphore.yml",
+            result: :PASSED
+          ],
+          fields
+        )
+      )
+
+    GrpcMock.stub(PipelinesMock, :describe, fn _, _ ->
+      Plumber.DescribeResponse.new(
+        response_status: Plumber.ResponseStatus.new(code: :OK),
+        pipeline: pipeline
+      )
+    end)
+  end
+
+  defp mock_project_not_found do
+    alias InternalApi.Projecthub
+
+    GrpcMock.stub(ProjectServiceMock, :describe, fn _, _ ->
+      Projecthub.DescribeResponse.new(
+        metadata:
+          Projecthub.ResponseMeta.new(
+            status:
+              Projecthub.ResponseMeta.Status.new(
+                code: Projecthub.ResponseMeta.Code.value(:NOT_FOUND)
+              )
+          )
+      )
+    end)
+  end
+
+  defp mock_hook_not_found do
+    alias InternalApi.{RepoProxy, ResponseStatus}
+
+    GrpcMock.stub(RepoProxyMock, :describe, fn _, _ ->
+      RepoProxy.DescribeResponse.new(
+        status: ResponseStatus.new(code: ResponseStatus.Code.value(:BAD_PARAM))
+      )
+    end)
+  end
+
+  defp mock_pr_hook(pr_branch_name) do
+    alias InternalApi.{RepoProxy, ResponseStatus}
+
+    GrpcMock.stub(RepoProxyMock, :describe, fn _, _ ->
+      RepoProxy.DescribeResponse.new(
+        status: ResponseStatus.new(code: ResponseStatus.Code.value(:OK)),
+        hook:
+          RepoProxy.Hook.new(
+            git_ref_type: :PR,
+            branch_name: "main",
+            pr_branch_name: pr_branch_name,
+            pr_number: "12"
+          )
+      )
+    end)
+  end
+
+  defp add_notification_with_slack_and_webhook do
+    notification =
+      Repo.insert!(%Notification{
+        org_id: @org_id,
+        creator_id: @creator_id,
+        name: "Test Slack and Webhook Notification",
+        spec: %{"rules" => []}
+      })
+
+    rule =
+      Repo.insert!(%Rule{
+        org_id: @org_id,
+        notification_id: notification.id,
+        name: "Test Slack and Webhook Rule",
+        slack: %{"endpoint" => @slack_endpoint, "channels" => ["#test-channel"]},
+        email: %{},
+        webhook: %{"endpoint" => @webhook_endpoint, "action" => "post", "timeout" => 500}
+      })
+
+    for type <- ["project", "branch", "pipeline", "result"] do
+      Repo.insert!(%Pattern{
+        org_id: @org_id,
+        rule_id: rule.id,
+        type: type,
+        regex: true,
+        term: ".*"
+      })
+    end
+
+    rule
+  end
 
   defp authorize_everything do
     GrpcMock.stub(

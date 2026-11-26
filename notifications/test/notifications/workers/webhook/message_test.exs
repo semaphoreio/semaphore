@@ -93,5 +93,105 @@ defmodule Notifications.Workers.Webhook.MessageTest do
 
       assert Message.construct(data) == expected_message
     end
+
+    test "fills the tag for a tag hook" do
+      hook = %{
+        Support.Factories.Hook.build()
+        | git_ref_type: :TAG,
+          git_ref: "refs/tags/v1.2.0",
+          tag_name: "v1.2.0"
+      }
+
+      revision = Message.construct(build_data(hook))["revision"]
+
+      assert revision["reference"] == "refs/tags/v1.2.0"
+      assert revision["reference_type"] == "tag"
+      assert revision["tag"] == %{"name" => "v1.2.0"}
+      assert revision["branch"] == nil
+      assert revision["pull_request"] == nil
+      assert revision["sender"]["login"] == "test-username"
+    end
+
+    test "fills the pull request for a pull request hook" do
+      hook = %{
+        Support.Factories.Hook.build()
+        | git_ref_type: :PR,
+          pr_slug: "contributor/test-repo",
+          pr_number: "12",
+          pr_name: "Fix the build",
+          pr_sha: "4f1b2c3d",
+          pr_branch_name: "fix-build",
+          commit_range: "1a2b...4f1b"
+      }
+
+      revision = Message.construct(build_data(hook))["revision"]
+
+      assert revision["reference_type"] == "pull_request"
+
+      assert revision["pull_request"] == %{
+               "head_repo_slug" => "contributor/test-repo",
+               "number" => "12",
+               "name" => "Fix the build",
+               "head_sha" => "4f1b2c3d",
+               "branch_name" => "fix-build",
+               "commit_range" => "1a2b...4f1b"
+             }
+
+      assert revision["branch"] == nil
+      assert revision["tag"] == nil
+    end
+
+    test "builds the revision from a branch pipeline when the hook is missing" do
+      data = build_data(nil)
+      message = Message.construct(data)
+
+      assert message["repository"] == %{"slug" => "", "url" => ""}
+
+      assert message["revision"] == %{
+               "reference" => "refs/heads/master",
+               "reference_type" => "branch",
+               "commit_sha" => "273b85fbebf7a9493af8c4102d40eb059c9fc6e7",
+               "commit_message" => "Nightly build",
+               "sender" => %{"login" => "", "email" => "", "avatar_url" => ""},
+               "branch" => %{"name" => "master", "commit_range" => ""},
+               "pull_request" => nil,
+               "tag" => nil
+             }
+
+      assert message["pipeline"]["id"] == data.pipeline.ppl_id
+      assert message["project"]["name"] == "test-repo"
+    end
+
+    test "builds the revision from a tag pipeline when the hook is missing" do
+      data = build_data(nil)
+      data = %{data | pipeline: %{data.pipeline | branch_name: "refs/tags/v1.2.0"}}
+
+      revision = Message.construct(data)["revision"]
+
+      assert revision["reference"] == "refs/tags/v1.2.0"
+      assert revision["reference_type"] == "tag"
+      assert revision["tag"] == %{"name" => "v1.2.0"}
+      assert revision["branch"] == nil
+      assert revision["commit_message"] == "Nightly build"
+    end
+  end
+
+  defp build_data(hook) do
+    project = Support.Factories.Project.build()
+    workflow = Support.Factories.Workflow.build(project)
+
+    pipeline = %{
+      Support.Factories.Pipeline.build(project, workflow)
+      | commit_message: "Nightly build"
+    }
+
+    %{
+      organization: Support.Factories.Organization.build(),
+      project: project,
+      workflow: workflow,
+      pipeline: pipeline,
+      blocks: [Support.Factories.Block.build()],
+      hook: hook
+    }
   end
 end
