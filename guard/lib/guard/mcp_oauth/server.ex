@@ -364,6 +364,7 @@ defmodule Guard.McpOAuth.Server do
           <input type="hidden" name="code_challenge" value="#{html_escape(validated_params.code_challenge)}" />
           <input type="hidden" name="state" value="#{html_escape(validated_params.state || "")}" />
           <input type="hidden" name="scope" value="#{html_escape(validated_params.scope)}" />
+          <input type="hidden" name="resource" value="#{html_escape(validated_params.resource || "")}" />
           <input type="hidden" name="_csrf_token" value="#{Plug.CSRFProtection.get_csrf_token()}" />
           <div class="buttons">
             <a class="cancel-btn" href="#{html_escape(Authorize.build_error_redirect(validated_params.redirect_uri, "access_denied", "User denied access", validated_params.state))}">Cancel</a>
@@ -407,6 +408,7 @@ defmodule Guard.McpOAuth.Server do
     redirect_uri = params["redirect_uri"]
     code_challenge = params["code_challenge"]
     state = params["state"]
+    resource = if Computers.mcp_resource?(params["resource"]), do: params["resource"]
 
     Logger.debug("[McpOAuth.Server] Grant selection: client=#{client_id}, user=#{user_id}")
 
@@ -428,6 +430,7 @@ defmodule Guard.McpOAuth.Server do
             user_id: user_id,
             redirect_uri: redirect_uri,
             code_challenge: code_challenge,
+            resource: resource,
             expires_at: expires_at
           }
 
@@ -478,6 +481,7 @@ defmodule Guard.McpOAuth.Server do
         "code_challenge_method" => "S256",
         "response_type" => "code",
         "scope" => validated_params.scope,
+        "resource" => validated_params.resource || "",
         "state" => validated_params.state || ""
       })
 
