@@ -132,7 +132,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           {
             :mergeable => true,
             :commit_author => "octocat",
-            :merge_commit_sha => workflow.commit_sha,
+            :commit_sha => workflow.commit_sha,
             :ref => workflow.git_ref,
             :head_sha => head_sha || workflow.commit_sha
           },
@@ -978,7 +978,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
 
           described_class.run(@workflow, @logger)
 
-          expect(Workflow.find(ready_for_review.id).state).to eq(Workflow::STATE_LAUNCHING)
+          expect(Workflow.find(ready_for_review.id)).to have_attributes(:state => Workflow::STATE_LAUNCHING, :commit_sha => ready_for_review.commit_sha)
           expect(Workflow.find(opened.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
           expect(@logger).to have_received(:info).with("pr-approval-claimed", :approved_workflow_id => ready_for_review.id, :approved_action => "ready_for_review")
         end
@@ -1126,7 +1126,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           # No :head_sha at all → treated as changed, fail closed.
           update_pr_data: [
             :ok,
-            { :mergeable => true, :commit_author => "octocat", :merge_commit_sha => workflow.commit_sha, :ref => workflow.git_ref },
+            { :mergeable => true, :commit_author => "octocat", :commit_sha => workflow.commit_sha, :ref => workflow.git_ref },
             nil
           ]
         )

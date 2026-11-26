@@ -297,7 +297,7 @@ When these settings are enabled, an authorized approver can approve with the SHA
 - `/sem-approve <sha> --enable-cache`
 - `/sem-approve <sha> --include-secrets --enable-cache`
 
-The SHA is required whenever an option is used. A comment with options but no SHA is not treated as an approval, nor is one whose SHA prefix matches more than one commit pushed to the pull request (use more characters or the full SHA). The run only starts if the named commit is still the head of the pull request. A plain `/sem-approve` can also be given a SHA to approve that specific commit.
+The SHA is required whenever an option is used. A comment with options but no SHA is not treated as an approval, nor is one whose SHA prefix matches more than one commit pushed to the pull request (use more characters or the full SHA). The run only starts if the named commit is still the head of the pull request (with the [head commit option](#pr-commit), the named commit runs even if the fork pushed newer commits). A plain `/sem-approve` can also be given a SHA to approve that specific commit.
 
 If a `/sem-approve` comment requests an option that is **not available** — either an unrecognized option (a typo) or one the project has not enabled — the command is **not** treated as an approval, rather than silently approving without it. The blocked workflow is left untouched, so you can enable the option (or fix the spelling) and re-issue the command.
 
