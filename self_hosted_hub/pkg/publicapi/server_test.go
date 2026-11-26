@@ -1176,6 +1176,8 @@ func Test__DescribeJob(t *testing.T) {
 		res := run("GET", "/jobs/"+jobID.String(), token, nil)
 
 		require.Equal(t, http.StatusOK, res.Code)
+		require.Equal(t, "application/json", res.Header().Get("Content-Type"))
+		require.JSONEq(t, `{"id": "123", "fake": "payload"}`, res.Body.String())
 	})
 
 	t.Run("when the agent is disabled", func(t *testing.T) {
@@ -1280,6 +1282,46 @@ func Test__Disconnect(t *testing.T) {
 		_, err = models.FindAgentByToken(agent.OrganizationID.String(), agent.TokenHash)
 		require.Equal(t, err.Error(), "record not found")
 	})
+}
+
+func Test__DisconnectAfterFinishedJob(t *testing.T) {
+	database.TruncateTables()
+	grpcmock.Start()
+	_ = declareExchangeAndQueue()
+
+	agentType, _, err := newAgentTypeWithSettings("s1-test", models.AgentNameSettings{ReleaseNameAfter: 60})
+	require.NoError(t, err)
+
+	agent, token, err := newAgentWithMetadata(agentType, models.AgentMetadata{SingleJob: true})
+	require.NoError(t, err)
+
+	jobID, err := models.ForcefullyOccupyAgentWithJobID(agent)
+	require.NoError(t, err)
+
+	sync(t, syncAssertion{
+		state:          agentsync.AgentStateFinishedJob,
+		token:          token,
+		action:         agentsync.AgentActionShutdown,
+		jobIdOnRequest: jobID.String(),
+		jobResult:      agentsync.JobResultPassed,
+	})
+
+	checkFinishedEventReceived(t, jobID.String(), agentsync.JobResultPassed)
+	checkTeardownFinishedEventReceived(t, jobID.String())
+	_ = purgeExchangeAndQueue()
+
+	synced, err := models.FindAgentByToken(agent.OrganizationID.String(), agent.TokenHash)
+	require.NoError(t, err)
+	require.NotNil(t, synced.JobFinishedAt)
+	require.NotNil(t, synced.AssignedJobID)
+
+	res := run("POST", "/disconnect", token, nil)
+	require.Equal(t, http.StatusOK, res.Code)
+
+	disconnected, err := models.FindAgentByToken(agent.OrganizationID.String(), agent.TokenHash)
+	require.NoError(t, err)
+	require.Equal(t, models.AgentStateDisconnected, disconnected.State)
+	require.Nil(t, disconnected.AssignedJobID)
 }
 
 func Test__RefreshToken(t *testing.T) {
@@ -1593,7 +1635,7 @@ func purgeExchangeAndQueue() error {
 		return err
 	}
 
-	_, err = channel.QueueDelete("test_queue.teardown_finished", false, false, true)
+	_, err = channel.QueueDelete("test_queue.job_teardown_finished", false, false, true)
 	if err != nil {
 		return err
 	}

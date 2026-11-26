@@ -59,6 +59,12 @@ func Test__AgentsInVersion(t *testing.T) {
 	models.CreateAgentType(secondOrgID, &requesterID, "s1-first")
 	models.RegisterAgent(secondOrgID, "s1-first", "hello", models.AgentMetadata{Version: "2.1.11"})
 
+	// a disconnected agent kept for its name release period is not counted
+	models.CreateAgentTypeWithSettings(secondOrgID, &requesterID, "s1-held", models.AgentNameSettings{ReleaseNameAfter: 60})
+	held, _, err := models.RegisterAgent(secondOrgID, "s1-held", "held", models.AgentMetadata{Version: "2.1.12"})
+	assert.NoError(t, err)
+	assert.NoError(t, held.Disconnect())
+
 	collector := NewCollector()
 	counts, err := collector.CountAgentsInVersion()
 	assert.NoError(t, err)
