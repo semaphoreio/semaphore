@@ -2521,6 +2521,8 @@ blocks:
   # Bootstrapper
   - name: "Bootstrapper: Provision Prod Image"
     dependencies: []
+    skip:
+      when: "branch =~ '^onprem/'"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2538,6 +2540,8 @@ blocks:
             - make push
   - name: "Bootstrapper: Deployment Preconditions"
     dependencies: ["Bootstrapper: Provision Prod Image"]
+    skip:
+      when: "branch =~ '^onprem/'"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -2563,6 +2567,8 @@ blocks:
             - make check.docker
   - name: "Bootstrapper: QA"
     dependencies: ["Bootstrapper: Provision Prod Image"]
+    skip:
+      when: "branch =~ '^onprem/'"
     task:
       env_vars:
         - name: DOCKER_BUILDKIT
@@ -3502,6 +3508,27 @@ blocks:
             - make test
             - cache store deps-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) deps
             - cache store build-$ERLANG_VERSION-$ELIXIR_VERSION-$(checksum mix.lock) _build
+  - name: "Env Var Policy: QA"
+    dependencies: []
+    task:
+      prologue:
+        commands:
+          - sem-version erlang 24
+          - sem-version elixir $ELIXIR_VERSION
+          - checkout && cd env_var_policy
+      jobs:
+        - name: Test
+          matrix:
+            - env_var: ELIXIR_VERSION
+              values: ["1.11", "1.13"]
+          commands:
+            - make test
+        - name: Format
+          env_vars:
+            - name: ELIXIR_VERSION
+              value: "1.13"
+          commands:
+            - make format
   - name: "Feature Provider: QA (Elixir 1.11)"
     dependencies: []
     task:

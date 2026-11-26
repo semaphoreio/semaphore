@@ -1,7 +1,11 @@
 defmodule Guard.McpOAuth.Server.Test do
   use Guard.RepoCase, async: false
 
+  import Ecto.Query
+
+  alias Guard.{FrontRepo, Repo}
   alias Guard.McpOAuth.PKCE
+  alias Guard.Repo.{McpOAuthRefreshToken, McpOAuthRefreshTokenFamily}
   alias Guard.Store.{McpOAuthClient, McpOAuthAuthCode}
 
   @port 4003
@@ -16,6 +20,7 @@ defmodule Guard.McpOAuth.Server.Test do
     user_id = Ecto.UUID.generate()
     user_name = "session-user-#{System.unique_integer([:positive])}"
     {:ok, _user} = Support.Factories.RbacUser.insert(user_id, user_name)
+    {:ok, _user} = Support.Factories.FrontUser.insert(id: user_id, name: user_name)
 
     other_user_id = Ecto.UUID.generate()
     other_user_name = "other-user-#{System.unique_integer([:positive])}"
@@ -209,6 +214,34 @@ defmodule Guard.McpOAuth.Server.Test do
     auth_code
   end
 
+  defp post_token(params) do
+    {:ok, response} =
+      HTTPoison.post(mcp_oauth_url("/token"), URI.encode_query(params), form_headers())
+
+    {response.status_code, Jason.decode!(response.body)}
+  end
+
+  defp exchange_code(client, user_id) do
+    auth_code = create_test_auth_code(user_id, client.client_id)
+
+    {200, tokens} =
+      post_token(%{
+        "grant_type" => "authorization_code",
+        "code" => auth_code.code,
+        "redirect_uri" => @redirect_uri,
+        "client_id" => client.client_id,
+        "code_verifier" => @code_verifier
+      })
+
+    tokens
+  end
+
+  defp refresh(refresh_token, client_id, params \\ %{}) do
+    %{"grant_type" => "refresh_token", "refresh_token" => refresh_token, "client_id" => client_id}
+    |> Map.merge(params)
+    |> post_token()
+  end
+
   defp authorize_query(client_id, opts \\ []) do
     redirect_uri = Keyword.get(opts, :redirect_uri, @redirect_uri)
     code_challenge = PKCE.compute_challenge(@code_verifier)
@@ -266,7 +299,7 @@ defmodule Guard.McpOAuth.Server.Test do
       assert is_binary(body["token_endpoint"])
       assert is_binary(body["registration_endpoint"])
       assert is_list(body["response_types_supported"])
-      assert is_list(body["grant_types_supported"])
+      assert body["grant_types_supported"] == ["authorization_code", "refresh_token"]
       assert is_list(body["code_challenge_methods_supported"])
       assert "S256" in body["code_challenge_methods_supported"]
     end
@@ -328,7 +361,7 @@ defmodule Guard.McpOAuth.Server.Test do
       result = Jason.decode!(response.body)
       assert is_binary(result["client_id"])
       assert result["redirect_uris"] == ["http://localhost:3000/callback"]
-      assert result["grant_types"] == ["authorization_code"]
+      assert result["grant_types"] == ["authorization_code", "refresh_token"]
       assert result["client_name"] == "My MCP Client"
     end
 
@@ -392,6 +425,28 @@ defmodule Guard.McpOAuth.Server.Test do
 
       location = get_header(response, "location")
       assert location =~ "/login"
+    end
+
+    test "login on id.<domain> sends the browser back to the issuer's /authorize" do
+      client = create_test_client()
+      query = authorize_query(client.client_id)
+
+      {:ok, response} =
+        HTTPoison.get(mcp_oauth_url("/authorize#{query}"), default_headers(),
+          follow_redirect: false
+        )
+
+      location = response |> get_header("location") |> URI.parse()
+
+      assert "#{location.scheme}://#{location.host}#{location.path}" ==
+               "https://id.localhost/login"
+
+      back = location.query |> URI.decode_query() |> Map.fetch!("redirect_to") |> URI.parse()
+
+      assert "#{back.scheme}://#{back.host}#{back.path}" ==
+               "https://mcp.localhost/mcp/oauth/authorize"
+
+      assert URI.decode_query(back.query)["client_id"] == client.client_id
     end
 
     test "an x-semaphore-user-id header alone, without a session, redirects to login", %{
@@ -530,12 +585,12 @@ defmodule Guard.McpOAuth.Server.Test do
       result = Jason.decode!(response.body)
       assert is_binary(result["access_token"])
       assert result["token_type"] == "Bearer"
-      assert result["expires_in"] == 86_400
+      assert result["expires_in"] == 3_600
       assert result["scope"] == "mcp"
 
       signer = Joken.Signer.create("HS256", System.get_env("MCP_OAUTH_JWT_KEYS"))
       assert {:ok, claims} = Joken.verify(result["access_token"], signer)
-      assert claims["exp"] - claims["iat"] == 86_400
+      assert claims["exp"] - claims["iat"] == 3_600
     end
 
     test "token exchange honors configured TTL", %{user_id: user_id} do
@@ -651,6 +706,160 @@ defmodule Guard.McpOAuth.Server.Test do
     end
   end
 
+  describe "POST /token with a refresh token" do
+    setup %{user_id: user_id} do
+      client = create_test_client()
+
+      {:ok, client: client, tokens: exchange_code(client, user_id)}
+    end
+
+    test "rotates the refresh token and issues an MCP token", %{
+      client: client,
+      tokens: tokens,
+      user_id: user_id
+    } do
+      assert {200, result} = refresh(tokens["refresh_token"], client.client_id)
+      assert result["token_type"] == "Bearer"
+      assert result["expires_in"] == 3_600
+      assert result["scope"] == "mcp"
+      assert is_binary(result["refresh_token"])
+      refute result["refresh_token"] == tokens["refresh_token"]
+
+      signer = Joken.Signer.create("HS256", System.get_env("MCP_OAUTH_JWT_KEYS"))
+      assert {:ok, claims} = Joken.verify(result["access_token"], signer)
+      assert claims["sub"] == user_id
+      assert claims["scope"] == "mcp"
+
+      assert {200, _} = refresh(result["refresh_token"], client.client_id)
+    end
+
+    test "accepts a rotated token again within the grace period, without extending it", %{
+      client: client,
+      tokens: tokens
+    } do
+      assert {200, first} = refresh(tokens["refresh_token"], client.client_id)
+
+      used_at = DateTime.utc_now() |> DateTime.add(-20) |> DateTime.truncate(:second)
+      [used] = Repo.all(from(t in McpOAuthRefreshToken, where: not is_nil(t.used_at)))
+      used |> Ecto.Changeset.change(used_at: used_at) |> Repo.update!()
+
+      assert {200, second} = refresh(tokens["refresh_token"], client.client_id)
+      refute first["refresh_token"] == second["refresh_token"]
+      assert Repo.reload!(used).used_at == used_at
+    end
+
+    test "leaves only the token issued last live after a reuse within the grace period", %{
+      client: client,
+      tokens: tokens
+    } do
+      assert {200, first} = refresh(tokens["refresh_token"], client.client_id)
+      assert {200, second} = refresh(tokens["refresh_token"], client.client_id)
+
+      used_at = DateTime.utc_now() |> DateTime.add(-31) |> DateTime.truncate(:second)
+
+      from(t in McpOAuthRefreshToken, where: not is_nil(t.used_at))
+      |> Repo.update_all(set: [used_at: used_at])
+
+      assert {400, %{"error" => "invalid_grant"}} =
+               refresh(first["refresh_token"], client.client_id)
+
+      assert {400, %{"error" => "invalid_grant"}} =
+               refresh(second["refresh_token"], client.client_id)
+    end
+
+    test "revokes the family when a rotated token is reused after the grace period", %{
+      client: client,
+      tokens: tokens
+    } do
+      assert {200, rotated} = refresh(tokens["refresh_token"], client.client_id)
+
+      used_at = DateTime.utc_now() |> DateTime.add(-31) |> DateTime.truncate(:second)
+
+      from(t in McpOAuthRefreshToken, where: not is_nil(t.used_at))
+      |> Repo.update_all(set: [used_at: used_at])
+
+      assert {400, %{"error" => "invalid_grant"}} =
+               refresh(tokens["refresh_token"], client.client_id)
+
+      assert {400, %{"error" => "invalid_grant"}} =
+               refresh(rotated["refresh_token"], client.client_id)
+    end
+
+    test "refreshes only for the client the token was issued to", %{
+      client: client,
+      tokens: tokens
+    } do
+      assert {400, %{"error" => "invalid_grant"}} =
+               refresh(tokens["refresh_token"], create_test_client().client_id)
+
+      assert {200, _} = refresh(tokens["refresh_token"], client.client_id)
+    end
+
+    test "rejects expired tokens and families", %{
+      client: client,
+      tokens: tokens,
+      user_id: user_id
+    } do
+      past = DateTime.utc_now() |> DateTime.add(-1) |> DateTime.truncate(:second)
+
+      Repo.update_all(McpOAuthRefreshToken, set: [expires_at: past])
+
+      assert {400, %{"error" => "invalid_grant"}} =
+               refresh(tokens["refresh_token"], client.client_id)
+
+      tokens = exchange_code(client, user_id)
+      Repo.update_all(McpOAuthRefreshTokenFamily, set: [expires_at: past])
+
+      assert {400, %{"error" => "invalid_grant"}} =
+               refresh(tokens["refresh_token"], client.client_id)
+    end
+
+    test "revokes the family of a blocked or deactivated user", %{
+      client: client,
+      user_id: user_id
+    } do
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      user = from(u in FrontRepo.User, where: u.id == ^user_id)
+
+      for change <- [[blocked_at: now], [deactivated: true]] do
+        tokens = exchange_code(client, user_id)
+
+        FrontRepo.update_all(user, set: change)
+
+        assert {400, %{"error" => "invalid_grant"}} =
+                 refresh(tokens["refresh_token"], client.client_id)
+
+        FrontRepo.update_all(user, set: [blocked_at: nil, deactivated: false])
+
+        assert {400, %{"error" => "invalid_grant"}} =
+                 refresh(tokens["refresh_token"], client.client_id)
+      end
+    end
+
+    test "keeps the scope originally granted", %{client: client, tokens: tokens} do
+      assert {400, %{"error" => "invalid_scope"}} =
+               refresh(tokens["refresh_token"], client.client_id, %{"scope" => "computers"})
+
+      assert {200, %{"scope" => "mcp"}} =
+               refresh(tokens["refresh_token"], client.client_id, %{"scope" => "mcp"})
+    end
+
+    test "requires a refresh token", %{client: client} do
+      assert {400, %{"error" => "invalid_request"}} =
+               post_token(%{"grant_type" => "refresh_token", "client_id" => client.client_id})
+    end
+
+    test "rotates one token for concurrent requests", %{client: client, tokens: tokens} do
+      results =
+        1..3
+        |> Task.async_stream(fn _ -> refresh(tokens["refresh_token"], client.client_id) end)
+        |> Enum.map(fn {:ok, result} -> result end)
+
+      refresh_tokens = for {200, result} <- results, do: result["refresh_token"]
+      assert refresh_tokens |> Enum.uniq() |> length() == 3
+    end
+  end
+
   # ====================
   # Grant selection -> token: identity binding
   # ====================
@@ -697,6 +906,291 @@ defmodule Guard.McpOAuth.Server.Test do
       # identity and/or missing CSRF): never a 302 back to the client with a code.
       refute response.status_code == 302
       refute (get_header(response, "location") || "") =~ "code="
+    end
+  end
+
+  # ====================
+  # semaphore.computer's client
+  # ====================
+
+  @computers_client_id "semaphore-computer"
+  @computers_client_secret "computers-secret"
+  @computers_redirect_uri "https://semaphore.computer.test/auth/callback"
+  @computers_audience "https://api.semaphore.computer.test"
+  @computers_mcp_resource "https://api.semaphore.computer.test/mcp"
+
+  defp computers_authorize(user_id, redirect_uri \\ @computers_redirect_uri) do
+    query =
+      "?" <>
+        URI.encode_query(%{
+          "response_type" => "code",
+          "client_id" => @computers_client_id,
+          "redirect_uri" => redirect_uri,
+          "code_challenge" => PKCE.compute_challenge(@code_verifier),
+          "code_challenge_method" => "S256",
+          "state" => "computers-state"
+        })
+
+    {:ok, response} =
+      HTTPoison.get(mcp_oauth_url("/authorize#{query}"), session_headers(user_id),
+        follow_redirect: false
+      )
+
+    response
+  end
+
+  defp computers_token(code, params) do
+    body =
+      URI.encode_query(
+        Map.merge(
+          %{
+            "grant_type" => "authorization_code",
+            "code" => code,
+            "redirect_uri" => @computers_redirect_uri,
+            "client_id" => @computers_client_id,
+            "code_verifier" => @code_verifier
+          },
+          params
+        )
+      )
+
+    {:ok, response} = HTTPoison.post(mcp_oauth_url("/token"), body, form_headers())
+    response
+  end
+
+  # Drives an MCP client through GET /authorize -> POST /grant-selection ->
+  # POST /token for resource, as a browser would: the grant form carries what
+  # the consent page put in it. Returns the consent page and the token answer.
+  defp resource_flow(client, user_id, resource, token_params \\ %{}) do
+    query =
+      authorize_query(client.client_id) <> "&" <> URI.encode_query(%{"resource" => resource})
+
+    {:ok, consent} = HTTPoison.get(mcp_oauth_url("/authorize#{query}"), session_headers(user_id))
+    200 = consent.status_code
+
+    [_, granted] = Regex.run(~r/name="resource" value="([^"]*)"/, consent.body)
+
+    {:ok, grant} =
+      HTTPoison.post(
+        mcp_oauth_url("/grant-selection"),
+        grant_form_body(client.client_id, extract_csrf_token(consent.body)) <>
+          "&" <> URI.encode_query(%{"resource" => granted}),
+        [
+          {"content-type", "application/x-www-form-urlencoded"},
+          {"cookie", extract_session_cookie(consent)}
+        ] ++ default_headers(),
+        follow_redirect: false
+      )
+
+    302 = grant.status_code
+
+    answer =
+      post_token(
+        Map.merge(
+          %{
+            "grant_type" => "authorization_code",
+            "code" => grant |> get_header("location") |> extract_code(),
+            "redirect_uri" => @redirect_uri,
+            "client_id" => client.client_id,
+            "code_verifier" => @code_verifier,
+            "resource" => resource
+          },
+          token_params
+        )
+      )
+
+    {consent.body, answer}
+  end
+
+  defp computers_claims(access_token) do
+    {:ok, jwks_resp} = HTTPoison.get(mcp_oauth_url("/jwks"), default_headers())
+    [key] = Jason.decode!(jwks_resp.body)["keys"]
+
+    {true, jwt, _jws} = JOSE.JWT.verify_strict(JOSE.JWK.from_map(key), ["RS256"], access_token)
+    jwt.fields
+  end
+
+  describe "semaphore.computer's client" do
+    setup do
+      {_, pem} = {:rsa, 2048} |> JOSE.JWK.generate_key() |> JOSE.JWK.to_pem()
+
+      env = %{
+        "COMPUTERS_OAUTH_CLIENT_ID" => @computers_client_id,
+        "COMPUTERS_OAUTH_CLIENT_SECRET" => @computers_client_secret,
+        "COMPUTERS_OAUTH_REDIRECT_URIS" => @computers_redirect_uri,
+        "COMPUTERS_OAUTH_AUDIENCE" => @computers_audience,
+        "COMPUTERS_MCP_RESOURCES" =>
+          "https://other.computer.test/mcp, #{@computers_mcp_resource}",
+        "COMPUTERS_OAUTH_SIGNING_KEY" => String.replace(pem, "\n", "\\n")
+      }
+
+      System.put_env(env)
+      on_exit(fn -> env |> Map.keys() |> Enum.each(&System.delete_env/1) end)
+
+      :ok
+    end
+
+    test "signs people in without asking for consent", %{user_id: user_id} do
+      response = computers_authorize(user_id)
+
+      assert response.status_code == 302
+
+      location = get_header(response, "location")
+      assert String.starts_with?(location, @computers_redirect_uri <> "?")
+      assert extract_code(location)
+      assert location =~ "state=computers-state"
+    end
+
+    test "sends the browser nowhere it was not configured with", %{user_id: user_id} do
+      response = computers_authorize(user_id, "https://evil.example.com/callback")
+
+      assert response.status_code == 400
+      refute get_header(response, "location")
+    end
+
+    test "issues RS256 tokens for its API, which the key at /jwks checks", %{user_id: user_id} do
+      code = user_id |> computers_authorize() |> get_header("location") |> extract_code()
+
+      token_resp = computers_token(code, %{"client_secret" => @computers_client_secret})
+      assert token_resp.status_code == 200
+
+      result = Jason.decode!(token_resp.body)
+      assert result["scope"] == "computers"
+      assert result["expires_in"] == 3600
+
+      {:ok, jwks_resp} = HTTPoison.get(mcp_oauth_url("/jwks"), default_headers())
+      assert [key] = Jason.decode!(jwks_resp.body)["keys"]
+      assert key["kty"] == "RSA"
+      assert key["use"] == "sig"
+      refute Map.has_key?(key, "d")
+
+      assert {true, jwt, jws} =
+               JOSE.JWT.verify_strict(JOSE.JWK.from_map(key), ["RS256"], result["access_token"])
+
+      assert jws.fields["kid"] == key["kid"]
+      assert jwt.fields["iss"] == Guard.McpOAuth.JWT.issuer()
+      assert jwt.fields["aud"] == @computers_audience
+      assert jwt.fields["scope"] == "computers"
+      assert jwt.fields["semaphore_user_id"] == user_id
+      assert jwt.fields["exp"] > System.system_time(:second)
+    end
+
+    test "issues no token without the client secret, and keeps the code", %{user_id: user_id} do
+      code = user_id |> computers_authorize() |> get_header("location") |> extract_code()
+
+      for params <- [%{}, %{"client_secret" => "wrong"}] do
+        response = computers_token(code, params)
+
+        assert response.status_code == 400
+        assert Jason.decode!(response.body)["error"] == "invalid_client"
+      end
+
+      response = computers_token(code, %{"client_secret" => @computers_client_secret})
+      assert response.status_code == 200
+    end
+
+    test "refreshes its RS256 tokens only with its client secret", %{user_id: user_id} do
+      code = user_id |> computers_authorize() |> get_header("location") |> extract_code()
+
+      tokens =
+        code
+        |> computers_token(%{"client_secret" => @computers_client_secret})
+        |> Map.fetch!(:body)
+        |> Jason.decode!()
+
+      for params <- [%{}, %{"client_secret" => "wrong"}] do
+        assert {400, %{"error" => "invalid_client"}} =
+                 refresh(tokens["refresh_token"], @computers_client_id, params)
+      end
+
+      assert {400, %{"error" => "invalid_grant"}} =
+               refresh(tokens["refresh_token"], create_test_client().client_id)
+
+      assert {200, result} =
+               refresh(tokens["refresh_token"], @computers_client_id, %{
+                 "client_secret" => @computers_client_secret
+               })
+
+      assert result["scope"] == "computers"
+      assert result["expires_in"] == 3600
+      refute result["refresh_token"] == tokens["refresh_token"]
+
+      {:ok, jwks_resp} = HTTPoison.get(mcp_oauth_url("/jwks"), default_headers())
+      assert [key] = Jason.decode!(jwks_resp.body)["keys"]
+
+      assert {true, jwt, _jws} =
+               JOSE.JWT.verify_strict(JOSE.JWK.from_map(key), ["RS256"], result["access_token"])
+
+      assert jwt.fields["aud"] == @computers_audience
+      assert jwt.fields["scope"] == "computers"
+      assert jwt.fields["semaphore_user_id"] == user_id
+
+      System.put_env("COMPUTERS_OAUTH_CLIENT_ID", "renamed")
+
+      assert {400, %{"error" => "invalid_grant"}} =
+               refresh(result["refresh_token"], @computers_client_id)
+    end
+
+    test "is not there when its signing key is not an RSA private key", %{user_id: user_id} do
+      System.put_env("COMPUTERS_OAUTH_SIGNING_KEY", "not a key")
+
+      response = computers_authorize(user_id)
+      assert response.status_code == 400
+
+      {:ok, jwks_resp} = HTTPoison.get(mcp_oauth_url("/jwks"), default_headers())
+      assert Jason.decode!(jwks_resp.body)["keys"] == []
+    end
+
+    test "gives an MCP client its RS256 tokens for its MCP server, and refreshes them", %{
+      user_id: user_id
+    } do
+      client = create_test_client()
+
+      {consent, {200, tokens}} = resource_flow(client, user_id, @computers_mcp_resource)
+      assert consent =~ ~s(name="resource" value="#{@computers_mcp_resource}")
+      assert tokens["scope"] == "computers"
+
+      claims = computers_claims(tokens["access_token"])
+      assert claims["aud"] == @computers_mcp_resource
+      assert claims["scope"] == "computers"
+      assert claims["semaphore_user_id"] == user_id
+
+      assert {200, refreshed} = refresh(tokens["refresh_token"], client.client_id)
+      assert refreshed["scope"] == "computers"
+      assert computers_claims(refreshed["access_token"])["aud"] == @computers_mcp_resource
+
+      System.put_env("COMPUTERS_MCP_RESOURCES", "https://other.computer.test/mcp")
+
+      assert {400, %{"error" => "invalid_grant"}} =
+               refresh(refreshed["refresh_token"], client.client_id)
+    end
+
+    test "gives a code for its MCP server for that server alone", %{user_id: user_id} do
+      {_consent, answer} =
+        resource_flow(create_test_client(), user_id, @computers_mcp_resource, %{
+          "resource" => "https://other.computer.test/mcp"
+        })
+
+      assert {400, %{"error" => "invalid_target"}} = answer
+    end
+
+    test "leaves a client that asks for any other resource as it was", %{user_id: user_id} do
+      {consent, {200, tokens}} =
+        resource_flow(create_test_client(), user_id, "https://mcp.semaphoreci.com/mcp")
+
+      assert consent =~ "wants to access your Semaphore account via MCP."
+      assert tokens["scope"] == "mcp"
+
+      signer = Joken.Signer.create("HS256", System.get_env("MCP_OAUTH_JWT_KEYS"))
+      assert {:ok, claims} = Joken.verify(tokens["access_token"], signer)
+      assert claims["aud"] == Guard.McpOAuth.JWT.audience()
+    end
+
+    test "leaves MCP clients as they were: consent, and MCP tokens", %{user_id: user_id} do
+      claims = complete_oauth_flow(create_test_client(), user_id)
+
+      assert claims["scope"] == "mcp"
+      assert claims["aud"] == Guard.McpOAuth.JWT.audience()
     end
   end
 

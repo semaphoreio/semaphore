@@ -399,15 +399,25 @@ If you are using Docker containers when performing tests, it's possible that, wh
 
 If the test passes and fails randomly with the same commit SHA, then you might be facing a [flaky test](../using-semaphore/tests/flaky-tests).
 
-### Why my job is not starting?
+### Why is my job waiting for quota?
 
-You might be hitting the quota limitation. To see your activity across the organization
+This message means Semaphore cannot allocate a suitable machine to the job at the moment. It does
+not necessarily mean that you have exhausted your quota.
 
-1. Open the organization menu
-2. Select Activity Monitor
-3. Check your agent usage, jobs won't start until a suitable agent is free
+Check your machine quota usage in the [Activity Monitor](../reference/quotas-and-limits#check-quota-usage).
+If quota is available, check [Semaphore CI Status](https://status.semaphore.io/). If quota is
+available and the status page reports no service issue, contact [Semaphore Support](mailto:support@semaphore.io).
 
-You can also run [`sem get jobs`](../reference/semaphore-cli#sem-get-job) to display all running jobs to confirm how much of the quota is being used.
+:::note
+
+Pipelines use an initialization job before their workload jobs start. Check the
+[initialization job agent](../using-semaphore/organizations#init-agent) configuration as well: if
+its selected machine type is unavailable, the workflow cannot proceed even when its workload jobs
+use a different machine type.
+
+:::
+
+For the complete troubleshooting steps, see [Jobs waiting for quota](../reference/quotas-and-limits#jobs-waiting-for-quota).
 
 ### Why does my job fail when I specify "exit 0" in commands?
 

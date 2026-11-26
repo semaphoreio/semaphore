@@ -16,5 +16,29 @@ module RepoHost
         end
       end
     end
+
+    describe ".create_from_project" do
+      let(:project) { instance_double(Project) }
+
+      before do
+        allow(::Semaphore::ProjectIntegrationToken).to receive(:new).and_return(instance_double(::Semaphore::ProjectIntegrationToken, :project_token => ["token", nil]))
+      end
+
+      it "passes the request timeout to the client" do
+        allow(RepoHost::Github::Client).to receive(:new).and_call_original
+
+        Factory.create_from_project(project, :request_timeout => 10)
+
+        expect(RepoHost::Github::Client).to have_received(:new).with("token", :request_timeout => 10)
+      end
+
+      it "creates a client without a request timeout by default" do
+        allow(RepoHost::Github::Client).to receive(:new).and_call_original
+
+        Factory.create_from_project(project)
+
+        expect(RepoHost::Github::Client).to have_received(:new).with("token", :request_timeout => nil)
+      end
+    end
   end
 end

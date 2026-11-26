@@ -22,6 +22,10 @@ module InternalApi::RepoProxy
         raise PrNotMergeableError, "Pull Request ##{number} is not mergeable (#{pr[:html_url]})"
       end
 
+      if state == :stale_merge_commit
+        raise PrNotMergeableError, "Pull Request ##{number}'s merge commit is not up to date with its head yet (#{pr[:html_url]})"
+      end
+
       repo_host = ::RepoHost::Factory.create_from_project(project)
       pr_commit = repo_host.commit(project.repo_owner_and_name, pr[:head][:sha])
 

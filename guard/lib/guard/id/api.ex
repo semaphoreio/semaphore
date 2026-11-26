@@ -125,6 +125,13 @@ defmodule Guard.Id.Api do
           {:error, reason} ->
             code = Guard.Id.OAuthErrorCode.from_reason(reason)
 
+            if code == "account_taken" do
+              Watchman.increment(
+                {"guard.repo_host_account.account_taken",
+                 [to_string(repo_host), "oauth_callback"]}
+              )
+            end
+
             Logger.error(
               "Failed to update RepoHostAccount user_id=#{user_id} provider=#{repo_host} " <>
                 "code=#{code} kind=#{repo_host_error_kind(reason)}"
@@ -1464,8 +1471,16 @@ defmodule Guard.Id.Api do
 
   defp update_redirect(conn, :existing), do: conn
 
-  defp update_redirect(conn, _),
-    do: Guard.Utils.Http.store_redirect_info(conn, default_register_redirect())
+  # New users go to onboarding, unless they are signing up mid-OAuth authorization.
+  defp update_redirect(conn, _) do
+    if oauth_authorization?(Guard.Utils.Http.fetch_redirect_value(conn, "")) do
+      conn
+    else
+      Guard.Utils.Http.store_redirect_info(conn, default_register_redirect())
+    end
+  end
+
+  defp oauth_authorization?(url), do: URI.parse(url).path == "/mcp/oauth/authorize"
 
   defp find_or_create_user(user_data) do
     case Guard.OIDC.User.find_user_by_oidc_id(user_data[:oidc_user_id]) do

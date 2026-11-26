@@ -10,14 +10,15 @@ defmodule Guard.McpOAuth.Server do
   - /token (Token endpoint)
   - /grant-selection (Consent UI)
 
-  Guard acts as the OAuth Authorization Server, minting JWTs with HS256.
+  Guard acts as the OAuth Authorization Server, minting JWTs with HS256, or with
+  RS256 for semaphore.computer's client.
   """
 
   require Logger
 
   use Plug.Router
 
-  alias Guard.McpOAuth.{Authorize, Metadata, Register, Token}
+  alias Guard.McpOAuth.{Authorize, Computers, JWT, Metadata, Register, Token}
   alias Guard.Store.{McpOAuthAuthCode, McpOAuthClient}
 
   # Note: Plug.Parsers is NOT used here because Guard.Id.Api already parses
@@ -94,15 +95,14 @@ defmodule Guard.McpOAuth.Server do
 
   # ====================
   # JWKS Endpoint (for OIDC compatibility)
-  # Note: We use HS256 (symmetric HMAC) for token signing.
-  # HS256 keys cannot be exposed via JWKS (would leak the secret).
-  # Token validation is done server-side by the resource server.
+  # Note: MCP tokens are HS256 (symmetric HMAC), and validated server-side by
+  # the resource server; their keys cannot be exposed via JWKS (would leak the
+  # secret). Only the RS256 key of semaphore.computer's tokens is published.
   # ====================
 
   get "/jwks" do
-    # Return empty key set - tokens are validated server-side
     jwks = %{
-      "keys" => []
+      "keys" => Computers.jwks()
     }
 
     conn
@@ -170,8 +170,11 @@ defmodule Guard.McpOAuth.Server do
         # Check if user is authenticated (has session)
         case get_authenticated_user(conn) do
           {:ok, user} ->
-            # User is authenticated, show consent UI
-            render_grant_selection(conn, validated_params, user)
+            if Computers.client?(validated_params.client_id) do
+              do_handle_grant_selection(conn, user.id, conn.params)
+            else
+              render_grant_selection(conn, validated_params, user)
+            end
 
           {:error, :not_authenticated} ->
             # User not authenticated, redirect to login
@@ -361,6 +364,7 @@ defmodule Guard.McpOAuth.Server do
           <input type="hidden" name="code_challenge" value="#{html_escape(validated_params.code_challenge)}" />
           <input type="hidden" name="state" value="#{html_escape(validated_params.state || "")}" />
           <input type="hidden" name="scope" value="#{html_escape(validated_params.scope)}" />
+          <input type="hidden" name="resource" value="#{html_escape(validated_params.resource || "")}" />
           <input type="hidden" name="_csrf_token" value="#{Plug.CSRFProtection.get_csrf_token()}" />
           <div class="buttons">
             <a class="cancel-btn" href="#{html_escape(Authorize.build_error_redirect(validated_params.redirect_uri, "access_denied", "User denied access", validated_params.state))}">Cancel</a>
@@ -387,7 +391,7 @@ defmodule Guard.McpOAuth.Server do
   defp handle_grant_selection(conn) do
     case get_authenticated_user(conn) do
       {:ok, user} ->
-        do_handle_grant_selection(conn, user.id)
+        do_handle_grant_selection(conn, user.id, conn.body_params)
 
       {:error, :not_authenticated} ->
         conn
@@ -399,13 +403,12 @@ defmodule Guard.McpOAuth.Server do
     end
   end
 
-  defp do_handle_grant_selection(conn, user_id) do
-    params = conn.body_params
-
+  defp do_handle_grant_selection(conn, user_id, params) do
     client_id = params["client_id"]
     redirect_uri = params["redirect_uri"]
     code_challenge = params["code_challenge"]
     state = params["state"]
+    resource = if Computers.mcp_resource?(params["resource"]), do: params["resource"]
 
     Logger.debug("[McpOAuth.Server] Grant selection: client=#{client_id}, user=#{user_id}")
 
@@ -427,6 +430,7 @@ defmodule Guard.McpOAuth.Server do
             user_id: user_id,
             redirect_uri: redirect_uri,
             code_challenge: code_challenge,
+            resource: resource,
             expires_at: expires_at
           }
 
@@ -477,11 +481,13 @@ defmodule Guard.McpOAuth.Server do
         "code_challenge_method" => "S256",
         "response_type" => "code",
         "scope" => validated_params.scope,
+        "resource" => validated_params.resource || "",
         "state" => validated_params.state || ""
       })
 
-    return_url = "/mcp/oauth/authorize?#{return_params}"
-    login_url = "/login?return_to=#{URI.encode_www_form(return_url)}"
+    domain = Application.fetch_env!(:guard, :base_domain)
+    return_url = "#{JWT.issuer()}/authorize?#{return_params}"
+    login_url = "https://id.#{domain}/login?redirect_to=#{URI.encode_www_form(return_url)}"
 
     conn
     |> put_resp_header("location", login_url)
