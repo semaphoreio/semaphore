@@ -3,6 +3,9 @@ defmodule Zebra.Workers.SchedulerTest do
   use Zebra.DataCase, async: false
 
   import Mox
+
+  alias Zebra.Workers.Scheduler.Selector.Result
+
   setup :set_mox_global
 
   def create_job(org_id, state, machine_type \\ "e1-standard-2") do
@@ -144,5 +147,57 @@ defmodule Zebra.Workers.SchedulerTest do
 
       {:ok, features}
     end)
+  end
+
+  describe ".submit_no_capacity_metrics" do
+    test "keeps the per-type series and sends only non-zero reason pairs" do
+      result =
+        Result.new(%{id: Ecto.UUID.generate(), username: "test-org"})
+        |> Result.add_no_capacity("e1-standard-2", :org_ceiling)
+        |> Result.add_no_capacity("e1-standard-2", :org_ceiling)
+
+      Mock.with_mock Watchman, [:passthrough], submit: fn _, _, _ -> nil end do
+        Zebra.Workers.Scheduler.submit_no_capacity_metrics(result)
+
+        reason_tags = ["test-org", "e1-standard-2", "org_ceiling"]
+
+        :ok =
+          :meck.wait(
+            Watchman,
+            :submit,
+            [{"scheduler.no_capacity_by_reason", reason_tags}, 2, :timing],
+            5_000
+          )
+
+        # the reason breakdown is sent after the per-type series, so these are done too
+        assert :meck.called(
+                 Watchman,
+                 :submit,
+                 [{"scheduler.no_capacity", ["test-org", "e1-standard-2"]}, 2, :timing]
+               )
+
+        refute :meck.called(
+                 Watchman,
+                 :submit,
+                 [
+                   {"scheduler.no_capacity_by_reason",
+                    ["test-org", "e1-standard-2", "machine_quota"]},
+                   :_,
+                   :_
+                 ]
+               )
+
+        # zero counts still go to the per-type series, as before
+        other_types = Map.keys(result.no_capacity) -- ["e1-standard-2"]
+
+        for type <- other_types do
+          assert :meck.called(
+                   Watchman,
+                   :submit,
+                   [{"scheduler.no_capacity", ["test-org", type]}, 0, :timing]
+                 )
+        end
+      end
+    end
   end
 end

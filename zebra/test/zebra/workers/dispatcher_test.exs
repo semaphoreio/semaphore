@@ -738,6 +738,98 @@ defmodule Zebra.Workers.DispatcherTest do
     end
   end
 
+  describe ".submit_self_hosted_metrics" do
+    test "emits latency under the self-hosted metric name when a duration exists" do
+      job = %Job{
+        organization_id: Ecto.UUID.generate(),
+        machine_type: "s1-local-testing",
+        machine_os_image: "",
+        scheduled_at: ~U[2026-07-21 10:00:00Z],
+        started_at: ~U[2026-07-21 10:00:05Z]
+      }
+
+      with_mock Watchman,
+                [:passthrough],
+                submit: fn _, _, _ -> nil end,
+                increment: fn _ -> nil end do
+        Worker.submit_self_hosted_metrics(job)
+
+        # distinct metric name, not the untagged cloud series, non-negative value
+        assert_called(Watchman.submit("job.dispatching.self_hosted.duration", 5000, :timing))
+        assert_not_called(Watchman.submit("job.dispatching.duration", :_, :_))
+
+        assert_called(
+          Watchman.increment(
+            {"job.dispatching.self_hosted.histogram",
+             [job.organization_id, "s1-local-testing-", "from_3s_to_10s"]}
+          )
+        )
+
+        assert_not_called(Watchman.increment({"job.dispatching.histogram", :_}))
+      end
+    end
+
+    test "does not emit anything on the waiting-for-agent path (no started_at)" do
+      job = %Job{
+        organization_id: Ecto.UUID.generate(),
+        machine_type: "s1-local-testing",
+        machine_os_image: "",
+        scheduled_at: ~U[2026-07-21 10:00:00Z],
+        started_at: nil
+      }
+
+      with_mock Watchman,
+                [:passthrough],
+                submit: fn _, _, _ -> nil end,
+                increment: fn _ -> nil end do
+        assert Worker.submit_self_hosted_metrics(job) == nil
+
+        assert_not_called(Watchman.submit(:_, :_, :_))
+        assert_not_called(Watchman.increment(:_))
+      end
+    end
+  end
+
+  describe "self-hosted dispatch latency through .process" do
+    test "legacy SHH returning the agent => job starts and the self-hosted latency is emitted" do
+      {:ok, job} = Support.Factories.Job.create(:scheduled, %{machine_type: "s1-testing"})
+
+      GrpcMock.stub(Support.FakeServers.SelfHosted, :occupy_agent, fn _, _ ->
+        %InternalApi.SelfHosted.OccupyAgentResponse{agent_id: @agent_id, agent_name: "a"}
+      end)
+
+      with_mock Watchman, [:passthrough],
+        submit: fn _, _, _ -> nil end,
+        increment: fn _ -> nil end do
+        Worker.process(job)
+
+        assert Job.started?(Job.reload(job))
+        assert_called(Watchman.submit("job.dispatching.self_hosted.duration", :_, :timing))
+        assert_called(Watchman.increment({"job.dispatching.self_hosted.histogram", :_}))
+        assert_not_called(Watchman.submit("job.dispatching.duration", :_, :_))
+        assert_not_called(Watchman.increment({"job.dispatching.histogram", :_}))
+      end
+    end
+
+    test "current SHH (no agent in the response) => job waits and nothing is emitted yet" do
+      {:ok, job} = Support.Factories.Job.create(:scheduled, %{machine_type: "s1-testing"})
+
+      GrpcMock.stub(Support.FakeServers.SelfHosted, :occupy_agent, fn _, _ ->
+        %InternalApi.SelfHosted.OccupyAgentResponse{agent_id: "", agent_name: ""}
+      end)
+
+      with_mock Watchman, [:passthrough],
+        submit: fn _, _, _ -> nil end,
+        increment: fn _ -> nil end do
+        Worker.process(job)
+
+        assert Job.waiting_for_agent?(Job.reload(job))
+        assert_not_called(Watchman.submit("job.dispatching.self_hosted.duration", :_, :_))
+        assert_not_called(Watchman.increment({"job.dispatching.self_hosted.histogram", :_}))
+      end
+    end
+  end
+
   defmodule Counter do
     use Agent
 
