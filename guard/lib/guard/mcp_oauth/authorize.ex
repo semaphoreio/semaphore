@@ -8,6 +8,7 @@ defmodule Guard.McpOAuth.Authorize do
 
   require Logger
 
+  alias Guard.McpOAuth.Computers
   alias Guard.Store.McpOAuthClient
 
   @doc """
@@ -22,6 +23,8 @@ defmodule Guard.McpOAuth.Authorize do
     - code_challenge_method (required): Must be "S256"
     - state (optional): Client state for CSRF protection
     - scope (optional): Requested scopes
+    - resource (optional): The server the token is for (RFC 8707); one of
+      semaphore.computer's MCP servers gets a token for it, any other is ignored
 
   ## Returns
   - `{:ok, validated_params}` on success
@@ -33,6 +36,8 @@ defmodule Guard.McpOAuth.Authorize do
          {:ok, client} <- validate_client(params),
          :ok <- validate_redirect_uri(client, params),
          :ok <- validate_pkce(params) do
+      resource = if Computers.mcp_resource?(params["resource"]), do: params["resource"]
+
       {:ok,
        %{
          client_id: params["client_id"],
@@ -40,7 +45,8 @@ defmodule Guard.McpOAuth.Authorize do
          redirect_uri: params["redirect_uri"],
          code_challenge: params["code_challenge"],
          state: params["state"],
-         scope: params["scope"] || "mcp"
+         scope: params["scope"] || "mcp",
+         resource: resource
        }}
     end
   end
