@@ -83,9 +83,9 @@ defmodule Audit.Api do
     file_name = "seamphore-test-upload-" <> now
 
     case Audit.Streamer.check_access(req.stream, file_name) do
-      {:error, {_, %{body: body}}} ->
+      {:error, error = {_, %{body: body}}} ->
         Watchman.increment("audit.test_stream.error")
-        Logger.error("Error connecting to S3: #{body}")
+        Logger.error("Error connecting to S3: #{Audit.Streamer.error_summary(error)}")
 
         IA.TestStreamResponse.new(
           success: false,
@@ -94,7 +94,7 @@ defmodule Audit.Api do
 
       {:error, unknown} ->
         Watchman.increment("audit.test_stream.error")
-        Logger.error("Unknown error connecting to S3: #{inspect(unknown)}")
+        Logger.error("Unknown error connecting to S3: #{Audit.Streamer.error_summary(unknown)}")
 
         IA.TestStreamRequest.new(
           success: false,
