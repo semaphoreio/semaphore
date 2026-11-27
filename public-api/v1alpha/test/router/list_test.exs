@@ -91,6 +91,31 @@ defmodule Router.ListTest do
     assert project_id |> expected_headers() |> headers_contain(headers)
   end
 
+  test "GET /pipelines - link header uses https behind a TLS-terminating proxy" do
+    org = Support.Stubs.Organization.create_default()
+    user = Support.Stubs.User.create_default()
+    project = Support.Stubs.Project.create(org, user)
+
+    hook = %{id: UUID.uuid4(), project_id: project.id, branch_id: UUID.uuid4()}
+    workflow = Support.Stubs.Workflow.create(hook, user.id, organization_id: org.id)
+    _ = Support.Stubs.Pipeline.create_initial(workflow, branch_name: "master")
+
+    params = %{project_id: project.id, branch_name: "master"}
+    proxy_headers = [{"host", "rt.semaphoreci.com"}, {"x-forwarded-proto", "https"}]
+
+    {:ok, %{status_code: 200, headers: headers}} =
+      HTTPoison.get(
+        url() <> "/pipelines?" <> Plug.Conn.Query.encode(params),
+        headers() ++ proxy_headers
+      )
+
+    link =
+      "<https://rt.semaphoreci.com/api/#{api_version()}/pipelines" <>
+        "?branch_name=master&page=1&project_id=#{project.id}>"
+
+    assert {"link", "#{link}; rel=\"first\", #{link}; rel=\"last\""} in headers
+  end
+
   test "GET /pipelines - params: wf_id and no project_id" do
     org = Support.Stubs.Organization.create_default()
     user = Support.Stubs.User.create_default()
