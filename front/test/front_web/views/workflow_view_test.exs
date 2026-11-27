@@ -118,5 +118,23 @@ defmodule FrontWeb.WorkflowViewTest do
 
       assert {json.result, json.result_reason} == {:STOPPED, :STRATEGY}
     end
+
+    test "sends the parameters a pipeline was promoted with", %{conn: conn} do
+      pipeline = %{
+        pipeline(:MANUAL_PROMOTION, %{})
+        | env_vars: [%{name: "IMAGE_DATE", value: "2026-11-20"}]
+      }
+
+      workflow = %{
+        id: "wf-1",
+        project_name: "foo",
+        root_pipeline_id: pipeline.id,
+        pipelines: [pipeline]
+      }
+
+      [json] = WorkflowView.render("map.json", %{workflow: workflow, conn: conn}).pipelines
+
+      assert json.parameters == [%{name: "IMAGE_DATE", value: "2026-11-20"}]
+    end
   end
 end

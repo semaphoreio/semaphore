@@ -1,7 +1,7 @@
 import { render } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import { effect } from "@preact/signals";
-import { Config, ensureSelection, layoutError, loadError, now, onNudge, refresh, resetState, selected, tree, writePipelineId } from "./store";
+import { Config, ensureSelection, layoutError, loadError, now, onNudge, refresh, resetState, selected, tree, workflow, writePipelineId } from "./store";
 import { initLayout } from "./layout";
 import { MapCanvas, aim, openBlocks, openPipelines } from "./map";
 import { Popover } from "./popover";
@@ -11,6 +11,7 @@ import { bindTooltips } from "./tooltips";
 
 const MAX_POLL_RUNNING = 15000;
 const MAX_POLL_DONE = 30000;
+const OPEN_FAILED = 5;
 
 const App = ({ config }: { config: Config, }) => {
   const root = useRef<HTMLDivElement>(null);
@@ -45,6 +46,7 @@ const App = ({ config }: { config: Config, }) => {
     let again = false;
     let timer: number;
     let delay = config.pollInterval;
+    let seededFailed = false;
     const loop = async () => {
       window.clearTimeout(timer);
       if (running) {
@@ -60,6 +62,9 @@ const App = ({ config }: { config: Config, }) => {
           openPipelines.value = new Set([root]);
           aim({ id: root, how: `fit` });
         }
+        const failed = seededFailed ? [] : (workflow.peek()?.pipelines ?? []).filter((p) => p.status === `failed`).slice(0, OPEN_FAILED);
+        seededFailed ||= workflow.peek() !== null;
+        if (failed.length) openPipelines.value = new Set([...openPipelines.peek(), ...failed.map((p) => p.id)]);
       } finally {
         running = false;
         const max = tree.value?.pipelines.every((p) => p.state === `DONE`) ? MAX_POLL_DONE : MAX_POLL_RUNNING;

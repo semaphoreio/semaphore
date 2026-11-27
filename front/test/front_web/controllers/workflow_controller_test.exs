@@ -721,7 +721,7 @@ defmodule FrontWeb.WorkflowControllerTest do
       conn = get(conn, "/workflows/#{workflow.id}?new_workflow_ui=true")
       conn = conn |> recycle(@headers) |> get("/workflows/#{workflow.id}?new_workflow_ui=false")
 
-      assert get_session(conn, :new_workflow_ui) == nil
+      assert get_session(conn, :new_workflow_ui) == false
       assert html_response(conn, 200) =~ ~s(id="diagram")
       refute html_response(conn, 200) =~ ~s(id="workflow-map")
 
@@ -729,19 +729,39 @@ defmodule FrontWeb.WorkflowControllerTest do
       assert conn.status == 404
     end
 
-    test "false leaves the map on when the feature is enabled", %{
+    test "false shows the old page when the feature is enabled, until true", %{
       conn: conn,
       organization: organization,
       workflow: workflow
     } do
       Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
 
-      html =
-        conn
-        |> get("/workflows/#{workflow.id}?new_workflow_ui=false")
-        |> html_response(200)
+      conn = get(conn, "/workflows/#{workflow.id}?new_workflow_ui=false")
 
-      assert html =~ ~s(id="workflow-map")
+      assert get_session(conn, :new_workflow_ui) == false
+      assert html_response(conn, 200) =~ ~s(id="diagram")
+      refute html_response(conn, 200) =~ ~s(id="workflow-map")
+
+      conn = conn |> recycle(@headers) |> get("/workflows/#{workflow.id}")
+      assert html_response(conn, 200) =~ ~s(id="diagram")
+
+      conn = conn |> recycle(@headers) |> get("/workflows/#{workflow.id}/map")
+      assert %{"pipelines" => [_]} = json_response(conn, 200)
+
+      conn = conn |> recycle(@headers) |> get("/workflows/#{workflow.id}?new_workflow_ui=true")
+      assert html_response(conn, 200) =~ ~s(id="workflow-map")
+    end
+
+    test "no param follows the feature when the visit has no choice", %{
+      conn: conn,
+      organization: organization,
+      workflow: workflow
+    } do
+      Support.Stubs.Feature.enable_feature(organization.id, :ui_workflow_map)
+
+      conn = get(conn, "/workflows/#{workflow.id}")
+      assert get_session(conn, :new_workflow_ui) == nil
+      assert html_response(conn, 200) =~ ~s(id="workflow-map")
     end
 
     test "ignores values other than true and false", %{conn: conn, workflow: workflow} do
