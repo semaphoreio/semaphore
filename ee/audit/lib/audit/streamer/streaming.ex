@@ -67,19 +67,17 @@ defmodule Audit.Streamer do
     |> Map.merge(s3_config)
   end
 
-  @summary_field_limit 200
-
   @doc """
   Log-safe summary of a provider error: tag, HTTP status and the provider's
-  error code and message. Response bodies and headers are never included.
+  error code. Response bodies, messages and headers are never included.
   """
   def error_summary({:error, reason}), do: error_summary(reason)
 
   def error_summary({:http_error, status, response}) when is_integer(status),
-    do: join_summary(["http_error status=#{status}" | body_fields(response)])
+    do: Enum.join(["http_error status=#{status}" | body_fields(response)], " ")
 
   def error_summary({tag, response}) when is_atom(tag),
-    do: join_summary([Atom.to_string(tag) | body_fields(response)])
+    do: Enum.join([Atom.to_string(tag) | body_fields(response)], " ")
 
   def error_summary(%{__exception__: true, __struct__: module}),
     do: "exception #{inspect(module)}"
@@ -88,17 +86,12 @@ defmodule Audit.Streamer do
   def error_summary(reason) when is_atom(reason), do: Atom.to_string(reason)
   def error_summary(_), do: "unknown_error"
 
-  defp join_summary(parts), do: parts |> Enum.reject(&is_nil/1) |> Enum.join(" ")
-
-  defp body_fields(%{body: body}) when is_binary(body),
-    do: [xml_field(body, "Code", "code"), xml_field(body, "Message", "message")]
-
-  defp body_fields(_), do: []
-
-  defp xml_field(body, tag, label) do
-    case Regex.run(~r/<#{tag}>([^<]{1,#{@summary_field_limit}})/, body) do
-      [_, value] -> "#{label}=#{inspect(value)}"
-      _ -> nil
+  defp body_fields(%{body: body}) when is_binary(body) do
+    case Regex.run(~r/<Code>([A-Za-z0-9._-]{1,64})<\/Code>/, body) do
+      [_, code] -> ["code=#{code}"]
+      _ -> []
     end
   end
+
+  defp body_fields(_), do: []
 end
