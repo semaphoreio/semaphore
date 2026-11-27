@@ -1,6 +1,8 @@
 defmodule Audit.Streamer.SchedulerTest do
   use Support.DataCase
 
+  import ExUnit.CaptureLog
+
   alias InternalApi.Audit.Event.{Resource, Operation, Medium}
   alias InternalApi, as: IA
   alias ExAws.S3
@@ -48,6 +50,42 @@ defmodule Audit.Streamer.SchedulerTest do
     Audit.Streamer.Scheduler.lock_and_process(config.org_id)
     events_after_the_2nd_processing = Audit.Event.all(%{org_id: config.org_id, streamed: false})
     assert Enum.empty?(events_after_the_2nd_processing)
+  end
+
+  test "a failing stream logs identifiers and an error summary, never credentials" do
+    org_id = Ecto.UUID.generate()
+    key_id = "FAKE-KEY-ID-0000"
+    key_secret = "fake-key-secret-not-real"
+
+    {:ok, _} =
+      Audit.Streamer.Config.create(%{
+        org_id: org_id,
+        provider: IA.Audit.StreamProvider.value(:S3),
+        metadata: %{
+          bucket_name: "test-bucket",
+          host: System.fetch_env!("S3_HOST"),
+          port: 9090,
+          scheme: "http://"
+        },
+        cridentials: %{key_id: key_id, key_secret: key_secret},
+        last_streamed: Timex.shift(Timex.now(), days: -1)
+      })
+
+    create_events(org_id)
+    config = Audit.Streamer.Config.get_one!(%{org_id: org_id})
+
+    log =
+      capture_log(fn ->
+        assert {:error, _} = Audit.Streamer.Scheduler.process(config)
+      end)
+
+    assert log =~ "org_id=#{org_id}"
+    assert log =~ "provider=S3"
+    assert log =~ "status=ACTIVE"
+    assert log =~ "http_error status=403"
+    refute log =~ key_id
+    refute log =~ key_secret
+    refute log =~ "headers"
   end
 
   def create_streamer_conf do

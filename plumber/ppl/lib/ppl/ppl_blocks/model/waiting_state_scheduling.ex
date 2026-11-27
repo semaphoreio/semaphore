@@ -1,6 +1,12 @@
 defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
   @moduledoc """
   Find ready ppl_block - ppl_block ready for scheduling.
+
+  `get_ready_block/0` searches through all waiting ppl_blocks and its cost grows
+  with the number of waiting ppl_blocks which are not ready yet, so it is used
+  only as a periodic safety net.
+  `get_ready_block/1` searches only through ppl_blocks of the given pipeline and
+  is used for event-driven scheduling (see Ppl.PplBlocks.WaitingDrain).
   """
 
   alias Ppl.Query2Ecto.STM
@@ -15,11 +21,26 @@ defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
     end)
   end
 
+  def get_ready_block(ppl_id) do
+    Metrics.benchmark("Ppl.ppl_blk.waiting_STM", "enter_scheduling_ppl",  fn ->
+      with {:ok, resp} <- Repo.transaction(fn -> do_get_ready_block(ppl_id) end),
+        do: resp
+    end)
+  end
+
   def do_get_ready_block do
     not_ready_ppl_blocks_query()
-    |> ready_ppl_block_query()
+    |> ready_ppl_block_query("")
     |> ready_ppl_block_update_query()
     |> Repo.query([NaiveDateTime.utc_now()])
+    |> STM.load(PplBlocks)
+  end
+
+  def do_get_ready_block(ppl_id) do
+    not_ready_ppl_blocks_query()
+    |> ready_ppl_block_query("pb.ppl_id = $2 AND")
+    |> ready_ppl_block_update_query()
+    |> Repo.query([NaiveDateTime.utc_now(), Ecto.UUID.dump!(ppl_id)])
     |> STM.load(PplBlocks)
   end
 
@@ -31,12 +52,12 @@ defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
     RETURNING ppl_blk.*, subquery.updated_at as old_update_time
   " end
 
-  defp ready_ppl_block_query(not_ready_ppl_blocks_query) do "
+  defp ready_ppl_block_query(not_ready_ppl_blocks_query, ppl_filter) do "
     SELECT pb.*
     FROM pipeline_blocks AS pb
     JOIN pipelines as ppl
       ON pb.ppl_id = ppl.ppl_id
-    WHERE pb.in_scheduling = false AND
+    WHERE #{ppl_filter} pb.in_scheduling = false AND
       pb.state = 'waiting' AND (
         (
         /* Do not consider pipelines that are stil in state transition. */
@@ -46,6 +67,7 @@ defmodule Ppl.PplBlocks.Model.WaitingStateScheduling do
       OR
         pb.terminate_request IS NOT NULL
       )
+    ORDER BY pb.updated_at ASC
     LIMIT 1
     FOR UPDATE OF pb SKIP LOCKED
   " end

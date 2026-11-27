@@ -125,7 +125,7 @@ func (s *Server) ReceiveLogs(w http.ResponseWriter, r *http.Request) {
 
 	startFrom, err := strconv.ParseInt(startFromParam, 10, 64)
 	if err != nil {
-		log.Printf("bad start_from provided: %s", startFromParam)
+		log.Printf("bad start_from provided: %s", strconv.Quote(startFromParam))
 		http.Error(w, "bad start_from", http.StatusBadRequest)
 		return
 	}
@@ -164,7 +164,7 @@ func (s *Server) ReceiveLogs(w http.ResponseWriter, r *http.Request) {
 	// If any other errors happen,
 	// we might be dealing with connection issues with Redis,
 	// or something else unknown, so we just respond with 500.
-	log.Printf("Error appending logs to %s: %v", jobId, err)
+	log.Printf("Error appending logs to %s: %v", strconv.Quote(jobId), err)
 	http.Error(w, "Error appending logs", http.StatusInternalServerError)
 }
 
@@ -203,7 +203,7 @@ func (s *Server) SendLogs(w http.ResponseWriter, r *http.Request) {
 	if s.redisStorage.JobIdExists(r.Context(), jobId) {
 		err := s.streamLogsFromRedis(r.Context(), jobId, token, rawLogs, w)
 		if err != nil {
-			log.Printf("Error getting logs for %s from Redis: %v", jobId, err)
+			log.Printf("Error getting logs for %s from Redis: %v", strconv.Quote(jobId), err)
 			http.Error(w, "error getting logs", http.StatusInternalServerError)
 		}
 
@@ -221,7 +221,7 @@ func (s *Server) SendLogs(w http.ResponseWriter, r *http.Request) {
 
 	err = s.streamLogsFromCloudStorage(r.Context(), jobId, token, rawLogs, w)
 	if err != nil {
-		log.Printf("Error getting logs for %s from cloud storage: %v", jobId, err)
+		log.Printf("Error getting logs for %s from cloud storage: %v", strconv.Quote(jobId), err)
 		http.Error(w, "error getting logs", http.StatusInternalServerError)
 	}
 }
