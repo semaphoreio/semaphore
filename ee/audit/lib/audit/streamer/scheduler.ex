@@ -47,7 +47,9 @@ defmodule Audit.Streamer.Scheduler do
     if streamer_configs == [] do
       Logger.debug("No set up exporters. Sleeping.")
     else
-      Logger.info("Processing #{inspect(streamer_configs)}")
+      Logger.info(
+        "Processing streams for orgs: #{Enum.map_join(streamer_configs, ", ", & &1.org_id)}"
+      )
 
       streamer_configs
       |> Enum.filter(fn config ->
@@ -119,10 +121,10 @@ defmodule Audit.Streamer.Scheduler do
             Watchman.submit("#{@metric_name}.process.file_size", size)
 
           {:error, "no events to be streamed"} ->
-            Logger.info("processing #{inspect(config)} but there is no new events")
+            Logger.info("#{log_prefix(config)} but there is no new events")
 
           {:error, msg} ->
-            Logger.error("processing #{inspect(config)} #{inspect(msg)}")
+            Logger.error("#{log_prefix(config)} failed: #{Audit.Streamer.error_summary(msg)}")
 
             Watchman.increment(
               internal: {"#{@metric_name}.process.failure", ["#{config.org_id}"]},
@@ -141,6 +143,10 @@ defmodule Audit.Streamer.Scheduler do
         stream_result
       end
     end)
+  end
+
+  defp log_prefix(config) do
+    "processing stream org_id=#{config.org_id} provider=#{config.provider} status=#{config.status}"
   end
 
   defp stream(_data, %{file_name: nil}) do
