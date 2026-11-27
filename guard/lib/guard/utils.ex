@@ -75,7 +75,8 @@ defmodule Guard.Utils.OAuth do
         # invalid_grant on a genuinely revoked grant. Without this it would
         # decode to a nil access_token and get stuck :transient forever, never
         # signalling the user to reconnect. Classify it as a real revoke.
-        if is_nil(token) and genuine_grant_revocation?(decoded) do
+        if is_nil(token) and
+             genuine_grant_revocation?(repo_host_account.repo_host, 200, decoded) do
           Logger.warning(
             "2xx token refresh body signals a genuine revocation for " <>
               "rha=#{repo_host_account.id} user=#{repo_host_account.user_id} " <>
@@ -231,51 +232,138 @@ defmodule Guard.Utils.OAuth do
   caller should take:
 
     - `:ok`        - 2xx, the token can be used
-    - `:revoked`   - genuine permanent revocation: the provider's body
-                      signals `error=invalid_grant` (all providers) or
-                      `error=bad_refresh_token` (GitHub)
+    - `:revoked`   - genuine permanent revocation; see
+                     `genuine_grant_revocation?/3` for exactly which bodies
+                     qualify and why the bar is set where it is
     - `:transient` - everything else, INCLUDING a bare HTTP 401 /
-                      `invalid_client` / `unauthorized_client`. Per RFC 6749
-                      those mean OUR shared client_id/client_secret was
-                      rejected, not a user's grant - treating a bare 401 as
-                      a revoke would mass-revoke every account on that
+                      `invalid_client` / a bare `unauthorized_client`. Per
+                      RFC 6749 those mean OUR shared client_id/client_secret
+                      was rejected, not a user's grant - treating a bare 401
+                      as a revoke would mass-revoke every account on that
                       provider. Also covers 403, 429, 5xx, or any other
                       4xx. The caller MUST NOT treat `:transient` as a
                       permanent revoke.
-  """
-  @spec classify_refresh_response(non_neg_integer(), term()) :: :ok | :revoked | :transient
-  def classify_refresh_response(status, _body) when status in 200..299, do: :ok
 
-  def classify_refresh_response(status, body) do
+  `repo_host` is required because two of the codes below are ambiguous and are
+  only trusted for the provider we have actually observed sending them.
+  """
+  @spec classify_refresh_response(String.t(), non_neg_integer(), term()) ::
+          :ok | :revoked | :transient
+  def classify_refresh_response(_repo_host, status, _body) when status in 200..299, do: :ok
+
+  def classify_refresh_response(repo_host, status, body) do
     cond do
-      genuine_grant_revocation?(body) ->
+      genuine_grant_revocation?(repo_host, status, body) ->
         :revoked
 
       status == 401 ->
+        log_unrecognised_ambiguous_code(repo_host, status, body)
+
         Logger.warning(
-          "Bitbucket/GitLab/GitHub OAuth client credentials rejected (HTTP 401) - " <>
+          "#{repo_host} OAuth client credentials rejected (HTTP 401) - " <>
             "config issue, not a user revoke"
         )
 
         :transient
 
       true ->
+        log_unrecognised_ambiguous_code(repo_host, status, body)
         :transient
     end
   end
 
-  defp genuine_grant_revocation?(body) when is_map(body) do
-    Map.get(body, "error") in ["invalid_grant", "bad_refresh_token"]
+  # Codes whose meaning is unambiguous in RFC 6749 and in GitHub's dialect: the
+  # grant itself was rejected. Trusted on any provider, any status.
+  @unambiguous_revocation_codes ~w(invalid_grant bad_refresh_token)
+
+  # Codes Bitbucket reuses for a dead grant that RFC 6749 assigns to
+  # CLIENT-level and malformed-request faults. Recognised only by exact
+  # signature (below), never by wording heuristics.
+  @ambiguous_revocation_codes ~w(unauthorized_client invalid_request access_denied)
+
+  # The exact answers Bitbucket sends for a dead grant, normalised for case,
+  # surrounding whitespace and a trailing period.
+  #
+  # Matched exactly on purpose. Every one of these codes also describes a fault
+  # with our own OAuth consumer or our own request, so any other wording must
+  # stay :transient: a false positive revokes accounts we have no reason to
+  # disconnect, while a false negative costs a retry. An unrecognised wording
+  # is logged (see classify_refresh_response/3) so a provider change surfaces
+  # rather than looping silently.
+  @bitbucket_dead_grants [
+    {"unauthorized_client", "refresh_token is invalid"},
+    {"invalid_request", "invalid refresh_token"},
+    {"access_denied", "user is inactive"}
+  ]
+
+  @doc """
+  Does this response body prove the USER's grant is permanently dead?
+
+  True for `invalid_grant` / `bad_refresh_token` on any provider, and for one of
+  Bitbucket's exact dead-grant signatures. Everything else is transient.
+
+  `access_denied` describes the end user's account, so it is trusted on a 401.
+  The other two describe our own client or request when they are not an exact
+  match, and 401 is the status a provider returns when it rejects our
+  `Authorization: Basic client_id:secret`, so they are refused there.
+  """
+  @spec genuine_grant_revocation?(String.t(), non_neg_integer(), term()) :: boolean()
+  def genuine_grant_revocation?(repo_host, status, body) when is_map(body) do
+    error = Map.get(body, "error")
+
+    error in @unambiguous_revocation_codes or
+      bitbucket_dead_grant?(repo_host, status, error, Map.get(body, "error_description"))
   end
 
-  defp genuine_grant_revocation?(body) when is_binary(body) do
+  def genuine_grant_revocation?(repo_host, status, body) when is_binary(body) do
     case Jason.decode(body) do
-      {:ok, decoded} -> genuine_grant_revocation?(decoded)
+      {:ok, decoded} when is_map(decoded) -> genuine_grant_revocation?(repo_host, status, decoded)
       _ -> false
     end
   end
 
-  defp genuine_grant_revocation?(_body), do: false
+  def genuine_grant_revocation?(_repo_host, _status, _body), do: false
+
+  defp bitbucket_dead_grant?("bitbucket", status, error, description)
+       when is_binary(description) do
+    signature = {error, normalize_description(description)}
+
+    signature in @bitbucket_dead_grants and (error == "access_denied" or status != 401)
+  end
+
+  defp bitbucket_dead_grant?(_repo_host, _status, _error, _description), do: false
+
+  defp normalize_description(description) do
+    description |> String.downcase() |> String.trim() |> String.trim_trailing(".")
+  end
+
+  # An ambiguous code we did not recognise. Without this line a provider
+  # rewording its dead-grant answer would put those grants back into an
+  # indefinite retry loop with nothing to show for it.
+  defp log_unrecognised_ambiguous_code(repo_host, status, body) when is_map(body) do
+    error = Map.get(body, "error")
+
+    if repo_host == "bitbucket" and error in @ambiguous_revocation_codes do
+      Logger.warning(
+        "Unrecognised #{repo_host} #{error} wording (HTTP #{status}): " <>
+          "#{inspect(Map.get(body, "error_description"))}; treating as transient. " <>
+          "If the provider has reworded a dead-grant answer, add its exact " <>
+          "signature to @bitbucket_dead_grants."
+      )
+    end
+  end
+
+  defp log_unrecognised_ambiguous_code(repo_host, status, body) when is_binary(body) do
+    case Jason.decode(body) do
+      {:ok, decoded} when is_map(decoded) ->
+        log_unrecognised_ambiguous_code(repo_host, status, decoded)
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp log_unrecognised_ambiguous_code(_repo_host, _status, _body), do: :ok
 end
 
 defmodule Guard.Utils.Http do
