@@ -66,4 +66,32 @@ defmodule Audit.Streamer do
     rename(cridentials)
     |> Map.merge(s3_config)
   end
+
+  @doc """
+  Log-safe summary of a provider error: tag, HTTP status and the provider's
+  error code. Response bodies, messages and headers are never included.
+  """
+  def error_summary({:error, reason}), do: error_summary(reason)
+
+  def error_summary({:http_error, status, response}) when is_integer(status),
+    do: Enum.join(["http_error status=#{status}" | body_fields(response)], " ")
+
+  def error_summary({tag, response}) when is_atom(tag),
+    do: Enum.join([Atom.to_string(tag) | body_fields(response)], " ")
+
+  def error_summary(%{__exception__: true, __struct__: module}),
+    do: "exception #{inspect(module)}"
+
+  def error_summary(%{reason: reason}) when is_atom(reason), do: "request_error reason=#{reason}"
+  def error_summary(reason) when is_atom(reason), do: Atom.to_string(reason)
+  def error_summary(_), do: "unknown_error"
+
+  defp body_fields(%{body: body}) when is_binary(body) do
+    case Regex.run(~r/<Code>([A-Za-z0-9._-]{1,64})<\/Code>/, body) do
+      [_, code] -> ["code=#{code}"]
+      _ -> []
+    end
+  end
+
+  defp body_fields(_), do: []
 end

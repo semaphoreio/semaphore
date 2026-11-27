@@ -116,4 +116,32 @@ defmodule Audit.Streamer.ConfigTest do
       end
     end
   end
+
+  test "inspect does not expose credentials" do
+    org_id = Ecto.UUID.generate()
+    key_id = "FAKE-KEY-ID-0000"
+    key_secret = "fake-key-secret-not-real"
+
+    {:ok, stream} =
+      Audit.Streamer.Config.create(%{
+        org_id: org_id,
+        provider: InternalApi.Audit.StreamProvider.value(:S3),
+        metadata: %{bucket_name: "test-bucket"},
+        cridentials: %{key_id: key_id, key_secret: key_secret},
+        status: InternalApi.Audit.StreamStatus.value(:ACTIVE)
+      })
+
+    {:ok, config} = Audit.Streamer.Config.get_one(%{org_id: org_id, stream_id: stream.id})
+
+    assert config.cridentials == %{key_id: key_id, key_secret: key_secret}
+    assert is_binary(config.encrypted_credentials)
+
+    for inspected <- [inspect(stream), inspect(config), inspect([config])] do
+      assert inspected =~ org_id
+      refute inspected =~ key_id
+      refute inspected =~ key_secret
+      refute inspected =~ "cridentials"
+      refute inspected =~ "encrypted_credentials"
+    end
+  end
 end
