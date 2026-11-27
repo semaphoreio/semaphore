@@ -52,6 +52,10 @@ module RepoHost
         data.dig("object_attributes", "last_commit", "id")
       end
 
+      def pr_base_sha
+        nil
+      end
+
       def pr_head_branch_name
         data.dig("object_attributes", "source", "branch")
       end

@@ -335,7 +335,11 @@ defmodule Support.Factories do
                 tags: ["/v.*/", "foo"]
               ),
             pipeline_file: ".semaphore/semaphore.yml",
-            public: false
+            public: false,
+            pull_request_commit:
+              InternalApi.Projecthub.Project.Spec.Repository.PullRequestCommit.value(
+                :MERGE_COMMIT
+              )
           ),
         visibility: visibility(public),
         cache_id: "65a16553-69d9-480f-b52b-c56e6b12063e",

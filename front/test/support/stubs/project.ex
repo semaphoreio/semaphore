@@ -132,6 +132,7 @@ defmodule Support.Stubs.Project do
     alias InternalApi.Projecthub.Project
     alias InternalApi.Projecthub.Project.Metadata
     alias InternalApi.Projecthub.Project.Spec
+    alias InternalApi.Projecthub.Project.Spec.Repository.PullRequestCommit
     alias InternalApi.Projecthub.Project.Spec.Repository.RunType
     alias InternalApi.Projecthub.Project.Status
     alias InternalApi.RepositoryIntegrator.IntegrationType
@@ -142,7 +143,8 @@ defmodule Support.Stubs.Project do
       repo_default_branch: "main",
       name: Faker.Person.first_name(),
       description: "This is the project",
-      integration_type: "github_oauth_token"
+      integration_type: "github_oauth_token",
+      pull_request_commit: "merge_commit"
     ]
 
     params = defaults |> Keyword.merge(params)
@@ -198,7 +200,12 @@ defmodule Support.Stubs.Project do
               params[:integration_type]
               |> String.upcase()
               |> String.to_atom()
-              |> IntegrationType.value()
+              |> IntegrationType.value(),
+            pull_request_commit:
+              params[:pull_request_commit]
+              |> String.upcase()
+              |> String.to_atom()
+              |> PullRequestCommit.value()
           )
       )
 
@@ -414,6 +421,7 @@ defmodule Support.Stubs.Project do
                   [Access.key(:spec), Access.key(:repository)],
                   &%{&1 | pipeline_file: req.project.spec.repository.pipeline_file}
                 )
+                |> update_pull_request_commit(req.project.spec.repository.pull_request_commit)
 
               new_project = %{project | api_model: updated_api_model}
               DB.update(:projects, new_project)
@@ -423,6 +431,17 @@ defmodule Support.Stubs.Project do
                 project: req.project
               )
           end
+      end
+    end
+
+    # Unspecified keeps the stored value, as projecthub does.
+    defp update_pull_request_commit(api_model, pull_request_commit) do
+      alias InternalApi.Projecthub.Project.Spec.Repository.PullRequestCommit
+
+      if pull_request_commit == PullRequestCommit.value(:PULL_REQUEST_COMMIT_UNSPECIFIED) do
+        api_model
+      else
+        put_in(api_model.spec.repository.pull_request_commit, pull_request_commit)
       end
     end
 

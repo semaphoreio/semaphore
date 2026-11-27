@@ -132,7 +132,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           {
             :mergeable => true,
             :commit_author => "octocat",
-            :merge_commit_sha => workflow.commit_sha,
+            :commit_sha => workflow.commit_sha,
             :ref => workflow.git_ref,
             :head_sha => head_sha || workflow.commit_sha
           },
@@ -869,6 +869,77 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
         end
       end
 
+      context "when the project builds pull request head commits" do
+        let(:repo_host) { double(::RepoHost::Github::Client.new("token")) }
+        let(:pushed_sha) { "pushed-after-approval" }
+
+        def approve_reviewed(workflow, **options)
+          allow(@workflow.payload).to receive_messages(
+            issue_number: 1,
+            pr_approval?: true,
+            pr_approval_sha: workflow.commit_sha,
+            comment_author: "maintainer",
+            comment_created_at: approval_comment_time,
+            **options
+          )
+        end
+
+        before do
+          @workflow.project.update!(:pull_request_commit => "head_commit")
+          allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:pr_head_builds, anything).and_return(true)
+          allow(@logger).to receive(:info)
+          allow(Watchman).to receive(:increment)
+          allow(described_class).to receive_messages(approval_option_enabled?: true, can_approve_forked_pr?: true)
+          allow(::RepoHost::Factory).to receive(:create_from_project).and_return(repo_host)
+          allow(repo_host).to receive(:validate_token_presence!)
+          allow(repo_host).to receive(:commit).and_return(RepoHost::Github::Responses::Commit.commit)
+        end
+
+        it "builds the approved commit with its options even after the fork pushed again" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+          approved_sha = workflow.commit_sha
+          approve_reviewed(workflow, pr_approval_include_secrets?: true)
+          allow(repo_host).to receive(:pull_request).and_return(:head => { :sha => pushed_sha })
+          expect(repo_host).to receive(:create_ref).with(anything, "refs/semaphoreci/#{approved_sha}", approved_sha)
+
+          expect(described_class).to receive(:launch_pipeline).with(kind_of(Branch), workflow, @logger)
+
+          described_class.run(@workflow, @logger)
+
+          launched = Workflow.find(workflow.id)
+          expect(launched.commit_sha).to eq(approved_sha)
+          expect(launched.git_ref).to eq("refs/semaphoreci/#{approved_sha}")
+          expect(JSON.parse(launched.request["payload"])["semaphore_approval"]).to include("include_secrets" => true, "approved_head_sha" => approved_sha)
+        end
+
+        it "refuses to run when the commit can't be pinned and the fork head moved" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+          approve_reviewed(workflow)
+          allow(repo_host).to receive(:create_ref).and_raise(::RepoHost::RemoteException::Unauthorized, "no token")
+          allow(repo_host).to receive(:pull_request).and_return(:head => { :sha => pushed_sha })
+
+          expect(described_class).not_to receive(:launch_pipeline)
+
+          described_class.run(@workflow, @logger)
+
+          expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_PR_APPROVAL_STALE)
+        end
+
+        it "releases an approval with options when the commit can't be pinned" do
+          workflow = build_blocked_pr_workflow(project_id: @workflow.project_id, pr_number: 1)
+          approve_reviewed(workflow, pr_approval_include_secrets?: true)
+          allow(repo_host).to receive(:create_ref).and_raise(::RepoHost::RemoteException::Unauthorized, "no token")
+          allow(repo_host).to receive(:pull_request).and_return(:head => { :sha => workflow.commit_sha })
+
+          expect(described_class).not_to receive(:launch_pipeline)
+          expect(Watchman).to receive(:increment).with("hooks.pr_approval.options_without_reference")
+
+          described_class.run(@workflow, @logger)
+
+          expect(Workflow.find(workflow.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
+        end
+      end
+
       context "when a draft PR was marked ready for review while blocked, on a project that builds drafts", :aggregate_failures do
         let(:opened) do
           build_blocked_pr_workflow(project_id: @workflow.project_id, created_at: before_comment - 1.hour, payload: pull_request_payload(:action => "opened", :draft => true))
@@ -907,7 +978,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
 
           described_class.run(@workflow, @logger)
 
-          expect(Workflow.find(ready_for_review.id).state).to eq(Workflow::STATE_LAUNCHING)
+          expect(Workflow.find(ready_for_review.id)).to have_attributes(:state => Workflow::STATE_LAUNCHING, :commit_sha => ready_for_review.commit_sha)
           expect(Workflow.find(opened.id).state).to eq(Workflow::STATE_SKIP_FILTERED_CONTRIBUTOR)
           expect(@logger).to have_received(:info).with("pr-approval-claimed", :approved_workflow_id => ready_for_review.id, :approved_action => "ready_for_review")
         end
@@ -1055,7 +1126,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           # No :head_sha at all → treated as changed, fail closed.
           update_pr_data: [
             :ok,
-            { :mergeable => true, :commit_author => "octocat", :merge_commit_sha => workflow.commit_sha, :ref => workflow.git_ref },
+            { :mergeable => true, :commit_author => "octocat", :commit_sha => workflow.commit_sha, :ref => workflow.git_ref },
             nil
           ]
         )
@@ -1801,6 +1872,154 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
             described_class.run(@workflow, @logger)
           end
         end
+
+        context "and the project builds pull request head commits" do
+          let(:head_sha) { "97114836a47ff614e70e863df819f908877ee1c9" }
+          let(:skip_ci_commit) { OpenStruct.new(:author => nil, :commit => OpenStruct.new(:message => "Update docs [skip ci]")) }
+
+          before do
+            @workflow.project.update!(:pull_request_commit => "head_commit")
+            allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:pr_head_builds, anything).and_return(true)
+            allow(repo_host).to receive(:validate_token_presence!)
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", head_sha).and_return(RepoHost::Github::Responses::Commit.commit)
+          end
+
+          it "builds the merge commit when pr_head_builds is turned off" do
+            allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:pr_head_builds, anything).and_return(false)
+            allow(repo_host).to receive(:pull_request).and_return(:merge_commit_sha => "foo", :mergeable => true)
+            allow(repo_host).to receive(:git_commit).with("renderedtext/plakatt", "foo").and_return(:parents => [{ :sha => "c" * 40 }, { :sha => @workflow.payload.pr_head_sha }])
+            allow(repo_host).to receive(:create_ref)
+            expect(described_class).to receive(:launch_pipeline)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.commit_sha).to eq("foo")
+            expect(@workflow.git_ref).to eq("refs/semaphoreci/foo")
+          end
+
+          it "pins and builds the head commit without reading mergeability" do
+            expect(repo_host).not_to receive(:pull_request)
+            expect(repo_host).to receive(:create_ref).with("renderedtext/plakatt", "refs/semaphoreci/#{head_sha}", head_sha).once
+            expect(described_class).to receive(:launch_pipeline)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.commit_sha).to eq(head_sha)
+            expect(@workflow.git_ref).to eq("refs/semaphoreci/#{head_sha}")
+          end
+
+          it "leaves the branch mergeability unrecorded and emits no unmergeable event" do
+            allow(repo_host).to receive(:create_ref)
+            allow(described_class).to receive(:launch_pipeline)
+            expect(described_class).not_to receive(:update_pull_request_mergeable)
+            expect(Semaphore::Events::PullRequestUnmergeable).not_to receive(:emit)
+
+            described_class.run(@workflow, @logger)
+
+            expect(described_class.find_branch(@workflow).pull_request_mergeable).to be_nil
+          end
+
+          it "keeps one build mode for the whole run when the feature lookup changes its answer" do
+            allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:pr_head_builds, anything).and_return(true, false)
+            allow(repo_host).to receive(:create_ref)
+            expect(described_class).to receive(:launch_pipeline)
+            expect(described_class).not_to receive(:update_pull_request_mergeable)
+            expect(Semaphore::Events::PullRequestUnmergeable).not_to receive(:emit)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.commit_sha).to eq(head_sha)
+            expect(Semaphore::FeatureFlags).to have_received(:enabled?).with(:pr_head_builds, anything).once
+          end
+
+          it "falls back to the pull request head ref when the head can't be pinned" do
+            allow(repo_host).to receive(:create_ref).and_raise(::RepoHost::RemoteException::Unauthorized, "no token")
+            allow(repo_host).to receive(:pull_request).and_return(:head => { :sha => head_sha })
+            expect(described_class).to receive(:launch_pipeline)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.commit_sha).to eq(head_sha)
+            expect(@workflow.git_ref).to eq("refs/pull/#{@workflow.payload.pull_request_number}/head")
+          end
+
+          it "skips the build when the head commit asks for it" do
+            allow(repo_host).to receive(:commit).with("renderedtext/plakatt", head_sha).and_return(skip_ci_commit)
+            expect(repo_host).not_to receive(:create_ref)
+            expect(described_class).not_to receive(:launch_pipeline)
+
+            described_class.run(@workflow, @logger)
+
+            expect(@workflow.reload.state).to eq(Workflow::STATE_SKIP_CI)
+          end
+        end
+      end
+    end
+  end
+
+  describe ".update_pr_data" do
+    context "when the project builds pull request head commits" do
+      let(:repo_host) { double(::RepoHost::Github::Client.new("token")) }
+      let(:project) { @workflow.project }
+      let(:head_sha) { "3a9bf9d09f1f639e6deff46f95cff1296a87ea1a" }
+
+      before do
+        project.update!(:pull_request_commit => "head_commit")
+        allow(Semaphore::FeatureFlags).to receive(:enabled?).with(:pr_head_builds, anything).and_return(true)
+        allow(::RepoHost::Factory).to receive(:create_from_project).and_return(repo_host)
+        allow(repo_host).to receive(:validate_token_presence!)
+        allow(repo_host).to receive(:commit).and_return(RepoHost::Github::Responses::Commit.commit)
+        allow(repo_host).to receive(:create_ref)
+      end
+
+      it "reads the pull request once and never waits for mergeability" do
+        expect(repo_host).to receive(:pull_request).once.and_return(:head => { :sha => head_sha }, :mergeable => nil)
+        expect(described_class).not_to receive(:sleep)
+
+        state, meta, = described_class.update_pr_data(project, 1, nil, false)
+
+        expect(state).to eq(:ok)
+        expect(meta).to include(:commit_sha => head_sha, :ref => "refs/semaphoreci/#{head_sha}")
+        expect(meta).not_to have_key(:mergeable)
+      end
+
+      it "keeps the commit when the head ref can't be pinned" do
+        allow(repo_host).to receive(:pull_request).and_return(:head => { :sha => head_sha }, :mergeable => nil)
+        allow(repo_host).to receive(:create_ref).and_raise(::RepoHost::RemoteException::NotFound, "Not Found")
+
+        state, meta, = described_class.update_pr_data(project, 7, nil, false)
+
+        expect(state).to eq(:without_reference)
+        expect(meta).to include(:commit_sha => head_sha, :head_sha => head_sha, :ref => "refs/pull/7/head")
+      end
+
+      it "reports the live head, not the requested commit, when the head ref can't be pinned" do
+        pushed_sha = "b" * 40
+        allow(repo_host).to receive(:pull_request).and_return(:head => { :sha => pushed_sha }, :mergeable => nil)
+        allow(repo_host).to receive(:create_ref).and_raise(::RepoHost::RemoteException::NotFound, "Not Found")
+
+        state, meta, = described_class.update_pr_data(project, 7, head_sha, false)
+
+        expect(state).to eq(:without_reference)
+        expect(meta).to include(:commit_sha => head_sha, :head_sha => pushed_sha)
+        expect(described_class.approved_pr_head_unchanged?(meta, head_sha)).to be(false)
+      end
+
+      it "reports a pull request that vanished while the head ref couldn't be pinned" do
+        allow(repo_host).to receive(:pull_request).and_raise(::RepoHost::RemoteException::NotFound, "Not Found")
+        allow(repo_host).to receive(:create_ref).and_raise(::RepoHost::RemoteException::NotFound, "Not Found")
+
+        state, = described_class.update_pr_data(project, 7, head_sha, false)
+
+        expect(state).to eq(:not_found)
+      end
+
+      it "reports a pull request that doesn't exist" do
+        allow(repo_host).to receive(:pull_request).and_raise(::RepoHost::RemoteException::NotFound, "Not Found")
+
+        state, = described_class.update_pr_data(project, 1, nil, false)
+
+        expect(state).to eq(:not_found)
       end
     end
   end
@@ -1814,7 +2033,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
 
     def build_project(repo: "owner/repo", organization_id: "org-1", creator_id: "user-1", integration_type: "github_app")
       instance_double(Project, :repo_owner_and_name => repo, :organization_id => organization_id, :creator_id => creator_id,
-                               :repository => instance_double(Repository, :integration_type => integration_type))
+                               :pull_request_head_commit? => false, :repository => instance_double(Repository, :integration_type => integration_type))
     end
 
     before do
@@ -1859,7 +2078,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       state, meta, = described_class.update_pr_data(project, 1, nil, false)
 
       expect(state).to eq(:ok)
-      expect(meta[:merge_commit_sha]).to eq(merge_sha)
+      expect(meta[:commit_sha]).to eq(merge_sha)
     end
 
     it "checks only the webhook head when one is given" do
@@ -1973,7 +2192,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
 
     def build_project(repo: "owner/repo", organization_id: "org-1", creator_id: "user-1", integration_type: "github_app")
       instance_double(Project, :repo_owner_and_name => repo, :organization_id => organization_id, :creator_id => creator_id,
-                               :repository => instance_double(Repository, :integration_type => integration_type))
+                               :pull_request_head_commit? => false, :repository => instance_double(Repository, :integration_type => integration_type))
     end
 
     before do
@@ -1997,7 +2216,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       state, meta, = resolve
 
       expect([first_state, state]).to eq(%i[ok ok])
-      expect(meta).to include(:merge_commit_sha => merge_sha, :ref => "refs/semaphoreci/#{merge_sha}", :mergeable => true,
+      expect(meta).to include(:commit_sha => merge_sha, :ref => "refs/semaphoreci/#{merge_sha}", :mergeable => true,
                               :commit_author => "octocat", :head_sha => head_sha)
       expect(repo_host).to have_received(:pull_request).once
       expect(repo_host).to have_received(:create_ref).once
@@ -2049,7 +2268,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       state, meta, = resolve
 
       expect(state).to eq(:ok)
-      expect(meta).to include(:merge_commit_sha => "9" * 40, :commit_author => "radwo")
+      expect(meta).to include(:commit_sha => "9" * 40, :commit_author => "radwo")
       expect(repo_host).not_to have_received(:pull_request)
     end
 
@@ -2060,7 +2279,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       state, meta, = resolve
 
       expect(state).to eq(:ok)
-      expect(meta[:merge_commit_sha]).to eq(merge_sha)
+      expect(meta[:commit_sha]).to eq(merge_sha)
       expect(described_class).to have_received(:sleep).once
     end
 
@@ -2112,7 +2331,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       state, meta, = resolve
 
       expect(state).to eq(:ok)
-      expect(meta[:merge_commit_sha]).to eq("9" * 40)
+      expect(meta[:commit_sha]).to eq("9" * 40)
       expect(repo_host).not_to have_received(:pull_request)
     end
 
@@ -2157,7 +2376,7 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
       state, meta, = resolve
 
       expect(state).to eq(:ok)
-      expect(meta[:merge_commit_sha]).to eq(merge_sha)
+      expect(meta[:commit_sha]).to eq(merge_sha)
       expect(repo_host).to have_received(:pull_request).twice
     end
 
