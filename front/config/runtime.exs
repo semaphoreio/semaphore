@@ -12,6 +12,14 @@ config :front,
   pipeline_data_retention_days:
     String.to_integer(System.get_env("PIPELINE_DATA_RETENTION_DAYS") || "400")
 
+# Cap for one org-wide activity monitor fetch, in ms. Parsed and validated by
+# Front.ActivityMonitor.Repo, which falls back to its default on a bad value.
+activity_monitor_fetch_timeout = System.get_env("ACTIVITY_MONITOR_FETCH_TIMEOUT_MS")
+
+if activity_monitor_fetch_timeout != nil do
+  config :front, :activity_monitor_fetch_timeout_ms, activity_monitor_fetch_timeout
+end
+
 if System.get_env("TZDATA_DATA_DIRECTORY") != nil do
   config :tzdata, :data_dir, System.get_env("TZDATA_DATA_DIRECTORY")
 else
