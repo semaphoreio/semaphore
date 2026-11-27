@@ -5,6 +5,9 @@ config :logger, level: (System.get_env("LOG_LEVEL") || "info") |> String.to_atom
 # Do not print empty line between log events.
 config :logger, :console, format: "$time $metadata[$level] $levelpad$message\n"
 
+config :watchman,
+  prefix: "ppl-api.#{System.get_env("METRICS_NAMESPACE") || "dev"}"
+
 config :pipelines_api,
        :feature_api_endpoint,
        System.get_env("FEATURE_GRPC_URL") || "feature-hub:50052"
