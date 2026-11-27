@@ -2,13 +2,14 @@ defmodule FrontWeb.TargetController do
   use FrontWeb, :controller
 
   alias Front.Audit
-  alias Front.Models.Switch
+  alias Front.Models.{Pipeline, Switch}
   alias FrontWeb.Plugs.{FetchPermissions, PageAccess, PutProjectAssigns}
 
   plug(:put_layout, false)
   plug(PutProjectAssigns)
   plug(FetchPermissions, scope: "project")
   plug(PageAccess, permissions: "project.job.rerun")
+  plug(:assign_pipeline)
 
   def trigger(conn, params) do
     Watchman.benchmark("trigger.duration", fn ->
@@ -18,19 +19,39 @@ defmodule FrontWeb.TargetController do
       tracing_headers = conn.assigns.tracing_headers
 
       switch = Switch.find(switch_id, user_id)
-      target = Switch.find_target_by_name(switch, name)
-      parameters = parse_target_parameters(conn)
 
-      log_promotion(conn, name, switch, parameters)
+      if switch && switch.pipeline_id == conn.assigns.pipeline.id do
+        target = Switch.find_target_by_name(switch, name)
+        parameters = parse_target_parameters(conn)
 
-      case Switch.Target.trigger(target, user_id, parameters, tracing_headers) do
-        {:ok, _} ->
-          text(conn, "Target '#{name}' triggered.")
+        log_promotion(conn, name, switch, parameters)
 
-        {:error, msg} ->
-          conn |> put_status(500) |> text(msg)
+        case Switch.Target.trigger(target, user_id, parameters, tracing_headers) do
+          {:ok, _} ->
+            text(conn, "Target '#{name}' triggered.")
+
+          {:error, msg} ->
+            conn |> put_status(500) |> text(msg)
+        end
+      else
+        conn |> put_status(404) |> text("Not found")
       end
     end)
+  end
+
+  # Resolves the pipeline named in the URL the same way PipelineController
+  # does, so this controller doesn't end up reasoning about a pipeline that
+  # belongs to a different workflow/organization than the request's.
+  defp assign_pipeline(conn, _opts) do
+    pipeline = Pipeline.find(conn.params["pipeline_id"])
+    organization_id = conn.assigns.organization_id
+    workflow_id = conn.assigns.workflow.id
+
+    if Pipeline.belongs_to_workflow?(pipeline, organization_id, workflow_id) do
+      assign(conn, :pipeline, pipeline)
+    else
+      conn |> put_status(404) |> text("Not found") |> halt()
+    end
   end
 
   defp log_promotion(conn, name, switch, parameters) do
