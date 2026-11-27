@@ -20,8 +20,8 @@ defmodule Audit.Streamer.Config do
     # # # # cridentials contains json
     # S3  # key_id, key_secret, type
     #     # type is INSTANCE_ROLE or USER
-    field(:cridentials, :map, virtual: true)
-    field(:encrypted_credentials, :binary, default: nil)
+    field(:cridentials, :map, virtual: true, redact: true)
+    field(:encrypted_credentials, :binary, default: nil, redact: true)
 
     field(:created_at, :utc_datetime)
     field(:updated_at, :utc_datetime)
