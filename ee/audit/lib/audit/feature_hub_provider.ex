@@ -7,40 +7,9 @@ defmodule Audit.FeatureHubProvider do
     Availability
   }
 
-  @cache_version :crypto.hash(:md5, File.read(__ENV__.file) |> elem(1)) |> Base.encode64()
-
-  defp cache_key(org_id, operation),
-    do: "feature_hub/#{@cache_version}/#{org_id}/#{operation}"
-
   @impl FeatureProvider.Provider
-  def provide_features(org_id, opts) do
-    ttl = Keyword.get(opts, :ttl, :timer.minutes(15))
-    cache_key = cache_key(org_id, "list_organization_features")
-
-    Audit.Cache.fetch(cache_key, fn ->
-      do_list_features(org_id)
-      |> case do
-        {:ok, features} ->
-          {:commit, features}
-
-        _ ->
-          {:ignore, []}
-      end
-    end)
-    |> case do
-      {:ok, features} ->
-        {:ok, features}
-
-      {:commit, features} ->
-        Audit.Cache.expire(cache_key, ttl)
-        {:ok, features}
-
-      {:ignore, _} ->
-        {:ok, []}
-
-      _ ->
-        {:ok, []}
-    end
+  def provide_features(org_id, _opts) do
+    do_list_features(org_id)
   end
 
   @impl FeatureProvider.Provider
