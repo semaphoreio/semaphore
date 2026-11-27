@@ -7,7 +7,7 @@ export var WorkflowList = {
   pagination: null,
   pollmanList: null,
   container: null,
-  queryParams: ['page_token', 'direction', 'date_from', 'date_to', 'author', 'listing', 'requester'],
+  queryParams: ['page_token', 'direction', 'date_from', 'date_to', 'author', 'trigger', 'listing', 'requester'],
 
   init: function() {
     if(this.initiated === true) { return; }
@@ -54,12 +54,14 @@ export var WorkflowList = {
     const dateFromInput = document.getElementById('date_from');
     const dateToInput = document.getElementById('date_to');
     const authorInput = document.getElementById('author');
+    const triggerInput = document.getElementById('trigger');
     
     
     const applyFilters = () => {
       const dateFrom = dateFromInput?.value;
       const dateTo = dateToInput?.value;
       const author = authorInput?.value;
+      const trigger = triggerInput?.value;
       
       if (dateFrom && dateTo) {
         const filterErrorMessage = document.getElementById('filter_error_message');
@@ -78,6 +80,7 @@ export var WorkflowList = {
       params.date_from = dateFrom;
       params.date_to = dateTo;
       params.author = author;
+      params.trigger = trigger;
       
       const container = document.querySelector('.pollman-container');
       updatePollman(container, params);
@@ -91,6 +94,9 @@ export var WorkflowList = {
     }
     if (dateToInput) {
       dateToInput.addEventListener('change', applyFilters);
+    }
+    if (triggerInput) {
+      triggerInput.addEventListener('change', applyFilters);
     }
   },
 
