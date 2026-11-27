@@ -126,8 +126,10 @@ defmodule Front.Models.OrganizationOnboarding do
   @spec validate_billing(model :: t()) :: :ok | {:error, String.t()}
   defp validate_billing(model) do
     if Front.saas?() do
+      # Called right before organization create, with reserve: true.
       BillingClient.can_setup_organization(%{
-        owner_id: model.user_id
+        owner_id: model.user_id,
+        reserve: true
       })
       |> case do
         {:ok, %{allowed: true}} -> :ok
