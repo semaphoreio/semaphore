@@ -6,13 +6,17 @@ defmodule Audit.User do
     endpoint = Application.get_env(:audit, :user_grpc_endpoint)
     {:ok, channel} = GRPC.Stub.connect(endpoint)
 
-    req = DescribeRequest.new(user_id: user_id)
-    {:ok, res} = Stub.describe(channel, req, timeout: 30_000)
+    try do
+      req = DescribeRequest.new(user_id: user_id)
+      {:ok, res} = Stub.describe(channel, req, timeout: 30_000)
 
-    if res.status.code == :OK do
-      {:ok, res.name}
-    else
-      {:error, "Failed to find the user"}
+      if res.status.code == :OK do
+        {:ok, res.name}
+      else
+        {:error, "Failed to find the user"}
+      end
+    after
+      GRPC.Stub.disconnect(channel)
     end
   end
 end
